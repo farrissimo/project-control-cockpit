@@ -34,7 +34,7 @@ if ($verification.task_id -ne $taskState.task_id) {
 }
 
 $verdictToTaskStatus = @{
-  "PASS"         = "verified_pass"
+  "PASS"         = "complete"
   "FAIL"         = "verified_fail"
   "INSUFFICIENT" = "insufficient_evidence"
   "BLOCKED"      = "blocked"
@@ -51,9 +51,6 @@ if (($verification.verdict -eq "PASS") -ne [bool]$verification.state_update_allo
 
 $timestamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:sszzz")
 
-# verified_pass, not complete: this helper syncs verdict/next-action fields only.
-# Moving a task to "complete" and drafting the next one is an advisor/verifier
-# decision (STATE_MODEL.md transition sketch), not something this script should decide.
 $taskState.verification_verdict = $verification.verdict
 $taskState.task_status = $verdictToTaskStatus[$verification.verdict]
 $taskState.current_blocker = if ($verification.verdict -eq "PASS") { $null } else { $verification.summary }

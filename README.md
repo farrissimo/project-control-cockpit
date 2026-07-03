@@ -136,9 +136,9 @@ Local validation:
 
 Foundation is complete.
 
-The repo is now in the first V1 proof-execution stage.
+The repo has completed the initial proof cycles and entered the first bounded product-work build stage.
 
-The first milestone is the stateful handoff proof:
+The core loop has now been exercised successfully:
 
 ```text
 state → directive → worker → evidence → verification → state update or retry
@@ -146,4 +146,4 @@ state → directive → worker → evidence → verification → state update or
 
 Active next step:
 
-* Execute `pcc-v1-002`, the first live PCC control-loop proof task
+* Execute `pcc-v1-004`, the first directive-generation product task

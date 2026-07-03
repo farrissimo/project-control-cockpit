@@ -391,3 +391,25 @@ When project state, task state, verification result, or handoff references chang
 
 Supersedes: None
 Related: docs/REPO_GOVERNANCE.md, .cockpit/state/project-state.json, scripts/validate-cockpit-state.ps1
+
+---
+
+## DECISION-016: Verified PASS Must Advance The Task To Complete
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+When PCC records a verified `PASS`, the active task should advance directly to `complete` rather than stopping at an intermediate `verified_pass` live status.
+
+Reason:
+
+Leaving PASS in an in-between state keeps unnecessary semantic ambiguity in the core loop and creates more babysitting around whether work is truly done. The verifier already decides the verdict; the state system should reflect that decision clearly.
+
+Implications:
+
+The deterministic state-advance helper should map `PASS` to `complete`. `verified_pass` should not remain an active live-task status in the canonical state model. Drafting the next task still remains a separate advisor/verifier step after completion.
+
+Supersedes: None
+Related: docs/STATE_MODEL.md, scripts/advance-cockpit-state.ps1, .cockpit/state/task-state.json

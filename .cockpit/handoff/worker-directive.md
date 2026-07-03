@@ -13,9 +13,9 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-v1-003
-* Task Title: Implement deterministic verification state advancement
-* Task Status: drafted
+* Task ID: pcc-v1-004
+* Task Title: Generate worker directives from canonical state
+* Task Status: ready_for_worker
 
 ## Objective
 
@@ -33,7 +33,7 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-Create one local deterministic helper under `scripts/` that reads `.cockpit/result/verification-result.json` and updates `.cockpit/state/project-state.json` plus `.cockpit/state/task-state.json` consistently for a verified PASS. Keep it bounded, local-first, and explicit. The helper must reduce manual state reconciliation rather than introduce broad automation.
+Create one local deterministic helper under `scripts/` that drafts `.cockpit/handoff/worker-directive.md` from canonical repo truth, primarily `.cockpit/state/project-state.json` and `.cockpit/state/task-state.json`. Keep it bounded, local-first, and explicit. The helper must reduce manual handoff writing rather than introduce broad automation.
 
 ## Allowed Scope
 
@@ -41,7 +41,7 @@ The worker may:
 
 * Update `scripts/` for the deterministic helper
 * Update `.cockpit/` runtime files only as needed for the helper
-* Update docs directly related to the helper or state-advance workflow
+* Update docs directly related to the helper or handoff-generation workflow
 * Add or update a small validation or demonstration step if needed
 
 ## Forbidden Scope
@@ -61,8 +61,9 @@ The worker must not:
 The task is complete only if:
 
 * a local helper script exists under `scripts/`
-* the helper reads `.cockpit/result/verification-result.json`
-* the helper updates `.cockpit/state/project-state.json` and `.cockpit/state/task-state.json` consistently for PASS
+* the helper reads canonical state from `.cockpit/state/project-state.json` and `.cockpit/state/task-state.json`
+* the helper drafts `.cockpit/handoff/worker-directive.md` in a worker-ready format
+* the generated directive includes the active task objective, boundaries, completion criteria, and required evidence
 * the helper is local and deterministic rather than chat-driven
 * required evidence is explicit
 * no forbidden-scope work was performed

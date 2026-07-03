@@ -1,20 +1,21 @@
 {
-  "task_id": "pcc-v1-003",
-  "task_title": "Implement deterministic verification state advancement",
-  "task_objective": "Create a local deterministic helper that reads the active verification result and updates project and task state consistently so a verified PASS does not rely on manual state reconciliation.",
-  "task_status": "complete",
+  "task_id": "pcc-v1-004",
+  "task_title": "Generate worker directives from canonical state",
+  "task_objective": "Create a local deterministic helper that drafts .cockpit/handoff/worker-directive.md from canonical PCC state so the next worker cycle requires less manual handoff writing.",
+  "task_status": "ready_for_worker",
   "assigned_worker": "Claude Code",
   "completion_criteria": [
-    "A local helper script exists that reads .cockpit/result/verification-result.json and updates the state files consistently.",
-    "The helper handles PASS without requiring manual state reconciliation.",
+    "A local helper script exists that drafts .cockpit/handoff/worker-directive.md from canonical repo truth.",
+    "The helper reads .cockpit/state/project-state.json and .cockpit/state/task-state.json as its primary inputs.",
+    "The generated directive includes the active task objective, boundaries, completion criteria, and required evidence in a worker-ready format.",
     "The helper stays within the approved V1 scope and uses local deterministic logic.",
     "Claude returns evidence in .cockpit/result/worker-result.md using the required format."
   ],
   "boundaries": {
     "allowed": [
-      "Update scripts/ for the deterministic helper.",
+      "Update scripts/ for the directive-generation helper.",
       "Update .cockpit runtime files only as needed for the helper.",
-      "Update docs directly related to the helper or state-advance workflow.",
+      "Update docs directly related to the helper or handoff-generation workflow.",
       "Add or update a small validation or demonstration step if needed."
     ],
     "forbidden": [
@@ -38,8 +39,8 @@
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
-  "verification_verdict": "PASS",
+  "verification_verdict": null,
   "current_blocker": null,
-  "next_action": "Resolve PASS status semantics, then define the next actual product-work task.",
-  "updated_at": "2026-07-03T13:30:00-06:00"
+  "next_action": "Give the pcc-v1-004 directive to Claude Code and wait for evidence.",
+  "updated_at": "2026-07-03T14:05:00-06:00"
 }
