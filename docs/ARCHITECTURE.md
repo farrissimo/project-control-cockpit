@@ -70,6 +70,8 @@ State updates require:
 * verifier PASS, or
 * explicit owner override
 
+Idea intake does not belong in the state layer until an idea is promoted into a bounded active task.
+
 ---
 
 ## 3. Handoff Layer
@@ -202,6 +204,26 @@ Routing inputs:
 * owner decision requirements
 
 V1 should avoid model-based routing unless clearly needed.
+
+---
+
+## 7.5 Governance Layer
+
+Repo governance protects source-of-truth discipline.
+
+Primary policy:
+
+```text
+docs/REPO_GOVERNANCE.md
+```
+
+Responsibilities:
+
+* control canonical doc creation
+* keep ideas separate from active tasks
+* classify stray or stale docs
+* archive superseded materials
+* prevent quasi-canonical planning drift
 
 ---
 

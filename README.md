@@ -122,6 +122,11 @@ Key docs:
 * `docs/VERIFICATION_RESULT_SPEC.md`
 * `docs/DECISIONS.md`
 * `docs/ARCHITECTURE.md`
+* `docs/REPO_GOVERNANCE.md`
+
+Working intake:
+
+* `backlog/IDEAS.md` for non-canonical ideas
 
 ## Current Status
 

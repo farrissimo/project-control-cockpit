@@ -27,6 +27,9 @@ V1 uses two required state files:
 
 Optional supporting files may be added later, but these two are the V1 backbone.
 
+Ideas are not stored in live state until they are promoted into a bounded task.
+Idea intake belongs in the controlled backlog process, not in `task-state.json` by default.
+
 ---
 
 ## Project State
@@ -273,3 +276,5 @@ Unverified worker claims and chat transcript content are not authoritative by de
 The state model should stay simple.
 
 Do not add complex workflow machinery until the first proof shows a real need.
+
+Keep ideas separate from active tasks.

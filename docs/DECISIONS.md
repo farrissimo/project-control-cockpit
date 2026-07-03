@@ -325,3 +325,25 @@ PCC should default worker directives toward Claude Code unless a task is better 
 
 Supersedes: None
 Related: PROJECT_CHARTER.md, V1_Scope.md, .cockpit/state/project-state.json
+
+---
+
+## DECISION-013: Repo Governance And Source-Of-Truth Intake Must Be Explicit
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+PCC must use an explicit repo-governance process for canonical docs, idea intake, task promotion, and stale-doc handling. Ideas must stay separate from active tasks.
+
+Reason:
+
+Defining this early reduces stale documentation, prevents quasi-canonical drift, keeps the repo organized, and supports a predictable professional workflow that scales.
+
+Implications:
+
+Canonical docs should be added only with narrow purpose and explicit justification. Non-canonical ideas should be captured in one controlled backlog file. Active tasks should live in `.cockpit/state/task-state.json`. Stray, duplicate, superseded, or unknown docs must be classified and then archived, merged, kept, or deleted according to the governance policy.
+
+Supersedes: None
+Related: docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md, backlog/IDEAS.md
