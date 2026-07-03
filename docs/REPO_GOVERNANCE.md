@@ -115,6 +115,34 @@ No new broad planning file should become quasi-canonical by default.
 
 ---
 
+## Change Propagation Rule
+
+Any meaningful project change must trigger a source-of-truth review.
+
+This is non-negotiable.
+
+When behavior, workflow, scope, state shape, handoff procedure, verification logic, routing policy, or governance changes, the system must check which canonical artifacts also need updating.
+
+Minimum review targets:
+
+* `docs/DECISIONS.md`
+* affected canonical docs under `docs/`
+* live state under `.cockpit/state/`
+* active worker directive under `.cockpit/handoff/` when relevant
+* verification artifacts or examples when their structure or meaning changed
+
+The rule is not "update every file every time."
+
+The rule is:
+
+* identify impacted truth surfaces
+* update the ones that changed
+* avoid silent divergence
+
+If a change is made and related source-of-truth artifacts are not reviewed, the work is incomplete.
+
+---
+
 ## Idea Process
 
 Ideas must be captured without becoming fake active work.
@@ -156,6 +184,8 @@ Standard task workflow:
 7. Generate the worker directive.
 8. Run the worker.
 9. Verify evidence before truth advances.
+
+If task execution changes the durable workflow, governance, or other canonical project behavior, update the affected docs before treating the task as fully complete.
 
 Active tasks live in `.cockpit/state/task-state.json`, not in idea docs.
 
@@ -205,3 +235,5 @@ Avoid adding new root-level markdown files unless there is a strong reason and e
 PCC should stay allergic to process theater.
 
 If a new file, step, or workflow does not reduce babysitting, improve verification, preserve truth, or reduce handoff pain, it should be questioned before being added.
+
+Likewise, if a change is not propagated to the relevant truth surfaces, the workflow is incomplete even if the code or artifact itself changed.

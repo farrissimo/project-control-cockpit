@@ -54,6 +54,18 @@
       "decision": "Claude Code is the primary worker execution layer for PCC V1. Codex serves as the advisor/verifier and source-of-truth guard.",
       "date": "2026-07-03",
       "status": "active"
+    },
+    {
+      "id": "DECISION-013",
+      "decision": "PCC must use explicit repo governance for canonical docs, idea intake, task promotion, and stale-doc handling. Ideas remain separate from active tasks.",
+      "date": "2026-07-03",
+      "status": "active"
+    },
+    {
+      "id": "DECISION-014",
+      "decision": "Every meaningful change must trigger review and update of the relevant truth surfaces.",
+      "date": "2026-07-03",
+      "status": "active"
     }
   ],
   "active_constraints": [

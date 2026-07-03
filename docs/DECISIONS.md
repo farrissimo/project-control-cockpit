@@ -347,3 +347,25 @@ Canonical docs should be added only with narrow purpose and explicit justificati
 
 Supersedes: None
 Related: docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md, backlog/IDEAS.md
+
+---
+
+## DECISION-014: Every Meaningful Change Must Update The Relevant Truth Surfaces
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+PCC must treat change propagation as a non-negotiable part of the workflow. Any meaningful change must trigger review and update of the relevant source-of-truth artifacts.
+
+Reason:
+
+Unpropagated changes create stale docs, conflicting truth, weak handoffs, and hidden repo drift. Catching this early is necessary for a professional and scalable workflow.
+
+Implications:
+
+When behavior, workflow, scope, governance, routing, state structure, or verification expectations change, the system must review impacted canonical docs, decisions, live state, and active handoff artifacts. Work is not complete if the artifact changed but the corresponding truth surfaces were left stale.
+
+Supersedes: None
+Related: docs/REPO_GOVERNANCE.md, docs/DECISIONS.md, .cockpit/state/project-state.json

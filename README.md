@@ -130,10 +130,16 @@ Working intake:
 
 ## Current Status
 
-Planning and V1 proof setup.
+Foundation is complete.
+
+The repo is now in the first V1 proof-execution stage.
 
 The first milestone is the stateful handoff proof:
 
 ```text
 state → directive → worker → evidence → verification → state update or retry
 ```
+
+Active next step:
+
+* Execute `pcc-v1-002`, the first live PCC control-loop proof task
