@@ -1,0 +1,43 @@
+{
+  "task_id": "pcc-v1-001",
+  "task_title": "Set up the first Claude Code handoff procedure",
+  "task_objective": "Prepare the first bounded worker handoff so Claude Code can read a directive from .cockpit/handoff/worker-directive.md and return evidence to .cockpit/result/worker-result.md.",
+  "task_status": "drafted",
+  "assigned_worker": "Claude Code",
+  "completion_criteria": [
+    "A clear worker handoff procedure is defined for this repo.",
+    "The worker directive tells Claude Code exactly what to read, what to do, and where to write results.",
+    "The required evidence and return format are explicit.",
+    "The procedure stays within V1 lean scope and does not introduce app code yet."
+  ],
+  "boundaries": {
+    "allowed": [
+      "Refine .cockpit runtime files.",
+      "Update docs or examples directly related to the handoff procedure.",
+      "Define the worker return path and expected evidence format."
+    ],
+    "forbidden": [
+      "Do not build app code yet.",
+      "Do not add paid API dependencies.",
+      "Do not introduce broad orchestration or automation.",
+      "Do not change canonical project goals or verification verdicts."
+    ]
+  },
+  "required_evidence": [
+    "Files created or changed.",
+    "Summary of changes.",
+    "Commands run, if any.",
+    "Command/test results, if any.",
+    "Known risks.",
+    "Unresolved assumptions.",
+    "Confirmation that forbidden scope was not touched."
+  ],
+  "attempts": 0,
+  "current_directive_path": ".cockpit/handoff/worker-directive.md",
+  "worker_result_path": ".cockpit/result/worker-result.md",
+  "verification_result_path": ".cockpit/result/verification-result.json",
+  "verification_verdict": null,
+  "current_blocker": "Claude Code is not yet connected to this project workflow.",
+  "next_action": "Give the worker the runtime handoff procedure and capture the first returned result file.",
+  "updated_at": "2026-07-03T00:00:00-06:00"
+}

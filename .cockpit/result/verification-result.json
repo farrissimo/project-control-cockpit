@@ -1,0 +1,27 @@
+{
+  "task_id": "pcc-v1-001",
+  "verdict": "BLOCKED",
+  "verified_at": "2026-07-03T00:00:00-06:00",
+  "completion_criteria_checked": [
+    "Runtime scaffold exists",
+    "Worker directive exists",
+    "Worker result path exists",
+    "Verification result path exists"
+  ],
+  "evidence_reviewed": [
+    ".cockpit/state/project-state.json",
+    ".cockpit/state/task-state.json",
+    ".cockpit/handoff/worker-directive.md",
+    ".cockpit/result/worker-result.md"
+  ],
+  "missing_evidence": [
+    "No actual worker result has been returned yet."
+  ],
+  "out_of_scope_findings": [],
+  "risks": [
+    "Claude Code is not yet set up for this project, so the first real worker cycle has not been executed."
+  ],
+  "summary": "The runtime scaffold is in place, but the first worker cycle is blocked until Claude Code is set up and returns a real result.",
+  "next_action": "Set up Claude Code for this project and execute the first bounded handoff using .cockpit/handoff/worker-directive.md.",
+  "state_update_allowed": false
+}

@@ -1,0 +1,65 @@
+{
+  "project_id": "project-control-cockpit",
+  "project_name": "Project Control Cockpit",
+  "project_goal": "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
+  "current_phase": "v1-proof",
+  "current_task_id": "pcc-v1-001",
+  "active_repo_path": "C:\\ProjectControlCockpit",
+  "active_branch": "main",
+  "owner_decisions": [
+    {
+      "id": "DECISION-001",
+      "decision": "Reducing owner babysitting is the primary rule.",
+      "date": "2026-07-03",
+      "status": "active"
+    },
+    {
+      "id": "DECISION-002",
+      "decision": "Project Control Cockpit is local-first by default.",
+      "date": "2026-07-03",
+      "status": "active"
+    },
+    {
+      "id": "DECISION-003",
+      "decision": "Project Control Cockpit V1 should not depend on direct paid API calls.",
+      "date": "2026-07-03",
+      "status": "active"
+    },
+    {
+      "id": "DECISION-004",
+      "decision": "Claude Code is the initial worker layer for V1.",
+      "date": "2026-07-03",
+      "status": "active"
+    },
+    {
+      "id": "DECISION-005",
+      "decision": "Advisor / verifier is a first-class role.",
+      "date": "2026-07-03",
+      "status": "active"
+    },
+    {
+      "id": "DECISION-006",
+      "decision": "Worker claims are evidence, not truth.",
+      "date": "2026-07-03",
+      "status": "active"
+    },
+    {
+      "id": "DECISION-011",
+      "decision": "The canonical project name is Project Control Cockpit. PCC is the approved short form.",
+      "date": "2026-07-03",
+      "status": "active"
+    }
+  ],
+  "active_constraints": [
+    "Reduce owner babysitting.",
+    "Keep V1 lean.",
+    "State updates require verifier PASS or explicit owner override.",
+    "Prefer local deterministic tools before model usage.",
+    "Avoid fake intelligence scoring and fake truth detection."
+  ],
+  "current_blocker": "Claude Code is not yet set up for this project.",
+  "last_verified_handoff": null,
+  "last_verification_verdict": null,
+  "next_expected_action": "Set up the first Claude Code worker handoff procedure using .cockpit/handoff/worker-directive.md.",
+  "updated_at": "2026-07-03T00:00:00-06:00"
+}
