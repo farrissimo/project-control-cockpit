@@ -22,6 +22,6 @@
     "This PASS verifies the first live handoff artifact cycle; a deeper product-work task is still needed before treating the broader V1 loop as fully proven."
   ],
   "summary": "Claude completed the bounded proof-handoff task within scope and returned adequate evidence in the required format.",
-  "next_action": "Define the first actual product-work task within V1 scope and draft the next worker directive.",
+  "next_action": "Select the first actual product-work task within V1 scope and draft the next worker directive.",
   "state_update_allowed": true
 }
