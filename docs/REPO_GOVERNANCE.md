@@ -141,6 +141,8 @@ The rule is:
 
 If a change is made and related source-of-truth artifacts are not reviewed, the work is incomplete.
 
+PCC should prefer a deterministic local validation step for state consistency rather than relying on memory or chat review alone.
+
 ---
 
 ## Idea Process
@@ -186,6 +188,8 @@ Standard task workflow:
 9. Verify evidence before truth advances.
 
 If task execution changes the durable workflow, governance, or other canonical project behavior, update the affected docs before treating the task as fully complete.
+
+When state, verdict, or handoff files change, run the local validation step before treating the update as complete.
 
 Active tasks live in `.cockpit/state/task-state.json`, not in idea docs.
 

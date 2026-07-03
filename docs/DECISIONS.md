@@ -369,3 +369,25 @@ When behavior, workflow, scope, governance, routing, state structure, or verific
 
 Supersedes: None
 Related: docs/REPO_GOVERNANCE.md, docs/DECISIONS.md, .cockpit/state/project-state.json
+
+---
+
+## DECISION-015: State Consistency Must Be Checked With A Local Deterministic Validator
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+PCC must use a local deterministic validation step to check core `.cockpit` state consistency before treating state updates as complete.
+
+Reason:
+
+State drift has already appeared once during setup. A lightweight local check is a high-leverage guardrail that reduces repeated babysitting and catches stale or conflicting truth before it spreads.
+
+Implications:
+
+When project state, task state, verification result, or handoff references change, the local state validator should be run. This does not replace verification judgment, but it does enforce basic consistency between canonical files and referenced paths.
+
+Supersedes: None
+Related: docs/REPO_GOVERNANCE.md, .cockpit/state/project-state.json, scripts/validate-cockpit-state.ps1

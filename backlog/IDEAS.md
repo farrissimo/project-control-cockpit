@@ -18,4 +18,14 @@ If an idea needs more detail, add one supporting file under `backlog/details/` a
 
 ## Entries
 
-No ideas recorded yet.
+- IDEA-001: Add optional CI or pre-commit enforcement for PCC state and governance checks
+  Status: proposed
+  Summary: Add lightweight automated enforcement so state validation and governance rules are checked without relying only on manual discipline.
+  Details: none
+  Notes: Defer until after the first real PCC control-loop proof task unless drift risk rises again.
+
+- IDEA-002: Harvest still-live roadmap items from archived scope into tracked backlog placeholders
+  Status: proposed
+  Summary: Review the archived original scope and promote any still-relevant future ideas into explicit backlog placeholders.
+  Details: none
+  Notes: Do this only for items still considered live candidates, not for every historical thought in the archive.

@@ -66,6 +66,12 @@
       "decision": "Every meaningful change must trigger review and update of the relevant truth surfaces.",
       "date": "2026-07-03",
       "status": "active"
+    },
+    {
+      "id": "DECISION-015",
+      "decision": "State consistency must be checked with a local deterministic validator before state updates are treated as complete.",
+      "date": "2026-07-03",
+      "status": "active"
     }
   ],
   "active_constraints": [

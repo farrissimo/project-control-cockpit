@@ -128,6 +128,10 @@ Working intake:
 
 * `backlog/IDEAS.md` for non-canonical ideas
 
+Local validation:
+
+* `powershell -ExecutionPolicy Bypass -File .\scripts\validate-cockpit-state.ps1`
+
 ## Current Status
 
 Foundation is complete.
