@@ -3,7 +3,7 @@
   "project_name": "Project Control Cockpit",
   "project_goal": "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
   "current_phase": "v1-proof",
-  "current_task_id": "pcc-v1-001",
+  "current_task_id": "pcc-v1-002",
   "active_repo_path": "C:\\ProjectControlCockpit",
   "active_branch": "main",
   "owner_decisions": [
@@ -48,6 +48,12 @@
       "decision": "The canonical project name is Project Control Cockpit. PCC is the approved short form.",
       "date": "2026-07-03",
       "status": "active"
+    },
+    {
+      "id": "DECISION-012",
+      "decision": "Claude Code is the primary worker execution layer for PCC V1. Codex serves as the advisor/verifier and source-of-truth guard.",
+      "date": "2026-07-03",
+      "status": "active"
     }
   ],
   "active_constraints": [
@@ -58,8 +64,8 @@
     "Avoid fake intelligence scoring and fake truth detection."
   ],
   "current_blocker": null,
-  "last_verified_handoff": null,
-  "last_verification_verdict": null,
-  "next_expected_action": "Execute the first bounded Claude Code worker cycle using the directive at .cockpit/handoff/worker-directive.md.",
-  "updated_at": "2026-07-03T12:00:00-06:00"
+  "last_verified_handoff": ".cockpit/handoff/archive/pcc-v1-001-worker-directive.md",
+  "last_verification_verdict": "PASS",
+  "next_expected_action": "Execute the first live PCC control-loop proof task using the directive at .cockpit/handoff/worker-directive.md.",
+  "updated_at": "2026-07-03T12:30:00-06:00"
 }

@@ -13,8 +13,8 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-v1-002
-* Task Title: Prove the first live PCC control loop
+* Task ID: pcc-v1-001
+* Task Title: Create the first Claude Code worker runbook
 * Task Status: drafted
 
 ## Objective
@@ -33,15 +33,15 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-Create one file at `.cockpit/handoff/first-proof-handoff.md` that a future worker could use to execute a bounded PCC task without owner restatement. Keep it practical and bounded. The file must identify the exact read path, write path, required evidence format, and blocked behavior for a live worker cycle, and the result must be returned in `.cockpit/result/worker-result.md`.
+Create one file at `.cockpit/handoff/claude-worker-runbook.md` that explains the exact operating procedure for the PCC worker cycle in this repo. Keep it practical and bounded. The runbook must explain what Claude reads first, where Claude writes the result, what evidence format Claude must use, and what Claude should do when blocked.
 
 ## Allowed Scope
 
 The worker may:
 
 * Update `.cockpit/` runtime files
-* Create `.cockpit/handoff/first-proof-handoff.md`
-* Update docs directly related to the worker proof task
+* Create `.cockpit/handoff/claude-worker-runbook.md`
+* Update docs directly related to the worker handoff procedure
 * Clarify the return format for `.cockpit/result/worker-result.md`
 
 ## Forbidden Scope
@@ -60,12 +60,12 @@ The worker must not:
 
 The task is complete only if:
 
-* `.cockpit/handoff/first-proof-handoff.md` exists
-* the proof handoff clearly states what the worker reads first
+* `.cockpit/handoff/claude-worker-runbook.md` exists
+* the runbook clearly states what Claude reads first
 * the worker return path is explicit
 * required evidence is explicit
 * blocked behavior is explicit
-* the created artifact directly supports a live PCC control loop rather than only describing the system at a high level
+* the runbook makes the handoff contract system-owned rather than owner-driven
 * no forbidden-scope work was performed
 
 ## Required Evidence

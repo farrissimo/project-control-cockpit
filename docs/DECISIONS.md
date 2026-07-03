@@ -303,3 +303,25 @@ Related: README.md, PROJECT_CHARTER.md, STATE_MODEL.md
 Add new decisions below this line.
 
 Each decision should be numbered sequentially.
+
+---
+
+## DECISION-012: Claude Code Is The Primary Worker And Codex Is The Advisor Verifier
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+Claude Code is the primary worker execution layer for PCC V1. Codex serves as the advisor/verifier and source-of-truth guard.
+
+Reason:
+
+The intended operating model is to use Claude for heavier worker throughput while using Codex more selectively for repo-truth inspection, task shaping, verification, and state discipline.
+
+Implications:
+
+PCC should default worker directives toward Claude Code unless a task is better handled by local deterministic tools. Codex should focus on bounded advisory, verification, and source-of-truth work rather than acting as the default heavy-lift worker.
+
+Supersedes: None
+Related: PROJECT_CHARTER.md, V1_Scope.md, .cockpit/state/project-state.json
