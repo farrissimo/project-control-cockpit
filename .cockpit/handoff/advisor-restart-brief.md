@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-03T17:28:18-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-03T17:42:34-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,21 +10,22 @@ Current phase: implementation
 
 ## Active Task
 
-* Task ID: pcc-v1-006
-* Title: Generate a fresh-advisor restart brief from canonical truth
+* Task ID: pcc-v1-008
+* Title: Run the dual-restart proof cycle
 * Status: ready_for_worker
-* Objective: Create one local deterministic helper that generates a concise advisor restart brief from canonical repo truth and verified artifacts so a brand-new Codex advisor/verifier session can resume the project without owner re-briefing. Keep it local, bounded, and explicit.
+* Objective: Create one bounded dual-restart proof that demonstrates both a fresh advisor session and a fresh Claude worker session can resume from canonical repo truth and complete one real PCC cycle without owner re-briefing. Use the existing advisor restart brief, worker directive, and verified artifact paths as the core inputs. Keep the work local, explicit, and bounded.
 
 ## Last Verified
 
-* Verdict: PASS for task 'pcc-v1-005', verified at 2026-07-03T17:30:00-06:00
-* Summary: Claude completed the bounded pcc-v1-005 task within scope by moving generated worker Current Truth facts fully into canonical state and updating the directive generator to rely on that state.
-* Last verified handoff: .cockpit/handoff/archive/pcc-v1-005-worker-directive.md
+* Verdict: PASS for task 'pcc-v1-007', verified at 2026-07-03T18:05:00-06:00
+* Summary: Claude completed the bounded pcc-v1-007 task within scope by adding a deterministic worker restart-safety check that proves the live worker directive is complete and fresh against canonical state.
+* Last verified handoff: .cockpit/handoff/archive/pcc-v1-007-worker-directive.md
 
 ## Open Issues
 
-* Risk from last verification of 'pcc-v1-005': project-state.schema.json now documents worker_context_facts as required, but live state is not yet validated against JSON Schema at runtime.
-* Risk from last verification of 'pcc-v1-005': validate-cockpit-state.ps1 still checks structural consistency only and does not yet prove that the live directive matches fresh generator output.
+* Risk from last verification of 'pcc-v1-007': Live state is still not validated against JSON Schema at runtime.
+* Risk from last verification of 'pcc-v1-007': Worker restart safety is currently proven by an on-demand local check, not yet enforced automatically before every handoff.
+* Risk from last verification of 'pcc-v1-007': Timestamp formatting across multiple PowerShell helpers could drift again if future scripts interpolate JSON datetimes without a shared formatter.
 
 ## Read First
 
@@ -38,5 +39,5 @@ Current phase: implementation
 
 ## What Happens Next
 
-* Task-level: Give the pcc-v1-006 directive to Claude Code and wait for evidence.
-* Project-level: Hand pcc-v1-006 to Claude Code and collect evidence for verification.
+* Task-level: Give the pcc-v1-008 directive to Claude Code and wait for evidence.
+* Project-level: Hand pcc-v1-008 to Claude Code and collect evidence for verification.

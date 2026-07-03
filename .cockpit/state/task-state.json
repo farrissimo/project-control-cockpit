@@ -2,7 +2,7 @@
     "task_id":  "pcc-v1-008",
     "task_title":  "Run the dual-restart proof cycle",
     "task_objective":  "Create one bounded dual-restart proof that demonstrates both a fresh advisor session and a fresh Claude worker session can resume from canonical repo truth and complete one real PCC cycle without owner re-briefing. Use the existing advisor restart brief, worker directive, and verified artifact paths as the core inputs. Keep the work local, explicit, and bounded.",
-    "task_status":  "ready_for_worker",
+    "task_status":  "complete",
     "assigned_worker":  "Claude Code",
     "completion_criteria":  [
                                 "A bounded dual-restart proof artifact or helper exists.",
@@ -40,8 +40,8 @@
     "current_directive_path":  ".cockpit/handoff/worker-directive.md",
     "worker_result_path":  ".cockpit/result/worker-result.md",
     "verification_result_path":  ".cockpit/result/verification-result.json",
-    "verification_verdict":  null,
+    "verification_verdict":  "PASS",
     "current_blocker":  null,
-    "next_action":  "Give the pcc-v1-008 directive to Claude Code and wait for evidence.",
-    "updated_at":  "2026-07-03T18:15:00-06:00"
+    "next_action":  "Pause at the natural break, review the proven restart-safe foundation, and choose whether to implement enforcement follow-ons or pivot to broader PCC ideas.",
+    "updated_at":  "2026-07-03T17:47:15-06:00"
 }

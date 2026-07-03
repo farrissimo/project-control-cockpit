@@ -260,6 +260,8 @@ When starting a fresh chat, include:
 
 `scripts/generate-advisor-restart-brief.ps1` drafts this handoff for a fresh advisor/verifier session directly from `.cockpit/state/project-state.json`, `.cockpit/state/task-state.json`, and `.cockpit/result/verification-result.json`, writing to `.cockpit/handoff/advisor-restart-brief.md`. It refuses to draft a brief if project/task state disagree on the active task, or if project state and the live verification result disagree on the last verdict.
 
+`scripts/verify-dual-restart-safety.ps1` proves both restart paths at once: it checks the live advisor restart brief is complete and matches what `generate-advisor-restart-brief.ps1` would produce right now (ignoring only the brief's own generation timestamp), then runs `scripts/verify-worker-restart-safety.ps1` for the worker side. It passes only if a fresh advisor session and a fresh worker session could both resume from canonical repo truth today.
+
 ---
 
 ## V1 Discipline

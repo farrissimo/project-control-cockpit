@@ -146,4 +146,4 @@ state → directive → worker → evidence → verification → state update or
 
 Active next step:
 
-* Execute `pcc-v1-008`, running the dual-restart proof cycle
+* Natural break reached after the dual-restart proof. Review the restart-safe foundation, then choose enforcement follow-ons or broader PCC work.
