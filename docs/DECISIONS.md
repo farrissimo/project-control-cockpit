@@ -413,3 +413,25 @@ The deterministic state-advance helper should map `PASS` to `complete`. `verifie
 
 Supersedes: None
 Related: docs/STATE_MODEL.md, scripts/advance-cockpit-state.ps1, .cockpit/state/task-state.json
+
+---
+
+## DECISION-017: Generated Worker Truth Must Come From Canonical Repo State
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+Facts that appear in generated worker directives as standing operational truth should live in canonical repo state rather than as hardcoded strings inside the directive generator.
+
+Reason:
+
+If a worker-facing fact can change but only exists inside the script, the repo reintroduces the same drift and babysitting problem PCC is meant to reduce.
+
+Implications:
+
+PCC may keep stable worker-context facts in canonical project state so deterministic helpers can render them without hidden script-only truth. Generator logic should prefer canonical state over hardcoded directive facts.
+
+Supersedes: None
+Related: docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, .cockpit/state/project-state.json, scripts/generate-worker-directive.ps1

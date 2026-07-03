@@ -49,6 +49,7 @@ Required fields:
   "active_branch": null,
   "owner_decisions": [],
   "active_constraints": [],
+  "worker_context_facts": [],
   "current_blocker": null,
   "last_verified_handoff": null,
   "last_verification_verdict": null,
@@ -102,6 +103,10 @@ List of explicit owner decisions that must be preserved.
 ### active_constraints
 
 Current rules, boundaries, and non-negotiables.
+
+### worker_context_facts
+
+Stable worker-operating facts that should appear in generated directives but should not live as hardcoded strings inside the generator.
 
 ### current_blocker
 

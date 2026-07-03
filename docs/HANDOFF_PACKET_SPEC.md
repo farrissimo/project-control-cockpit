@@ -155,6 +155,12 @@ If blocked, do not improvise broad changes. Return:
 
 ---
 
+## Directive Generation Is a Local Deterministic Step
+
+`scripts/generate-worker-directive.ps1` drafts `.cockpit/handoff/worker-directive.md` directly from `.cockpit/state/project-state.json` and `.cockpit/state/task-state.json`, following this template. Worker-facing standing truth should come from canonical state rather than hidden script-only facts. The generator refuses to draft a directive if the two state files disagree on the active task, or if the task's objective, allowed scope, forbidden scope, or completion criteria are missing.
+
+---
+
 ## Handoff Quality Rules
 
 A handoff is valid only if it includes:

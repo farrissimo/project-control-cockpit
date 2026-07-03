@@ -136,7 +136,7 @@ Local validation:
 
 Foundation is complete.
 
-The repo has completed the initial proof cycles and entered the first bounded product-work build stage.
+The repo has completed the initial proof cycles and is now in bounded V1 implementation work.
 
 The core loop has now been exercised successfully:
 
@@ -146,4 +146,4 @@ state → directive → worker → evidence → verification → state update or
 
 Active next step:
 
-* Execute `pcc-v1-004`, the first directive-generation product task
+* Execute `pcc-v1-005`, moving generated directive truth fully into canonical state
