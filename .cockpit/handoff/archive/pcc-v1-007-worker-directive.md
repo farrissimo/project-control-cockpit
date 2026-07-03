@@ -13,8 +13,8 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-v1-008
-* Task Title: Run the dual-restart proof cycle
+* Task ID: pcc-v1-007
+* Task Title: Prove fresh worker-session restart safety
 * Task Status: ready_for_worker
 
 ## Objective
@@ -35,15 +35,15 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-Create one bounded dual-restart proof that demonstrates both a fresh advisor session and a fresh Claude worker session can resume from canonical repo truth and complete one real PCC cycle without owner re-briefing. Use the existing advisor restart brief, worker directive, and verified artifact paths as the core inputs. Keep the work local, explicit, and bounded.
+Create one bounded, local-first proof that a brand-new Claude Code worker session can resume from canonical repo truth without owner re-briefing. Use the existing canonical state and generated worker directive path, add only the minimum helper or artifact needed to make the restart path explicit and testable, and keep the work deterministic and bounded.
 
 ## Allowed Scope
 
 The worker may:
 
-* Update scripts/ for the dual-restart proof helper.
+* Update scripts/ for the worker-restart proof helper.
 * Update .cockpit runtime files only as needed for the helper.
-* Update docs directly related to the helper, restart proof, or canonical state.
+* Update docs directly related to the helper, worker restart proof, or canonical state.
 * Add or update a small validation or demonstration step if needed.
 
 ## Forbidden Scope
@@ -60,9 +60,9 @@ The worker must not:
 
 The task is complete only if:
 
-* A bounded dual-restart proof artifact or helper exists.
-* The proof uses the generated advisor restart brief, the generated worker directive, and canonical repo truth as its primary inputs.
-* The result clearly shows how both a fresh advisor session and a fresh worker session can resume cold and complete one PCC cycle without owner re-briefing.
+* A bounded restart-safety artifact or helper exists for a fresh worker session.
+* The proof uses canonical repo truth and the generated worker directive path as its primary inputs.
+* The result clearly shows how a brand-new Claude worker session can start cold and execute the active task without owner re-briefing.
 * The change stays within the approved V1 scope and preserves local deterministic behavior.
 * The helper stays within the approved V1 scope and uses local deterministic logic.
 * Claude returns evidence in .cockpit/result/worker-result.md using the required format.

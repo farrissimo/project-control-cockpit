@@ -12,6 +12,8 @@ At the start of every worker cycle, Claude reads, in this order:
 
 The worker directive is self-contained: if it is present and well-formed, Claude executes it without asking the owner to restate the task.
 
+This is not just a design claim: `scripts/verify-worker-restart-safety.ps1` checks it. It confirms the live `worker-directive.md` contains all 12 sections required by `docs/HANDOFF_PACKET_SPEC.md`, and that it is byte-for-byte identical to what `scripts/generate-worker-directive.ps1` would produce right now from canonical state — i.e., nothing stale or hand-edited is being handed to a fresh worker session.
+
 ## 2. Where Claude Writes the Result
 
 Claude writes its full result to:

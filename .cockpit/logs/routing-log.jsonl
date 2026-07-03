@@ -11,3 +11,5 @@
 {"timestamp":"2026-07-03T17:40:00-06:00","task_id":"pcc-v1-006","route":"advisor_verifier","reason":"Advanced to a bounded restart-safety task focused on generating a fresh-advisor restart brief from canonical truth.","result":"next task drafted"}
 {"timestamp":"2026-07-03T17:45:00-06:00","task_id":"pcc-v1-006","route":"verifier","reason":"Reviewed Claude worker output against the fresh-advisor restart brief task.","result":"PASS"}
 {"timestamp":"2026-07-03T17:55:00-06:00","task_id":"pcc-v1-007","route":"advisor_verifier","reason":"Advanced to the worker-side restart-safety proof so a fresh Claude session can resume from canonical repo truth without owner re-briefing.","result":"next task drafted"}
+{"timestamp":"2026-07-03T18:05:00-06:00","task_id":"pcc-v1-007","route":"verifier","reason":"Reviewed Claude worker output against the fresh worker-session restart-safety proof task.","result":"PASS"}
+{"timestamp":"2026-07-03T18:15:00-06:00","task_id":"pcc-v1-008","route":"advisor_verifier","reason":"Advanced to the final natural-break task: a bounded dual-restart drill covering both fresh advisor and fresh worker sessions.","result":"next task drafted"}

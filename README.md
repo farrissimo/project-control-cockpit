@@ -146,4 +146,4 @@ state → directive → worker → evidence → verification → state update or
 
 Active next step:
 
-* Execute `pcc-v1-007`, proving fresh worker-session restart safety
+* Execute `pcc-v1-008`, running the dual-restart proof cycle
