@@ -214,6 +214,10 @@ If verdict is FAIL, INSUFFICIENT, BLOCKED, or OUT_OF_SCOPE, state must preserve 
 
 The owner can explicitly override a verifier verdict. Overrides must be recorded in owner_decisions.
 
+### State advancement is a local deterministic step
+
+`scripts/advance-cockpit-state.ps1` reads `.cockpit/result/verification-result.json` and applies this section's rules to `project-state.json` and `task-state.json` directly, instead of relying on manual reconciliation. It refuses to act if the verification result's `task_id` does not match the active `task-state.json` task, and it runs `scripts/validate-cockpit-state.ps1` after writing to confirm no drift was introduced.
+
 ---
 
 ## State Transition Sketch

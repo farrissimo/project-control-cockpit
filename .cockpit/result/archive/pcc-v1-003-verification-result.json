@@ -23,6 +23,6 @@
     "The helper writes state files before post-write validation; if validation fails, the repo requires manual correction."
   ],
   "summary": "Claude completed the deterministic state-advance helper task within scope and returned adequate evidence in the required format.",
-  "next_action": "Decide whether PASS should map to verified_pass or complete, then use the helper in the next real product-work cycle.",
+  "next_action": "Decide whether PASS should deterministically map to verified_pass or complete, then use the helper in the next real product-work cycle.",
   "state_update_allowed": true
 }

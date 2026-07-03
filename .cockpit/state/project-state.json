@@ -82,8 +82,8 @@
     "Avoid fake intelligence scoring and fake truth detection."
   ],
   "current_blocker": null,
-  "last_verified_handoff": ".cockpit/handoff/archive/pcc-v1-002-worker-directive.md",
+  "last_verified_handoff": ".cockpit/handoff/archive/pcc-v1-003-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Execute the first actual product-work task: implement a deterministic verification state-advance helper.",
-  "updated_at": "2026-07-03T13:20:00-06:00"
+  "next_expected_action": "Decide whether PASS should map to verified_pass or complete, then draft the next actual product-work task.",
+  "updated_at": "2026-07-03T13:30:00-06:00"
 }
