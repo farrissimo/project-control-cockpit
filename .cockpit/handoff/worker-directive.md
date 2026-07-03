@@ -14,12 +14,12 @@ Worker
 ## Current Task
 
 * Task ID: pcc-v1-001
-* Task Title: Set up the first Claude Code handoff procedure
+* Task Title: Create the first Claude Code worker runbook
 * Task Status: drafted
 
 ## Objective
 
-Read this directive from `.cockpit/handoff/worker-directive.md`, follow the bounded task instructions, and return your result to `.cockpit/result/worker-result.md` using the required evidence format.
+Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bounded task below, and return your result to `.cockpit/result/worker-result.md` using the required evidence format.
 
 ## Current Truth
 
@@ -28,20 +28,21 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, follow the boun
 * V1 must stay lean and prove one bounded workflow first.
 * Worker claims are evidence, not truth.
 * State updates require verifier PASS or explicit owner override.
-* Claude Code is the intended initial worker layer, but the workflow is just being set up now.
+* Claude Code is ready and pointed at this repository workspace.
+* PCC owns the worker handoff contract through repo files; the owner should not need to restate the instructions manually.
 
 ## Exact Next Action
 
-Document the exact first-run procedure for using Claude Code as the worker in this repository. Keep it practical and bounded. The output should make it easy for the owner to hand Claude Code a directive file and receive a result file without repeated explanation.
+Create one file at `.cockpit/handoff/claude-worker-runbook.md` that explains the exact operating procedure for the PCC worker cycle in this repo. Keep it practical and bounded. The runbook must explain what Claude reads first, where Claude writes the result, what evidence format Claude must use, and what Claude should do when blocked.
 
 ## Allowed Scope
 
 The worker may:
 
 * Update `.cockpit/` runtime files
+* Create `.cockpit/handoff/claude-worker-runbook.md`
 * Update docs directly related to the worker handoff procedure
 * Clarify the return format for `.cockpit/result/worker-result.md`
-* Clarify how the owner should give Claude Code the directive file path
 
 ## Forbidden Scope
 
@@ -53,15 +54,18 @@ The worker must not:
 * Redesign V1 scope
 * Change canonical verification verdicts
 * Modify unrelated docs
+* Require the owner to manually restate or carry the worker instructions
 
 ## Completion Criteria
 
 The task is complete only if:
 
-* the first-run Claude Code handoff procedure is clearly written
+* `.cockpit/handoff/claude-worker-runbook.md` exists
+* the runbook clearly states what Claude reads first
 * the worker return path is explicit
 * required evidence is explicit
 * blocked behavior is explicit
+* the runbook makes the handoff contract system-owned rather than owner-driven
 * no forbidden-scope work was performed
 
 ## Required Evidence

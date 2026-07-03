@@ -1,26 +1,28 @@
 {
   "task_id": "pcc-v1-001",
-  "task_title": "Set up the first Claude Code handoff procedure",
-  "task_objective": "Prepare the first bounded worker handoff so Claude Code can read a directive from .cockpit/handoff/worker-directive.md and return evidence to .cockpit/result/worker-result.md.",
+  "task_title": "Create the first Claude Code worker runbook",
+  "task_objective": "Have Claude Code create one bounded runbook file that explains the exact operating procedure for the PCC worker cycle in this repo, using the current directive and returning evidence to .cockpit/result/worker-result.md.",
   "task_status": "drafted",
   "assigned_worker": "Claude Code",
   "completion_criteria": [
-    "A clear worker handoff procedure is defined for this repo.",
-    "The worker directive tells Claude Code exactly what to read, what to do, and where to write results.",
-    "The required evidence and return format are explicit.",
-    "The procedure stays within V1 lean scope and does not introduce app code yet."
+    "A runbook file is created that explains the Claude Code worker procedure for this repo.",
+    "The runbook states what Claude reads first, what file it writes, and the required evidence format.",
+    "The runbook makes the handoff contract system-owned rather than owner-driven.",
+    "The task stays within V1 lean scope and does not introduce app code yet."
   ],
   "boundaries": {
     "allowed": [
       "Refine .cockpit runtime files.",
-      "Update docs or examples directly related to the handoff procedure.",
+      "Create one runbook file describing the Claude worker procedure.",
+      "Update docs directly related to the worker handoff procedure.",
       "Define the worker return path and expected evidence format."
     ],
     "forbidden": [
       "Do not build app code yet.",
       "Do not add paid API dependencies.",
       "Do not introduce broad orchestration or automation.",
-      "Do not change canonical project goals or verification verdicts."
+      "Do not change canonical project goals or verification verdicts.",
+      "Do not require the owner to manually restate or carry the worker instructions."
     ]
   },
   "required_evidence": [
@@ -37,7 +39,7 @@
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
   "verification_verdict": null,
-  "current_blocker": "Claude Code is not yet connected to this project workflow.",
-  "next_action": "Give the worker the runtime handoff procedure and capture the first returned result file.",
-  "updated_at": "2026-07-03T00:00:00-06:00"
+  "current_blocker": null,
+  "next_action": "Run the first bounded Claude Code task and capture the returned result file for verification.",
+  "updated_at": "2026-07-03T12:00:00-06:00"
 }
