@@ -1,0 +1,44 @@
+{
+  "task_id": "pc-v1-001",
+  "task_title": "Create V1 stateful handoff proof",
+  "task_objective": "Prove that Project Control Cockpit can create a bounded worker directive, hand it to Claude Code through a local file bridge, receive a worker result, verify the result, and update or reject state based on the verdict.",
+  "task_status": "drafted",
+  "assigned_worker": "Claude Code",
+  "completion_criteria": [
+    "A worker directive is created at .cockpit/handoff/worker-directive.md.",
+    "The directive contains objective, allowed scope, forbidden scope, completion criteria, and required evidence.",
+    "A worker result can be placed at .cockpit/result/worker-result.md.",
+    "A verification result can be placed at .cockpit/result/verification-result.json.",
+    "State update is allowed only when verification verdict is PASS."
+  ],
+  "boundaries": {
+    "allowed": [
+      "Create or update V1 proof files.",
+      "Use .cockpit/ state, handoff, result, and logs folders.",
+      "Create minimal scripts only if required for the proof."
+    ],
+    "forbidden": [
+      "Do not build a full desktop UI.",
+      "Do not add paid API dependencies.",
+      "Do not build broad model orchestration.",
+      "Do not add CCB integration in V1."
+    ]
+  },
+  "required_evidence": [
+    "Files created or changed.",
+    "Summary of changes.",
+    "Commands run, if any.",
+    "Result of commands run, if any.",
+    "Known risks.",
+    "Unresolved assumptions.",
+    "Confirmation that forbidden scope was not touched."
+  ],
+  "attempts": 0,
+  "current_directive_path": ".cockpit/handoff/worker-directive.md",
+  "worker_result_path": ".cockpit/result/worker-result.md",
+  "verification_result_path": ".cockpit/result/verification-result.json",
+  "verification_verdict": null,
+  "current_blocker": null,
+  "next_action": "Generate the first worker directive for Claude Code.",
+  "updated_at": "2026-07-03T00:00:00-06:00"
+}

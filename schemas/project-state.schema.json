@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project-state.schema.json",
+  "title": "Project Cockpit Project State",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "project_id",
+    "project_name",
+    "project_goal",
+    "current_phase",
+    "current_task_id",
+    "active_repo_path",
+    "active_branch",
+    "owner_decisions",
+    "active_constraints",
+    "current_blocker",
+    "last_verified_handoff",
+    "last_verification_verdict",
+    "next_expected_action",
+    "updated_at"
+  ],
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_goal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "current_phase": {
+      "type": "string",
+      "enum": [
+        "planning",
+        "v1-proof",
+        "implementation",
+        "verification",
+        "paused"
+      ]
+    },
+    "current_task_id": {
+      "type": ["string", "null"]
+    },
+    "active_repo_path": {
+      "type": ["string", "null"]
+    },
+    "active_branch": {
+      "type": ["string", "null"]
+    },
+    "owner_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "decision",
+          "date",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "decision": {
+            "type": "string",
+            "minLength": 1
+          },
+          "date": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "superseded",
+              "reversed"
+            ]
+          }
+        }
+      }
+    },
+    "active_constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "current_blocker": {
+      "type": ["string", "null"]
+    },
+    "last_verified_handoff": {
+      "type": ["string", "null"]
+    },
+    "last_verification_verdict": {
+      "type": ["string", "null"],
+      "enum": [
+        "PASS",
+        "FAIL",
+        "INSUFFICIENT",
+        "BLOCKED",
+        "OUT_OF_SCOPE",
+        null
+      ]
+    },
+    "next_expected_action": {
+      "type": ["string", "null"]
+    },
+    "updated_at": {
+      "type": ["string", "null"]
+    }
+  }
+}

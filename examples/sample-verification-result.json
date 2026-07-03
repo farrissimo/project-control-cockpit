@@ -1,0 +1,29 @@
+{
+  "task_id": "pc-v1-001",
+  "verdict": "PASS",
+  "verified_at": "2026-07-03T00:00:00-06:00",
+  "completion_criteria_checked": [
+    ".cockpit/state/project-state.json exists",
+    ".cockpit/state/task-state.json exists",
+    ".cockpit/handoff/worker-directive.md exists",
+    ".cockpit/result/ exists",
+    ".cockpit/logs/ exists",
+    "worker directive includes objective, allowed scope, forbidden scope, completion criteria, required evidence, and blocked/failure instructions",
+    "no forbidden-scope work was performed"
+  ],
+  "evidence_reviewed": [
+    ".cockpit/state/project-state.json",
+    ".cockpit/state/task-state.json",
+    ".cockpit/handoff/worker-directive.md",
+    ".cockpit/result/worker-result.md",
+    ".cockpit/logs/routing-log.jsonl"
+  ],
+  "missing_evidence": [],
+  "out_of_scope_findings": [],
+  "risks": [
+    "This is a sample verification result and should not be treated as proof of an actual run."
+  ],
+  "summary": "Sample PASS verification showing the expected structure for a completed V1 stateful handoff proof.",
+  "next_action": "Use this format when verifying the first real worker result.",
+  "state_update_allowed": true
+}

@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "verification-result.schema.json",
+  "title": "Project Cockpit Verification Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_id",
+    "verdict",
+    "verified_at",
+    "completion_criteria_checked",
+    "evidence_reviewed",
+    "missing_evidence",
+    "out_of_scope_findings",
+    "risks",
+    "summary",
+    "next_action",
+    "state_update_allowed"
+  ],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "FAIL",
+        "INSUFFICIENT",
+        "BLOCKED",
+        "OUT_OF_SCOPE"
+      ]
+    },
+    "verified_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "completion_criteria_checked": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence_reviewed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "missing_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "out_of_scope_findings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "next_action": {
+      "type": "string",
+      "minLength": 1
+    },
+    "state_update_allowed": {
+      "type": "boolean"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "verdict": {
+            "const": "PASS"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "state_update_allowed": {
+            "const": true
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "verdict": {
+            "enum": [
+              "FAIL",
+              "INSUFFICIENT",
+              "BLOCKED",
+              "OUT_OF_SCOPE"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "state_update_allowed": {
+            "const": false
+          }
+        }
+      }
+    }
+  ]
+}

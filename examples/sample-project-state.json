@@ -1,0 +1,34 @@
+{
+  "project_id": "project-control-cockpit",
+  "project_name": "Project Control Cockpit",
+  "project_goal": "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
+  "current_phase": "v1-proof",
+  "current_task_id": "pc-v1-001",
+  "active_repo_path": "C:\\ProjectControlCockpit",
+  "active_branch": "main",
+  "owner_decisions": [
+    {
+      "id": "DECISION-001",
+      "decision": "Reducing owner babysitting is the primary rule.",
+      "date": "2026-07-03",
+      "status": "active"
+    },
+    {
+      "id": "DECISION-002",
+      "decision": "Project Control Cockpit is local-first by default.",
+      "date": "2026-07-03",
+      "status": "active"
+    }
+  ],
+  "active_constraints": [
+    "No paid API dependence for V1.",
+    "Worker claims are evidence, not truth.",
+    "State updates require verifier PASS or explicit owner override.",
+    "Keep V1 lean."
+  ],
+  "current_blocker": null,
+  "last_verified_handoff": ".cockpit\\handoff\\worker-directive.md",
+  "last_verification_verdict": null,
+  "next_expected_action": "Generate the first worker directive for the V1 stateful handoff proof.",
+  "updated_at": "2026-07-03T00:00:00-06:00"
+}

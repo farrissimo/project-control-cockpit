@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "task-state.schema.json",
+  "title": "Project Cockpit Task State",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_id",
+    "task_title",
+    "task_objective",
+    "task_status",
+    "assigned_worker",
+    "completion_criteria",
+    "boundaries",
+    "required_evidence",
+    "attempts",
+    "current_directive_path",
+    "worker_result_path",
+    "verification_result_path",
+    "verification_verdict",
+    "current_blocker",
+    "next_action",
+    "updated_at"
+  ],
+  "properties": {
+    "task_id": {
+      "type": ["string", "null"]
+    },
+    "task_title": {
+      "type": ["string", "null"]
+    },
+    "task_objective": {
+      "type": ["string", "null"]
+    },
+    "task_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "drafted",
+        "ready_for_worker",
+        "in_progress",
+        "returned_for_verification",
+        "verified_pass",
+        "verified_fail",
+        "insufficient_evidence",
+        "blocked",
+        "out_of_scope",
+        "complete"
+      ]
+    },
+    "assigned_worker": {
+      "type": ["string", "null"]
+    },
+    "completion_criteria": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowed",
+        "forbidden"
+      ],
+      "properties": {
+        "allowed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "forbidden": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "required_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "attempts": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "current_directive_path": {
+      "type": ["string", "null"]
+    },
+    "worker_result_path": {
+      "type": ["string", "null"]
+    },
+    "verification_result_path": {
+      "type": ["string", "null"]
+    },
+    "verification_verdict": {
+      "type": ["string", "null"],
+      "enum": [
+        "PASS",
+        "FAIL",
+        "INSUFFICIENT",
+        "BLOCKED",
+        "OUT_OF_SCOPE",
+        null
+      ]
+    },
+    "current_blocker": {
+      "type": ["string", "null"]
+    },
+    "next_action": {
+      "type": ["string", "null"]
+    },
+    "updated_at": {
+      "type": ["string", "null"]
+    }
+  }
+}

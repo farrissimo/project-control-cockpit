@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "handoff-packet.schema.json",
+  "title": "Project Cockpit Handoff Packet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "handoff_id",
+    "created_at",
+    "receiving_role",
+    "project",
+    "current_task",
+    "objective",
+    "current_truth",
+    "exact_next_action",
+    "allowed_scope",
+    "forbidden_scope",
+    "completion_criteria",
+    "required_evidence",
+    "expected_return_format",
+    "blocked_failure_instructions"
+  ],
+  "properties": {
+    "handoff_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "receiving_role": {
+      "type": "string",
+      "enum": [
+        "owner",
+        "advisor_verifier",
+        "worker",
+        "local_tool",
+        "fresh_chat"
+      ]
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "project_name",
+        "repo_path",
+        "active_branch"
+      ],
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repo_path": {
+          "type": ["string", "null"]
+        },
+        "active_branch": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "current_task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "task_title",
+        "task_status"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task_title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task_status": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1
+    },
+    "current_truth": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "exact_next_action": {
+      "type": "string",
+      "minLength": 1
+    },
+    "allowed_scope": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden_scope": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "completion_criteria": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "required_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "expected_return_format": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "blocked_failure_instructions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
