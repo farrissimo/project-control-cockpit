@@ -285,3 +285,5 @@ The state model should stay simple.
 Do not add complex workflow machinery until the first proof shows a real need.
 
 Keep ideas separate from active tasks.
+
+Fresh-session restart safety depends on this simplicity: a new advisor or worker session should be able to rehydrate from canonical state and verified artifacts without relying on prior chat memory.

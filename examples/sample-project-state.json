@@ -26,6 +26,10 @@
     "State updates require verifier PASS or explicit owner override.",
     "Keep V1 lean."
   ],
+  "worker_context_facts": [
+    "Claude Code is ready and pointed at this repository workspace.",
+    "PCC owns the worker handoff contract through repo files; the owner should not need to restate the instructions manually."
+  ],
   "current_blocker": null,
   "last_verified_handoff": ".cockpit\\handoff\\worker-directive.md",
   "last_verification_verdict": null,

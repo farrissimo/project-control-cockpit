@@ -435,3 +435,25 @@ PCC may keep stable worker-context facts in canonical project state so determini
 
 Supersedes: None
 Related: docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, .cockpit/state/project-state.json, scripts/generate-worker-directive.ps1
+
+---
+
+## DECISION-018: Fresh Session Restart Safety Is A Core PCC Capability
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+PCC must make it safe and practical to start a fresh Codex advisor/verifier chat and a fresh Claude Code worker chat at any time without the owner having to rebuild the project context manually.
+
+Reason:
+
+Long-lived chat dependence is one of the main unsolved babysitting failures this project exists to remove. A disposable chat is only safe if the repo can rehydrate the role from canonical truth.
+
+Implications:
+
+Fresh-session resilience is a first-class product goal, not a side effect. Canonical state, verified artifacts, and generated handoff materials must support restart-safe operation for both advisor and worker roles. Bounded tasks that directly improve restart safety are within V1 scope.
+
+Supersedes: None
+Related: docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, .cockpit/state/project-state.json

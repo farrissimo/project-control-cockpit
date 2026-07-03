@@ -56,6 +56,9 @@ if (-not $taskState.completion_criteria -or $taskState.completion_criteria.Count
 if ($projectState.current_task_id -ne $taskState.task_id) {
   Fail "State drift: project-state current_task_id '$($projectState.current_task_id)' does not match task-state task_id '$($taskState.task_id)'. Reconcile state before drafting a directive."
 }
+if (-not $projectState.worker_context_facts -or $projectState.worker_context_facts.Count -eq 0) {
+  Fail "project-state.json worker_context_facts is empty. Current Truth's standing worker facts must come from canonical state (DECISION-017), not a script fallback."
+}
 
 $directiveSelfPath = if ($taskState.current_directive_path) { $taskState.current_directive_path } else { ".cockpit/handoff/worker-directive.md" }
 $resultPath = if ($taskState.worker_result_path) { $taskState.worker_result_path } else { ".cockpit/result/worker-result.md" }
@@ -74,20 +77,15 @@ $requiredEvidenceItems = if ($taskState.required_evidence -and $taskState.requir
   )
 }
 
-# Current Truth is built from canonical constraints plus a small fixed set of
-# standing operational facts about the worker bridge that state files don't
-# otherwise carry. Duplicates against active_constraints are skipped.
+# Current Truth comes entirely from canonical state: active_constraints plus
+# worker_context_facts (DECISION-017). No facts are hardcoded in this script.
 $currentTruth = New-Object System.Collections.Generic.List[string]
 $currentTruth.Add("$($projectState.project_name) is a local-first AI project control board.")
 foreach ($c in $projectState.active_constraints) {
   if (-not $currentTruth.Contains($c)) { $currentTruth.Add($c) }
 }
-foreach ($fixed in @(
-  "Worker claims are evidence, not truth.",
-  "Claude Code is ready and pointed at this repository workspace.",
-  "PCC owns the worker handoff contract through repo files; the owner should not need to restate the instructions manually."
-)) {
-  if (-not $currentTruth.Contains($fixed)) { $currentTruth.Add($fixed) }
+foreach ($f in $projectState.worker_context_facts) {
+  if (-not $currentTruth.Contains($f)) { $currentTruth.Add($f) }
 }
 
 $directive = @"

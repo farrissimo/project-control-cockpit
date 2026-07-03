@@ -14,6 +14,7 @@
     "active_branch",
     "owner_decisions",
     "active_constraints",
+    "worker_context_facts",
     "current_blocker",
     "last_verified_handoff",
     "last_verification_verdict",
@@ -87,6 +88,12 @@
       }
     },
     "active_constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "worker_context_facts": {
       "type": "array",
       "items": {
         "type": "string"

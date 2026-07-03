@@ -29,3 +29,15 @@ If an idea needs more detail, add one supporting file under `backlog/details/` a
   Summary: Review the archived original scope and promote any still-relevant future ideas into explicit backlog placeholders.
   Details: none
   Notes: Do this only for items still considered live candidates, not for every historical thought in the archive.
+
+- IDEA-003: Enforce live state against JSON schemas at runtime
+  Status: proposed
+  Summary: Wire schema validation into the local validate/advance/generate flow so schemas become enforced gates instead of documentation only.
+  Details: none
+  Notes: Good follow-on after the fresh-session restart path is stronger.
+
+- IDEA-004: Fail validation when the live worker directive diverges from generator output
+  Status: proposed
+  Summary: Extend local validation so a stale or hand-edited worker directive cannot silently drift from canonical task state.
+  Details: none
+  Notes: Likely implement by regenerating to a temp path and comparing against the live directive.

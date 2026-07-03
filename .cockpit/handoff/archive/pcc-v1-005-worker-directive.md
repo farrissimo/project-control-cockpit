@@ -13,8 +13,8 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-v1-006
-* Task Title: Generate a fresh-advisor restart brief from canonical truth
+* Task ID: pcc-v1-005
+* Task Title: Move directive Current Truth fully into canonical state
 * Task Status: ready_for_worker
 
 ## Objective
@@ -35,15 +35,15 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-Create one local deterministic helper that generates a concise advisor restart brief from canonical repo truth and verified artifacts so a brand-new Codex advisor/verifier session can resume the project without owner re-briefing. Keep it local, bounded, and explicit.
+Update the deterministic worker-directive workflow so the generated Current Truth section comes entirely from canonical repo truth rather than hardcoded operational facts in the script. Add the minimum canonical state or documented source needed, update the generator to use it, and keep the workflow local, deterministic, and bounded.
 
 ## Allowed Scope
 
 The worker may:
 
-* Update scripts/ for the advisor-restart helper.
+* Update scripts/ for the directive-generation helper.
 * Update .cockpit runtime files only as needed for the helper.
-* Update docs directly related to the helper, restart-brief generation, or canonical state.
+* Update docs directly related to the helper, canonical state, or handoff-generation workflow.
 * Add or update a small validation or demonstration step if needed.
 
 ## Forbidden Scope
@@ -60,9 +60,9 @@ The worker must not:
 
 The task is complete only if:
 
-* A local helper exists that drafts an advisor restart brief from canonical repo truth.
-* The helper uses current project/task state plus verified artifact paths as its primary inputs.
-* The generated brief clearly tells a fresh advisor what the project is, what task is active, what was last verified, what to read first, and what happens next.
+* The directive-generation workflow no longer relies on hardcoded Current Truth facts inside the helper.
+* The canonical source for generated Current Truth content is explicit and documented.
+* scripts/generate-worker-directive.ps1 reads that canonical source and still drafts a worker-ready directive successfully.
 * The change stays within the approved V1 scope and preserves local deterministic behavior.
 * The helper stays within the approved V1 scope and uses local deterministic logic.
 * Claude returns evidence in .cockpit/result/worker-result.md using the required format.

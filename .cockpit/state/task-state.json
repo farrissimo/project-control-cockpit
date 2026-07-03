@@ -1,22 +1,22 @@
 {
-    "task_id":  "pcc-v1-005",
-    "task_title":  "Move directive Current Truth fully into canonical state",
-    "task_objective":  "Update the deterministic worker-directive workflow so the generated Current Truth section comes entirely from canonical repo truth rather than hardcoded operational facts in the script. Add the minimum canonical state or documented source needed, update the generator to use it, and keep the workflow local, deterministic, and bounded.",
+    "task_id":  "pcc-v1-006",
+    "task_title":  "Generate a fresh-advisor restart brief from canonical truth",
+    "task_objective":  "Create one local deterministic helper that generates a concise advisor restart brief from canonical repo truth and verified artifacts so a brand-new Codex advisor/verifier session can resume the project without owner re-briefing. Keep it local, bounded, and explicit.",
     "task_status":  "ready_for_worker",
     "assigned_worker":  "Claude Code",
     "completion_criteria":  [
-                                "The directive-generation workflow no longer relies on hardcoded Current Truth facts inside the helper.",
-                                "The canonical source for generated Current Truth content is explicit and documented.",
-                                "scripts/generate-worker-directive.ps1 reads that canonical source and still drafts a worker-ready directive successfully.",
+                                "A local helper exists that drafts an advisor restart brief from canonical repo truth.",
+                                "The helper uses current project/task state plus verified artifact paths as its primary inputs.",
+                                "The generated brief clearly tells a fresh advisor what the project is, what task is active, what was last verified, what to read first, and what happens next.",
                                 "The change stays within the approved V1 scope and preserves local deterministic behavior.",
                                 "The helper stays within the approved V1 scope and uses local deterministic logic.",
                                 "Claude returns evidence in .cockpit/result/worker-result.md using the required format."
                             ],
     "boundaries":  {
                        "allowed":  [
-                                       "Update scripts/ for the directive-generation helper.",
+                                       "Update scripts/ for the advisor-restart helper.",
                                        "Update .cockpit runtime files only as needed for the helper.",
-                                       "Update docs directly related to the helper, canonical state, or handoff-generation workflow.",
+                                       "Update docs directly related to the helper, restart-brief generation, or canonical state.",
                                        "Add or update a small validation or demonstration step if needed."
                                    ],
                        "forbidden":  [
@@ -42,6 +42,6 @@
     "verification_result_path":  ".cockpit/result/verification-result.json",
     "verification_verdict":  null,
     "current_blocker":  null,
-    "next_action":  "Give the pcc-v1-005 directive to Claude Code and wait for evidence.",
-    "updated_at":  "2026-07-03T17:15:00-06:00"
+    "next_action":  "Give the pcc-v1-006 directive to Claude Code and wait for evidence.",
+    "updated_at":  "2026-07-03T17:40:00-06:00"
 }
