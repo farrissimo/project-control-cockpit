@@ -1,24 +1,24 @@
 {
-  "task_id": "pcc-v1-002",
-  "task_title": "Prove the first live PCC control loop",
-  "task_objective": "Have Claude Code complete one small bounded repo task that directly exercises the PCC loop: read current state and directive, produce a worker result with evidence, and allow honest verifier PASS or retry without owner restatement.",
-  "task_status": "complete",
+  "task_id": "pcc-v1-003",
+  "task_title": "Implement deterministic verification state advancement",
+  "task_objective": "Create a local deterministic helper that reads the active verification result and updates project and task state consistently so a verified PASS does not rely on manual state reconciliation.",
+  "task_status": "drafted",
   "assigned_worker": "Claude Code",
   "completion_criteria": [
-    "A single bounded repo artifact is created or updated within allowed scope.",
-    "Claude returns evidence in .cockpit/result/worker-result.md using the required format.",
-    "The verifier can determine PASS, FAIL, INSUFFICIENT, BLOCKED, or OUT_OF_SCOPE from the returned evidence.",
-    "The task directly exercises the PCC control loop rather than only describing it."
+    "A local helper script exists that reads .cockpit/result/verification-result.json and updates the state files consistently.",
+    "The helper handles PASS without requiring manual state reconciliation.",
+    "The helper stays within the approved V1 scope and uses local deterministic logic.",
+    "Claude returns evidence in .cockpit/result/worker-result.md using the required format."
   ],
   "boundaries": {
     "allowed": [
-      "Refine .cockpit runtime files.",
-      "Create one bounded proof artifact inside .cockpit.",
-      "Update docs directly related to the worker proof task.",
-      "Define the worker return path and expected evidence format."
+      "Update scripts/ for the deterministic helper.",
+      "Update .cockpit runtime files only as needed for the helper.",
+      "Update docs directly related to the helper or state-advance workflow.",
+      "Add or update a small validation or demonstration step if needed."
     ],
     "forbidden": [
-      "Do not build app code yet.",
+      "Do not build UI or broader application code yet.",
       "Do not add paid API dependencies.",
       "Do not introduce broad orchestration or automation.",
       "Do not change canonical project goals or verification verdicts.",
@@ -38,8 +38,8 @@
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
-  "verification_verdict": "PASS",
+  "verification_verdict": null,
   "current_blocker": null,
-  "next_action": "Define the first actual product-work task within V1 scope.",
-  "updated_at": "2026-07-03T13:00:00-06:00"
+  "next_action": "Run the deterministic state-advance helper task and capture the returned result file for verification.",
+  "updated_at": "2026-07-03T13:20:00-06:00"
 }

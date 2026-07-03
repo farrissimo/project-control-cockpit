@@ -3,7 +3,7 @@
   "project_name": "Project Control Cockpit",
   "project_goal": "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
   "current_phase": "v1-proof",
-  "current_task_id": "pcc-v1-002",
+  "current_task_id": "pcc-v1-003",
   "active_repo_path": "C:\\ProjectControlCockpit",
   "active_branch": "main",
   "owner_decisions": [
@@ -84,6 +84,6 @@
   "current_blocker": null,
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-v1-002-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Define the first actual product-work task within V1 scope and draft the next worker directive.",
-  "updated_at": "2026-07-03T13:00:00-06:00"
+  "next_expected_action": "Execute the first actual product-work task: implement a deterministic verification state-advance helper.",
+  "updated_at": "2026-07-03T13:20:00-06:00"
 }

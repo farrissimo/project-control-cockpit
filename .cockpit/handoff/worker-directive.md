@@ -13,8 +13,8 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-v1-002
-* Task Title: Prove the first live PCC control loop
+* Task ID: pcc-v1-003
+* Task Title: Implement deterministic verification state advancement
 * Task Status: drafted
 
 ## Objective
@@ -33,22 +33,22 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-Create one file at `.cockpit/handoff/first-proof-handoff.md` that a future worker could use to execute a bounded PCC task without owner restatement. Keep it practical and bounded. The file must identify the exact read path, write path, required evidence format, and blocked behavior for a live worker cycle, and the result must be returned in `.cockpit/result/worker-result.md`.
+Create one local deterministic helper under `scripts/` that reads `.cockpit/result/verification-result.json` and updates `.cockpit/state/project-state.json` plus `.cockpit/state/task-state.json` consistently for a verified PASS. Keep it bounded, local-first, and explicit. The helper must reduce manual state reconciliation rather than introduce broad automation.
 
 ## Allowed Scope
 
 The worker may:
 
-* Update `.cockpit/` runtime files
-* Create `.cockpit/handoff/first-proof-handoff.md`
-* Update docs directly related to the worker proof task
-* Clarify the return format for `.cockpit/result/worker-result.md`
+* Update `scripts/` for the deterministic helper
+* Update `.cockpit/` runtime files only as needed for the helper
+* Update docs directly related to the helper or state-advance workflow
+* Add or update a small validation or demonstration step if needed
 
 ## Forbidden Scope
 
 The worker must not:
 
-* Build application code yet
+* Build UI or broader application code yet
 * Add dependencies
 * Introduce broad orchestration
 * Redesign V1 scope
@@ -60,12 +60,11 @@ The worker must not:
 
 The task is complete only if:
 
-* `.cockpit/handoff/first-proof-handoff.md` exists
-* the proof handoff clearly states what the worker reads first
-* the worker return path is explicit
+* a local helper script exists under `scripts/`
+* the helper reads `.cockpit/result/verification-result.json`
+* the helper updates `.cockpit/state/project-state.json` and `.cockpit/state/task-state.json` consistently for PASS
+* the helper is local and deterministic rather than chat-driven
 * required evidence is explicit
-* blocked behavior is explicit
-* the created artifact directly supports a live PCC control loop rather than only describing the system at a high level
 * no forbidden-scope work was performed
 
 ## Required Evidence
