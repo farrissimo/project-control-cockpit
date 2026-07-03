@@ -146,4 +146,4 @@ state → directive → worker → evidence → verification → state update or
 
 Active next step:
 
-* Execute `pcc-v1-006`, generating a fresh-advisor restart brief from canonical truth
+* Execute `pcc-v1-007`, proving fresh worker-session restart safety

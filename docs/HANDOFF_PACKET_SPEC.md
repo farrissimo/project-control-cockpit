@@ -258,6 +258,8 @@ When starting a fresh chat, include:
 * next expected action
 * files/paths to read first
 
+`scripts/generate-advisor-restart-brief.ps1` drafts this handoff for a fresh advisor/verifier session directly from `.cockpit/state/project-state.json`, `.cockpit/state/task-state.json`, and `.cockpit/result/verification-result.json`, writing to `.cockpit/handoff/advisor-restart-brief.md`. It refuses to draft a brief if project/task state disagree on the active task, or if project state and the live verification result disagree on the last verdict.
+
 ---
 
 ## V1 Discipline
