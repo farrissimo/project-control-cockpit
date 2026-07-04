@@ -580,3 +580,25 @@ Effective the next task (`pcc-brr1-001` onward), Claude Code produces worker evi
 
 Supersedes: DECISION-019
 Related: DECISION-005, DECISION-006, DECISION-012, DECISION-021, DECISION-022, docs/VERIFICATION_RESULT_SPEC.md, docs/V1_Scope.md
+
+---
+
+## DECISION-024: BRR Owner Review Matrix Recorded (pcc-brr1-001)
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+The first BRR Phase 1 policy deliverable, the Owner Review Matrix, is recorded canonically in the new `docs/BRR_POLICY.md`, per `DECISION-022`'s task breakdown.
+
+Reason:
+
+`docs/BRR_PLAN.md` Phase 1 requires a concrete, durable rule set defining when PCC must stop and wait for owner review before unattended progress continues. `docs/BRR_PLAN.md` is the program plan, not the policy text itself, so a narrow-purpose canonical doc was warranted per `docs/REPO_GOVERNANCE.md`'s New Canonical Doc Process (the concept is durable, does not fit cleanly into an existing doc, and has one narrow purpose).
+
+Implications:
+
+`docs/BRR_POLICY.md` now holds an 11-row Owner Review Matrix covering every owner-required case named in `docs/BRR_PLAN.md` Phase 1, plus a note that it does not yet define task safety classes (`pcc-brr1-002`), the Stop-Instead-of-Guess trigger list (`pcc-brr1-003`), or the operating-definitions glossary (`pcc-brr1-004`) — those remain separate, not-yet-written tasks. This decision does not implement any runtime enforcement, gating, or task-class execution logic; applying the matrix in live task flow remains Phase 2 (`docs/BRR_PLAN.md` Section 5). Separately, `project-state.json`'s `owner_decisions` field is now explicitly documented (`docs/STATE_MODEL.md`) as a curated operational subset of this file, not a full mirror — this file remains the sole authoritative decision log regardless of what is or isn't carried into `owner_decisions`.
+
+Supersedes: None
+Related: DECISION-021, DECISION-022, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md

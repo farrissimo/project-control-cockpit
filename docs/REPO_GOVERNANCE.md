@@ -41,6 +41,8 @@ Examples:
 * `docs/V1_Scope.md`
 * `docs/STATE_MODEL.md`
 * `docs/REPO_GOVERNANCE.md`
+* `docs/BRR_PLAN.md`
+* `docs/BRR_POLICY.md`
 
 ## 2. Live State
 

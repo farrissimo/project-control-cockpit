@@ -124,6 +124,7 @@ Key docs:
 * `docs/ARCHITECTURE.md`
 * `docs/REPO_GOVERNANCE.md`
 * `docs/BRR_PLAN.md` (current phase: Babysitter-Reduced Role program plan)
+* `docs/BRR_POLICY.md` (BRR Phase 1 policy content: Owner Review Matrix and successors)
 
 Working intake:
 

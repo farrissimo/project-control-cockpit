@@ -13,8 +13,8 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-v1-015
-* Task Title: Honesty Checks: Format Check
+* Task ID: pcc-brr1-002
+* Task Title: BRR Policy: Task Safety Classification
 * Task Status: ready_for_worker
 
 ## Objective
@@ -35,39 +35,38 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-Add a light, non-blocking JSON-schema format check for the three canonical runtime JSON files (project-state.json, task-state.json, verification-result.json) against schemas/*.schema.json, using pwsh's Test-Json (confirmed via a spike to correctly handle our schemas' required fields, additionalProperties: false, enum values, and nullable ["string","null"] union types). Fold this into doctor.ps1 as one additional advisory finding rather than a separate gate; it must never block, halt, or fail any task cycle. This is the last open V1 backlog item before wrap-up.
+Define the BRR Phase 1 Task Safety Classification in canonical repo truth, building directly on the new Owner Review Matrix in docs/BRR_POLICY.md. Record the Class A / B / C / D model there in a practical, bounded way: what each class means, when each class applies, and how the classes relate to owner review and acceptance boundaries, without implementing Phase 2 runtime flow or automatic gating. Reuse and extend docs/BRR_POLICY.md rather than creating another broad planning document unless a narrower truth-surface need clearly requires otherwise.
 
 ## Allowed Scope
 
 The worker may:
 
-* Update scripts/ to add the schema-check helper and wire it into doctor.ps1.
-* Update .cockpit runtime files only as needed for demonstration.
-* Update docs directly related to schema checks, doctor.ps1, or canonical state (docs/HANDOFF_PACKET_SPEC.md, docs/STATE_MODEL.md, docs/REPO_GOVERNANCE.md).
-* Add or update a small demonstration step if needed.
+* Create or update narrowly relevant canonical docs for BRR Phase 1 policy, primarily docs/BRR_POLICY.md and closely related cross-references.
+* Update docs/DECISIONS.md, docs/BRR_PLAN.md, docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md, and README.md only as needed to propagate the new classification cleanly.
+* Adjust .cockpit state or handoff artifacts only insofar as the active task and next action need to stay accurate.
+* Add brief examples, tables, or definitions directly supporting Task Safety Classification if they stay inside this task's bounded policy scope.
 
 ## Forbidden Scope
 
 The worker must not:
 
-* Do not build UI or broader application code yet.
-* Do not add paid API dependencies.
-* Do not introduce broad orchestration or automation.
-* Do not change canonical project goals or verification verdicts.
-* Do not require the owner to manually restate or carry the worker instructions.
-* Do not make the schema check a hard gate or blocking step; it must remain advisory only, consistent with doctor.ps1's existing non-gating design.
-* Do not modify schemas/*.schema.json themselves; only add validation against the existing schema definitions.
+* Do not implement Phase 2 behavior, runtime enforcement, automatic gating, or task-class execution logic yet.
+* Do not edit scripts/, schemas/, or verification mechanics except for unavoidable truth-surface references that stay docs-only.
+* Do not broaden the task into Stop-Instead-of-Guess Policy or BRR Operating Definitions beyond what Task Safety Classification directly needs.
+* Do not change canonical project goals, role assignments, or previously recorded verification verdicts.
+* Do not require the owner to restate policy already present in canonical repo truth.
+* Do not turn adjacent policy ambiguities into separate mini-projects or blockers for completing the classification.
 
 ## Completion Criteria
 
 The task is complete only if:
 
-* A local deterministic script exists (e.g. scripts/check-schemas.ps1) that validates project-state.json, task-state.json, and verification-result.json against their corresponding schemas/*.schema.json files, reporting pass/fail per file with a human-readable reason on failure.
-* doctor.ps1 composes this check as one additional advisory finding (OK/ISSUE), consistent with its existing OK/WARN/ISSUE reporting; doctor.ps1 continues to always exit 0 regardless of the result.
-* The schema-check script itself never gates, blocks, or fails any other script or cycle; it is invoked the same way as doctor's other composed checks (informational only).
-* The check correctly passes on the current live canonical files and correctly fails when a file is made to violate its schema (missing required field, invalid enum value, or a disallowed additional property) - demonstrated with tests.
-* The change stays within the approved V1 scope, remains local deterministic, and does not introduce broad orchestration, automation, or a hard gate.
-* Claude returns evidence in .cockpit/result/worker-result.md using the required format.
+* The repo gains canonical policy text defining Task Safety Classification with the four classes named in docs/BRR_PLAN.md Phase 1: Class A, Class B, Class C, and Class D.
+* Each class is described concretely enough that a verifier or owner can tell the difference between safe unattended execution, execute-but-review-before-acceptance, owner approval required before execution, and blocked.
+* The classification explicitly builds on and does not contradict the Owner Review Matrix added by pcc-brr1-001; the relationship between owner-required cases and Class C or D is stated rather than left implicit.
+* The policy stays practical and docs-only: concise rules, brief examples or notes where helpful, no runtime enforcement, no automatic gating logic, and no premature implementation of Phase 2 flow.
+* Truth-surface propagation is handled honestly across docs/DECISIONS.md, docs/BRR_PLAN.md, docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md, README.md, and docs/BRR_POLICY.md, updating only what the new classification actually makes stale.
+* Claude returns evidence in .cockpit/result/worker-result.md using the required format and calls out any places where independent secondary review is still recommended.
 
 ## Required Evidence
 

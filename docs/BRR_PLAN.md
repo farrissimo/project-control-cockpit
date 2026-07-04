@@ -9,6 +9,12 @@
 > This document was authored by the owner and recorded verbatim into canonical
 > repo truth so BRR work does not depend on chat history (`STATE_MODEL.md` truth
 > priority; `DECISION-018` restart safety).
+>
+> **Phase 1 policy content itself lives in `docs/BRR_POLICY.md`**, not in this
+> plan. This plan defines the program and structures Phase 1 into bounded
+> tasks (`DECISION-022`); `docs/BRR_POLICY.md` is where each `pcc-brr1-0XX`
+> task records the actual policy text it produces (Owner Review Matrix, Task
+> Safety Classification, Stop-Instead-of-Guess Policy, Operating Definitions).
 
 ## Purpose
 

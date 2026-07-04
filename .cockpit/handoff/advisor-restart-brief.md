@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-03T21:10:09-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-03T21:53:54-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,23 +10,22 @@ Current phase: brr-phase-1
 
 ## Active Task
 
-* Task ID: pcc-v1-015
-* Title: Honesty Checks: Format Check
-* Status: complete
-* Objective: Add a light, non-blocking JSON-schema format check for the three canonical runtime JSON files (project-state.json, task-state.json, verification-result.json) against schemas/*.schema.json, using pwsh's Test-Json (confirmed via a spike to correctly handle our schemas' required fields, additionalProperties: false, enum values, and nullable ["string","null"] union types). Fold this into doctor.ps1 as one additional advisory finding rather than a separate gate; it must never block, halt, or fail any task cycle. This is the last open V1 backlog item before wrap-up.
+* Task ID: pcc-brr1-002
+* Title: BRR Policy: Task Safety Classification
+* Status: ready_for_worker
+* Objective: Define the BRR Phase 1 Task Safety Classification in canonical repo truth, building directly on the new Owner Review Matrix in docs/BRR_POLICY.md. Record the Class A / B / C / D model there in a practical, bounded way: what each class means, when each class applies, and how the classes relate to owner review and acceptance boundaries, without implementing Phase 2 runtime flow or automatic gating. Reuse and extend docs/BRR_POLICY.md rather than creating another broad planning document unless a narrower truth-surface need clearly requires otherwise.
 
 ## Last Verified
 
-* Verdict: PASS for task 'pcc-v1-015', verified at 2026-07-03T20:50:00-06:00
-* Summary: Independently re-ran doctor.ps1 against the live repo (confirmed OK) and reproduced the ISSUE path in a fresh scratch copy using a missing-required-field violation, different from either corruption the worker tested, confirming the check genuinely generalizes rather than being tuned to the worker's specific test cases. Confirmed via grep that check-schemas.ps1 is referenced only by doctor.ps1, never wired as a gate. This closes out IDEA-003, the last open V1 backlog item. All completion criteria met; no out-of-scope changes found.
-* Last verified handoff: .cockpit/handoff/archive/pcc-v1-015-worker-directive.md
+* Verdict: PASS for task 'pcc-brr1-001', verified at 2026-07-03T22:35:00-06:00
+* Summary: Reviewed the new BRR policy doc and its propagated truth-surface updates against the task boundaries and completion criteria. The repo now has a concrete canonical Owner Review Matrix in docs/BRR_POLICY.md, all 11 required owner-review cases are covered, the owner_decisions ambiguity is resolved as a small STATE_MODEL clarification, and no runtime or out-of-scope changes were introduced. All completion criteria met.
+* Last verified handoff: .cockpit/handoff/archive/pcc-brr1-001-worker-directive.md
 
 ## Open Issues
 
-* Risk from last verification of 'pcc-v1-015': check-schemas.ps1 requires pwsh; if unavailable, doctor.ps1 falls back to a generic ISSUE rather than real schema status - an inherited risk already accepted for the other composed checks.
-* Risk from last verification of 'pcc-v1-015': Test-Json's error messages use JSON Pointer paths (e.g. '/task_status') rather than plain English, less immediately readable than doctor's other prose findings.
-* Risk from last verification of 'pcc-v1-015': handoff-packet.schema.json was deliberately excluded since no live JSON runtime file exists to validate against it.
-* Risk from last verification of 'pcc-v1-015': Self-verification note (DECISION-019): mitigated by independently reproducing the ISSUE path with a different schema violation (missing required field) than either of the worker's own tests (bad enum, disallowed additional property), and by confirming via grep that the new script is never invoked outside doctor.ps1.
+* Risk from last verification of 'pcc-brr1-001': Row 11 of the Owner Review Matrix intentionally depends on pcc-brr1-002 for full task-class operationalization, so that row is bounded correctly but not yet final in isolation.
+* Risk from last verification of 'pcc-brr1-001': This is policy content, so correctness is judgment-based rather than deterministically testable; DECISION-022's recommendation for independent secondary review remains appropriate as a standing BRR Phase 1 practice.
+* Risk from last verification of 'pcc-brr1-001': Rows 9 and 10 intentionally overlap with the upcoming Stop-Instead-of-Guess Policy; that later task must cross-reference this matrix rather than drift from it.
 
 ## Read First
 
@@ -40,5 +39,5 @@ Current phase: brr-phase-1
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-v1-015' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-v1-015' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Task-level: Claude Code executes task 'pcc-brr1-002' from the generated directive and returns evidence for Codex to verify.
+* Project-level: Worker executes task 'pcc-brr1-002' using the generated directive and returns evidence for independent verification.

@@ -103,7 +103,7 @@ Current Git branch if applicable.
 
 ### owner_decisions
 
-List of explicit owner decisions that must be preserved.
+A curated operational subset of `docs/DECISIONS.md`, not a full mirror. `docs/DECISIONS.md` is the complete, authoritative decision log; `owner_decisions` carries forward only the entries a worker needs as standing operating context in generated directives (per `DECISION-017`). A decision can be active and binding in `docs/DECISIONS.md` without appearing here — omission from `owner_decisions` does not demote a decision's status. Do not treat this list's contents as evidence of which decisions are currently active; `docs/DECISIONS.md` is.
 
 ### active_constraints
 
