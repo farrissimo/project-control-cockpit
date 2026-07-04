@@ -1,31 +1,32 @@
 {
-    "task_id":  "pcc-v1-014",
-    "task_title":  "Safety Net: Wrap-Up Fix",
-    "task_objective":  "Fix scripts/advance-cockpit-state.ps1 so canonical next_action/next_expected_action and last_verified_handoff stay accurate after a verified PASS closes out a cycle, without needing manual correction each time (this has now happened twice: pcc-v1-011 and pcc-v1-012). Two confirmed root causes to fix: (1) advance-cockpit-state.ps1 copies verification.next_action verbatim, but that text is the verifier\u0027s own pre-close-out checklist (advance/doctor/archive/commit), so it describes already-completed steps as pending the moment they finish; (2) last_verified_handoff is set to task-state.json\u0027s current_directive_path (the live, soon-to-be-overwritten worker-directive.md), never the archived immutable copy created during close-out.",
+    "task_id":  "pcc-v1-015",
+    "task_title":  "Honesty Checks: Format Check",
+    "task_objective":  "Add a light, non-blocking JSON-schema format check for the three canonical runtime JSON files (project-state.json, task-state.json, verification-result.json) against schemas/*.schema.json, using pwsh\u0027s Test-Json (confirmed via a spike to correctly handle our schemas\u0027 required fields, additionalProperties: false, enum values, and nullable [\"string\",\"null\"] union types). Fold this into doctor.ps1 as one additional advisory finding rather than a separate gate; it must never block, halt, or fail any task cycle. This is the last open V1 backlog item before wrap-up.",
     "task_status":  "complete",
     "assigned_worker":  "Claude Code",
     "completion_criteria":  [
-                                "scripts/advance-cockpit-state.ps1 accepts an explicit archived-directive-path input (e.g. a parameter) and, when supplied, sets last_verified_handoff to that archived path rather than the live current_directive_path; when not supplied, existing behavior is preserved so nothing already depending on this script breaks.",
-                                "docs/VERIFICATION_RESULT_SPEC.md\u0027s next_action field definition is updated to state that for a PASS verdict, next_action must describe the durable state after the cycle closes (e.g. \u0027task complete; owner selects the next backlog item\u0027) rather than the verifier\u0027s own remaining close-out checklist, so it cannot describe already-completed steps as pending.",
-                                "The documented close-out order (docs/HANDOFF_PACKET_SPEC.md and/or DECISION-020\u0027s description) is updated to archive the cycle\u0027s directive/result/verification files before running advance-cockpit-state.ps1, passing the resulting archive path in.",
-                                "A demonstration shows a full cycle (draft -\u003e verify PASS -\u003e archive -\u003e advance) leaves last_verified_handoff pointing at the archived copy and next_action describing the true post-close-out state, with no manual correction step needed afterward.",
-                                "The change stays within the approved V1 scope, remains local deterministic, and does not introduce broad orchestration or automation.",
+                                "A local deterministic script exists (e.g. scripts/check-schemas.ps1) that validates project-state.json, task-state.json, and verification-result.json against their corresponding schemas/*.schema.json files, reporting pass/fail per file with a human-readable reason on failure.",
+                                "doctor.ps1 composes this check as one additional advisory finding (OK/ISSUE), consistent with its existing OK/WARN/ISSUE reporting; doctor.ps1 continues to always exit 0 regardless of the result.",
+                                "The schema-check script itself never gates, blocks, or fails any other script or cycle; it is invoked the same way as doctor\u0027s other composed checks (informational only).",
+                                "The check correctly passes on the current live canonical files and correctly fails when a file is made to violate its schema (missing required field, invalid enum value, or a disallowed additional property) - demonstrated with tests.",
+                                "The change stays within the approved V1 scope, remains local deterministic, and does not introduce broad orchestration, automation, or a hard gate.",
                                 "Claude returns evidence in .cockpit/result/worker-result.md using the required format."
                             ],
     "boundaries":  {
                        "allowed":  [
-                                       "Update scripts/advance-cockpit-state.ps1.",
-                                       "Update .cockpit runtime files only as needed for the fix or its demonstration.",
-                                       "Update docs directly related to close-out order, next_action semantics, or verification-result next_action (docs/VERIFICATION_RESULT_SPEC.md, docs/HANDOFF_PACKET_SPEC.md, docs/STATE_MODEL.md).",
+                                       "Update scripts/ to add the schema-check helper and wire it into doctor.ps1.",
+                                       "Update .cockpit runtime files only as needed for demonstration.",
+                                       "Update docs directly related to schema checks, doctor.ps1, or canonical state (docs/HANDOFF_PACKET_SPEC.md, docs/STATE_MODEL.md, docs/REPO_GOVERNANCE.md).",
                                        "Add or update a small demonstration step if needed."
                                    ],
                        "forbidden":  [
                                          "Do not build UI or broader application code yet.",
                                          "Do not add paid API dependencies.",
                                          "Do not introduce broad orchestration or automation.",
-                                         "Do not change canonical project goals or verification verdicts (PASS/FAIL/INSUFFICIENT/BLOCKED/OUT_OF_SCOPE must remain exactly these five values).",
+                                         "Do not change canonical project goals or verification verdicts.",
                                          "Do not require the owner to manually restate or carry the worker instructions.",
-                                         "Do not rewrite, reorder, or delete any existing archived file or routing-log.jsonl line; this task changes behavior going forward only."
+                                         "Do not make the schema check a hard gate or blocking step; it must remain advisory only, consistent with doctor.ps1\u0027s existing non-gating design.",
+                                         "Do not modify schemas/*.schema.json themselves; only add validation against the existing schema definitions."
                                      ]
                    },
     "required_evidence":  [
@@ -43,6 +44,6 @@
     "verification_result_path":  ".cockpit/result/verification-result.json",
     "verification_verdict":  "PASS",
     "current_blocker":  null,
-    "next_action":  "Task \u0027pcc-v1-014\u0027 is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-    "updated_at":  "2026-07-03T20:24:21-06:00"
+    "next_action":  "Task \u0027pcc-v1-015\u0027 is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+    "updated_at":  "2026-07-03T20:43:33-06:00"
 }

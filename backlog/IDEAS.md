@@ -49,11 +49,11 @@ Already delivered / fulfilled: IDEA-004 (delivered by pcc-v1-007..009); IDEA-002
   Notes: Fulfilled by the 2026-07-03 advisor review of "PCC Original Project Scope.md", V1_Scope.md, and the CCB lessons list. Still-live items were captured as IDEA-005 through IDEA-010 below. Archived rather than deleted to preserve the intake history.
 
 - IDEA-003: Enforce live state against JSON schemas at runtime
-  Status: proposed
+  Status: promoted-to-task
   Plain name: Honesty Checks: Format Check
   Summary: Wire schema validation into the local validate/advance/generate flow so schemas become enforced gates instead of documentation only.
   Details: none
-  Notes: Rank 5. CONDITIONAL. Good foundation integrity, but must be warn-by-default (or surfaced advisorily through IDEA-006 doctor), NOT a hard halt that stops a cycle over a formatting nit — a hard gate here would violate the owner's "must not risk blocking task completion" constraint. Best implemented inside doctor rather than as its own blocking step.
+  Notes: DELIVERED via pcc-v1-015, as advisory-only per the original conditional note (not a hard gate). A pre-task spike confirmed pwsh's Test-Json correctly handles our schemas (additionalProperties: false, enums, nullable unions, and verification-result.schema.json's if/then block). scripts/check-schemas.ps1 validates the three canonical JSON files and is composed into doctor.ps1 as one OK/ISSUE finding; doctor.ps1 still always exits 0. This was the last open V1 backlog item.
 
 - IDEA-004: Fail validation when the live worker directive diverges from generator output
   Status: promoted-to-task

@@ -71,7 +71,21 @@ try {
   Add-Finding -Check "Restart safety (advisor + worker)" -Status "ISSUE" -Detail "Could not run scripts/verify-dual-restart-safety.ps1: $($_.Exception.Message)"
 }
 
-# --- Check 3: last known handoff-gate verdict (informational only - does not re-run the gate) ---
+# --- Check 3: schema/format check (project-state.json, task-state.json, verification-result.json) ---
+# Requires pwsh (Test-Json does not exist in Windows PowerShell 5.1), same as
+# the other composed checks above.
+try {
+  $output = & pwsh -NoProfile -File "scripts/check-schemas.ps1" 2>&1
+  if ($LASTEXITCODE -eq 0) {
+    Add-Finding -Check "Format check (schemas)" -Status "OK" -Detail "project-state.json, task-state.json, and verification-result.json all match their schemas."
+  } else {
+    Add-Finding -Check "Format check (schemas)" -Status "ISSUE" -Detail (Strip-AnsiAndLastLine $output)
+  }
+} catch {
+  Add-Finding -Check "Format check (schemas)" -Status "ISSUE" -Detail "Could not run scripts/check-schemas.ps1: $($_.Exception.Message)"
+}
+
+# --- Check 4: last known handoff-gate verdict (informational only - does not re-run the gate) ---
 $gatePath = ".cockpit/state/handoff-gate.json"
 $taskStatePath = ".cockpit/state/task-state.json"
 $gate = Read-JsonSafe $gatePath
@@ -87,7 +101,7 @@ if ($null -eq $gate) {
   Add-Finding -Check "Handoff gate (last known)" -Status "WARN" -Detail "Last recorded result: $($gate.gate_result) for task '$($gate.task_id)' at $($gate.checked_at). Reason: $($gate.reason)"
 }
 
-# --- Check 4: active task context (informational only, not a pass/fail judgment) ---
+# --- Check 5: active task context (informational only, not a pass/fail judgment) ---
 if ($null -eq $taskState) {
   Add-Finding -Check "Active task" -Status "WARN" -Detail "$taskStatePath is missing or unreadable."
 } else {
