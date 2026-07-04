@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-brr1-004
 * Task Title: BRR Policy: Operating Definitions
-* Task Status: ready_for_worker
+* Task Status: complete
 
 ## Objective
 
