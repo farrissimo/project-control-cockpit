@@ -1,0 +1,35 @@
+{
+  "task_id": "pcc-v1-010",
+  "verdict": "PASS",
+  "verified_at": "2026-07-03T19:03:58-06:00",
+  "completion_criteria_checked": [
+    "A local deterministic backup/restore helper exists for an explicit protected PCC file set.",
+    "The helper can create a timestamped restore point in a non-canonical backup location without depending on git.",
+    "The helper can restore a chosen snapshot of the protected files back into place.",
+    "The change stays within the approved V1 scope and preserves local deterministic behavior.",
+    "The helper remains passive and non-gating; it does not block task completion or become workflow enforcement.",
+    "Claude returns evidence in .cockpit/result/worker-result.md using the required format."
+  ],
+  "evidence_reviewed": [
+    "scripts/backup-protected-files.ps1",
+    ".gitignore",
+    "docs/STATE_MODEL.md",
+    ".cockpit/result/worker-result.md",
+    "powershell -ExecutionPolicy Bypass -File scripts/backup-protected-files.ps1 -Action Backup",
+    "powershell -ExecutionPolicy Bypass -File scripts/backup-protected-files.ps1 -Action List",
+    "powershell -ExecutionPolicy Bypass -File scripts/backup-protected-files.ps1 -Action Restore",
+    "powershell -ExecutionPolicy Bypass -File scripts/validate-cockpit-state.ps1",
+    "git status --short --ignored",
+    "git diff --stat"
+  ],
+  "missing_evidence": [],
+  "out_of_scope_findings": [],
+  "risks": [
+    "Restore-point retention/pruning is not implemented yet, so .cockpit/backups can grow over time.",
+    "The protected file set is partly hardcoded, so future protected non-script files would require a script update.",
+    "Restore overwrites files directly and does not yet offer a dry-run or diff-preview mode."
+  ],
+  "summary": "Claude completed the bounded pcc-v1-010 task within scope by adding a deterministic protected-file backup and restore helper with a git-ignored non-canonical backup location.",
+  "next_action": "Pause at the natural break, archive the verified backup helper task, and choose the next bounded follow-on task.",
+  "state_update_allowed": true
+}

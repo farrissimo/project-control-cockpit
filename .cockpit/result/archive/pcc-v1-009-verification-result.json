@@ -1,0 +1,36 @@
+{
+  "task_id": "pcc-v1-009",
+  "verdict": "PASS",
+  "verified_at": "2026-07-03T18:35:00-06:00",
+  "completion_criteria_checked": [
+    "A local deterministic enforcement step exists that checks restart safety before fresh-session handoff artifacts are treated as ready.",
+    "The enforcement reuses the generated advisor restart brief, the generated worker directive, and canonical repo truth rather than introducing hidden script-only truth.",
+    "The enforcement fails clearly on stale or incomplete handoff inputs and passes on valid inputs.",
+    "The change stays within the approved V1 scope and preserves local deterministic behavior.",
+    "The enforcement remains narrowly scoped and does not introduce broad orchestration or paid dependencies.",
+    "Claude returns evidence in .cockpit/result/worker-result.md using the required format."
+  ],
+  "evidence_reviewed": [
+    "scripts/enforce-handoff-restart-safety.ps1",
+    "scripts/verify-dual-restart-safety.ps1",
+    ".cockpit/state/handoff-gate.json",
+    ".cockpit/handoff/advisor-restart-brief.md",
+    ".cockpit/handoff/worker-directive.md",
+    ".cockpit/result/worker-result.md",
+    "docs/HANDOFF_PACKET_SPEC.md",
+    "docs/STATE_MODEL.md",
+    "powershell -ExecutionPolicy Bypass -File scripts/enforce-handoff-restart-safety.ps1",
+    "powershell -ExecutionPolicy Bypass -File scripts/validate-cockpit-state.ps1",
+    "git diff --stat"
+  ],
+  "missing_evidence": [],
+  "out_of_scope_findings": [],
+  "risks": [
+    "Live state is still not validated against JSON Schema at runtime.",
+    "The handoff gate is still invoked on demand rather than being triggered automatically before every fresh-session handoff.",
+    "The gate verdict in .cockpit/state/handoff-gate.json is a point-in-time record and must be re-run after later task or handoff changes."
+  ],
+  "summary": "Claude completed the bounded pcc-v1-009 task within scope by adding a deterministic handoff gate that blocks fresh-session use unless the active task is ready_for_worker and the dual-restart proof passes from canonical repo truth.",
+  "next_action": "Pause at the natural break, review the verified handoff gate, and choose the next bounded follow-on task.",
+  "state_update_allowed": true
+}

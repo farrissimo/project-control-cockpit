@@ -13,8 +13,8 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-v1-011
-* Task Title: Add advisory doctor health-check command
+* Task ID: pcc-v1-010
+* Task Title: Add protected-file backup and restore helper
 * Task Status: ready_for_worker
 
 ## Objective
@@ -35,15 +35,15 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-Create a local deterministic doctor command that composes the existing PCC checks and answers whether the repo is safe to trust and hand off right now. Keep it read-only, advisory, and non-gating. It may surface schema/state warnings, restart-safety status, handoff freshness, and similar structural signals, but it must not block or replace the separate enforce-handoff gate.
+Create a local deterministic helper that makes a restore point of PCC's protected control files before risky cycles and can restore a chosen snapshot later without relying on git. Keep the protected file set explicit and small, keep the backup path non-canonical, and keep the helper passive and non-gating.
 
 ## Allowed Scope
 
 The worker may:
 
-* Update scripts/ to add the advisory doctor health-check command.
-* Update .cockpit runtime files only as needed for the doctor report or its demonstration.
-* Update docs directly related to repo health checks, warnings, handoff safety, or canonical state.
+* Update scripts/ to add the protected-file backup and restore helper.
+* Add or update a non-canonical backup location under .cockpit/ only as needed for the helper or its demonstration.
+* Update docs directly related to backup/restore handling, protected files, or canonical state.
 * Add or update a small demonstration step if needed.
 
 ## Forbidden Scope
@@ -60,11 +60,11 @@ The worker must not:
 
 The task is complete only if:
 
-* A local deterministic doctor command exists that summarizes PCC repo health in one readable report.
-* The doctor command composes existing checks rather than inventing hidden script-only truth.
-* The doctor command remains read-only, advisory, and non-gating; it does not halt or block a task cycle.
-* The report clearly distinguishes warnings from pass/fail-style findings and does not replace the separate enforce-handoff gate.
+* A local deterministic backup/restore helper exists for an explicit protected PCC file set.
+* The helper can create a timestamped restore point in a non-canonical backup location without depending on git.
+* The helper can restore a chosen snapshot of the protected files back into place.
 * The change stays within the approved V1 scope and preserves local deterministic behavior.
+* The helper remains passive and non-gating; it does not block task completion or become workflow enforcement.
 * Claude returns evidence in .cockpit/result/worker-result.md using the required format.
 
 ## Required Evidence

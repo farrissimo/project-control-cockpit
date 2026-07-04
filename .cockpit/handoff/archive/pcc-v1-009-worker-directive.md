@@ -13,8 +13,8 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-v1-011
-* Task Title: Add advisory doctor health-check command
+* Task ID: pcc-v1-009
+* Task Title: Enforce restart-safety checks before handoff use
 * Task Status: ready_for_worker
 
 ## Objective
@@ -35,16 +35,16 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-Create a local deterministic doctor command that composes the existing PCC checks and answers whether the repo is safe to trust and hand off right now. Keep it read-only, advisory, and non-gating. It may surface schema/state warnings, restart-safety status, handoff freshness, and similar structural signals, but it must not block or replace the separate enforce-handoff gate.
+Add a local deterministic guard so fresh-session handoff artifacts are not treated as ready until restart-safety validation passes. Use the existing advisor restart brief, worker directive, and restart-safety proof helpers as the foundation. Keep the work local, explicit, bounded, and focused on enforcement rather than broader orchestration.
 
 ## Allowed Scope
 
 The worker may:
 
-* Update scripts/ to add the advisory doctor health-check command.
-* Update .cockpit runtime files only as needed for the doctor report or its demonstration.
-* Update docs directly related to repo health checks, warnings, handoff safety, or canonical state.
-* Add or update a small demonstration step if needed.
+* Update scripts/ to add or wire in restart-safety enforcement before handoff use.
+* Update .cockpit runtime files only as needed to support the enforcement step or its demonstration.
+* Update docs directly related to handoff enforcement, restart safety, or canonical state.
+* Add or update a small validation or demonstration step if needed.
 
 ## Forbidden Scope
 
@@ -60,11 +60,11 @@ The worker must not:
 
 The task is complete only if:
 
-* A local deterministic doctor command exists that summarizes PCC repo health in one readable report.
-* The doctor command composes existing checks rather than inventing hidden script-only truth.
-* The doctor command remains read-only, advisory, and non-gating; it does not halt or block a task cycle.
-* The report clearly distinguishes warnings from pass/fail-style findings and does not replace the separate enforce-handoff gate.
+* A local deterministic enforcement step exists that checks restart safety before fresh-session handoff artifacts are treated as ready.
+* The enforcement reuses the generated advisor restart brief, the generated worker directive, and canonical repo truth rather than introducing hidden script-only truth.
+* The enforcement fails clearly on stale or incomplete handoff inputs and passes on valid inputs.
 * The change stays within the approved V1 scope and preserves local deterministic behavior.
+* The enforcement remains narrowly scoped and does not introduce broad orchestration or paid dependencies.
 * Claude returns evidence in .cockpit/result/worker-result.md using the required format.
 
 ## Required Evidence

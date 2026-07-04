@@ -1,0 +1,7 @@
+{
+    "task_id":  "pcc-v1-011",
+    "gate_result":  "PASS",
+    "reason":  "Task status is \u0027ready_for_worker\u0027 and the dual-restart proof passed.",
+    "checked_at":  "2026-07-03T19:16:28-06:00",
+    "checked_via":  "scripts/enforce-handoff-restart-safety.ps1"
+}

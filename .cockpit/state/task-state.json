@@ -1,23 +1,23 @@
 {
-    "task_id":  "pcc-v1-008",
-    "task_title":  "Run the dual-restart proof cycle",
-    "task_objective":  "Create one bounded dual-restart proof that demonstrates both a fresh advisor session and a fresh Claude worker session can resume from canonical repo truth and complete one real PCC cycle without owner re-briefing. Use the existing advisor restart brief, worker directive, and verified artifact paths as the core inputs. Keep the work local, explicit, and bounded.",
+    "task_id":  "pcc-v1-011",
+    "task_title":  "Add advisory doctor health-check command",
+    "task_objective":  "Create a local deterministic doctor command that composes the existing PCC checks and answers whether the repo is safe to trust and hand off right now. Keep it read-only, advisory, and non-gating. It may surface schema/state warnings, restart-safety status, handoff freshness, and similar structural signals, but it must not block or replace the separate enforce-handoff gate.",
     "task_status":  "complete",
     "assigned_worker":  "Claude Code",
     "completion_criteria":  [
-                                "A bounded dual-restart proof artifact or helper exists.",
-                                "The proof uses the generated advisor restart brief, the generated worker directive, and canonical repo truth as its primary inputs.",
-                                "The result clearly shows how both a fresh advisor session and a fresh worker session can resume cold and complete one PCC cycle without owner re-briefing.",
+                                "A local deterministic doctor command exists that summarizes PCC repo health in one readable report.",
+                                "The doctor command composes existing checks rather than inventing hidden script-only truth.",
+                                "The doctor command remains read-only, advisory, and non-gating; it does not halt or block a task cycle.",
+                                "The report clearly distinguishes warnings from pass/fail-style findings and does not replace the separate enforce-handoff gate.",
                                 "The change stays within the approved V1 scope and preserves local deterministic behavior.",
-                                "The helper stays within the approved V1 scope and uses local deterministic logic.",
                                 "Claude returns evidence in .cockpit/result/worker-result.md using the required format."
                             ],
     "boundaries":  {
                        "allowed":  [
-                                       "Update scripts/ for the dual-restart proof helper.",
-                                       "Update .cockpit runtime files only as needed for the helper.",
-                                       "Update docs directly related to the helper, restart proof, or canonical state.",
-                                       "Add or update a small validation or demonstration step if needed."
+                                       "Update scripts/ to add the advisory doctor health-check command.",
+                                       "Update .cockpit runtime files only as needed for the doctor report or its demonstration.",
+                                       "Update docs directly related to repo health checks, warnings, handoff safety, or canonical state.",
+                                       "Add or update a small demonstration step if needed."
                                    ],
                        "forbidden":  [
                                          "Do not build UI or broader application code yet.",
@@ -42,6 +42,6 @@
     "verification_result_path":  ".cockpit/result/verification-result.json",
     "verification_verdict":  "PASS",
     "current_blocker":  null,
-    "next_action":  "Pause at the natural break, review the proven restart-safe foundation, and choose whether to implement enforcement follow-ons or pivot to broader PCC ideas.",
-    "updated_at":  "2026-07-03T17:47:15-06:00"
+    "next_action":  "Advance task-state.json to complete via scripts/advance-cockpit-state.ps1, archive this cycle\u0027s directive/result/verification artifacts, then draft the next bounded task.",
+    "updated_at":  "2026-07-03T19:25:02-06:00"
 }

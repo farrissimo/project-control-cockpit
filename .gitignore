@@ -1,0 +1,3 @@
+# Non-canonical local restore points created by scripts/backup-protected-files.ps1.
+# These are disposable snapshots, not project truth - see docs/STATE_MODEL.md.
+.cockpit/backups/

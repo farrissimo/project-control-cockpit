@@ -27,6 +27,10 @@ V1 uses two required state files:
 
 Optional supporting files may be added later, but these two are the V1 backbone.
 
+One optional supporting file, `.cockpit/state/handoff-gate.json`, is written by `scripts/enforce-handoff-restart-safety.ps1`. It records whether the live handoff artifacts were last confirmed restart-safe and ready for fresh-session use (`gate_result`: `PASS`/`FAIL`, plus `reason`, `checked_at`, and `task_id`). It is a derived enforcement record, not a new source of truth — it never disagrees with `task-state.json` or the handoff artifacts without being re-run.
+
+`.cockpit/backups/` is a non-canonical, git-ignored restore-point location written by `scripts/backup-protected-files.ps1`. Each run creates a timestamped folder containing copies of a small, explicit protected file set (the two state files, the live handoff artifacts, the latest evidence/verification pair, and `scripts/*.ps1`) plus a `manifest.json` describing what was captured. It exists purely as cheap, git-independent recovery insurance before risky cycles; it is passive and non-gating — nothing reads it to decide whether a task may proceed, and its absence never blocks anything. Restoring from it is an explicit, deliberate action (`-Action Restore -RestorePoint <name>`), never automatic.
+
 Ideas are not stored in live state until they are promoted into a bounded task.
 Idea intake belongs in the controlled backlog process, not in `task-state.json` by default.
 
