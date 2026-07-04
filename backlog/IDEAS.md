@@ -24,7 +24,7 @@ Ranked under one filter: **babysitting reduction first, no governance bloat, and
 1. IDEA-005 — **Safety Net: Backup & Restore** — DONE (only Tier-1 item that *structurally* cannot block completion)
 2. IDEA-006 — **Safety Net: Health Check** — DONE (advisory / non-gating)
 3. IDEA-007 — **Safety Net: Clean Stop** — DONE
-4. IDEA-008 — **Honesty Checks: Activity Log** (non-blocking; enables honest metrics) — PARTIALLY DONE (quality-gate half via pcc-brr4-001; retry half still open)
+4. IDEA-008 — **Honesty Checks: Activity Log** (non-blocking; enables honest metrics) — DONE (quality-gate half via pcc-brr4-001; retry half via pcc-brr4-002)
 5. IDEA-003 — **Honesty Checks: Format Check** — **conditional: warn-by-default, not a hard halt**
 6. IDEA-001 — **Honesty Checks: Automatic Checks** — **defer: highest bloat + completion-blocking risk**
 7. IDEA-009 — **Honesty Checks: Retry Limit** — defer until PCC runs semi-autonomously
@@ -88,7 +88,7 @@ Already delivered / fulfilled: IDEA-004 (delivered by pcc-v1-007..009); IDEA-002
   Plain name: Honesty Checks: Activity Log
   Summary: Extend routing-log.jsonl with factual failure/retry/quality-gate events so babysitting reduction becomes measurable, not a feeling.
   Details: none
-  Notes: Rank 4. Non-blocking by nature (records only), low bloat. Lower immediate payoff than IDEA-005..007 but safe and cheap; enables the honest metrics from original scope 7.22/7.23. CCB #7. Keep events factual (what happened), not narrative (why we think it happened). PARTIALLY DELIVERED via pcc-brr4-001 (BRR Phase 4 Multi-Cycle Pilot run #1): the "quality-gate" half is done -- scripts/check-stop-conditions.ps1 and scripts/check-autonomous-gate.ps1 now log stop_condition_fired / gate_blocked events. The "retry" half remains open: task-state.json's "attempts" field is not currently incremented by any script, so retry-event logging is deferred as separate future work.
+  Notes: Rank 4. Non-blocking by nature (records only), low bloat. Lower immediate payoff than IDEA-005..007 but safe and cheap; enables the honest metrics from original scope 7.22/7.23. CCB #7. Keep events factual (what happened), not narrative (why we think it happened). DELIVERED across two BRR Phase 4 Multi-Cycle Pilot cycles: pcc-brr4-001 (run #1) added the "quality-gate" half -- scripts/check-stop-conditions.ps1 and scripts/check-autonomous-gate.ps1 log stop_condition_fired / gate_blocked events; pcc-brr4-002 (run #2, cycle 1) added the "retry" half -- scripts/finalize-worker-handback.ps1 now increments task-state.json's "attempts" field on every handback and logs a retry_attempted event specifically when a handback follows a prior non-PASS verdict on the same task.
 
 - IDEA-009: Deterministic retry governor / circuit breaker
   Status: proposed

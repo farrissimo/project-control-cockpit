@@ -1338,3 +1338,31 @@ This decision does not authorize self-close for either task this run, does not c
 
 Supersedes: None
 Related: DECISION-039, DECISION-041, DECISION-043, DECISION-044, DECISION-053, DECISION-054, DECISION-055, docs/BRR_PLAN.md, backlog/IDEAS.md
+
+---
+
+## DECISION-057: Pilot Run #2, Cycle 1 Executed (pcc-brr4-002, IDEA-008 Retry Half); Held For Review
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`pcc-brr4-002` delivers `IDEA-008`'s remaining "retry" half, per the pre-run checkpoint (`DECISION-056`): `scripts/finalize-worker-handback.ps1` now increments `task-state.json`'s `attempts` field on every handback, and logs a `retry_attempted` event via `scripts/log-event.ps1` specifically when a handback follows a prior non-`PASS` verdict on the same task — not on a task's first-ever handback. Classified Class B before execution (recorded in `DECISION-056`); self-close is **not** attempted, per that decision's revision 1 — the self-verified result is held for owner/GPT review.
+
+Reason:
+
+This completes the half of `IDEA-008` explicitly deferred from `pcc-brr4-001` (`DECISION-054`), using the pre-execution classification and self-close restriction the owner required before either pilot run #2 cycle began.
+
+Implications:
+
+**What was built:** `scripts/log-event.ps1` gains one new event type, `retry_attempted`; no existing type changed. `scripts/finalize-worker-handback.ps1` reads `attempts`/`verification_verdict` *before* incrementing `attempts` (incrementing first would make every handback look like a retry), increments `attempts` on every handback unconditionally, and logs `retry_attempted` only when `attempts` was already `> 0` and `verification_verdict` was already set to something other than `PASS`. A logging failure surfaces as a visible `[LOGGING WARNING]` without aborting the handback, same pattern as `pcc-brr4-001`. No other existing behavior of `finalize-worker-handback.ps1` (its four-step order, its `ready_for_worker`/`in_progress` refusal precondition) changed.
+
+**Testing, in a rebuilt isolated scratch copy (never against live state):** three scenarios confirmed — a first handback increments `attempts` `0→1` and logs nothing; a simulated retry (`attempts` already `1`, `verification_verdict` already `FAIL`) increments to `2` and logs `retry_attempted` with a factual detail string; the boundary case where the prior verdict was `PASS` (not expected in practice, since a `PASS`-verdict task would already be `complete`, but tested anyway) increments `attempts` to `3` and correctly logs nothing. `git status` confirmed no scratch-test artifacts reached the live repo.
+
+**Chaining determination (per `DECISION-056`'s stated interpretation):** this cycle resolved cleanly — a self-verified `PASS` candidate was reached, no stop-trigger fired, no forbidden-scope issue arose, and the boundary and retry cases both matched the intended design exactly on the first implementation. Per `DECISION-056`'s chaining rule, cycle 2 (`pcc-brr4-003`, the metrics summary task) may begin without waiting for owner/GPT review of this cycle first; both cycles' final results remain held for that review before either is closed out.
+
+`backlog/IDEAS.md`'s `IDEA-008` entry is updated to reflect full delivery across both pilot cycles. No verdict, task safety class, the autonomous gate, the Acceptance Boundary Rules, or `DECISION-033`/`036`'s fallback text was changed. `task_status` remains `returned_for_verification`, not `complete`; `scripts/close-out-verified-task.ps1` has not been run.
+
+Supersedes: None
+Related: DECISION-033, DECISION-036, DECISION-041, DECISION-054, DECISION-056, backlog/IDEAS.md, scripts/finalize-worker-handback.ps1, scripts/log-event.ps1

@@ -54,6 +54,15 @@ $resolvedNextAction = if ($NextAction) { $NextAction } else {
   "Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md."
 }
 
+# IDEA-008's "retry" half (pcc-brr4-002, BRR Phase 4 Multi-Cycle Pilot run
+# #2): a handback is a retry, not a first attempt, exactly when this same
+# task_id already carries a prior non-PASS verdict from an earlier cycle
+# (attempts already > 0 AND verification_verdict already set to something
+# other than PASS). This must be read BEFORE attempts is incremented below,
+# since incrementing first would make every handback look like "attempts > 0".
+$wasRetry = ($taskState.attempts -gt 0) -and $taskState.verification_verdict -and ($taskState.verification_verdict -ne "PASS")
+$taskState.attempts = [int]$taskState.attempts + 1
+
 # --- Step 1: the final state update happens first. ---
 $taskState.task_status = "returned_for_verification"
 $taskState.current_blocker = $null
@@ -66,7 +75,16 @@ $projectState.updated_at = $timestamp
 
 $taskState | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $taskStatePath
 $projectState | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $projectStatePath
-Write-Output "Step 1/4: task '$($taskState.task_id)' set to 'returned_for_verification'."
+Write-Output "Step 1/4: task '$($taskState.task_id)' set to 'returned_for_verification' (attempt $($taskState.attempts))."
+
+if ($wasRetry) {
+  # A logging failure here must never abort or change the outcome of an
+  # otherwise-successful handback -- it is surfaced visibly, not fatal.
+  & pwsh -NoProfile -File "scripts/log-event.ps1" -EventType "retry_attempted" -TaskId $taskState.task_id -Detail "Task '$($taskState.task_id)' handed back for verification again after a prior '$($taskState.verification_verdict)' verdict. This is attempt $($taskState.attempts)."
+  if ($LASTEXITCODE -ne 0) {
+    Write-Output "[LOGGING WARNING] Failed to record retry_attempted event (scripts/log-event.ps1 exited $LASTEXITCODE). The handback above is still valid and unaffected."
+  }
+}
 
 # --- Step 2: cross-file consistency, checked immediately after the write. ---
 & pwsh -NoProfile -File "scripts/validate-cockpit-state.ps1"

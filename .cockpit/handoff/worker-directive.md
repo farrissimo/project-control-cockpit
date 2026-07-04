@@ -13,9 +13,9 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-brr4-001
-* Task Title: Honesty Checks: Activity Log
-* Task Status: complete
+* Task ID: pcc-brr4-002
+* Task Title: Honesty Checks: Retry Log
+* Task Status: returned_for_verification
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Objective
@@ -36,46 +36,44 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-PILOT RUN #1 of the BRR Phase 4 Multi-Cycle Pilot (docs/BRR_PLAN.md Phase 4 item 1; owner-approved scope, this session). Deliver IDEA-008 (backlog/IDEAS.md, rank 4, 'NEXT UP'): extend the append-only event log with two new factual event types -- 'stop_condition_fired' (logged by scripts/check-stop-conditions.ps1 when it reports STOP) and 'gate_blocked' (logged by scripts/check-autonomous-gate.ps1 when it reports GATE: BLOCKED) -- so automatic stop-trigger and gate-block occurrences become measurable history instead of console-only output. Retry-event logging (the other half of IDEA-008's wording) is explicitly deferred as a separate future task; the task-state.json 'attempts' field is not currently incremented by any script, and wiring that up is a larger, separate change.
+PILOT RUN #2, CYCLE 1 of 2 (docs/BRR_PLAN.md Phase 4 item 1; scope finalized in DECISION-056). Deliver IDEA-008's remaining 'retry' half: increment task-state.json's currently-unused 'attempts' field on every worker handback, and log a factual 'retry_attempted' event via scripts/log-event.ps1 specifically when a handback follows a prior non-PASS verdict on the same task_id (not on a task's first-ever handback). No new script; the change lives in scripts/finalize-worker-handback.ps1 (attempts/logging) and scripts/log-event.ps1 (new event type).
 
 ## Allowed Scope
 
 The worker may:
 
-* Edit scripts/log-event.ps1 to add the two new event types to its ValidateSet only.
-* Edit scripts/check-stop-conditions.ps1 to add a logging call on STOP.
-* Edit scripts/check-autonomous-gate.ps1 to add a logging call on GATE: BLOCKED.
+* Edit scripts/finalize-worker-handback.ps1 to add attempts-incrementing and conditional retry_attempted logging.
+* Edit scripts/log-event.ps1 to add the one new event type to its ValidateSet only.
 * Edit docs/DECISIONS.md to record the new decision.
-* Edit backlog/IDEAS.md to update IDEA-008's status.
+* Edit backlog/IDEAS.md to update IDEA-008's note.
 * Create and use a temporary, isolated scratch copy of relevant repo files (outside the live .cockpit/ state) to functionally test the change without touching real task/project state; delete the scratch copy when done.
 
 ## Forbidden Scope
 
 The worker must not:
 
-* Do not touch the task-state.json 'attempts' field or add any retry-logging logic -- explicitly deferred, separate future work.
-* Do not change what makes check-stop-conditions.ps1 report STOP vs CLEAR, or what makes check-autonomous-gate.ps1 report PROCEED vs BLOCKED -- only add logging around the existing, unchanged decision logic.
-* Do not make check-stop-conditions.ps1 gate anything (it must remain advisory, always exit 0) or make check-autonomous-gate.ps1 non-fail-closed.
+* Do not change finalize-worker-handback.ps1's existing refusal conditions, its four-step order, or any of its other existing behavior beyond the attempts/logging addition.
+* Do not modify any other script (advance-cockpit-state.ps1, close-out-verified-task.ps1, check-stop-conditions.ps1, check-autonomous-gate.ps1, doctor.ps1, return-inadequate-work.ps1).
 * Do not modify any schema.
-* Do not self-close this task via scripts/close-out-verified-task.ps1 -- this is a Class B pilot task targeting review-before-acceptance; hand the self-verified result to the owner/GPT instead.
+* Do not self-close this task via scripts/close-out-verified-task.ps1 -- per DECISION-056, hold the self-verified result for owner/GPT review regardless of class.
 * Do not touch the self-verification fallback (DECISION-033/036), the Acceptance Boundary Rules, or any Task Safety Class's core meaning.
 * Do not run any test of this change against the live .cockpit/state/task-state.json, .cockpit/state/project-state.json, or .cockpit/result/verification-result.json -- all functional testing happens in an isolated scratch copy only.
-* Do not start a second pilot cycle after this one -- pilot run #1 is exactly one cycle; chaining to a run #2 requires a separate review of this run's results first.
+* Do not draft or start cycle 2 (pcc-brr4-003) unless this cycle resolves cleanly per DECISION-056's chaining rule (a clean self-verified PASS candidate, no stop-trigger fired, no forbidden-scope issue).
 
 ## Completion Criteria
 
 The task is complete only if:
 
-* PILOT NOTE (classified before execution, per owner instruction): Task Safety Class B (touches scripts/, a truth surface; judgment-heavy in deciding what is a 'factual, not narrative' event and where to log it) means self-close is NOT eligible under the existing Acceptance Boundary Rules (docs/BRR_POLICY.md, DECISION-041). This pilot deliberately targets review-before-acceptance: the cycle is self-verified as usual, but scripts/close-out-verified-task.ps1 is NOT run to finalize/commit it -- the completed, self-verified cycle is instead handed to the owner/GPT for actual review before being closed out. This is stricter than this session's usual DECISION-033 fallback pattern (self-verify-and-close-with-disclosure), chosen specifically because testing genuine review-before-acceptance is this pilot's whole point.
-* PILOT FAILURE CRITERION (per owner instruction): the pilot is counted as FAILED if the task completes mechanically but later review (by the owner or GPT) shows the task should have stopped, should have been differently classified, or should not have self-closed -- regardless of the task's own PASS/FAIL/INSUFFICIENT/BLOCKED/OUT_OF_SCOPE verdict. This is a judgment-quality check layered on top of, and separate from, that verdict.
-* scripts/log-event.ps1's ValidateSet gains exactly two new event types: stop_condition_fired and gate_blocked. No existing event type or behavior is changed.
-* scripts/check-stop-conditions.ps1 logs a stop_condition_fired event via log-event.ps1 when and only when it reports STOP, with a factual (not narrative) detail string drawn from the actual detected reasons. It remains otherwise unchanged: still always exits 0, still never gates anything.
-* scripts/check-autonomous-gate.ps1 logs a gate_blocked event via log-event.ps1 when and only when it reports GATE: BLOCKED, with a factual detail string. It remains otherwise unchanged: still exits 0 on PROCEED, non-zero on BLOCKED.
-* Neither script's new logging call can cause a false CLEAR/PROCEED result or silently swallow a real STOP/BLOCKED result; if logging itself fails, that failure surfaces visibly rather than being hidden, and this choice is documented in the worker result.
-* Functionally tested (not read-through only) in an isolated scratch copy: both new event types are confirmed to actually append to routing-log.jsonl when the respective condition is real, and confirmed that NO new event is logged on a CLEAR/PROCEED result.
+* PRE-RUN RECORD (per DECISION-056, recorded before execution): Class B (touches scripts/; judgment-heavy in defining what mechanically counts as a 'retry'). Self-close NOT attempted this pilot run regardless of class -- held for owner/GPT review-before-acceptance, per DECISION-056 revision 1. In-lane basis: IDEA-008 (backlog/IDEAS.md, rank 4), completing the half explicitly deferred from pcc-brr4-001.
+* scripts/finalize-worker-handback.ps1 increments task-state.json's 'attempts' field by 1 on every successful handback (first handback -> 1, next -> 2, etc.).
+* scripts/finalize-worker-handback.ps1 logs a 'retry_attempted' event via log-event.ps1 if and only if, at the time of handback, 'attempts' was already greater than 0 AND 'verification_verdict' was already non-null and not 'PASS' (i.e., this handback follows a prior non-PASS verdict on this exact task_id) -- not on a task's first-ever handback.
+* scripts/log-event.ps1's ValidateSet gains exactly one new event type: retry_attempted. No existing event type or behavior changed.
+* A logging failure in the new retry_attempted call surfaces visibly (a printed [LOGGING WARNING]) but never aborts or changes the outcome of the handback itself -- same safe-logging pattern as pcc-brr4-001.
+* No change to finalize-worker-handback.ps1's existing four-step order, its refusal conditions (task_status must be ready_for_worker or in_progress), or any of its other existing behavior.
+* Functionally tested (not read-through only) in an isolated scratch copy: a first handback increments attempts to 1 and logs nothing; a simulated second handback (attempts already 1, verification_verdict already set to a non-PASS value) increments attempts to 2 and logs retry_attempted; a simulated handback where the prior verdict was PASS (should not happen in practice, since a PASS-verdict task would be complete, but tested anyway as a boundary case) does not log retry_attempted.
 * A new decision is recorded in docs/DECISIONS.md.
-* backlog/IDEAS.md's IDEA-008 entry status is updated to 'promoted-to-task', consistent with existing entries for delivered ideas.
-* No change to any of the five verdicts, any Task Safety Class's meaning, the Acceptance Boundary Rules, the self-verification fallback, or the advisory/fail-closed nature of either script being touched.
+* backlog/IDEAS.md's IDEA-008 note is updated to reflect that both the quality-gate half and the retry half are now delivered.
+* No change to any of the five verdicts, any Task Safety Class's meaning, the Acceptance Boundary Rules, the self-verification fallback, or any other existing script's behavior.
 
 ## Required Evidence
 
@@ -88,7 +86,7 @@ Return the following evidence:
 * Known risks.
 * Unresolved assumptions.
 * Confirmation that forbidden scope was not touched.
-* Pilot-specific: whether any owner interruption was needed during execution, whether the claimed result matches the verified result, whether any stop-trigger fired, and an explicit self-assessment against the pilot failure criterion above.
+* Pilot-specific: whether any owner interruption was needed, whether the claimed result matches the verified result, whether any stop-trigger fired, and an explicit statement of whether this cycle resolved cleanly enough to chain into cycle 2 per DECISION-056.
 
 ## Expected Return Format
 
