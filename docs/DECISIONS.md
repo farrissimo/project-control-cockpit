@@ -1098,3 +1098,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-020, DECISION-036, DECISION-038, DECISION-039, DECISION-041, DECISION-045, docs/BRR_PLAN.md, docs/BRR_POLICY.md
+
+---
+
+## DECISION-047: Self-Verification Restrictions Recorded (pcc-brr3-002); First Self-Promoted Task Since Phase 2
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+BRR Phase 3's second deliverable (`docs/BRR_PLAN.md` Phase 3 item 2, "Self-Verification Restrictions") is recorded canonically in `docs/BRR_POLICY.md`, bounding the existing `DECISION-033`/`DECISION-036` self-verification fallback with: which task classes may be self-verified, a named circularity restriction (a task modifying the self-verification fallback, the autonomous gate, the Acceptance Boundary Rules, or a Task Safety Class's core definition must not be self-closed even under the fallback), and the extra evidence a self-verified Class B result must record.
+
+Reason:
+
+`docs/BRR_PLAN.md` Phase 3's own text calls the current self-verification exception "temporary" and requires it to "be bounded carefully" — this task does that. This task was drafted and executed as PCC's own self-promotion (not a fresh owner instruction naming the task) after ChatGPT, serving as today's advisor/secondary reviewer per the owner's session setup, suggested treating `pcc-brr3-002` as in-lane continuation. That suggestion was **not** taken as authority to skip the check: PCC independently walked the full 8-part Safe Next-Task Drafting Rules gate (`DECISION-039`) against `pcc-brr3-002` before promoting it, per `DECISION-036`'s own limit on GPT's role (secondary review input, additive, not independent authority). All 8 conditions held on independent review, most notably that bounding an existing exception more tightly is a restriction, not an authority expansion — the opposite of the disguised-fork pattern the blind pilot (`DECISION-044`) caught in its candidate #2 (default-on unattended auto-run). `task-state.json`'s `promotion_basis` records this reasoning, not GPT's recommendation, as the basis.
+
+Implications:
+
+`docs/BRR_POLICY.md` gains a "Self-Verification Restrictions" section: Class A self-verification is unchanged (already a standing rule under Acceptance Boundary Rules); Class B self-verification remains possible only while `DECISION-033`'s fallback is actually active and only with the standard `DECISION-036` disclosure; Class C/D never reach the question. A new circularity restriction is added: any *future* task whose subject matter is the self-verification fallback itself, `scripts/check-autonomous-gate.ps1`/`scripts/check-stop-conditions.ps1`'s behavior, the Acceptance Boundary Rules, or a Task Safety Class's core definition must not be closed out by self-verification alone — such a task routes to Codex, an explicit owner review, or is reported `BLOCKED` (Stop-Instead-of-Guess trigger 6) if neither is available, because a self-verifying party cannot reliably certify a change to the rules that govern its own self-verification. This restriction is explicitly prospective and does not reopen or re-decide any already-built, already-verified Phase 2 autonomy decision (`DECISION-038` through `DECISION-042`, `DECISION-045`); the section states plainly that ordinary BRR policy work adding an adjacent, non-redefining section (as this task and `pcc-brr3-001` both did) is the existing Class B `strict`-depth case, not this narrower circularity case — and names the resulting bootstrap honestly: both Phase 3 tasks so far were themselves self-verified before this restriction existed, the same bootstrap every earlier BRR policy foundation task went through. The section also lists four extra evidence items a self-verified Class B result must record (which depth applied and why; that a `strict` cross-check was actually performed, not asserted; an explicit statement the task is not the circularity case, or that it was routed away from self-close if it is; whether GPT review occurred) — recorded in the existing `risks`/`summary` fields, introducing no new verdict or schema field. `DECISION-033`/`DECISION-036`'s own authorization text is unchanged. `pcc-brr3-001`'s commit was pushed to remote this cycle on a fresh, explicit owner instruction (not a revival of `DECISION-036`'s lapsed blanket authorization); this task's own commit follows the same standing `DECISION-020` default (local commit; remote push requires separate explicit approval each time).
+
+Supersedes: None
+Related: DECISION-006, DECISION-008, DECISION-016, DECISION-033, DECISION-036, DECISION-038, DECISION-039, DECISION-041, DECISION-042, DECISION-044, DECISION-045, DECISION-046, docs/BRR_PLAN.md, docs/BRR_POLICY.md

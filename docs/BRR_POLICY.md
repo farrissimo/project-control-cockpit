@@ -599,3 +599,131 @@ mapping table), so self-acceptance under this policy is always at `light` or
   condition is redefined or weakened by this section. Cross-checked against
   Task Safety Classification, the Acceptance Boundary Rules, and the
   Stop-Instead-of-Guess Policy while drafting — no contradiction was found.
+
+---
+
+## Self-Verification Restrictions
+
+This is BRR Phase 3's second deliverable (`docs/BRR_PLAN.md` Phase 3 item 2,
+`pcc-brr3-002`). `DECISION-033`/`DECISION-036` created a temporary, standing
+exception letting Claude Code perform both worker and verifier roles when
+Codex is unavailable. That exception itself is **not** reopened, narrowed,
+expanded, or redefined here — this section answers the narrower question
+Phase 3 poses given that the exception exists: what limits apply on top of
+it, so "we self-verify when Codex is out" does not quietly become "we
+self-verify anything, at any depth, forever."
+
+### Which task classes may be self-verified
+
+* **Class A** — may be self-verified as a standing rule, not a fallback
+  artifact. This is already true under the Acceptance Boundary Rules (a
+  Class A result is self-acceptable when the stop-check is CLEAR); this
+  section does not add a new restriction here.
+* **Class B** — may be self-verified **only** while the `DECISION-033`
+  fallback is actively in effect (Codex unavailable), and only with the
+  standard `DECISION-036` disclosure wording present in the verification
+  result. Self-verification of a Class B task is never a standing right —
+  outside the fallback, `DECISION-006`/`DECISION-016`'s normal rule applies
+  and a Class B result requires Codex or an explicit owner override, exactly
+  as before this section existed.
+* **Class C / Class D** — never reach a self-verification question, because
+  neither executes unattended (Task Safety Classification).
+
+### Which task types require a second reviewer or stronger checks, beyond depth alone
+
+The Verification Depth Policy (above, `pcc-brr3-001`) already requires
+`strict` depth for any Class B, truth-surface-affecting task. That raises
+rigor, but rigor alone does not fix every case: a self-verifying party
+reading its own change more carefully is still the same party. One category
+is restricted further, past what depth alone can fix:
+
+**A task whose subject matter is the self-verification fallback itself, the
+autonomous gate, the Acceptance Boundary Rules, or the Owner Review
+Matrix/Task Safety Classification's core definitions must not be closed out
+by self-verification alone, even under the active `DECISION-033` fallback and
+even at `strict` depth.** This means: any task that would modify
+`DECISION-033`/`DECISION-036`'s own text or authorization scope, alter
+`scripts/check-autonomous-gate.ps1` or `scripts/check-stop-conditions.ps1`'s
+behavior, redefine a Task Safety Class's meaning, or change what a class may
+self-accept. For such a task, self-verification is not a depth problem to
+solve with more rigor — it is a **circularity problem**: the same party whose
+judgment could be wrong about the change is the only one checking it, on the
+exact subject where being wrong matters most. The correct response is not
+"apply `strict` depth and proceed" but to route the task to an actual second
+party: Codex, once available, or an explicit owner review. If neither is
+available, the task is reported `BLOCKED` (Stop-Instead-of-Guess trigger 6,
+"no trusted way to verify a risky task exists yet") rather than self-verified
+and closed.
+
+This restriction is prospective and narrow. It governs *future* tasks that
+would touch those specific mechanisms — it does not reopen or re-decide any
+already-built and already-verified Phase 2 autonomy decision
+(`DECISION-038` through `DECISION-042`, `DECISION-045`); those stand as
+recorded. Ordinary BRR policy work that *adds* an adjacent, non-redefining
+section (as `pcc-brr1-001` through `pcc-brr1-004`, `pcc-brr2-008` through
+`pcc-brr2-010`, and this document's own two Phase 3 sections so far all did)
+is not, by itself, "modifying the self-verification fallback, the autonomous
+gate, the Acceptance Boundary Rules, or Task Safety Classification's core
+definitions" — it is Class B, truth-surface-affecting work under the
+Verification Depth Policy's existing `strict` row, not this narrower
+circularity case.
+
+### A named bootstrap, not a hidden exception
+
+Both `pcc-brr3-001` and this task, `pcc-brr3-002`, were themselves
+self-verified under the `DECISION-033` fallback, before this restriction
+existed to constrain them. Neither modifies `DECISION-033`/`DECISION-036`'s
+text, the autonomous gate scripts, or an existing class's definition — both
+add new, adjacent policy sections, which is exactly the ordinary Class B
+`strict`-depth case above, not the circularity case. This is the same
+bootstrap every earlier BRR policy foundation task went through (the Task
+Safety Classification itself was drafted and accepted before it existed to
+classify its own drafting task) — named here explicitly rather than glossed
+over, consistent with `DECISION-008`'s standing rejection of overstating what
+has actually been checked.
+
+### What extra evidence is required when self-verification is allowed
+
+Beyond the standard `DECISION-036` disclosure wording (already required in
+every self-verified `verification-result.json`), a self-verified Class B
+result must also record, in `risks` or `summary`:
+
+1. Confirmation of which Verification Depth Policy row applied (`normal` or
+   `strict`) and why.
+2. For `strict`-depth results specifically: that the required line-by-line
+   cross-check against other canonical docs/schemas was actually performed,
+   not merely asserted (per the Verification Depth Policy's own `strict`
+   definition).
+3. An explicit statement that the task does **not** fall into this section's
+   circularity restriction (i.e., it does not modify the self-verification
+   fallback, the autonomous gate, the Acceptance Boundary Rules, or a Task
+   Safety Class's core definition) — or, if it does, that it was **not**
+   self-closed and was instead routed to `BLOCKED` or an explicit owner
+   review.
+4. Whether GPT secondary review was performed this cycle or explicitly
+   marked not performed, per the existing `DECISION-036` wording.
+
+No new verdict or `verification-result.json` field is introduced; all four
+items are recorded in the existing `risks`/`summary` fields, the same
+mechanism `DECISION-036`'s disclosure wording already uses.
+
+### Notes on scope
+
+* This section restricts self-verification further; it does not touch
+  `DECISION-033`/`DECISION-036`'s actual authorization text, does not revisit
+  whether the fallback should exist, and does not reopen any Phase 2
+  autonomy decision.
+* This section does not implement automatic detection of the circularity
+  case (e.g., a script that flags "this diff touches
+  `check-autonomous-gate.ps1`") — applying it is a verifier judgment call for
+  now, the same non-enforcement posture every other BRR policy section takes
+  before being fielded.
+* This section does not define Out-of-Scope Detection Hardening (Phase 3 item
+  3) or the Inadequate-Work Return Path (item 4) — those remain separate,
+  not-yet-drafted Phase 3 tasks.
+* No existing verdict, task safety class, Owner Review Matrix row, or stop
+  condition is redefined or weakened. Cross-checked against Task Safety
+  Classification, the Acceptance Boundary Rules, the Verification Depth
+  Policy, and `DECISION-033`/`DECISION-036` while drafting — no contradiction
+  was found; `DECISION-033`/`DECISION-036`'s own authorization text is
+  unchanged.

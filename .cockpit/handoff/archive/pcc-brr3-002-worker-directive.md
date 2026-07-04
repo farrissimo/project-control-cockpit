@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-brr3-002
 * Task Title: BRR Policy: Self-Verification Limits
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Auto-Promotion Basis
