@@ -1,48 +1,48 @@
 {
-    "task_id":  "pcc-v1-012",
-    "task_title":  "Add safe-stop clean-rollover command",
-    "task_objective":  "Create a local deterministic safe-stop command that confirms the repo is in a resumable state before ending a session: check state consistency and restart safety using existing checks, confirm canonical next_action is present and current, and print a short human-readable summary of what to read first and what to do next. It must not advance task status, write a verification verdict, or gate anything - it is a convenience wrap-up step, not enforcement.",
-    "task_status":  "complete",
-    "assigned_worker":  "Claude Code",
-    "completion_criteria":  [
-                                "A local deterministic safe-stop command exists that composes existing checks (state consistency and restart safety) into one readable \u0027safe to stop\u0027 summary.",
-                                "The command surfaces the current canonical next_action from task-state.json/project-state.json without inventing new status or rewriting it.",
-                                "The command does not advance task status, write verification verdicts, or gate/block anything; it is read-only aside from any explicitly-scoped derived refresh it performs.",
-                                "The summary clearly tells a human what to read first and what the next action is, so a fresh session can resume cold.",
-                                "The change stays within the approved V1 scope and preserves local deterministic behavior.",
-                                "Claude returns evidence in .cockpit/result/worker-result.md using the required format."
-                            ],
-    "boundaries":  {
-                       "allowed":  [
-                                       "Update scripts/ to add the safe-stop command.",
-                                       "Update .cockpit runtime files only as needed for the command or its demonstration.",
-                                       "Update docs directly related to safe-stop, rollover, restart safety, or canonical state.",
-                                       "Add or update a small demonstration step if needed."
-                                   ],
-                       "forbidden":  [
-                                         "Do not build UI or broader application code yet.",
-                                         "Do not add paid API dependencies.",
-                                         "Do not introduce broad orchestration or automation.",
-                                         "Do not change canonical project goals or verification verdicts.",
-                                         "Do not require the owner to manually restate or carry the worker instructions.",
-                                         "Do not advance task_status or write a verification verdict from this command; that remains the verifier\u0027s exclusive action per DECISION-006."
-                                     ]
-                   },
-    "required_evidence":  [
-                              "Files created or changed.",
-                              "Summary of changes.",
-                              "Commands run, if any.",
-                              "Command/test results, if any.",
-                              "Known risks.",
-                              "Unresolved assumptions.",
-                              "Confirmation that forbidden scope was not touched."
-                          ],
-    "attempts":  0,
-    "current_directive_path":  ".cockpit/handoff/worker-directive.md",
-    "worker_result_path":  ".cockpit/result/worker-result.md",
-    "verification_result_path":  ".cockpit/result/verification-result.json",
-    "verification_verdict":  "PASS",
-    "current_blocker":  null,
-    "next_action":  "Advance task-state.json to complete via scripts/advance-cockpit-state.ps1, run doctor.ps1 to confirm repo health, refresh the advisor brief if stale, archive this cycle\u0027s artifacts, and commit the verified work locally (push requires separate explicit owner approval per DECISION-020).",
-    "updated_at":  "2026-07-03T19:43:57-06:00"
+    "task_id": "pcc-v1-012",
+    "task_title": "Add safe-stop clean-rollover command",
+    "task_objective": "Create a local deterministic safe-stop command that confirms the repo is in a resumable state before ending a session: check state consistency and restart safety using existing checks, confirm canonical next_action is present and current, and print a short human-readable summary of what to read first and what to do next. It must not advance task status, write a verification verdict, or gate anything - it is a convenience wrap-up step, not enforcement.",
+    "task_status": "complete",
+    "assigned_worker": "Claude Code",
+    "completion_criteria": [
+        "A local deterministic safe-stop command exists that composes existing checks (state consistency and restart safety) into one readable 'safe to stop' summary.",
+        "The command surfaces the current canonical next_action from task-state.json/project-state.json without inventing new status or rewriting it.",
+        "The command does not advance task status, write verification verdicts, or gate/block anything; it is read-only aside from any explicitly-scoped derived refresh it performs.",
+        "The summary clearly tells a human what to read first and what the next action is, so a fresh session can resume cold.",
+        "The change stays within the approved V1 scope and preserves local deterministic behavior.",
+        "Claude returns evidence in .cockpit/result/worker-result.md using the required format."
+    ],
+    "boundaries": {
+        "allowed": [
+            "Update scripts/ to add the safe-stop command.",
+            "Update .cockpit runtime files only as needed for the command or its demonstration.",
+            "Update docs directly related to safe-stop, rollover, restart safety, or canonical state.",
+            "Add or update a small demonstration step if needed."
+        ],
+        "forbidden": [
+            "Do not build UI or broader application code yet.",
+            "Do not add paid API dependencies.",
+            "Do not introduce broad orchestration or automation.",
+            "Do not change canonical project goals or verification verdicts.",
+            "Do not require the owner to manually restate or carry the worker instructions.",
+            "Do not advance task_status or write a verification verdict from this command; that remains the verifier's exclusive action per DECISION-006."
+        ]
+    },
+    "required_evidence": [
+        "Files created or changed.",
+        "Summary of changes.",
+        "Commands run, if any.",
+        "Command/test results, if any.",
+        "Known risks.",
+        "Unresolved assumptions.",
+        "Confirmation that forbidden scope was not touched."
+    ],
+    "attempts": 0,
+    "current_directive_path": ".cockpit/handoff/worker-directive.md",
+    "worker_result_path": ".cockpit/result/worker-result.md",
+    "verification_result_path": ".cockpit/result/verification-result.json",
+    "verification_verdict": "PASS",
+    "current_blocker": null,
+    "next_action": "pcc-v1-012 close-out is fully complete (state advanced, doctor/health check clean, advisor brief refreshed, cycle archived, work committed locally as 414205b and pushed). Repo is paused at a natural break. Next action: owner selects which backlog idea to promote next, then draft that task into task-state.json.",
+    "updated_at": "2026-07-03T20:00:00-06:00"
 }

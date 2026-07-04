@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-03T19:44:16-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-03T19:55:10-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -19,7 +19,7 @@ Current phase: implementation
 
 * Verdict: PASS for task 'pcc-v1-012', verified at 2026-07-03T19:45:00-06:00
 * Summary: Independently re-ran safe-stop.ps1 against the live repo and against a fresh scratch copy with a different field blanked than the worker tested (project-state.json's next_expected_action rather than task-state.json's next_action), confirming the same cascading ISSUE behavior and, critically, confirming via before/after checksums that the script wrote nothing to any of the four key files - the read-only guarantee holds. Found and fixed a garbled sentence in the worker's docs/HANDOFF_PACKET_SPEC.md addition before accepting the result. All completion criteria met; no out-of-scope changes found.
-* Last verified handoff: .cockpit/handoff/worker-directive.md
+* Last verified handoff: .cockpit/handoff/archive/pcc-v1-012-worker-directive.md
 
 ## Open Issues
 
@@ -40,5 +40,5 @@ Current phase: implementation
 
 ## What Happens Next
 
-* Task-level: Advance task-state.json to complete via scripts/advance-cockpit-state.ps1, run doctor.ps1 to confirm repo health, refresh the advisor brief if stale, archive this cycle's artifacts, and commit the verified work locally (push requires separate explicit owner approval per DECISION-020).
-* Project-level: Advance task-state.json to complete via scripts/advance-cockpit-state.ps1, run doctor.ps1 to confirm repo health, refresh the advisor brief if stale, archive this cycle's artifacts, and commit the verified work locally (push requires separate explicit owner approval per DECISION-020).
+* Task-level: pcc-v1-012 close-out is fully complete (state advanced, doctor/health check clean, advisor brief refreshed, cycle archived, work committed locally as 414205b and pushed). Repo is paused at a natural break. Next action: owner selects which backlog idea to promote next, then draft that task into task-state.json.
+* Project-level: pcc-v1-012 close-out is fully complete (state advanced, doctor/health check clean, advisor brief refreshed, cycle archived, work committed locally as 414205b and pushed). Repo is paused at a natural break. Next action: owner selects which backlog idea to promote next, then draft that task into task-state.json.

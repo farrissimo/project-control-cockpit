@@ -71,10 +71,10 @@ Already delivered / fulfilled: IDEA-004 (delivered by pcc-v1-007..009); IDEA-002
   Notes: Rank 2. Promoted to active task pcc-v1-011 on 2026-07-03. Big babysitting win (replaces "which of 4 scripts do I run?" with one answer), low bloat (composes existing scripts). CRITICAL: must be read-only/advisory and never a mandatory blocking precondition — the existing enforce-handoff gate stays the separate blocking step. Natural home for IDEA-003 as an advisory line. CCB #11.
 
 - IDEA-007: `safe-stop` / clean-rollover command
-  Status: proposed
+  Status: promoted-to-task
   Summary: One command that ends a session in a guaranteed-resumable state so the next fresh session avoids "where were we?" overhead.
   Details: backlog/details/idea-007-safe-stop.md
-  Notes: Rank 3. Reduces babysitting, low bloat, non-blocking (runs after work, not as a gate). Also closes a named-but-unbuilt V1 component (original scope 7.14, V1_Scope.md 9, DECISION-010). Must respect state-write discipline (does not advance status).
+  Notes: Rank 3. Promoted to active task pcc-v1-012 on 2026-07-03. Reduces babysitting, low bloat, non-blocking (runs after work, not as a gate). Also closes a named-but-unbuilt V1 component (original scope 7.14, V1_Scope.md 9, DECISION-010). Must respect state-write discipline (does not advance status).
 
 - IDEA-008: Append-only failure / event log
   Status: proposed
@@ -93,3 +93,9 @@ Already delivered / fulfilled: IDEA-004 (delivered by pcc-v1-007..009); IDEA-002
   Summary: Concepts reviewed on 2026-07-03 that fail the V1 filter (bloat / governance / no current fit); kept only so the rationale is not lost.
   Details: none
   Notes: (a) Explicit workflow state machine with many named states (CCB #4) — CCB itself flags as heavy; PCC's status-transition sketch suffices until multiple agents/gates exist. (b) Provider identity / fallback authority tracking (CCB #9) — CCB says less necessary for lightweight tools; PCC has fixed roles (Claude worker, Codex advisor). (c) UI freshness indicators / stale-state warnings (CCB #10) — V1 explicitly has no UI; handoff-gate.json already covers staleness in non-UI form. "Rejected" means rejected for V1, not permanently; reopen if the product grows a UI or multi-agent execution.
+
+- IDEA-011: Fix close-out truth-surface staleness in advance-cockpit-state.ps1
+  Status: proposed
+  Summary: advance-cockpit-state.ps1 copies verification.next_action verbatim and points last_verified_handoff at the live (not archived) directive path, so both go stale the moment close-out (doctor/refresh/archive) actually runs, until someone manually corrects them.
+  Details: none
+  Notes: Confirmed real (not intentional) during pcc-v1-012 close-out review, flagged by a secondary/independent verifier pass. Root cause: verification-result.json's next_action describes the verifier's close-out plan at verification time; nothing rewrites task-state.json/project-state.json after those steps actually complete. Separately, last_verified_handoff is set to task-state.json's current_directive_path (the generic, soon-to-be-overwritten .cockpit/handoff/worker-directive.md) rather than the archived immutable copy created during close-out. Manually corrected both fields for pcc-v1-012; this will recur every cycle until fixed. Candidate fix: add a final close-out step (script or manual checklist item) that runs after archiving and rewrites next_action to the true paused/next-step state plus points last_verified_handoff at the just-created archive path. Should stay advisory/manual-trigger, consistent with DECISION-020, not new automation.
