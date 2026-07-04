@@ -2,7 +2,7 @@
   "project_id": "project-control-cockpit",
   "project_name": "Project Control Cockpit",
   "project_goal": "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
-  "current_phase": "brr-phase-3",
+  "current_phase": "brr-phase-4",
   "current_task_id": "pcc-brr3-005",
   "active_repo_path": "C:\\ProjectControlCockpit",
   "active_branch": "main",
@@ -143,6 +143,6 @@
   "current_blocker": null,
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-brr3-005-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Task 'pcc-brr3-005' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T10:09:11-06:00"
+  "next_expected_action": "BRR Phase 4 (Controlled Semi-Autonomous Operation) has begun (DECISION-053). This decision only flips the phase marker and follows the same shape as prior phase transitions (DECISION-021/028/045) -- it does not by itself start Phase 4's first deliverable, the Multi-Cycle BRR Pilot (docs/BRR_PLAN.md), which docs/BRR_PLAN.md itself flags as the first real test of reduced-oversight operation and cautions against broadening autonomy going in. Owner explicit go-ahead is needed before that pilot's scope and safeguards are drafted and it is actually run.",
+  "updated_at": "2026-07-04T10:15:00-06:00"
 }

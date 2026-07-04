@@ -1230,3 +1230,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-005, DECISION-006, DECISION-020, DECISION-034, DECISION-049, DECISION-051, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, scripts/return-inadequate-work.ps1
+
+---
+
+## DECISION-053: BRR Phase 4 Begins (Phase Marker Only); Multi-Cycle Pilot Requires Its Own Owner Go-Ahead
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`project-state.json`'s `current_phase` advances from `brr-phase-3` to `brr-phase-4` (Controlled Semi-Autonomous Operation, `docs/BRR_PLAN.md`). This decision performs the phase-marker transition only, in the same shape as every prior BRR phase transition (`DECISION-021`, `DECISION-028`, `DECISION-045`). It does **not** by itself start Phase 4's first deliverable, the Multi-Cycle BRR Pilot — `docs/BRR_PLAN.md` itself names that pilot as "the first real proof that BRR works in practice rather than on paper" and cautions explicitly against broadening autonomy going in. Scoping and running that pilot requires a separate, explicit owner go-ahead, not an inference from "move to Phase 4" alone.
+
+Reason:
+
+The owner approved moving to Phase 4 as one of two pre-approved next steps this session ("if both are eventually needed and there's no reason to delay then both are approved"), alongside fielding the non-`PASS` close-out script (`pcc-brr3-005`/`DECISION-052`, done first). But a phase-marker transition and Phase 4's substantive first deliverable are different in kind: every deliverable in Phases 1–3 was either policy prose or a small, low-risk convenience script; the Multi-Cycle BRR Pilot is the first time PCC would actually run several bounded cycles in sequence with reduced owner touch — the literal thing the whole BRR program exists to eventually prove safe. Treating "the owner said move to Phase 4" as also authorizing that specific pilot's scope and execution would be exactly the kind of unlabeled authority expansion the blind pilot (`DECISION-044`) was built to catch, applied to itself. The honest, disciplined move is to flip the marker (which the owner did approve) and stop before the pilot (which was not specifically scoped or approved).
+
+Implications:
+
+`schemas/project-state.schema.json`'s `current_phase` enum gains `"brr-phase-4"`. `project-state.json`'s `current_phase` is `brr-phase-4`; `current_task_id` remains `pcc-brr3-005` (the last completed task) since no Phase 4 task has been drafted yet. `next_expected_action` states plainly that the Multi-Cycle BRR Pilot has not been scoped or started, and names what it would need first: its own explicit owner scoping (which candidate cycles to run, what "reduced oversight" concretely means for this first attempt, what would count as a stop-worthy finding) before any drafting or execution begins. This decision changes no verdict, task safety class, autonomous gate, Acceptance Boundary Rule, or DECISION-033/036 fallback text. Self-verified under the `DECISION-033` fallback, same disclosure as every other cycle this session: repo health checks (`validate-cockpit-state.ps1`, `check-schemas.ps1`, `doctor.ps1`) were re-run after this edit, no independent second-party review occurred, and this decision is included in today's GPT sync for secondary review.
+
+Supersedes: None
+Related: DECISION-008, DECISION-021, DECISION-028, DECISION-038, DECISION-044, DECISION-045, DECISION-050, DECISION-052, docs/BRR_PLAN.md, schemas/project-state.schema.json, .cockpit/state/project-state.json

@@ -1,12 +1,12 @@
 # Advisor Restart Brief
 
-Generated 2026-07-04T10:09:15-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T10:12:29-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
 Project Control Cockpit: Build a lean, local-first AI project control cockpit that reduces owner babysitting.
 
-Current phase: brr-phase-3
+Current phase: brr-phase-4
 
 ## Active Task
 
@@ -44,4 +44,4 @@ Current phase: brr-phase-3
 ## What Happens Next
 
 * Task-level: Task 'pcc-brr3-005' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-brr3-005' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Project-level: BRR Phase 4 (Controlled Semi-Autonomous Operation) has begun (DECISION-053). This decision only flips the phase marker and follows the same shape as prior phase transitions (DECISION-021/028/045) -- it does not by itself start Phase 4's first deliverable, the Multi-Cycle BRR Pilot (docs/BRR_PLAN.md), which docs/BRR_PLAN.md itself flags as the first real test of reduced-oversight operation and cautions against broadening autonomy going in. Owner explicit go-ahead is needed before that pilot's scope and safeguards are drafted and it is actually run.
