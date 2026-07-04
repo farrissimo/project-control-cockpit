@@ -123,6 +123,7 @@ Key docs:
 * `docs/DECISIONS.md`
 * `docs/ARCHITECTURE.md`
 * `docs/REPO_GOVERNANCE.md`
+* `docs/BRR_PLAN.md` (current phase: Babysitter-Reduced Role program plan)
 
 Working intake:
 
@@ -142,7 +143,7 @@ state → directive → worker → evidence → verification → state update or
 
 Every V1 Done Criterion (`docs/V1_Scope.md`) was demonstrated repeatedly, all five verification verdicts were exercised for real, and the ready backlog items (`IDEA-005` through `IDEA-011`, `IDEA-003`) are delivered. `IDEA-001` and `IDEA-009` remain deliberately deferred per their own recorded reasoning.
 
-The project has now moved into **BRR Phase 1** ("Babysitter Reduction Role" - `current_phase: brr-phase-1`), with reducing owner babysitting (`DECISION-001`) as the explicit top priority. BRR Phase 1's concrete task list is not yet defined - only its name and priority are established so far.
+The project has now moved into **BRR Phase 1** ("Babysitter-Reduced Role" - `current_phase: brr-phase-1`), with reducing owner babysitting (`DECISION-001`) as the explicit top priority. The full BRR program plan is recorded canonically in `docs/BRR_PLAN.md`. Phase 1 (BRR Policy Foundation) is structured into four bounded `pcc-brr1-0XX` policy tasks per `DECISION-022`: Owner Review Matrix, Task Safety Classification, Stop-Instead-of-Guess Policy, and BRR Operating Definitions - in that dependency order.
 
 ## Plain-Language Task Names
 

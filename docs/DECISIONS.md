@@ -525,3 +525,36 @@ Task IDs for tasks drafted after V1's close use the format `pcc-brr1-0XX` (e.g. 
 
 Supersedes: None
 Related: DECISION-001, docs/V1_Scope.md, docs/PROJECT_CHARTER.md, docs/REPO_GOVERNANCE.md, .cockpit/state/project-state.json, schemas/project-state.schema.json
+
+---
+
+## DECISION-022: BRR Plan Of Record And Phase 1 Structure
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+The owner provided the full BRR program plan and delegated the structuring of Phase 1 work. The plan is recorded canonically at `docs/BRR_PLAN.md`; Phase 1 ("BRR Policy Foundation") is structured as the four bounded, docs-only policy tasks below.
+
+Reason:
+
+The plan was delivered in chat, which is not project truth (`STATE_MODEL.md` truth priority; `DECISION-018` restart safety). Per `docs/REPO_GOVERNANCE.md`'s New Canonical Doc Process, a durable, narrow-purpose program plan that no existing doc covers warrants its own canonical doc, so `docs/BRR_PLAN.md` is the BRR analogue of `docs/V1_Scope.md`. Structuring was derived from the plan's own Section 5 (sequential phases), Section 7 (break each phase into small bounded tasks), and its explicit Phase 1 deliverable list — not inferred.
+
+Implications:
+
+**Phase 1 is delivered as four bounded `pcc-brr1-0XX` policy tasks, in dependency order** (which is also the plan's own listed order):
+
+1. `pcc-brr1-001` — Owner Review Matrix. Anchors the rest, because task classes and stop triggers both reference "owner-required."
+2. `pcc-brr1-002` — Task Safety Classification (Class A/B/C/D). Builds on the review matrix; Class C = an owner-required case.
+3. `pcc-brr1-003` — Stop-Instead-of-Guess Policy. Its stop states land on the existing verdicts in `docs/VERIFICATION_RESULT_SPEC.md` (`BLOCKED`/`INSUFFICIENT`/`OUT_OF_SCOPE`), not new ones.
+4. `pcc-brr1-004` — BRR Operating Definitions. Comes last, reconciling terms the prior three put into use; several (`blocked`, `insufficient_evidence`) already have canonical meaning in `STATE_MODEL.md`/`VERIFICATION_RESULT_SPEC.md` and are extended, not redefined.
+
+**Phase 1 tasks are policy only** — they write rules into canonical docs (likely a new `docs/BRR_POLICY.md`) and touch no runtime scripts. Applying the policy in live task flow is explicitly Phase 2 in the plan. This keeps Phase 1 lean and structurally incapable of blocking a cycle (it changes no executable behavior), directly honoring the plan's Phase 1 special caution against governance bloat and hidden gating.
+
+**Phase 1 tasks should get independent (secondary) review, not just self-verification.** V1's closure (`docs/V1_Scope.md`) honestly records that independent verification has no real track record here and that policy content cannot be verified by re-running a deterministic script. Policy tasks are therefore exactly where self-verification (`DECISION-019`) is weakest. This decision recommends the owner route each Phase 1 policy task through the secondary reviewer (e.g. ChatGPT) before it is accepted; it does not mandate the owner's tooling, but flags policy as the wrong place to rely on self-verification alone.
+
+This decision structures Phase 1 only. It does not author the policy content itself (that is the tasks' job), does not pre-approve Phases 2–5, and does not authorize any runtime, automation, or gating change.
+
+Supersedes: None
+Related: DECISION-018, DECISION-019, DECISION-021, docs/BRR_PLAN.md, docs/REPO_GOVERNANCE.md, docs/VERIFICATION_RESULT_SPEC.md, docs/COMPLETION_CONTRACT_SPEC.md
