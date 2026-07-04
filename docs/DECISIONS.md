@@ -966,3 +966,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-008, DECISION-037, DECISION-038, DECISION-039, docs/BRR_POLICY.md, docs/BRR_PLAN.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, scripts/check-stop-conditions.ps1
+
+---
+
+## DECISION-041: Acceptance Boundary Rules Recorded; Phase 2 Deliverables Defined But Unattended Run Remains Off (pcc-brr2-010)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+BRR Phase 2's fifth and final deliverable (`docs/BRR_PLAN.md` Phase 2 item 5, "Acceptance Boundary Rules") is recorded as a policy layer in `docs/BRR_POLICY.md`, defining per task safety class what PCC may self-accept vs. what must wait for independent review. This completes the definition of all five Phase 2 deliverables; it does not switch on unattended execution.
+
+Reason:
+
+The acceptance half of Task Safety Classification (Class A self-acceptable; Class B execute-but-not-self-accept) existed implicitly since `pcc-brr1-002` but was never stated as an explicit acceptance boundary. Item 5 makes it explicit. The secondary reviewer (GPT), reviewing `pcc-brr2-009`, gave explicit constraints for this task: keep it a policy layer, do not wire enforcement or turn the advisory stop-detector into a gate, do not broaden unattended execution, never gate owner-directed work, and leave a clean seam for a later task to hard-gate only PCC's own autonomous path. Those constraints are honored here.
+
+Implications:
+
+`docs/BRR_POLICY.md` gains an "Acceptance Boundary Rules" section with a per-class table (A: self-acceptable when the stop-check is also CLEAR; B: must not self-accept, requires independent review or owner override; C/D: do not execute unattended, so acceptance does not arise), grounded in the existing classes without redefining them. It states plainly that: acceptance boundaries constrain PCC's own self-acceptance only and never gate owner-directed work; this builds no enforcement and does not switch on or broaden unattended execution; under the current `DECISION-033`/`DECISION-036` fallback everything is self-verified with disclosure, so the boundary describes the target restored-two-role state rather than pretending independent review happens now; a CLEAR stop-check is necessary-not-sufficient (judgment conditions — fork, north-star, new-owner-decision — remain outside automatic detection per `DECISION-008`); and it describes but does **not** wire the seam by which a later task could make PCC's own self-promotion/autonomous-continuation path self-gating (requiring `check-stop-conditions.ps1` CLEAR plus a self-acceptable class). With all five Phase 2 deliverables now defined, full unattended draft-and-run remains OFF and requires two further deliberate steps not taken here: wiring that gate, and a verified pilot (`DECISION-038`). Whether to now mark Phase 2 complete, build the gate-wiring/pilot, or move to Phase 3 is an owner decision, not taken in this task. No verdicts, task safety classes, or existing stop conditions were changed or weakened.
+
+Supersedes: None
+Related: DECISION-006, DECISION-008, DECISION-016, DECISION-025, DECISION-038, DECISION-039, DECISION-040, docs/BRR_POLICY.md, docs/BRR_PLAN.md, docs/REPO_GOVERNANCE.md

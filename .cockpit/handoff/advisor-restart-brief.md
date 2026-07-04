@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-04T01:32:42-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T01:45:58-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,23 +10,23 @@ Current phase: brr-phase-2
 
 ## Active Task
 
-* Task ID: pcc-brr2-009
-* Title: BRR Execution: Automatic Stop Triggers
+* Task ID: pcc-brr2-010
+* Title: BRR Execution: Acceptance Boundary Rules
 * Status: complete
 * Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Implement BRR Phase 2's fourth deliverable (docs/BRR_PLAN.md Phase 2 item 4, Automatic Stop Triggers) as a deterministic, advisory (non-gating) local check that DETECTS the deterministically-checkable stop conditions and SURFACES them, so PCC stops instead of guessing. Keep it firmly on the 'controlled forward motion, not friction' side the plan demands: it must NOT become automatic-blocking-everywhere and must NOT hard-gate owner-directed work. It must honestly NOT pretend to auto-detect judgment-based stop conditions (fork/multiple-valid-paths, north-star alignment, whether a new owner-level decision is needed) - those remain judgment plus the Owner-Decision Capture Flow, per DECISION-008 (no fake intelligence). Also fold the owner's two governing maxims ('owner approval is for direction changes, not routine continuation inside an already-approved lane' and 'the pre-task prep work is what justifies the automation') into a short shared Governing Principles note in docs/BRR_POLICY.md that governs both the Safe Next-Task Drafting Rules (item 3) and these stop triggers (item 4). Do NOT build acceptance-boundary enforcement (item 5) and do NOT switch on unattended execution.
+* Objective: Implement BRR Phase 2's fifth and final deliverable (docs/BRR_PLAN.md Phase 2 item 5, Acceptance Boundary Rules) as a canonical POLICY LAYER in docs/BRR_POLICY.md that defines, per task safety class, what PCC may self-complete/self-accept vs. what must wait for independent review. Ground it in the existing Task Safety Classification (Class A safe-unattended = self-acceptable; Class B safe-to-execute-but-review-before-acceptance = must NOT self-accept; Class C/D do not execute unattended so acceptance does not arise) rather than redefining classes. Honor the secondary reviewer's (GPT) explicit constraints: (a) do NOT build enforcement or wire the pcc-brr2-009 stop-detector as a gate - that is a deliberate later task; (b) do NOT switch on or broaden unattended execution; (c) acceptance boundaries constrain PCC's OWN self-acceptance only and must NOT block or add friction to owner-directed work; (d) describe explicitly the clean seam by which a LATER task could hard-gate PCC's self-promotion/autonomous-continuation path (using check-stop-conditions.ps1 CLEAR plus acceptance-boundary-permitted), and state that seam is NOT wired now; (e) reaffirm that a CLEAR stop-check means only 'no mechanically-detectable stop', not 'safe in every sense', with fork/north-star/new-owner-decision still outside automatic detection. Keep it docs-primarily.
 
 ## Last Verified
 
-* Verdict: PASS for task 'pcc-brr2-009', verified at 2026-07-04T01:33:00-06:00
-* Summary: Reviewed scripts/check-stop-conditions.ps1 and the BRR_POLICY additions against the completion criteria, reading the script and policy directly. The detector correctly reports CLEAR on live state and STOP (exit 0 in all cases) on deliberately-tripped conditions in scratch; it is genuinely non-gating (only its file-read helper exits non-zero; the stop logic never blocks). It honestly names the judgment-based conditions it does not detect (DECISION-008). The BRR_POLICY 'Automatic Stop Triggers' section ties to the Stop-Instead-of-Guess Policy and the auto-promotion gate without duplicating them, and the two owner maxims are recorded verbatim in a shared Governing Principles note (grep-confirmed). git status shows only the one new script and the intended docs/state files - no schema change, no unexpected scripts, no weakened stop condition. The worker's decision not to edit REPO_GOVERNANCE is defensible (the detector is a tool, not a new workflow step, and makes nothing stale). All completion criteria met.
-* Last verified handoff: .cockpit/handoff/archive/pcc-brr2-009-worker-directive.md
+* Verdict: PASS for task 'pcc-brr2-010', verified at 2026-07-04T01:46:00-06:00
+* Summary: Reviewed the Acceptance Boundary Rules section against the completion criteria and GPT's relayed constraints. git status confirms this was docs-only (README, BRR_POLICY, DECISIONS, REPO_GOVERNANCE) with zero script and zero schema changes - the strongest evidence GPT's 'policy layer only, no enforcement wired' constraint was honored, since no code capable of gating exists. grep confirmed the load-bearing protective language is present: acceptance constrains PCC's own acceptance not the owner; the hard-gating seam is described but deliberately not wired; a CLEAR stop-check is a floor not a guarantee; unattended run remains off. The per-class table is grounded in the existing Task Safety Classification without redefining it, and the fallback interaction is handled honestly (target two-role model vs. current self-verify-with-disclosure). All completion criteria met.
+* Last verified handoff: .cockpit/handoff/archive/pcc-brr2-010-worker-directive.md
 
 ## Open Issues
 
-* Risk from last verification of 'pcc-brr2-009': Self-verified under DECISION-033 degraded fallback (Codex unavailable). No independent second-party (Codex) review occurred. GPT secondary review: not performed at verification time (pushed immediately after for GPT). Claude drafted, built, and verified this cycle; and this is safety machinery (a stop-condition detector). GPT review of the surface-vs-gate design is specifically recommended.
-* Risk from last verification of 'pcc-brr2-009': Key design decision, flagged for owner/GPT: the detector is advisory/non-gating - nothing yet auto-invokes it or acts on a STOP. This is deliberate (plan's controlled-forward-motion caution) but means it only helps if something runs it. Making stops actually gate self-promotion would be a separate, explicit escalation, not done here.
-* Risk from last verification of 'pcc-brr2-009': Condition 4 (approved-lane) is a formal string check that promotion_basis.lane references a known approved-lane source, not a semantic check that the cited lane is correct; the verifier remains the backstop for semantic correctness.
+* Risk from last verification of 'pcc-brr2-010': Self-verified under DECISION-033 degraded fallback (Codex unavailable). No independent second-party (Codex) review occurred. GPT secondary review: GPT reviewed and approved the constraints this task was built to (relayed by the owner this turn); a confirming read of the resulting Acceptance Boundary Rules section is still appropriate. Claude drafted, built, and verified the cycle.
+* Risk from last verification of 'pcc-brr2-010': All five Phase 2 deliverables are now DEFINED, but unattended draft-and-run remains OFF and requires two further deliberate, not-yet-authorized steps (wire PCC's own path to self-gate; verified pilot). Risk of misreading 'deliverables defined' as 'autonomy ready'; the policy, DECISION-041, and README all state it is not, but the owner should confirm that distinction reads clearly.
+* Risk from last verification of 'pcc-brr2-010': Whether to mark Phase 2 complete, build the gate-wiring + pilot, or move to Phase 3 is a genuine fork and an owner decision - not taken here. A natural use of the Owner-Decision Capture Flow when the next step is considered.
 
 ## Read First
 
@@ -40,5 +40,5 @@ Current phase: brr-phase-2
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-brr2-009' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-brr2-009' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Task-level: Task 'pcc-brr2-010' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Project-level: Task 'pcc-brr2-010' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.

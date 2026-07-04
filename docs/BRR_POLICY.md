@@ -394,3 +394,74 @@ Detecting and surfacing stop conditions is not the same as *automatically
 acting* on them, and this deliverable does not switch on unattended execution.
 Full unattended draft-and-run still additionally requires Phase 2 item 5
 (Acceptance Boundary Rules) and a verified pilot, per `DECISION-038`.
+
+---
+
+## Acceptance Boundary Rules
+
+This is BRR Phase 2's fifth and final deliverable (`docs/BRR_PLAN.md` Phase 2
+item 5, `DECISION-041`). It answers a different question from the stop
+triggers: not "may PCC proceed / must it stop," but — once work is done —
+**what may PCC accept as complete on its own, and what must wait for review?**
+
+It defines no new concept; it makes the acceptance half of Task Safety
+Classification explicit as a boundary:
+
+| Class | May PCC self-accept its own result? |
+|-------|-------------------------------------|
+| **A — Safe unattended** | Yes. A Class A result may be self-verified/self-accepted, provided the stop-condition check is also CLEAR (no mechanically-detectable stop). |
+| **B — Safe to execute, review before acceptance** | **No.** A Class B result must not be self-accepted; it requires independent verifier review, or an explicit owner override, before advancing to `complete` (`DECISION-006`/`DECISION-016`, Owner Review Matrix row 11). |
+| **C — Owner approval required before execution** | N/A — a Class C task does not execute unattended, so unattended acceptance never arises. |
+| **D — Blocked** | N/A — a Class D task does not proceed at all. |
+
+### This constrains PCC's own acceptance, not the owner
+
+These boundaries govern only what *PCC* may accept when acting autonomously.
+They place **no** gate, block, or friction on owner-directed work: the owner
+may accept, override, or direct anything at any time. Acceptance boundaries are
+a limit PCC observes on *itself*, never a limit imposed on the owner.
+
+### Interaction with the current fallback
+
+Under the `DECISION-033`/`DECISION-036` degraded fallback (Codex unavailable),
+every cycle is currently self-verified with explicit disclosure. That is a
+temporary, disclosed compromise — not the acceptance model this section
+describes. This section defines the **target** (restored two-role) state: when
+independent verification is available, Class B results route to it rather than
+being self-accepted. Until then, the fallback's disclosure requirement stands
+in for the boundary, and the fact that a Class B result was self-accepted under
+fallback is recorded honestly in each verification result.
+
+### This does not switch on unattended execution
+
+Defining what PCC *may* self-accept does not, by itself, make PCC run
+unattended, and this deliverable builds no enforcement. With all five Phase 2
+deliverables now defined, the machinery exists on paper, but full unattended
+draft-and-run remains **off** and requires two further, deliberate steps that
+are explicitly *not* taken here: wiring the gate (below), and a verified pilot
+(`DECISION-038`).
+
+### The seam left for a later task (not wired now)
+
+A later, explicitly-authorized task may make PCC's *own* autonomous path
+self-gating by requiring, before PCC self-promotes or self-accepts a step
+unattended, that **both**:
+
+* `scripts/check-stop-conditions.ps1` reports CLEAR; **and**
+* the task's class permits self-acceptance per the table above (i.e. Class A).
+
+That gate would apply **only** to PCC's self-promotion / autonomous-continuation
+path — never to owner-directed work, and never as a generic blocker. It is
+deliberately **not** wired now; the stop-detector (`pcc-brr2-009`) remains
+advisory, and this section only describes the seam so a future task can
+implement it cleanly.
+
+### CLEAR is necessary, not sufficient
+
+Even where self-acceptance is permitted (Class A) and the stop-check is CLEAR,
+that means only *no mechanically-detectable stop was found* — not "safe in
+every sense." The judgment-based conditions remain outside automatic detection
+(`DECISION-008`): whether more than one defensible next step exists (a fork),
+whether the work aligns with the north star, and whether a new owner-level
+decision is required. A CLEAR stop-check plus a self-acceptable class is a
+floor, not a guarantee; genuine judgment still governs.
