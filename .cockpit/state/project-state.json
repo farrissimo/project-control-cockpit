@@ -143,6 +143,6 @@
   "current_blocker": null,
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-brr3-004-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Task 'pcc-brr3-004' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T09:42:45-06:00"
+  "next_expected_action": "BRR Phase 3 policy scope is complete (DECISION-050): all four docs/BRR_PLAN.md Phase 3 deliverables are written and verified. current_phase remains brr-phase-3 pending a separate owner decision on the next lane -- build the two recommended follow-on hardening scripts as bounded tasks, or advance to BRR Phase 4 (which would also require adding brr-phase-4 to schemas/project-state.schema.json's enum first).",
+  "updated_at": "2026-07-04T09:48:00-06:00"
 }

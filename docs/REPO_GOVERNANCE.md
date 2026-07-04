@@ -221,6 +221,15 @@ Examples:
 
 `pcc-` remains the stable project prefix; `brr1`, `brr2`, etc. mark the BRR phase. The plain-language naming convention above still applies to `task_title` for these tasks.
 
+### Post-Close Canonical Amendment Rule
+
+A task being `complete` and verified `PASS` does not freeze its canonical doc output forever — but amending it after close-out is not the same act as doing the original task, and must not be treated as one. This rule exists because `pcc-brr3-004` amended `pcc-brr3-003`'s already-closed `docs/BRR_POLICY.md` text (reframing one bullet's wording) without reopening `pcc-brr3-003`'s task record, and the owner asked for the boundary to be written down before informal handling became slippery precedent.
+
+* A canonical doc **may** be amended after the task that wrote it has closed, when the change is a narrowly scoped clarification or correction, and it is explicitly disclosed in a later decision (`docs/DECISIONS.md`) naming which original task's text is being touched and why.
+* Such an amendment does **not** retroactively rewrite the original task's outcome. The original task's `task-state.json` record, its archived directive/result/verification, and its verdict all stand exactly as verified; the amendment is a separate, later, disclosed change layered on top, not a correction to history.
+* If the change would materially alter the original task's claimed scope, evidence, or verdict basis — as opposed to a narrow wording clarification — that is not a quiet amendment. It must instead reopen the original task or spawn a distinct correction task through the normal Task Process above, so the change gets its own directive, evidence, and verification rather than riding in unverified on someone else's close-out.
+* The distinguishing question: would an independent reader, comparing the amendment against the original task's completion criteria, conclude the original task's evidence no longer actually supports what it claimed? If yes, this is a correction task, not an amendment. If the original task's claims are still fully supported and the change only sharpens wording or fixes an error that doesn't touch what was actually verified, it is an amendment.
+
 ---
 
 ## Stray Or Stale Doc Process

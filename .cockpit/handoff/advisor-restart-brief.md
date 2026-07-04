@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-04T09:42:54-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T09:47:51-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -50,4 +50,4 @@ Current phase: brr-phase-3
 ## What Happens Next
 
 * Task-level: Task 'pcc-brr3-004' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-brr3-004' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Project-level: BRR Phase 3 policy scope is complete (DECISION-050): all four docs/BRR_PLAN.md Phase 3 deliverables are written and verified. current_phase remains brr-phase-3 pending a separate owner decision on the next lane -- build the two recommended follow-on hardening scripts as bounded tasks, or advance to BRR Phase 4 (which would also require adding brr-phase-4 to schemas/project-state.schema.json's enum first).

@@ -1164,3 +1164,47 @@ Implications:
 
 Supersedes: None
 Related: DECISION-005, DECISION-006, DECISION-008, DECISION-020, DECISION-021, DECISION-028, DECISION-033, DECISION-036, DECISION-038, DECISION-039, DECISION-041, DECISION-042, DECISION-044, DECISION-045, DECISION-046, DECISION-047, DECISION-048, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/VERIFICATION_RESULT_SPEC.md
+
+---
+
+## DECISION-050: BRR Phase 3 Policy Scope Complete; Follow-On Hardening Scripts Are Separate Future Tasks, Not Prerequisites
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+BRR Phase 3's policy scope is complete: all four planned deliverables (`docs/BRR_PLAN.md` Phase 3 — Verification Depth Policy, Self-Verification Restrictions, Out-of-Scope Detection, Inadequate-Work Return Path) are written in `docs/BRR_POLICY.md`. The two follow-on hardening scripts named as recommended future work in `pcc-brr3-003`/`pcc-brr3-004` (an automated out-of-scope checker; a non-`PASS` close-out convenience script) are real and valuable, but are **not** required before declaring the phase's policy scope complete — they are separate, bounded, follow-on implementation tasks. `project-state.json`'s `current_phase` is **not** advanced by this decision; it remains `brr-phase-3` pending a separate, explicit owner choice of the next lane (build the follow-on scripts as bounded tasks, or advance to BRR Phase 4).
+
+Reason:
+
+Holding a phase open until every useful follow-on tool named during it is actually built would blur the line between "the policy layer exists" and "all downstream hardening is implemented" — exactly the mechanism by which phases stay open indefinitely rather than closing on a defensible, honest boundary. The four deliverables `docs/BRR_PLAN.md` actually lists for Phase 3 are what was owed; recommending further hardening as a byproduct of doing that work well does not change what was owed. This mirrors the same discipline `DECISION-045` already applied to Phase 2 (distinguishing "the machinery is built" from "the walk-away model is absolutely proven") rather than collapsing two separable claims into one.
+
+Implications:
+
+Phase 3's status is recorded precisely as two separate facts, not one blended verdict: **(1) Phase 3 policy scope: complete** — `docs/BRR_POLICY.md` contains all four named deliverables, each independently verified `PASS` (`pcc-brr3-001` through `pcc-brr3-004`; `DECISION-046` through `DECISION-049`); **(2) recommended follow-on hardening work exists and is not yet built** — the two named scripts remain future, separately-bounded tasks (their own `pcc-brr3-0XX` or later IDs, own objective/scope/evidence, own verification), not hidden prerequisites for this decision. `current_phase` stays `brr-phase-3` in `project-state.json` — advancing it to a `brr-phase-4` value would itself require a schema change (`schemas/project-state.schema.json`'s `current_phase` enum does not yet include `brr-phase-4`) and a separate, deliberate decision, neither of which is made here. The next-lane choice — build the two follow-on scripts next, or move toward BRR Phase 4 — is explicitly left open for a separate owner/advisor decision, not pre-decided by this one.
+
+Supersedes: None
+Related: DECISION-021, DECISION-028, DECISION-045, DECISION-046, DECISION-047, DECISION-048, DECISION-049, docs/BRR_PLAN.md, docs/BRR_POLICY.md, .cockpit/state/project-state.json
+
+---
+
+## DECISION-051: Post-Close Canonical Amendment Rule Recorded
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`docs/REPO_GOVERNANCE.md` gains a "Post-Close Canonical Amendment Rule": a canonical doc may be amended after the task that wrote it has closed only when the change is a narrowly scoped clarification or correction, explicitly disclosed in a later decision; such an amendment never retroactively rewrites the original task's outcome; and a change that would materially alter the original task's claimed scope, evidence, or verdict basis must instead reopen the original task or spawn a distinct correction task, not ride in as a quiet amendment.
+
+Reason:
+
+`pcc-brr3-004` amended `pcc-brr3-003`'s already-closed `docs/BRR_POLICY.md` text (reframing the "silent adjacent-scope edits" wording) without reopening `pcc-brr3-003`'s task record. The owner judged that handling acceptable for that specific case, but explicitly asked for the boundary to be written down now, before informal handling of this pattern became slippery precedent — exactly the kind of small governance gap the BRR machinery exists to close honestly rather than leave to case-by-case judgment indefinitely.
+
+Implications:
+
+`docs/REPO_GOVERNANCE.md`'s "BRR Phase Task ID Format" section gains this new subsection, with `pcc-brr3-003`/`pcc-brr3-004` named as the motivating precedent. The rule gives a concrete distinguishing test: would an independent reader, comparing the amendment against the original task's completion criteria, conclude the original task's evidence no longer actually supports what it claimed? If yes, it is a correction task (own directive, evidence, verification), not an amendment. If the original task's claims remain fully supported and the change only sharpens wording or fixes an error that doesn't touch what was actually verified, it is a permitted amendment. This does not retroactively reclassify `pcc-brr3-004`'s own amendment to `pcc-brr3-003` (which was a narrow wording clarification, not a scope/evidence/verdict change, and remains valid under this rule applied after the fact) and does not change any existing verdict, task safety class, or stop condition.
+
+Supersedes: None
+Related: DECISION-006, DECISION-014, DECISION-048, DECISION-049, docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md, docs/VERIFICATION_RESULT_SPEC.md
