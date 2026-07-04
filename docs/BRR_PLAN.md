@@ -585,8 +585,10 @@ exit criteria ("the next roadmap lane is chosen deliberately" by the owner).
 ### Recommendation for next lane
 
 The core draft → execute → self-verify → hold-or-close → review loop has
-been exercised successfully across roughly thirty cycles, with every real
-defect caught before being accepted and no known false `PASS`. Against that,
+been exercised successfully across 26 completed BRR-phase cycles (per
+`.cockpit/result/archive/`; 41 total including the 15 V1 cycles that used
+the same core loop before BRR began), with every real defect caught before
+being accepted and no known false `PASS`. Against that,
 the verification-independence gap (no working Codex for the entire program)
 has persisted throughout, and two named Phase 4 items remain undelivered.
 

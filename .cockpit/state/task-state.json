@@ -2,7 +2,7 @@
   "task_id": "pcc-brr5-001",
   "task_title": "BRR Readiness Review",
   "task_objective": "Deliver docs/BRR_PLAN.md Phase 5's sole deliverable: an honest BRR Readiness Review, added as a new section to docs/BRR_PLAN.md (mirroring how docs/V1_Scope.md's 'V1 Closure' section handled V1's own honest close-out). Must list, plainly: what PCC can safely do unattended today (with evidence); what still requires owner review; what remains unsafe or immature (explicitly including the gaps named in DECISION-060/061 -- Class A self-accept never exercised, archive-before-chaining policy-only, fuller Metrics and Failure Review Loop undelivered, and the standing single-party self-verification risk); and a recommendation for the next lane (continue BRR hardening / begin post-V1 expansion / keep both narrowly active), stated as a recommendation for the owner to decide, not a self-executed choice.",
-  "task_status": "returned_for_verification",
+  "task_status": "complete",
   "assigned_worker": "Claude Code",
   "task_safety_class": "B",
   "completion_criteria": [
@@ -44,10 +44,10 @@
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
-  "verification_verdict": null,
+  "verification_verdict": "PASS",
   "current_blocker": null,
   "owner_decision_request": null,
   "promotion_basis": null,
-  "next_action": "Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.",
-  "updated_at": "2026-07-04T12:01:59-06:00"
+  "next_action": "Task 'pcc-brr5-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-04T12:08:31-06:00"
 }
