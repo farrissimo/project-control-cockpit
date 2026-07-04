@@ -45,8 +45,31 @@ function Invoke-OneCheck {
   $lock = Read-JsonSafe $fullLockPath
 
   $taskId = $taskState.task_id
-  $needsVerification = ($taskState.task_status -eq "returned_for_verification") -and
-    ((-not $verification) -or ($verification.task_id -ne $taskId))
+
+  # Bug fix (found during pcc-postbrr-001's real resubmission after an
+  # OUT_OF_SCOPE verdict, 2026-07-04): task_id alone cannot distinguish "this
+  # task was already verified" from "this SAME task_id was handed back again
+  # after a non-PASS verdict" -- both cases have verification.task_id equal
+  # to the current task_id. Compare timestamps: only skip verification if the
+  # existing verdict was written AFTER the task's last update (i.e. nothing
+  # changed since). If the task-state was updated more recently than the
+  # recorded verdict, a retry happened and genuinely needs re-verification.
+  $needsVerification = $false
+  if ($taskState.task_status -eq "returned_for_verification") {
+    if ((-not $verification) -or ($verification.task_id -ne $taskId)) {
+      $needsVerification = $true
+    } else {
+      try {
+        $taskUpdated = [datetimeoffset]::Parse($taskState.updated_at)
+        $verifiedAt = [datetimeoffset]::Parse($verification.verified_at)
+        if ($taskUpdated -gt $verifiedAt) { $needsVerification = $true }
+      } catch {
+        # Fail safe toward re-verification rather than silently skipping
+        # real work if either timestamp cannot be parsed.
+        $needsVerification = $true
+      }
+    }
+  }
 
   if (-not $needsVerification) {
     # Nothing to do. Clear a stale lock if the task has moved on.

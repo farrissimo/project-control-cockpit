@@ -1666,3 +1666,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-069, DECISION-068, DECISION-067, docs/BRR_POLICY.md, backlog/IDEAS.md (IDEA-008, IDEA-009), scripts/finalize-worker-handback.ps1, scripts/log-event.ps1, scripts/check-stop-conditions.ps1
+
+---
+
+## DECISION-071: Codex Verification Watcher Bug Fix — Resubmission Detection (pcc-postbrr-001's Real First Retry)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`scripts/codex-verify-watcher.ps1` (`DECISION-067`) failed to detect a real resubmission of `pcc-postbrr-001` after its first attempt returned `OUT_OF_SCOPE` and was corrected and handed back again. The watcher's task-needing-verification check compared only `task_id`, and a resubmission of the same task carries the same `task_id` as its already-recorded (but stale) verdict, so the watcher concluded no new work existed and did nothing. This is fixed: the check now also compares `task-state.json`'s `updated_at` against the recorded verdict's `verified_at`, and treats a task-state update that postdates the last verdict as genuinely needing re-verification regardless of `task_id` matching.
+
+Reason:
+
+This is the first time in the project's history a task has been resubmitted after a non-`PASS` verdict while the watcher was live and unattended (`pcc-postbrr-001`'s `OUT_OF_SCOPE` verdict was itself the project's first-ever real non-`PASS` verdict, per `docs/V1_Scope.md`'s "What V1 did not prove"). The original scratch tests for `pcc-brr5-004` exercised no-work / new-work / pending / resolved for a single cycle, never a same-task_id retry, so this gap had no way to surface until a real retry actually happened. It was caught by observing the live pipeline stall (verification-result.json stayed unchanged after resubmission, no lock appeared), not by a scratch test predicting it in advance — a real, disclosed limitation of pre-emptive testing that this session's own risk notes for `pcc-brr5-004` already named ("the loop mode itself was not exercised against a long-running real multi-cycle live scenario").
+
+Implications:
+
+`codex-verify-watcher.ps1`'s `Invoke-OneCheck` now parses both timestamps as `[datetimeoffset]` and only treats a matching `task_id` as "already verified, no new work" when the verdict's `verified_at` is not older than the task-state's `updated_at`; if either timestamp fails to parse, it fails safe toward re-verification rather than silently skipping real work. This was functionally tested (not read-through only) in an isolated scratch copy with a stub Codex command, reproducing the exact failure first: same `task_id`, verdict already recorded, task-state `updated_at` advanced past `verified_at` (simulating a real resubmission) -- confirmed the unfixed logic would have skipped it, and the fixed logic correctly invokes the stub again (call count 1 to 2). The three original `pcc-brr5-004` scenarios (no work, new work, pending) were also re-confirmed unaffected. No other watcher behavior, the lock mechanism, the prompt, or any schema changed. This fix was made as a direct, disclosed infrastructure correction rather than a new bounded task cycle, consistent with how the `.gitignore`/lock-file-tracking fix earlier this session was handled -- it corrects already-closed, delivered work rather than adding new scope, and it was blocking `pcc-postbrr-001`'s own in-flight resubmission from ever being picked up.
+
+Supersedes: None (corrects a defect in DECISION-067's delivered mechanism; does not change its design intent or cost-safety property)
+Related: DECISION-067, DECISION-070, pcc-postbrr-001, pcc-brr5-004, scripts/codex-verify-watcher.ps1
