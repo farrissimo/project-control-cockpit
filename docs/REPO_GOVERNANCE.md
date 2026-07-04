@@ -195,9 +195,13 @@ Active tasks live in `.cockpit/state/task-state.json`, not in idea docs.
 
 ### Plain-Language Naming
 
-`task_id` (`pcc-v1-0XX`) and idea IDs (`IDEA-0XX`) remain the permanent, unchanging identifiers - do not rename them once assigned, since archives, git history, and cross-references in `docs/DECISIONS.md` depend on them staying stable.
+Existing `task_id`s (`pcc-v1-0XX`) and idea IDs (`IDEA-0XX`) remain the permanent, unchanging identifiers for V1 work - do not rename them once assigned, since archives, git history, and cross-references in `docs/DECISIONS.md` depend on them staying stable.
 
-Starting with tasks drafted after `pcc-v1-012`, `task_title` should lead with a short, non-technical `Category: Plain Name` prefix (e.g. `Safety Net: Clean Stop`, `Honesty Checks: Activity Log`) so the owner can tell what a task is at a glance without decoding jargon or memorizing numbers. Current categories in use: **Foundation** (early setup), **Fresh Start** (restart-safety), **Safety Net** (backup/recovery/session-end tools), **Honesty Checks** (anti-drift/anti-fake-completion tooling). New categories may be added as new themes of work emerge; keep the plain-language name short (2-4 words) and free of technical terms. See `README.md`'s "Plain-Language Task Names" table for the full mapping of completed work.
+`task_title` should lead with a short, non-technical `Category: Plain Name` prefix (e.g. `Safety Net: Clean Stop`, `Honesty Checks: Activity Log`) so the owner can tell what a task is at a glance without decoding jargon or memorizing numbers. Current categories in use: **Foundation** (early setup), **Fresh Start** (restart-safety), **Safety Net** (backup/recovery/session-end tools), **Honesty Checks** (anti-drift/anti-fake-completion tooling). New categories may be added as new themes of work emerge; keep the plain-language name short (2-4 words) and free of technical terms. See `README.md`'s "Plain-Language Task Names" table for the full mapping of completed V1 work.
+
+### BRR Phase 1 Task ID Format
+
+Per `DECISION-021`, tasks drafted after V1's close use the format `pcc-brr1-0XX` (e.g. `pcc-brr1-001`), resetting the sequence number rather than continuing V1's count - this makes it immediately visible how many BRR-phase tasks exist independent of V1's history. `pcc-` remains the stable project prefix; `brr1` marks the phase (BRR = Babysitter Reduction Role, Phase 1). The plain-language naming convention above still applies to `task_title` for these tasks.
 
 ---
 
