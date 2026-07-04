@@ -13,8 +13,8 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-brr1-003
-* Task Title: BRR Policy: Stop-Instead-of-Guess
+* Task ID: pcc-brr1-004
+* Task Title: BRR Policy: Operating Definitions
 * Task Status: ready_for_worker
 
 ## Objective
@@ -35,16 +35,16 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-Define the BRR Phase 1 Stop-Instead-of-Guess Policy in canonical repo truth, extending docs/BRR_POLICY.md so PCC has explicit rules for when it must stop rather than inventing or pushing through ambiguity. Cover the trigger examples named in docs/BRR_PLAN.md Phase 1 and tie them cleanly to the existing verification verdicts and to the Owner Review Matrix / Task Safety Classification already recorded, without introducing new verdicts, runtime enforcement, or Phase 2 execution mechanics.
+Define the BRR Phase 1 Operating Definitions in canonical repo truth, extending docs/BRR_POLICY.md so the key terms already used across the prior three BRR policy tasks are explicit, stable, and non-contradictory. At minimum define safe unattended, safe with review, owner decision, blocked, insufficient evidence, and escalation, reconciling them with the Owner Review Matrix, Task Safety Classification, and Stop-Instead-of-Guess Policy already recorded, without introducing runtime enforcement, new statuses, or Phase 2 fielding mechanics.
 
 ## Allowed Scope
 
 The worker may:
 
 * Create or update narrowly relevant canonical docs for BRR Phase 1 policy, primarily docs/BRR_POLICY.md and closely related cross-references.
-* Update docs/DECISIONS.md, docs/BRR_PLAN.md, docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md, and README.md only as needed to propagate the new stop policy cleanly.
+* Update docs/DECISIONS.md, docs/BRR_PLAN.md, docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md, and README.md only as needed to propagate the new operating definitions cleanly.
 * Adjust .cockpit state or handoff artifacts only insofar as the active task and next action need to stay accurate.
-* Add brief examples, tables, or definitions directly supporting the stop policy if they stay inside this task's bounded policy scope.
+* Add brief examples, tables, or definitions directly supporting the operating definitions if they stay inside this task's bounded policy scope.
 
 ## Forbidden Scope
 
@@ -52,21 +52,20 @@ The worker must not:
 
 * Do not implement Phase 2 behavior, runtime enforcement, automatic gating, or task-class execution logic yet.
 * Do not edit scripts/, schemas/, or verification mechanics except for unavoidable truth-surface references that stay docs-only.
-* Do not broaden the task into BRR Operating Definitions beyond what the stop policy directly needs.
+* Do not broaden the task beyond defining and reconciling the BRR operating terms this phase already named.
 * Do not change canonical project goals, role assignments, or previously recorded verification verdicts.
 * Do not require the owner to restate policy already present in canonical repo truth.
-* Do not turn adjacent policy ambiguities into separate mini-projects or blockers for completing the stop policy.
+* Do not turn adjacent policy ambiguities into separate mini-projects or blockers for completing the operating definitions.
 
 ## Completion Criteria
 
 The task is complete only if:
 
-* The repo gains canonical policy text defining Stop-Instead-of-Guess rules for BRR Phase 1, in a practical bounded form.
-* The policy covers at least the trigger examples named in docs/BRR_PLAN.md Phase 1: ambiguous scope, conflicting truth surfaces, weak or missing evidence, repeated failure with no new evidence, out-of-scope drift, no trusted way to verify a risky task, and unresolved owner-facing tradeoffs.
-* The policy reuses and does not expand PCC's existing verification verdict set; where the trigger implies FAIL, INSUFFICIENT, BLOCKED, or OUT_OF_SCOPE, that relationship is stated rather than inventing a new status or verdict.
-* The new policy explicitly aligns with, and does not contradict, the Owner Review Matrix and Task Safety Classification already recorded in docs/BRR_POLICY.md.
-* The policy stays practical and docs-only: concise rules, brief examples or notes where helpful, no runtime enforcement, no automatic gating logic, and no premature implementation of Phase 2 flow.
-* Truth-surface propagation is handled honestly across docs/DECISIONS.md, docs/BRR_PLAN.md, docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md, README.md, and docs/BRR_POLICY.md, updating only what the new stop policy actually makes stale.
+* The repo gains canonical policy text defining the BRR Operating Definitions named in docs/BRR_PLAN.md Phase 1: safe unattended, safe with review, owner decision, blocked, insufficient evidence, and escalation.
+* Each definition is explicit enough to stabilize the terminology already used in the Owner Review Matrix, Task Safety Classification, and Stop-Instead-of-Guess Policy, rather than merely repeating those terms loosely.
+* The definitions reconcile with, and do not contradict, the prior three BRR Phase 1 policy sections already recorded in docs/BRR_POLICY.md.
+* The policy stays practical and docs-only: concise definitions plus brief notes/examples where needed, no runtime enforcement, no automatic gating logic, and no premature implementation of Phase 2 flow.
+* Truth-surface propagation is handled honestly across docs/DECISIONS.md, docs/BRR_PLAN.md, docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md, README.md, and docs/BRR_POLICY.md, updating only what the new operating definitions actually make stale.
 * Claude returns evidence in .cockpit/result/worker-result.md using the required format and calls out any places where independent secondary review is still recommended.
 
 ## Required Evidence
