@@ -727,3 +727,109 @@ mechanism `DECISION-036`'s disclosure wording already uses.
   Policy, and `DECISION-033`/`DECISION-036` while drafting — no contradiction
   was found; `DECISION-033`/`DECISION-036`'s own authorization text is
   unchanged.
+
+---
+
+## Out-of-Scope Detection
+
+This is BRR Phase 3's third deliverable (`docs/BRR_PLAN.md` Phase 3 item 3,
+`pcc-brr3-003`). Every task directive already carries `boundaries.allowed`
+and `boundaries.forbidden` (`docs/STATE_MODEL.md`), and every verification
+result already has an `out_of_scope_findings` field
+(`docs/VERIFICATION_RESULT_SPEC.md`). What has been missing is a concrete,
+checkable definition of *what counts as out-of-scope* beyond "not in the
+allowed list" — this section names three specific failure modes and a
+structural procedure for catching each, rather than leaving the check to
+whatever the verifier happens to think to look at.
+
+Per `docs/BRR_PLAN.md` Phase 3's own special caution, this stays structural
+and measurable. It does not attempt to detect whether a change's *meaning* or
+*intent* silently drifted — that is exactly the "perfect hallucination
+detection" the plan warns against chasing. It defines checks a verifier can
+mechanically perform against a diff, not a semantic judgment about whether
+the diff is "really" fine.
+
+### The three failure modes, defined checkably
+
+* **Unauthorized file changes** — any changed, created, or deleted file that
+  does not appear in the task's `boundaries.allowed` list (by explicit path
+  or by an unambiguous pattern named there, e.g. `.cockpit/handoff/*`).
+  Check: enumerate every file touched (`git diff --stat` against the
+  pre-cycle commit, or the equivalent) and confirm each one is covered by an
+  `allowed` entry. Any file not covered is a finding, regardless of how
+  small or well-intentioned the change looks.
+* **Unintended truth-surface edits** — a change to a file on the truth
+  surface list below that was **not** specifically named in the task's
+  `boundaries.allowed` for *this* task, even if that same file is a normal,
+  expected target for *other* kinds of tasks. Being generally editable does
+  not make a truth surface fair game for a task that didn't name it. The
+  truth surface list, for the purposes of this check:
+  * `docs/DECISIONS.md`, `docs/BRR_PLAN.md`, `docs/BRR_POLICY.md`,
+    `docs/STATE_MODEL.md`, `docs/VERIFICATION_RESULT_SPEC.md`,
+    `docs/REPO_GOVERNANCE.md`, `docs/HANDOFF_PACKET_SPEC.md`,
+    `docs/PROJECT_CHARTER.md`, `docs/V1_Scope.md`;
+  * every file under `schemas/`;
+  * every file under `scripts/`.
+  This list may grow as new canonical docs are added
+  (`docs/REPO_GOVERNANCE.md`'s New Canonical Doc Process already governs
+  that); it is not itself a new governance rule, only an enumeration of
+  files the Owner Review Matrix (row 7) and existing canonical-doc process
+  already treat as truth surfaces.
+* **Silent adjacent-scope edits** — a change to a file that *is* covered by
+  `boundaries.allowed`, but where part of the diff falls outside what the
+  task's objective and completion criteria actually called for (e.g. a task
+  allowed to add one new section to a doc that also, quietly, edits an
+  unrelated existing section). Being in an allowed file does not license
+  every change within it. Check: for each allowed file, confirm the diff's
+  location and content match what the objective/completion criteria describe
+  — not just that the file itself was a legitimate target.
+
+### Required verification procedure
+
+For every verification cycle (self- or independently verified, any task
+safety class), the verifier must, and must record in
+`out_of_scope_findings`:
+
+1. Enumerate every file the diff touched (created, modified, or deleted).
+2. Check each file against `boundaries.allowed`; anything uncovered is a
+   finding under "unauthorized file changes."
+3. Check each touched file against the truth-surface list above; anything
+   that is a truth surface but was not specifically named in this task's
+   `boundaries.allowed` is a finding under "unintended truth-surface edits,"
+   even if it is also, separately, an "unauthorized file change."
+4. For each allowed file, spot-check that the diff's content matches the
+   objective/completion criteria's description; anything that doesn't is a
+   finding under "silent adjacent-scope edits."
+5. Record the result explicitly — "none found, confirmed via `git diff`" is
+   an acceptable and expected `out_of_scope_findings` entry; it is not
+   optional filler, since it is exactly what step 1–4 are supposed to
+   produce as their record.
+
+No new verdict or `verification-result.json` field is introduced. A finding
+under any of the three modes is reported as `OUT_OF_SCOPE`
+(`docs/VERIFICATION_RESULT_SPEC.md`), the same existing verdict this policy
+does not add to or change.
+
+### Notes on scope
+
+* This section defines checkable criteria and a procedure; it does not
+  implement a script that runs the procedure automatically. Fielding an
+  automated out-of-scope checker (analogous to how `check-stop-conditions.ps1`
+  fielded the Automatic Stop Triggers) is future work, not taken here,
+  consistent with how every other BRR policy section in this document was
+  defined before being fielded.
+* Per the owner's explicit stop-conditions for this task: this section does
+  not alter the self-verification fallback (`DECISION-033`/`DECISION-036`),
+  the autonomous gate (`scripts/check-autonomous-gate.ps1`,
+  `scripts/check-stop-conditions.ps1`), the Acceptance Boundary Rules, or any
+  Task Safety Class's core meaning — it defines detection criteria only, and
+  introduces no new authority, verdict, or governance mechanism. It therefore
+  does not fall into the Self-Verification Restrictions' circularity
+  restriction (above) either.
+* This section does not define the Inadequate-Work Return Path (Phase 3 item
+  4) — that remains a separate, not-yet-drafted Phase 3 task.
+* No existing verdict, task safety class, Owner Review Matrix row, or stop
+  condition is redefined or weakened. Cross-checked against the Owner Review
+  Matrix (row 7), Task Safety Classification, the Acceptance Boundary Rules,
+  the Verification Depth Policy, and the Self-Verification Restrictions while
+  drafting — no contradiction was found.

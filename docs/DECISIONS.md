@@ -1120,3 +1120,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-006, DECISION-008, DECISION-016, DECISION-033, DECISION-036, DECISION-038, DECISION-039, DECISION-041, DECISION-042, DECISION-044, DECISION-045, DECISION-046, docs/BRR_PLAN.md, docs/BRR_POLICY.md
+
+---
+
+## DECISION-048: Out-of-Scope Detection Recorded (pcc-brr3-003); Owner Confirms Bootstrap And Circularity Boundary
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+BRR Phase 3's third deliverable (`docs/BRR_PLAN.md` Phase 3 item 3, "Out-of-Scope Detection Hardening") is recorded canonically in `docs/BRR_POLICY.md`, defining three checkable failure modes (unauthorized file changes, unintended truth-surface edits, silent adjacent-scope edits), an enumerated truth-surface list, and a required five-step verification procedure recorded via the existing `out_of_scope_findings` field. Separately, the owner reviewed and explicitly confirmed two open questions from `pcc-brr3-002`'s close-out: the bootstrap reasoning (self-verifying `pcc-brr3-001`/`pcc-brr3-002` before the circularity restriction existed) is accepted as-is, not to be reopened; and the circularity boundary is confirmed as "adjacent policy/detection guidance = self-closeable; changing the fallback/gate/acceptance-boundary/class meanings = not self-closeable."
+
+Reason:
+
+`docs/BRR_PLAN.md` Phase 3's own text asks for hardened detection of exactly these three failure modes, and its special caution explicitly warns against chasing "perfect hallucination detection" — so the deliverable is scoped to checkable, structural criteria rather than a semantic-intent detector. This task was self-promoted, but under a materially different authorization shape than `pcc-brr3-002`: the owner directly reviewed and pre-authorized self-promoting this specific item this cycle ("self-promote Phase 3 item 3 next... it does not need owner naming directly"), attaching two explicit stop-conditions (do not touch the self-verification fallback/autonomous gate/acceptance boundary/class meanings; do not broaden into a governance redesign). Per the same discipline applied to `pcc-brr3-002`, that owner sign-off is treated as strong corroborating context, not a substitute for independently re-running the actual 8-part Safe Next-Task Drafting Rules gate — which was done and is recorded in `task-state.json`'s `promotion_basis`.
+
+Implications:
+
+`docs/BRR_POLICY.md` gains an "Out-of-Scope Detection" section: unauthorized file changes are checked by enumerating every touched file against `boundaries.allowed`; unintended truth-surface edits are checked against a named, enumerable truth-surface list (`docs/DECISIONS.md`, `docs/BRR_PLAN.md`, `docs/BRR_POLICY.md`, `docs/STATE_MODEL.md`, `docs/VERIFICATION_RESULT_SPEC.md`, `docs/REPO_GOVERNANCE.md`, `docs/HANDOFF_PACKET_SPEC.md`, `docs/PROJECT_CHARTER.md`, `docs/V1_Scope.md`, everything under `schemas/`, everything under `scripts/`), cross-referenced against whether that specific file was named in *this* task's `boundaries.allowed`; silent adjacent-scope edits are checked by confirming an allowed file's diff content actually matches what the objective/completion criteria described, not merely that the file itself was a legitimate target. The required five-step procedure is recorded via the existing `out_of_scope_findings` field — no new verdict or schema field is introduced; a finding under any mode reports as the existing `OUT_OF_SCOPE` verdict. The owner's two stop-conditions were carried verbatim into this task's forbidden-scope list and held: drafting did not touch `DECISION-033`/`DECISION-036`'s text, the autonomous gate scripts, the Acceptance Boundary Rules, or any Task Safety Class's core meaning, and did not broaden beyond detection criteria and procedure. The owner's confirmation of the bootstrap and circularity-boundary questions raised in `DECISION-047` is recorded here as settled: `pcc-brr3-001`/`pcc-brr3-002` are not reopened, and the "adjacent addition vs. mechanism change" line from `DECISION-047`'s own text is the operative boundary going forward, now with explicit owner sign-off rather than resting on PCC's own drafting judgment alone. `pcc-brr3-001`'s commit remains the only one pushed this session (`e34b06c`, on that cycle's specific owner instruction); `pcc-brr3-002`'s and this task's commits stay local per the owner's explicit instruction to push `281781e` "only if/when separately instructed" — `DECISION-036`'s lapsed blanket authorization is not revived by this decision.
+
+Supersedes: None
+Related: DECISION-006, DECISION-008, DECISION-020, DECISION-033, DECISION-036, DECISION-038, DECISION-039, DECISION-041, DECISION-042, DECISION-044, DECISION-045, DECISION-046, DECISION-047, docs/BRR_PLAN.md, docs/BRR_POLICY.md

@@ -1,29 +1,31 @@
 {
-  "task_id": "pcc-brr3-002",
-  "task_title": "BRR Policy: Self-Verification Limits",
-  "task_objective": "Extend docs/BRR_POLICY.md with a 'Self-Verification Restrictions' section (docs/BRR_PLAN.md Phase 3 item 2) bounding the existing DECISION-033/DECISION-036 self-verification fallback: which task classes/types may be self-verified at all, which require a second reviewer or stronger deterministic checks, and what extra evidence is required when self-verification is allowed. This tightens the existing exception; it does not redefine or expand the DECISION-033/DECISION-036 authority grant itself.",
+  "task_id": "pcc-brr3-003",
+  "task_title": "BRR Policy: Out-of-Scope Detection",
+  "task_objective": "Add an 'Out-of-Scope Detection' section to docs/BRR_POLICY.md (docs/BRR_PLAN.md Phase 3 item 3) giving concrete, checkable definitions for the three named failure modes (unauthorized file changes, unintended truth-surface edits, silent adjacent-scope edits) and a required, structural verification procedure covering them -- formalizing practice already used ad hoc in prior verification results (per-file diff review against boundaries.allowed/forbidden), without adding new scripts or touching the self-verification fallback, autonomous gate, acceptance boundary rules, or any Task Safety Class's core meaning.",
   "task_status": "complete",
   "assigned_worker": "Claude Code",
   "task_safety_class": "B",
   "completion_criteria": [
-    "docs/BRR_POLICY.md gains a 'Self-Verification Restrictions' section defining which task classes/types may be self-verified, which require a second reviewer or stronger deterministic checks, and what extra evidence is required when self-verification is permitted.",
-    "The section is explicit that it bounds/tightens the existing DECISION-033/036 fallback rather than redefining, expanding, or replacing that authority grant.",
-    "The section reconciles with, and does not contradict, Task Safety Classification, Acceptance Boundary Rules, and the Verification Depth Policy (pcc-brr3-001) -- ties naturally to the 'strict' depth requirement, since strict depth performed by the same self-verifying party is exactly where the restriction matters most.",
+    "docs/BRR_POLICY.md gains an 'Out-of-Scope Detection' section defining, concretely and checkably, all three named failure modes: unauthorized file changes; unintended truth-surface edits; silent adjacent-scope edits.",
+    "The section defines an explicit, enumerated 'truth surface' list or a clear, checkable rule for identifying one, so 'unintended truth-surface edit' is checkable rather than left to intuition.",
+    "The section requires a structural verification procedure (enumerate every changed file; check each against the task's boundaries.allowed/forbidden; check for unrelated/unclaimed changes within an allowed file) recorded using the existing out_of_scope_findings field -- no new schema field introduced.",
+    "The section stays structural and measurable per docs/BRR_PLAN.md Phase 3's own special caution against chasing perfect hallucination/intent detection.",
+    "The section does not alter the self-verification fallback (DECISION-033/036), the autonomous gate, the Acceptance Boundary Rules, or any Task Safety Class's core meaning.",
+    "The section does not broaden into a larger governance redesign -- stays confined to detection criteria and procedure, introducing no new verdict or authority.",
     "A new decision is recorded in docs/DECISIONS.md documenting the policy addition.",
-    "No runtime script, schema, or enforcement change is introduced; DECISION-033/036's own wording is not altered; no Phase 2 autonomy decision (DECISION-038 through 042, 045) is reopened or re-decided.",
+    "No runtime script, schema, or enforcement change is introduced.",
     "No existing verdict, task safety class, or stop condition is redefined or weakened."
   ],
   "boundaries": {
     "allowed": [
-      "Edit docs/BRR_POLICY.md to add the new 'Self-Verification Restrictions' section.",
+      "Edit docs/BRR_POLICY.md to add the new 'Out-of-Scope Detection' section.",
       "Edit docs/DECISIONS.md to record the new decision.",
-      "Cross-reference docs/BRR_PLAN.md Phase 3 item 2 and existing docs/BRR_POLICY.md sections (including the new Verification Depth Policy) without altering their existing content.",
-      "Cross-reference DECISION-033/036 by citation only, without changing their text or their standing authorization."
+      "Cross-reference docs/BRR_PLAN.md Phase 3 item 3 and existing docs/BRR_POLICY.md sections (Owner Review Matrix row 7, Verification Depth Policy, Self-Verification Restrictions) without altering their existing content."
     ],
     "forbidden": [
-      "Do not rewrite, expand, narrow-by-redefinition, or repeal the DECISION-033/036 fallback authority grant itself -- only add a bounding restriction layer on top of it.",
-      "Do not reopen or re-decide any Phase 2 autonomy decision (DECISION-038 through DECISION-042, DECISION-045). If drafting this section surfaces a direct, genuine contradiction with one of them, stop and surface it via owner_decision_request rather than resolving it unilaterally.",
-      "Do not implement any runtime enforcement, gating, or automatic depth/reviewer selection (no script changes).",
+      "Do not alter the self-verification fallback (DECISION-033/036), the autonomous gate scripts, the Acceptance Boundary Rules, or any Task Safety Class's core meaning. If drafting this section surfaces a direct need to touch one of these, stop and surface via owner_decision_request rather than resolving it unilaterally.",
+      "Do not broaden scope into a larger governance redesign -- stay confined to detection criteria and procedure.",
+      "Do not implement any new script, automatic detection tooling, or enforcement/gating change.",
       "Do not modify any schema, task-state.json fields, or verification-result.json shape.",
       "Do not touch anything under scripts/.",
       "Do not mark BRR Phase 3 complete or advance current_phase."
@@ -47,9 +49,9 @@
   "owner_decision_request": null,
   "promotion_basis": {
     "lane": "docs/BRR_PLAN.md Phase 3 (owner-approved BRR program plan; Phase 3 entered via DECISION-045)",
-    "priority_ref": "docs/BRR_PLAN.md Phase 3 deliverable item 2, 'Self-Verification Restrictions' -- the next listed item directly after pcc-brr3-001's item 1",
-    "justification": "Independently checked against the full 8-part Safe Next-Task Drafting Rules gate (docs/BRR_POLICY.md, DECISION-039), not accepted on say-so: current task (pcc-brr3-001) complete/PASS; repo health/state checks clean (validate-cockpit-state.ps1, check-schemas.ps1, doctor.ps1); already-approved lane (BRR_PLAN.md Phase 3); scope sufficiently fleshed out from the plan's own bullet list without new owner intent; aligned with the babysitting-reduction north star; bounded and classifiable (Class B, matching pcc-brr3-001's precedent); no Owner Review Matrix 'before execution' row applies because bounding an existing exception more tightly is a restriction, not an authority expansion -- the opposite of the disguised-fork pattern caught in pcc-brr2-013's candidate #2 (default-on unattended auto-run); and it changes no project goal, architecture, authority model, cost model, or safety posture, since it narrows rather than broadens the existing DECISION-033 exception. GPT, serving as today's advisor/secondary reviewer, independently recommended treating this as in-lane continuation; that recommendation is corroborating context per DECISION-036's scope for GPT (secondary review input, not independent authority), not the basis for this promotion -- the basis is the gate check recorded here."
+    "priority_ref": "docs/BRR_PLAN.md Phase 3 deliverable item 3, 'Out-of-Scope Detection Hardening' -- the next listed item after pcc-brr3-002's item 2",
+    "justification": "Independently re-checked against the full 8-part Safe Next-Task Drafting Rules gate (docs/BRR_POLICY.md, DECISION-039): current task (pcc-brr3-002) complete/PASS; repo health/state checks clean; already-approved lane (BRR_PLAN.md Phase 3); scope kept deliberately definitional/procedural (not a new script) to stay bounded without new owner intent, per the owner's own caution against chasing perfect detection; aligned with the babysitting-reduction north star; bounded and classifiable (Class B, matching precedent); no Owner Review Matrix 'before execution' row applies since this defines detection criteria rather than granting or changing authority; changes no project goal, architecture, authority model, or safety posture. Distinct from pcc-brr3-002: this time the owner directly reviewed and pre-authorized self-promoting this specific item this cycle ('self-promote Phase 3 item 3 next... it does not need owner naming directly'), including two explicit stop-conditions (do not touch the self-verification fallback/autonomous gate/acceptance boundary/class meanings; do not broaden into governance redesign) that are carried into this task's forbidden-scope list verbatim. That owner sign-off is stronger corroborating context than GPT's prior recommendation, but the gate check above -- not the owner's blessing of the mechanism -- remains the recorded basis, consistent with treating self-promotion as a checkable claim rather than an assumed one."
   },
-  "next_action": "Task 'pcc-brr3-002' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T09:19:13-06:00"
+  "next_action": "Task 'pcc-brr3-003' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-04T09:31:20-06:00"
 }
