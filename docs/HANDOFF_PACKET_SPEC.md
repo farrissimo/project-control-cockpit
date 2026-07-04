@@ -239,12 +239,19 @@ When handing to an advisor/verifier, include:
 
 Before issuing that verdict, the advisor/verifier independently re-runs the
 relevant local guardrails against the state actually being reviewed, rather
-than relying only on the worker's report about those checks. In the normal
-case this means `scripts/validate-cockpit-state.ps1`,
+than relying only on the worker's report about those checks. `scripts/verify-handback-guardrails.ps1`
+gives this one deterministic, read-only path: it runs `scripts/validate-cockpit-state.ps1`,
 `scripts/check-schemas.ps1`, and `scripts/doctor.ps1` against the live
-handback state (`DECISION-031`). This duplication is justified because it
-checks a different role boundary and sometimes a later repo state than the
-worker last saw; it is not process theater for its own sake.
+handback state (`DECISION-031`), and additionally runs
+`scripts/enforce-handoff-restart-safety.ps1` only when `task_status` is
+`ready_for_worker` — printing an explicit `[SKIP]` with its reasoning
+otherwise, since that gate is not applicable once a worker has already
+returned a task for verification. It never writes to state and never issues
+a verdict; a non-zero exit means the repo-health guardrails found a real
+problem and the verifier should not issue `PASS` yet, not that the verdict
+itself has been decided. This duplication is justified because it checks a
+different role boundary and sometimes a later repo state than the worker
+last saw; it is not process theater for its own sake (`DECISION-032`).
 
 ### Worker Handoff
 

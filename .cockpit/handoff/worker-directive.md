@@ -13,8 +13,8 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-brr2-003
-* Task Title: BRR Verification: Deterministic Verifier Guardrails
+* Task ID: pcc-brr2-004
+* Task Title: BRR Verification: Deterministic Close-Out
 * Task Status: ready_for_worker
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
@@ -36,36 +36,36 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-Operationalize verifier-side independent guardrails in the same concrete way pcc-brr2-002 operationalized worker handback. Build the lightest viable verifier-side helper or equivalent repo-native mechanism that runs the applicable independent local checks against the actual handed-back state before a verdict is issued, so verifier guardrails are a repeatable repo path rather than a memory-based checklist. Keep it bounded to normal verifier-side health checks and close review of applicability, without redesigning verdicts, worker flow, or broader BRR policy.
+Operationalize verifier close-out and repo-sync duties in the same concrete way pcc-brr2-002 operationalized worker handback and pcc-brr2-003 operationalized verifier guardrails. Build the lightest viable verifier-side helper or equivalent repo-native mechanism that performs the normal post-PASS close-out sequence in a fixed, repeatable order: archive the cycle artifacts, advance state with the archived handoff path, run the post-close-out health check, log the event, and leave the repo in a clean commit-ready state so repo sync is an official duty expressed directly in the repo rather than a remembered checklist.
 
 ## Allowed Scope
 
 The worker may:
 
-* Add or update a narrowly scoped local script or equivalent repo-native helper for verifier-side independent guardrails before verdict.
-* Update verifier-facing workflow docs or closely related repo-truth surfaces only as needed to make that verifier path explicit and durable.
-* Adjust live handoff or state artifacts only insofar as the active task flow needs to demonstrate the new verifier path honestly.
-* Run the relevant local checks to prove the verifier-side path works on the active task flow.
+* Add or update a narrowly scoped local script or equivalent repo-native helper for verifier-side post-PASS close-out.
+* Update verifier-facing workflow docs or closely related repo-truth surfaces only as needed to make that close-out path explicit and durable.
+* Adjust live or archived artifacts, state, and logs only insofar as the active task flow needs to demonstrate the new close-out path honestly.
+* Run the relevant local checks to prove the close-out path works on the active task flow.
 
 ## Forbidden Scope
 
 The worker must not:
 
-* Do not redesign doctor.ps1, check-schemas.ps1, or validate-cockpit-state.ps1 into broad gates for unrelated workflows.
+* Do not redesign doctor.ps1, check-schemas.ps1, validate-cockpit-state.ps1, or advance-cockpit-state.ps1 into broad gates for unrelated workflows unless a direct contradiction is found.
 * Do not change the five verification verdicts, task safety classes, worker handback script behavior, or BRR Phase 1 policy content unless a direct contradiction is found.
 * Do not broaden into owner-decision capture flow, automatic stop-trigger detection, autonomous next-task drafting, or general worker automation.
-* Do not rewrite archived history or retrofit old archived tasks.
-* Do not require the owner to manually arbitrate routine verifier-side guardrail choice when the repo can express the normal path directly.
+* Do not rewrite archived history or retrofit old archived tasks outside what the active task's own honest demonstration requires.
+* Do not pretend repo commit/push policy changed beyond what decisions already authorize.
 
 ## Completion Criteria
 
 The task is complete only if:
 
-* The repo gains one concrete verifier-facing mechanism for independent guardrail review before a verdict is issued, making the usual verifier-side checks explicit and repeatable rather than memory-based.
-* That mechanism is local-first and bounded: it does not redesign the verification verdict model, re-run worker handback logic, or broaden BRR scope beyond operationalizing verifier-side guardrails.
-* The mechanism handles applicability honestly rather than blindly running every check in every state; status-specific checks such as scripts/enforce-handoff-restart-safety.ps1 are included only when they fit the state being reviewed, and skipped with explicit reasoning when they do not.
-* The verifier-facing docs and any touched workflow truth surfaces tell Codex exactly what to run and when, including repo-health and repo-sync duties already recorded in decisions.
-* The resulting verifier path is demonstrated against the active task flow and leaves the repo healthy under the applicable local checks.
+* The repo gains one concrete verifier-facing mechanism for normal post-PASS close-out, making the usual archive, state-advance, post-close-out health check, and logging sequence explicit and repeatable rather than memory-based.
+* That mechanism is local-first and bounded: it does not redesign the verification verdict model, replace independent verifier judgment, or broaden BRR scope beyond operationalizing already-recorded verifier duties.
+* The mechanism preserves the archived handoff path correctly when state advances, and leaves the repo in a clean commit-ready state for the verifier's repo-sync duty.
+* Verifier-facing docs and any touched workflow truth surfaces tell Codex exactly what to run and when for close-out, including what still remains a deliberate manual duty versus what the helper now performs.
+* The resulting close-out path is demonstrated against the active task flow and leaves the repo healthy under the applicable local checks.
 * No new autonomy, owner-decision capture flow, acceptance-boundary policy, or unrelated workflow redesign is introduced.
 
 ## Required Evidence

@@ -756,3 +756,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-020, DECISION-023, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, scripts/doctor.ps1, scripts/check-schemas.ps1, scripts/validate-cockpit-state.ps1
+
+---
+
+## DECISION-032: Deterministic Verifier Guardrail Script Added (pcc-brr2-003)
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+`scripts/verify-handback-guardrails.ps1` is added as the concrete, repeatable repo path for the independent verifier-side guardrail pass `DECISION-031` already made an official duty, mirroring how `scripts/finalize-worker-handback.ps1` operationalized the worker side (`DECISION-030`).
+
+Reason:
+
+`DECISION-031` recorded that the verifier must independently re-run local guardrails before issuing a verdict, but left that as a documented duty rather than a concrete repo mechanism — the same gap `pcc-brr2-001` exposed on the worker side before `pcc-brr2-002` closed it. Operationalizing the verifier side the same concrete way keeps both halves of the handback exchange equally repeatable rather than one being a script and the other a memory-based checklist.
+
+Implications:
+
+`scripts/verify-handback-guardrails.ps1` is read-only: it never writes to state and never issues a verdict itself. It runs `scripts/validate-cockpit-state.ps1`, `scripts/check-schemas.ps1`, and `scripts/doctor.ps1` unconditionally against the task's actual current state, and additionally runs `scripts/enforce-handoff-restart-safety.ps1` only when `task_status` is `ready_for_worker`, printing an explicit `[SKIP]` with reasoning otherwise — preserving `DECISION-031`'s point that this gate is status-specific, not universal. It exits non-zero (refusing to certify the state as clean) if any always-applicable check fails or if `doctor.ps1`'s report contains an `[ISSUE]`; a clean exit certifies repo health only, not task correctness, which remains the verifier's own judgment. `docs/HANDOFF_PACKET_SPEC.md` and `docs/REPO_GOVERNANCE.md`'s Task Process (step 11) now name this script as the verifier's guardrail path. This does not redesign `doctor.ps1`, `check-schemas.ps1`, or `validate-cockpit-state.ps1` — none were modified — and does not change worker handback behavior, verification verdicts, task safety classes, or BRR Phase 1 policy content.
+
+Supersedes: None
+Related: DECISION-020, DECISION-030, DECISION-031, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, scripts/verify-handback-guardrails.ps1

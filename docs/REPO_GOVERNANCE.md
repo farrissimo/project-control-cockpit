@@ -189,7 +189,7 @@ Standard task workflow:
 8. Generate the worker directive.
 9. Run the worker.
 10. Worker hands back evidence via `scripts/finalize-worker-handback.ps1` (`docs/HANDOFF_PACKET_SPEC.md`), which performs the returned-for-verification state update, artifact regeneration, and health checks in the correct fixed order.
-11. Verify evidence before truth advances, including the verifier's own independent local guardrail pass where applicable (`DECISION-031`) rather than relying only on the worker's report of those checks.
+11. Verify evidence before truth advances, running `scripts/verify-handback-guardrails.ps1` (`docs/HANDOFF_PACKET_SPEC.md`) as the verifier's own independent local guardrail pass (`DECISION-031`, `DECISION-032`) rather than relying only on the worker's report of those checks.
 
 If task execution changes the durable workflow, governance, or other canonical project behavior, update the affected docs before treating the task as fully complete.
 
