@@ -463,7 +463,7 @@ Related: docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, .cockpit/state/projec
 ## DECISION-019: Claude May Temporarily Hold Both Worker And Advisor/Verifier Roles
 
 Date: 2026-07-03
-Status: Active
+Status: Superseded (by DECISION-023, 2026-07-03 — Codex resumed as advisor/verifier)
 
 Owner Decision:
 
@@ -558,3 +558,25 @@ This decision structures Phase 1 only. It does not author the policy content its
 
 Supersedes: None
 Related: DECISION-018, DECISION-019, DECISION-021, docs/BRR_PLAN.md, docs/REPO_GOVERNANCE.md, docs/VERIFICATION_RESULT_SPEC.md, docs/COMPLETION_CONTRACT_SPEC.md
+
+---
+
+## DECISION-023: Return To Canonical Two-Role Workflow; Codex Resumes As Advisor/Verifier
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+Codex is available again. PCC returns to the canonical two-role split of DECISION-012: Claude Code is the worker, Codex is the advisor/verifier and source-of-truth guard. The temporary dual-role trial (DECISION-019) ends and is marked superseded.
+
+Reason:
+
+DECISION-019 was always an explicit, temporary exception taken only because the owner could not run the two-role split at the time. That constraint is now resolved. Independent verification is the stronger arrangement (DECISION-005, DECISION-006), and V1's closure (`docs/V1_Scope.md`) records honestly that self-verification accumulated no independent track record during the trial — so returning to independent review is the correct next step, especially before BRR policy work, which is judgment-heavy and not deterministically verifiable.
+
+Implications:
+
+Effective the next task (`pcc-brr1-001` onward), Claude Code produces worker evidence and does not self-issue the verification verdict; Codex reviews evidence and issues the verdict per `docs/VERIFICATION_RESULT_SPEC.md`. Work self-verified during the DECISION-019 trial (`pcc-v1-009` through `pcc-v1-015`) remains recorded as PASS but was never independently reviewed; the returning verifier may spot-check any of it (this is surfaced as an open question at the V1→BRR handoff, not silently assumed sound). This decision does not by itself re-run or invalidate any prior verdict.
+
+Supersedes: DECISION-019
+Related: DECISION-005, DECISION-006, DECISION-012, DECISION-021, DECISION-022, docs/VERIFICATION_RESULT_SPEC.md, docs/V1_Scope.md
