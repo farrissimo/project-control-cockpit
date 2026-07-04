@@ -253,6 +253,8 @@ itself has been decided. This duplication is justified because it checks a
 different role boundary and sometimes a later repo state than the worker
 last saw; it is not process theater for its own sake (`DECISION-032`).
 
+The normal advisor/verifier is Codex (`DECISION-023`). If Codex is unavailable and the owner wants work to continue, `DECISION-033` allows a degraded fallback where Claude Code also performs the verifier role. In that case, the verification artifact must say plainly that it was self-verified with no independent second-party review, and the verifier pass must still independently re-run the relevant local guardrails and evidence review rather than merely endorsing the worker narrative.
+
 ### Worker Handoff
 
 When handing to a worker, include:
@@ -314,15 +316,17 @@ local guardrails against the handed-back state they are about to judge
 (`DECISION-031`) rather than relying only on the worker's claim that those
 checks were clean.
 
-Once a `PASS` verdict is written to `.cockpit/result/verification-result.json`, close out the cycle in this order:
+Once a `PASS` verdict is written to `.cockpit/result/verification-result.json`, `scripts/close-out-verified-task.ps1` performs the close-out in one deterministic run, in this fixed order (`DECISION-034`):
 
-1. **Archive first** — copy the live `worker-directive.md`, `worker-result.md`, and `verification-result.json` to their `archive/` counterparts (e.g. `pcc-v1-0XX-worker-directive.md`) *before* advancing state. Archiving does not depend on `advance-cockpit-state.ps1` having run.
-2. **Advance state**, passing the archive path from step 1: `scripts/advance-cockpit-state.ps1 -ArchivedDirectivePath ".cockpit/handoff/archive/pcc-v1-0XX-worker-directive.md"`. This is what lets `last_verified_handoff` point at the immutable archived copy instead of the live path the next task's directive will overwrite (see `docs/STATE_MODEL.md`).
-3. **Run `doctor.ps1`** to confirm the repo is still healthy, and regenerate `advisor-restart-brief.md` if it reports the advisor side stale.
-4. **Log the event** with `scripts/log-event.ps1 -FromVerificationResult`.
-5. **Commit** the verified work (push requires separate explicit owner approval per `DECISION-020`).
+1. **Archive first** — copies the live `worker-directive.md`, `worker-result.md`, and `verification-result.json` to their `archive/` counterparts (`<task_id>-worker-directive.md`, etc.) *before* advancing state, refusing to run at all if any of those archive paths already exist (never overwrites archived history) or if the live verdict is not `PASS` for the active task.
+2. **Advance state**, automatically passing the archive path from step 1 to `scripts/advance-cockpit-state.ps1 -ArchivedDirectivePath ...`. This is what lets `last_verified_handoff` point at the immutable archived copy instead of the live path the next task's directive will overwrite (see `docs/STATE_MODEL.md`).
+3. **Refresh both live handoff artifacts unconditionally** — regenerates `worker-directive.md` and `advisor-restart-brief.md` from the just-advanced state, rather than only the brief. Skipping the directive here would reproduce `pcc-brr2-001`'s staleness gap on the verifier side of close-out: advancing state changes `task_status`/`current_phase`/`last_verified_handoff` out from under the live directive too, not only the brief.
+4. **Run `doctor.ps1`** as the post-close-out health check, failing the whole close-out if it reports any `[ISSUE]`.
+5. **Log the event** with `scripts/log-event.ps1 -FromVerificationResult`.
 
-Archiving before advancing (rather than after, as earlier cycles did) is what makes step 2's `-ArchivedDirectivePath` argument available in the first place.
+After these five steps, the repo is in a clean, commit-ready state. Committing is the one remaining step this script performs only when explicitly requested via `-Commit` (`git add -A` then `git commit`, using the verification summary as the message) — `DECISION-020` already authorizes the verifier to commit the cycle's own verified changes, but not to have that decided automatically on every close-out run. **Pushing to any remote is never performed by this script and always requires separate explicit owner approval each time**, unchanged from `DECISION-020`.
+
+Archiving before advancing (rather than after, as earlier cycles did) is what makes step 2's archive-path argument available in the first place.
 
 ---
 

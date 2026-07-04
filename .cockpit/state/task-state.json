@@ -1,31 +1,31 @@
 {
-  "task_id": "pcc-brr2-004",
-  "task_title": "BRR Verification: Deterministic Close-Out",
-  "task_objective": "Operationalize verifier close-out and repo-sync duties in the same concrete way pcc-brr2-002 operationalized worker handback and pcc-brr2-003 operationalized verifier guardrails. Build the lightest viable verifier-side helper or equivalent repo-native mechanism that performs the normal post-PASS close-out sequence in a fixed, repeatable order: archive the cycle artifacts, advance state with the archived handoff path, run the post-close-out health check, log the event, and leave the repo in a clean commit-ready state so repo sync is an official duty expressed directly in the repo rather than a remembered checklist.",
+  "task_id": "pcc-brr2-005",
+  "task_title": "BRR Execution: Status-Change Refresh Invariant",
+  "task_objective": "Operationalize the generic invariant that any repo-native path which changes live task status must leave both live handoff artifacts regenerated from the post-write state, not just one of them. Build the lightest viable repo-native mechanism, guardrail, or shared helper that makes this two-artifact refresh rule explicit across the existing status-mutating workflow paths so the recurring stale-artifact defect becomes structurally harder to reintroduce.",
   "task_status": "ready_for_worker",
   "assigned_worker": "Claude Code",
   "task_safety_class": "B",
   "completion_criteria": [
-    "The repo gains one concrete verifier-facing mechanism for normal post-PASS close-out, making the usual archive, state-advance, post-close-out health check, and logging sequence explicit and repeatable rather than memory-based.",
-    "That mechanism is local-first and bounded: it does not redesign the verification verdict model, replace independent verifier judgment, or broaden BRR scope beyond operationalizing already-recorded verifier duties.",
-    "The mechanism preserves the archived handoff path correctly when state advances, and leaves the repo in a clean commit-ready state for the verifier's repo-sync duty.",
-    "Verifier-facing docs and any touched workflow truth surfaces tell Codex exactly what to run and when for close-out, including what still remains a deliberate manual duty versus what the helper now performs.",
-    "The resulting close-out path is demonstrated against the active task flow and leaves the repo healthy under the applicable local checks.",
+    "The repo gains one concrete, durable expression of the rule that a task-status change must leave both live handoff artifacts regenerated from the resulting state, preventing one-document refreshes from silently passing as complete.",
+    "That mechanism is local-first and bounded: it improves status-change artifact freshness without redesigning the verdict model, BRR policy model, or broader workflow ownership rules.",
+    "The existing repo-native status-changing paths that matter for live task flow are updated, checked, or routed so this two-artifact refresh invariant is explicit rather than memory-based.",
+    "Verifier-facing and worker-facing workflow truth surfaces tell the roles exactly where this invariant is enforced and what to run, including any remaining manual edges if full centralization is not the lightest honest scope.",
+    "The resulting path is demonstrated against the active task flow and leaves the repo healthy under the applicable local checks.",
     "No new autonomy, owner-decision capture flow, acceptance-boundary policy, or unrelated workflow redesign is introduced."
   ],
   "boundaries": {
     "allowed": [
-      "Add or update a narrowly scoped local script or equivalent repo-native helper for verifier-side post-PASS close-out.",
-      "Update verifier-facing workflow docs or closely related repo-truth surfaces only as needed to make that close-out path explicit and durable.",
-      "Adjust live or archived artifacts, state, and logs only insofar as the active task flow needs to demonstrate the new close-out path honestly.",
-      "Run the relevant local checks to prove the close-out path works on the active task flow."
+      "Add or update narrowly scoped local script logic, guardrails, or a shared helper directly related to keeping both live handoff artifacts fresh after task-status changes.",
+      "Update workflow docs or closely related repo-truth surfaces only as needed to make the invariant explicit and durable.",
+      "Adjust live or archived artifacts, state, and logs only insofar as the active task flow needs to demonstrate the invariant honestly.",
+      "Run the relevant local checks to prove the refreshed status-change path works on the active task flow."
     ],
     "forbidden": [
-      "Do not redesign doctor.ps1, check-schemas.ps1, validate-cockpit-state.ps1, or advance-cockpit-state.ps1 into broad gates for unrelated workflows unless a direct contradiction is found.",
-      "Do not change the five verification verdicts, task safety classes, worker handback script behavior, or BRR Phase 1 policy content unless a direct contradiction is found.",
+      "Do not redesign doctor.ps1, check-schemas.ps1, validate-cockpit-state.ps1, or the broader PCC state model into generic orchestration unless a direct contradiction is found.",
+      "Do not change the five verification verdicts, task safety classes, or BRR Phase 1 policy content unless a direct contradiction is found.",
       "Do not broaden into owner-decision capture flow, automatic stop-trigger detection, autonomous next-task drafting, or general worker automation.",
       "Do not rewrite archived history or retrofit old archived tasks outside what the active task's own honest demonstration requires.",
-      "Do not pretend repo commit/push policy changed beyond what decisions already authorize."
+      "Do not use this task as a pretext to redesign unrelated scripts when a narrower invariant-focused fix would do."
     ]
   },
   "required_evidence": [
@@ -43,6 +43,6 @@
   "verification_result_path": ".cockpit/result/verification-result.json",
   "verification_verdict": null,
   "current_blocker": null,
-  "next_action": "Read .cockpit/handoff/worker-directive.md, implement pcc-brr2-004 within scope, and return evidence to .cockpit/result/worker-result.md.",
-  "updated_at": "2026-07-03T23:44:00-06:00"
+  "next_action": "Read .cockpit/handoff/worker-directive.md, implement pcc-brr2-005 within scope, and return evidence to .cockpit/result/worker-result.md.",
+  "updated_at": "2026-07-04T00:08:00-06:00"
 }

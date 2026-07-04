@@ -271,6 +271,8 @@ A valid verification result must:
 * define the next action
 * explicitly state whether state update is allowed
 
+When the same agent performed both the worker and verifier roles under the degraded fallback authorized by `DECISION-033`, the verification result must also include an explicit self-verification disclosure in `risks` or `summary` stating that no independent second-party review occurred.
+
 ---
 
 ## Invalid Verification Result Examples

@@ -778,3 +778,47 @@ Implications:
 
 Supersedes: None
 Related: DECISION-020, DECISION-030, DECISION-031, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, scripts/verify-handback-guardrails.ps1
+
+---
+
+## DECISION-033: Degraded Dual-Role Fallback Is Allowed When Codex Is Unavailable
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+PCC keeps `DECISION-012` / `DECISION-023` as the normal canonical workflow, but when Codex is unavailable because of session limits, tool availability, or similar practical interruption, Claude Code may temporarily perform both the worker and advisor/verifier roles so work does not stall. This fallback does not require a fresh owner re-approval each time; it is now a standing repo-truth exception with explicit disclosure requirements.
+
+Reason:
+
+The owner wants uninterrupted progress even when Codex runs out of usable session capacity. The earlier dual-role exception (`DECISION-019`) proved the repo can operate that way in practice, but `DECISION-023` closed that trial completely rather than leaving a durable fallback path. Without an explicit standing relaxation, the canonical workflow says "stop" in exactly the scenario the owner wants PCC to handle smoothly.
+
+Implications:
+
+Independent verification remains the preferred and stronger mode. When Codex is available, Claude Code is worker and Codex is advisor/verifier exactly as `DECISION-023` says. When Codex is not available, Claude may self-verify under this fallback, but must do so honestly and visibly: every self-verified result must disclose that no independent second party reviewed it, must independently re-run the relevant local guardrails and evidence review rather than only rereading its own worker narrative, and must remain willing to issue `FAIL`, `INSUFFICIENT`, `BLOCKED`, or `OUT_OF_SCOPE` against its own work. Repo-truth surfaces should describe this as degraded mode or fallback mode, not as equivalent to the normal two-role split. This decision does not remove Codex's verifier duties when Codex is available, does not make self-verification the preferred path, and does not retroactively reclassify prior independently verified work.
+
+Supersedes: None
+Related: DECISION-012, DECISION-019, DECISION-023, DECISION-031, docs/VERIFICATION_RESULT_SPEC.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md
+
+---
+
+## DECISION-034: Deterministic Verifier Close-Out Script Added (pcc-brr2-004)
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+`scripts/close-out-verified-task.ps1` is added as the concrete, repeatable repo path for the post-`PASS` close-out sequence `DECISION-020` already recommended, mirroring how `scripts/finalize-worker-handback.ps1` (`DECISION-030`) and `scripts/verify-handback-guardrails.ps1` (`DECISION-032`) operationalized the worker handback and pre-verdict guardrail halves of the same exchange.
+
+Reason:
+
+`docs/HANDOFF_PACKET_SPEC.md`'s "Recommended Close-Out Order" already documented the right sequence (archive, advance, health-check, log, commit) as a memory-based checklist. That is the same shape of gap `pcc-brr2-001` exposed on the worker side before being closed by `pcc-brr2-002`/`pcc-brr2-003`; operationalizing the close-out side the same concrete way keeps every stage of the worker-to-verifier-to-close-out exchange equally repeatable.
+
+Implications:
+
+`scripts/close-out-verified-task.ps1` only runs against an already-written `PASS` verdict matching the active task, and refuses if any archive destination already exists (never overwrites archived history). It archives the live directive/result/verification first, advances state via `scripts/advance-cockpit-state.ps1` with the archive path, then **regenerates both live handoff artifacts** (not only the advisor brief) — this second point was a real finding during this task's own scratch testing: advancing state changes `task_status`/`current_phase`/`last_verified_handoff` out from under the live worker directive just as much as the brief, and regenerating only one would have reproduced `pcc-brr2-001`'s exact staleness gap on the close-out side. It then runs `doctor.ps1` as the post-close-out health check (failing on any `[ISSUE]`) and logs the event via `scripts/log-event.ps1 -FromVerificationResult`. Committing remains a deliberate step, available via an explicit `-Commit` switch (`git add -A` then `git commit`, never `git push`) rather than automatic on every run; `DECISION-020` already authorizes the verifier to commit verified work, and pushing continues to require separate explicit owner approval every time, unchanged. `docs/HANDOFF_PACKET_SPEC.md`'s "Recommended Close-Out Order" and `docs/REPO_GOVERNANCE.md`'s Task Process (new step 12) now name this script directly. This does not redesign `doctor.ps1`, `check-schemas.ps1`, `validate-cockpit-state.ps1`, or `advance-cockpit-state.ps1` — none were modified — and does not change verification verdicts, task safety classes, or worker handback script behavior.
+
+Supersedes: None
+Related: DECISION-020, DECISION-030, DECISION-031, DECISION-032, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, scripts/close-out-verified-task.ps1

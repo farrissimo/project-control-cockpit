@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-03T23:38:08-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T00:04:45-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,22 +10,22 @@ Current phase: brr-phase-2
 
 ## Active Task
 
-* Task ID: pcc-brr2-004
-* Title: BRR Verification: Deterministic Close-Out
+* Task ID: pcc-brr2-005
+* Title: BRR Execution: Status-Change Refresh Invariant
 * Status: ready_for_worker
 * Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Operationalize verifier close-out and repo-sync duties in the same concrete way pcc-brr2-002 operationalized worker handback and pcc-brr2-003 operationalized verifier guardrails. Build the lightest viable verifier-side helper or equivalent repo-native mechanism that performs the normal post-PASS close-out sequence in a fixed, repeatable order: archive the cycle artifacts, advance state with the archived handoff path, run the post-close-out health check, log the event, and leave the repo in a clean commit-ready state so repo sync is an official duty expressed directly in the repo rather than a remembered checklist.
+* Objective: Operationalize the generic invariant that any repo-native path which changes live task status must leave both live handoff artifacts regenerated from the post-write state, not just one of them. Build the lightest viable repo-native mechanism, guardrail, or shared helper that makes this two-artifact refresh rule explicit across the existing status-mutating workflow paths so the recurring stale-artifact defect becomes structurally harder to reintroduce.
 
 ## Last Verified
 
-* Verdict: PASS for task 'pcc-brr2-003', verified at 2026-07-03T23:33:00-06:00
-* Summary: pcc-brr2-003 satisfies its scope and cleanly operationalizes verifier-side independent guardrails. The repo now has a deterministic, read-only verifier path in scripts/verify-handback-guardrails.ps1; the related docs and decision log are propagated; the script handles status-specific applicability honestly; and independent verifier-side check-schemas, validate-cockpit-state, and doctor runs all confirm the actual returned-for-verification repo state is healthy. The script also states clearly that it certifies repo health only and does not itself decide the verification verdict.
-* Last verified handoff: .cockpit/handoff/archive/pcc-brr2-003-worker-directive.md
+* Verdict: PASS for task 'pcc-brr2-004', verified at 2026-07-04T00:04:00-06:00
+* Summary: pcc-brr2-004 satisfies its scope and cleanly operationalizes verifier-side post-PASS close-out. The repo now has a deterministic close-out path in scripts/close-out-verified-task.ps1; the related docs and decision log are propagated; the script correctly refreshes both live handoff artifacts after state advance; and independent verifier-side guardrails confirm the actual returned-for-verification repo state is healthy before live close-out.
+* Last verified handoff: .cockpit/handoff/archive/pcc-brr2-004-worker-directive.md
 
 ## Open Issues
 
-* Risk from last verification of 'pcc-brr2-003': Verifier-side independent guardrails are now deterministic, but verifier close-out and repo-sync duties still rely on a remembered sequence rather than one concrete repo-native path.
-* Risk from last verification of 'pcc-brr2-003': Both verifier and worker helper scripts currently detect doctor issues by reading doctor.ps1 output text, so any future doctor output-label change should update those helpers together.
+* Risk from last verification of 'pcc-brr2-004': First real-use risk remains until the verifier executes scripts/close-out-verified-task.ps1 on a live PASS cycle; scratch testing was strong, but this run is the first live use.
+* Risk from last verification of 'pcc-brr2-004': The script uses the same [ISSUE]-text-match coupling to doctor.ps1 output format as the other deterministic handoff helpers; if doctor output labels change, those scripts will need coordinated updates.
 
 ## Read First
 
@@ -39,5 +39,5 @@ Current phase: brr-phase-2
 
 ## What Happens Next
 
-* Task-level: Read .cockpit/handoff/worker-directive.md, implement pcc-brr2-004 within scope, and return evidence to .cockpit/result/worker-result.md.
-* Project-level: Run Claude Code against .cockpit/handoff/worker-directive.md for task 'pcc-brr2-004', focused on operationalizing verifier close-out and repo-sync duties in one deterministic repo path.
+* Task-level: Read .cockpit/handoff/worker-directive.md, implement pcc-brr2-005 within scope, and return evidence to .cockpit/result/worker-result.md.
+* Project-level: Run Claude Code against .cockpit/handoff/worker-directive.md for task 'pcc-brr2-005', focused on making the two-artifact refresh invariant explicit for every repo-native task-status change path.
