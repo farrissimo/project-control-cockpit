@@ -20,6 +20,7 @@
     "verification_result_path",
     "verification_verdict",
     "current_blocker",
+    "owner_decision_request",
     "next_action",
     "updated_at"
   ],
@@ -116,6 +117,28 @@
     },
     "current_blocker": {
       "type": ["string", "null"]
+    },
+    "owner_decision_request": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["question", "reason", "options", "blocked_until"],
+      "properties": {
+        "question": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blocked_until": {
+          "type": "string"
+        }
+      }
     },
     "next_action": {
       "type": ["string", "null"]

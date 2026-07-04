@@ -85,6 +85,13 @@ Worker
 - Task Status:
 - Task Safety Class:
 
+## Owner Decision Needed (only present when one is pending)
+
+- Question:
+- Reason:
+- Options:
+- Blocked until:
+
 ## Objective
 
 State the exact task objective in plain language.
@@ -158,7 +165,7 @@ If blocked, do not improvise broad changes. Return:
 
 ## Directive Generation Is a Local Deterministic Step
 
-`scripts/generate-worker-directive.ps1` drafts `.cockpit/handoff/worker-directive.md` directly from `.cockpit/state/project-state.json` and `.cockpit/state/task-state.json`, following this template. Worker-facing standing truth should come from canonical state rather than hidden script-only facts. The generator refuses to draft a directive if the two state files disagree on the active task, or if the task's objective, allowed scope, forbidden scope, completion criteria, or BRR task safety class (`docs/BRR_POLICY.md`, `docs/STATE_MODEL.md`'s `task_safety_class`) are missing or not one of `A`/`B`/`C`/`D`.
+`scripts/generate-worker-directive.ps1` drafts `.cockpit/handoff/worker-directive.md` directly from `.cockpit/state/project-state.json` and `.cockpit/state/task-state.json`, following this template. Worker-facing standing truth should come from canonical state rather than hidden script-only facts. The generator refuses to draft a directive if the two state files disagree on the active task, or if the task's objective, allowed scope, forbidden scope, completion criteria, or BRR task safety class (`docs/BRR_POLICY.md`, `docs/STATE_MODEL.md`'s `task_safety_class`) are missing or not one of `A`/`B`/`C`/`D`. When `task-state.json`'s `owner_decision_request` (`docs/STATE_MODEL.md`, `DECISION-037`) is populated, the generator renders an "Owner Decision Needed" section with the question, reason, options, and what stays blocked; the section is omitted entirely when no owner decision is pending.
 
 ---
 
@@ -279,7 +286,7 @@ When starting a fresh chat, include:
 * next expected action
 * files/paths to read first
 
-`scripts/generate-advisor-restart-brief.ps1` drafts this handoff for a fresh advisor/verifier session directly from `.cockpit/state/project-state.json`, `.cockpit/state/task-state.json`, and `.cockpit/result/verification-result.json`, writing to `.cockpit/handoff/advisor-restart-brief.md`. It surfaces the active task's BRR task safety class alongside its status. It refuses to draft a brief if project/task state disagree on the active task, if project state and the live verification result disagree on the last verdict, or if the task safety class is missing or not one of `A`/`B`/`C`/`D`.
+`scripts/generate-advisor-restart-brief.ps1` drafts this handoff for a fresh advisor/verifier session directly from `.cockpit/state/project-state.json`, `.cockpit/state/task-state.json`, and `.cockpit/result/verification-result.json`, writing to `.cockpit/handoff/advisor-restart-brief.md`. It surfaces the active task's BRR task safety class alongside its status, and the same "Owner Decision Needed" section as the worker directive when `owner_decision_request` is populated (`DECISION-037`). It refuses to draft a brief if project/task state disagree on the active task, if project state and the live verification result disagree on the last verdict, or if the task safety class is missing or not one of `A`/`B`/`C`/`D`.
 
 ---
 

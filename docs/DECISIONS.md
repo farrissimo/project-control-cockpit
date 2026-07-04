@@ -872,3 +872,25 @@ Implications:
 
 Supersedes: None (extends `DECISION-033` and time-boxes an exception to `DECISION-020`'s push rule; does not replace either)
 Related: DECISION-020, DECISION-023, DECISION-031, DECISION-032, DECISION-033, docs/VERIFICATION_RESULT_SPEC.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md
+
+---
+
+## DECISION-037: Owner-Decision Capture Flow Fielded (pcc-brr2-007)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+BRR Phase 2's second deliverable (`docs/BRR_PLAN.md` Phase 2 item 2, "Owner-Decision Capture Flow") is fielded into live task state: `task-state.json` gains an `owner_decision_request` field (`null` when none pending, else an object with `question`, `reason`, `options`, and `blocked_until`), enforced by schema and surfaced in both generated handoff artifacts as an "Owner Decision Needed" section.
+
+Reason:
+
+`docs/BRR_POLICY.md`'s "Owner decision" concept and the Owner Review Matrix's Class C cases have existed as policy since BRR Phase 1, but nothing in live state captured an actual pending decision structurally — it could only ever live as free-form `current_blocker` prose or, worse, only in chat, which `docs/STATE_MODEL.md`'s truth priority already says is not authoritative. `docs/BRR_PLAN.md` names this as Phase 2's own next deliverable in its listed order, and this task (drafted by Claude Code acting in the advisor role under the `DECISION-033`/`DECISION-036` fallback) fields the lightest viable version of it.
+
+Implications:
+
+`schemas/task-state.schema.json` now requires `owner_decision_request` (nullable object, `additionalProperties: false`, with `question`/`reason`/`options`/`blocked_until` all required when non-null). `scripts/generate-worker-directive.ps1` and `scripts/generate-advisor-restart-brief.ps1` both render an "Owner Decision Needed" section when the field is populated, and omit it entirely otherwise — demonstrated in both the absent (normal) case and a populated realistic scenario during this task's own testing, plus a rejected malformed case (missing `blocked_until`) to confirm the schema enforces the full shape. `docs/STATE_MODEL.md`, `docs/HANDOFF_PACKET_SPEC.md`, `docs/BRR_POLICY.md`, and `docs/REPO_GOVERNANCE.md` are updated to describe the field and distinguish it from `current_blocker` (a blocker records that something is stopping the task; an owner-decision request records specifically that the next step needs the owner's judgment — the two may or may not coincide). This is capture and surfacing only: no automatic stop-trigger detection, routing, notification, or acceptance-boundary enforcement was introduced. Phase 2 items 3–5 (Safe Next-Task Drafting Rules, Automatic Stop Triggers, Acceptance Boundary Rules) remain separate, not-yet-drafted work.
+
+Supersedes: None
+Related: DECISION-025, DECISION-028, DECISION-033, DECISION-036, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, schemas/task-state.schema.json

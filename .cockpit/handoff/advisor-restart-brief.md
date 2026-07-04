@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-04T00:31:02-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T00:45:40-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,23 +10,23 @@ Current phase: brr-phase-2
 
 ## Active Task
 
-* Task ID: pcc-brr2-006
-* Title: BRR Governance: Secondary Workflow Canon
+* Task ID: pcc-brr2-007
+* Title: BRR Execution: Owner-Decision Capture Flow
 * Status: complete
 * Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Formalize the degraded secondary-workflow model in repo truth so work can continue cleanly when Codex is unavailable: define exactly when Claude Code may perform both worker and verifier roles, how GPT repo-access review fits as a secondary review input, what that does and does not count as for independence/disclosure purposes, and what artifact wording the repo requires in that mode. Keep it bounded to workflow truth and verification-language clarity rather than broad automation changes.
+* Objective: Field BRR Phase 2's second deliverable (docs/BRR_PLAN.md Phase 2, item 2: Owner-Decision Capture Flow) into live task state in the lightest viable way. When a task or cycle needs an owner decision (Class C per docs/BRR_POLICY.md, or an Owner Review Matrix row is hit), the repo should be able to record, structurally: what decision is needed, why it is needed, what options exist, and what remains blocked until the decision is made - instead of that living only as free-form prose in current_blocker or in chat. Keep this bounded to capturing and surfacing the request; do not build any automatic stop-trigger detection, owner-decision routing/notification, or acceptance-boundary enforcement - those remain separate, later Phase 2 deliverables (items 3-5).
 
 ## Last Verified
 
-* Verdict: PASS for task 'pcc-brr2-006', verified at 2026-07-04T00:31:00-06:00
-* Summary: Independently re-ran scripts/verify-handback-guardrails.ps1 against the actual returned-for-verification state (clean, all applicable checks OK). Independently re-read all four touched truth surfaces (docs/DECISIONS.md's DECISION-036, docs/VERIFICATION_RESULT_SPEC.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md) side by side and confirmed the GPT-role characterization (secondary review input, not independent verification, remote-only, additive not substitutive) and the push-authorization scope (time-boxed, does not permanently amend DECISION-020) are stated consistently across all four with no contradiction. Confirmed via git diff/status that only the four intended docs and the expected state/handoff files changed - no scripts, schemas, verdicts, task safety classes, or BRR Phase 1 policy content were touched, matching the out-of-scope confirmation. All completion criteria met.
-* Last verified handoff: .cockpit/handoff/archive/pcc-brr2-006-worker-directive.md
+* Verdict: PASS for task 'pcc-brr2-007', verified at 2026-07-04T00:46:00-06:00
+* Summary: Independently re-ran scripts/verify-handback-guardrails.ps1 against the actual returned-for-verification state (clean; one expected, non-fatal WARN about the handoff gate referencing the prior task). Verified via git status that only the claimed files changed - no BRR_PLAN.md edit (correctly, matching established precedent that it carries no per-item completion annotations), no unrelated scripts or schemas touched. Independently reviewed the schema addition, both generator changes, and all five touched docs, confirming the owner_decision_request field's null/populated behavior, its distinction from current_blocker, and consistent propagation across all touched truth surfaces. All completion criteria met.
+* Last verified handoff: .cockpit/handoff/archive/pcc-brr2-007-worker-directive.md
 
 ## Open Issues
 
-* Risk from last verification of 'pcc-brr2-006': Self-verified under DECISION-033 degraded fallback (Codex unavailable). No independent second-party (Codex) review occurred. GPT secondary review: not performed this cycle (this is the first cycle under the new arrangement, prior to any push GPT could review against).
-* Risk from last verification of 'pcc-brr2-006': The commit-and-push pre-authorization DECISION-036 records is explicitly time-boxed to 'the remainder of this BRR phase' rather than a fixed count or date; future cycles must actively judge whether that window is still open rather than assuming it indefinitely, since nothing enforces the boundary automatically.
-* Risk from last verification of 'pcc-brr2-006': This task's own standard disclosure wording is being exercised for the first time in this very verification result; any awkwardness in it is now visible in practice rather than only in the abstract.
+* Risk from last verification of 'pcc-brr2-007': Self-verified under DECISION-033 degraded fallback (Codex unavailable). No independent second-party (Codex) review occurred. GPT secondary review: not performed this cycle (not yet pushed at time of verification).
+* Risk from last verification of 'pcc-brr2-007': The demonstration used a disposable scratch copy with a synthetic (though genuinely open) owner-decision example, not a live-populated one, since this task's own drafting had no ambiguity requiring a real owner-decision request. This is disclosed directly in the worker evidence rather than hidden.
+* Risk from last verification of 'pcc-brr2-007': owner_decision_request and current_blocker can be populated independently with no cross-validation between them; a future cycle could set them inconsistently without any check catching it.
 
 ## Read First
 
@@ -40,5 +40,5 @@ Current phase: brr-phase-2
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-brr2-006' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-brr2-006' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Task-level: Task 'pcc-brr2-007' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Project-level: Task 'pcc-brr2-007' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.

@@ -181,7 +181,13 @@ whenever a task matches one of the Owner Review Matrix's "before execution"
 rows (rows 1–8, Task Safety Class C) or when a Stop-Instead-of-Guess trigger
 surfaces a tradeoff only the owner can weigh (trigger 7). Needing an owner
 decision does not by itself mean the task is unsafe or broken — it means the
-next step is the owner's to take, not PCC's to guess.
+next step is the owner's to take, not PCC's to guess. Since `pcc-brr2-007`
+(`DECISION-037`), an active owner decision is captured structurally in
+`task-state.json`'s `owner_decision_request` field (`docs/STATE_MODEL.md`)
+rather than only as prose, and surfaced in both generated handoff artifacts
+(`docs/HANDOFF_PACKET_SPEC.md`) — this is capture and visibility only, not an
+automatic stop mechanism; Phase 2's remaining items (automatic stop triggers,
+acceptance-boundary enforcement) are separate future work.
 
 **Blocked** — a task must not proceed at all right now, and owner approval
 alone does not resolve it; the task, its evidence, or its approach must

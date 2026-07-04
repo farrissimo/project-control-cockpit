@@ -185,7 +185,7 @@ Standard task workflow:
 4. Define required evidence.
 5. Assign the task's BRR task safety class (`A`/`B`/`C`/`D`) per `docs/BRR_POLICY.md`'s "Task Safety Classification," justified by the Owner Review Matrix rather than invented ad hoc (`DECISION-028`).
 6. Define next action.
-7. Write the task into `.cockpit/state/task-state.json`, including the assigned `task_safety_class`.
+7. Write the task into `.cockpit/state/task-state.json`, including the assigned `task_safety_class` and, if a Class C case or other owner-only decision applies, a populated `owner_decision_request` (`docs/STATE_MODEL.md`, `DECISION-037`) rather than leaving it as free-form `current_blocker` prose.
 8. Generate the worker directive.
 9. Run the worker.
 10. Worker hands back evidence via `scripts/finalize-worker-handback.ps1` (`docs/HANDOFF_PACKET_SPEC.md`), which performs the returned-for-verification state update, artifact regeneration, and health checks in the correct fixed order.

@@ -1,31 +1,33 @@
 {
-  "task_id": "pcc-brr2-006",
-  "task_title": "BRR Governance: Secondary Workflow Canon",
-  "task_objective": "Formalize the degraded secondary-workflow model in repo truth so work can continue cleanly when Codex is unavailable: define exactly when Claude Code may perform both worker and verifier roles, how GPT repo-access review fits as a secondary review input, what that does and does not count as for independence/disclosure purposes, and what artifact wording the repo requires in that mode. Keep it bounded to workflow truth and verification-language clarity rather than broad automation changes.",
+  "task_id": "pcc-brr2-007",
+  "task_title": "BRR Execution: Owner-Decision Capture Flow",
+  "task_objective": "Field BRR Phase 2's second deliverable (docs/BRR_PLAN.md Phase 2, item 2: Owner-Decision Capture Flow) into live task state in the lightest viable way. When a task or cycle needs an owner decision (Class C per docs/BRR_POLICY.md, or an Owner Review Matrix row is hit), the repo should be able to record, structurally: what decision is needed, why it is needed, what options exist, and what remains blocked until the decision is made - instead of that living only as free-form prose in current_blocker or in chat. Keep this bounded to capturing and surfacing the request; do not build any automatic stop-trigger detection, owner-decision routing/notification, or acceptance-boundary enforcement - those remain separate, later Phase 2 deliverables (items 3-5).",
   "task_status": "complete",
   "assigned_worker": "Claude Code",
   "task_safety_class": "B",
   "completion_criteria": [
-    "Repo truth states clearly when the degraded fallback may be used, and distinguishes the normal two-role path from the fallback without ambiguity.",
-    "Repo truth states clearly whether GPT repo-access review counts as secondary review input, independent verifier-of-record, or something narrower, and the answer is propagated consistently across the touched truth surfaces.",
-    "The required verification-result disclosure language for Claude self-verification in fallback mode is made explicit enough that future cycles do not have to improvise the wording.",
-    "The change stays bounded to governance, verification-language, and workflow-truth clarification; no unrelated automation, verdict expansion, or broader orchestration redesign is introduced.",
-    "The resulting task draft and touched truth surfaces leave the repo healthy under the applicable local checks.",
-    "No new autonomy, owner-decision capture flow, acceptance-boundary policy, or unrelated workflow redesign is introduced."
+    "task-state.json (and schema) gain a structured way to record an owner-decision request: at minimum a needed/not-needed flag, the decision question, the reason it's needed, the options being weighed, and what stays blocked until the owner decides.",
+    "The structure is optional/nullable when no owner decision is pending, so ordinary tasks are unaffected.",
+    "The generated worker directive and advisor restart brief surface an active owner-decision request clearly when one is present, so a fresh worker or advisor session sees it without re-deriving it from prose.",
+    "The feature is demonstrated: an owner-decision request is populated for a real or realistic scenario (e.g. this BRR sub-thread's own next-step choice, or a synthetic example if no live one exists) and shown rendering correctly in both artifacts, then cleared/demonstrated absent for the normal case.",
+    "Truth-surface propagation is handled honestly across docs/DECISIONS.md, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, and README.md, updating only what this field actually makes stale.",
+    "No automatic stop-trigger detection, owner-decision routing/notification, or acceptance-boundary enforcement is introduced - this is capture and surfacing only.",
+    "Local validation remains healthy: touched generators, schema, and state files work cleanly with scripts/check-schemas.ps1, scripts/validate-cockpit-state.ps1, and scripts/doctor.ps1 on the actual returned-for-verification state."
   ],
   "boundaries": {
     "allowed": [
-      "Update docs/DECISIONS.md, docs/VERIFICATION_RESULT_SPEC.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, and closely related workflow-truth surfaces as needed to formalize the degraded secondary workflow.",
-      "Clarify verification-result wording requirements and role-language requirements for fallback-mode cycles.",
-      "Adjust live state, handoff artifacts, and logs only insofar as the active task flow needs to carry the bounded workflow clarification honestly.",
-      "Run the relevant local checks to prove the clarified workflow truth leaves the repo healthy."
+      "Update schemas/task-state.schema.json and the live .cockpit/state/task-state.json to add and use one owner-decision-request structure.",
+      "Update scripts/generate-worker-directive.ps1 and scripts/generate-advisor-restart-brief.ps1 so an active owner-decision request appears clearly in generated handoff artifacts when present.",
+      "Update docs/DECISIONS.md, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, and README.md only as needed to propagate this cleanly.",
+      "Regenerate the live handoff artifacts and run the relevant local validation/health scripts to demonstrate the feature."
     ],
     "forbidden": [
-      "Do not redesign doctor.ps1, check-schemas.ps1, validate-cockpit-state.ps1, or the broader PCC state model into generic orchestration unless a direct contradiction is found.",
+      "Do not implement automatic stop-trigger detection (docs/BRR_PLAN.md Phase 2 item 4) - that is a separate later task.",
+      "Do not implement safe next-task drafting rules or acceptance-boundary enforcement (Phase 2 items 3 and 5) - those are separate later tasks.",
+      "Do not add any notification, routing, or automated escalation mechanism beyond making the request structurally visible in state and handoff artifacts.",
       "Do not change the five verification verdicts, task safety classes, or BRR Phase 1 policy content unless a direct contradiction is found.",
-      "Do not broaden into owner-decision capture flow, automatic stop-trigger detection, autonomous next-task drafting, or general worker automation.",
-      "Do not rewrite archived history or retrofit old archived tasks outside what the active task's own honest demonstration requires.",
-      "Do not silently declare GPT repo review to be equivalent to full local independent verification unless the repo truth explicitly says so after this task."
+      "Do not rewrite archived history or retrofit old archived tasks.",
+      "Do not require the owner to manually restate BRR policy already recorded canonically."
     ]
   },
   "required_evidence": [
@@ -43,6 +45,7 @@
   "verification_result_path": ".cockpit/result/verification-result.json",
   "verification_verdict": "PASS",
   "current_blocker": null,
-  "next_action": "Task 'pcc-brr2-006' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T00:30:57-06:00"
+  "owner_decision_request": null,
+  "next_action": "Task 'pcc-brr2-007' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-04T00:45:35-06:00"
 }

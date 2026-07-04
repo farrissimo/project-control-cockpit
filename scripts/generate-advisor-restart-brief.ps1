@@ -94,6 +94,25 @@ $readFirst.Add($verificationPath)
 $readFirst.Add("docs/DECISIONS.md")
 $readFirst.Add("docs/REPO_GOVERNANCE.md")
 
+# Owner-Decision Capture Flow (docs/BRR_PLAN.md Phase 2 item 2): surfaced as
+# its own section, not folded into Open Issues prose, so a fresh advisor
+# session sees a pending owner decision structurally rather than having to
+# parse it out of a risk note. Rendered only when populated.
+$ownerDecisionSection = ""
+if ($taskState.owner_decision_request) {
+  $odr = $taskState.owner_decision_request
+  $ownerDecisionSection = @"
+
+## Owner Decision Needed
+
+* Question: $($odr.question)
+* Reason: $($odr.reason)
+* Options:
+$(Format-Bullets $odr.options)
+* Blocked until: $($odr.blocked_until)
+"@
+}
+
 $brief = @"
 # Advisor Restart Brief
 
@@ -112,7 +131,7 @@ Current phase: $($projectState.current_phase)
 * Status: $($taskState.task_status)
 * Safety Class: $($taskState.task_safety_class) (see docs/BRR_POLICY.md "Task Safety Classification")
 * Objective: $($taskState.task_objective)
-
+$ownerDecisionSection
 ## Last Verified
 
 * Verdict: $($verification.verdict) for task '$($verification.task_id)', verified at $verifiedAt

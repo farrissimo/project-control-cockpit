@@ -171,10 +171,29 @@ Required fields:
   "verification_result_path": null,
   "verification_verdict": null,
   "current_blocker": null,
+  "owner_decision_request": null,
   "next_action": null,
   "updated_at": null
 }
 ```
+
+### owner_decision_request
+
+The BRR Phase 2 "Owner-Decision Capture Flow" (`docs/BRR_PLAN.md` Phase 2 item
+2, `DECISION-037`): `null` when no owner decision is pending, or an object
+with `question`, `reason`, `options` (array), and `blocked_until` when one is.
+This is a structural, capture-only record — it makes an owner-decision need
+visible in state and both generated handoff artifacts (`docs/HANDOFF_PACKET_SPEC.md`)
+instead of leaving it as free-form `current_blocker` prose or chat-only
+context. It does not itself trigger any automatic stop, routing, or
+notification behavior, and it is distinct from `current_blocker`: a blocker
+records that something is currently stopping the task; `owner_decision_request`
+records specifically that the next step requires the owner's judgment
+(`docs/BRR_POLICY.md`'s Operating Definitions "owner decision"), which may or
+may not also mean the task is blocked. A task with an active
+`owner_decision_request` is typically Task Safety Class C (`docs/BRR_POLICY.md`),
+though this field is populated by whoever drafts or works the task, not
+automatically inferred from the class.
 
 ### task_safety_class
 

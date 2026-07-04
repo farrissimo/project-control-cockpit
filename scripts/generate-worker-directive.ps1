@@ -91,6 +91,25 @@ foreach ($f in $projectState.worker_context_facts) {
   if (-not $currentTruth.Contains($f)) { $currentTruth.Add($f) }
 }
 
+# Owner-Decision Capture Flow (docs/BRR_PLAN.md Phase 2 item 2): when a
+# decision only the owner can make is pending, surface it as its own section
+# rather than leaving it buried in current_blocker prose. Rendered only when
+# task-state.json's owner_decision_request is populated; absent otherwise.
+$ownerDecisionSection = ""
+if ($taskState.owner_decision_request) {
+  $odr = $taskState.owner_decision_request
+  $ownerDecisionSection = @"
+
+## Owner Decision Needed
+
+* Question: $($odr.question)
+* Reason: $($odr.reason)
+* Options:
+$(Format-Bullets $odr.options)
+* Blocked until: $($odr.blocked_until)
+"@
+}
+
 $directive = @"
 # Worker Directive
 
@@ -111,7 +130,7 @@ Worker
 * Task Title: $($taskState.task_title)
 * Task Status: $($taskState.task_status)
 * Task Safety Class: $($taskState.task_safety_class) (see docs/BRR_POLICY.md "Task Safety Classification")
-
+$ownerDecisionSection
 ## Objective
 
 Read this directive from ``$directiveSelfPath``, complete the bounded task below, and return your result to ``$resultPath`` using the required evidence format.
