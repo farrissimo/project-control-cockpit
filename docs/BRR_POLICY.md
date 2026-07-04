@@ -245,6 +245,26 @@ here.
 
 ---
 
+## Governing Principles (BRR Autonomous Operation)
+
+Two owner-stated principles govern the whole "when may PCC proceed vs. must it
+stop" model — both the Safe Next-Task Drafting Rules (when PCC may proceed) and
+the Automatic Stop Triggers (when it must stop) below sit under them:
+
+1. **Owner approval is for direction changes, not routine continuation inside
+   an already-approved lane.**
+2. **The pre-task prep work is what justifies the automation.**
+
+Together: PCC earns the right to move on its own by the depth of prior review
+already invested in a lane — not as a default. Where that prep exists and the
+next step is obvious in-lane continuation, PCC proceeds; where direction is in
+question or the prep does not justify the move, it stops and asks. This is why
+a self-promotion must be able to point at the reviewed lane and priority that
+justify it (`promotion_basis`): showing the prep *is* showing the earned
+automation. No prep, no lane, no automation (`DECISION-038`).
+
+---
+
 ## Safe Next-Task Drafting Rules
 
 This is BRR Phase 2's third deliverable (`docs/BRR_PLAN.md` Phase 2 item 3),
@@ -323,3 +343,54 @@ for review). Per `DECISION-038`'s safe-sequencing clause, unattended execution
 switches on only once items 4 and 5 are also built and verified, because safe
 unattended running depends on those guarantees existing, not just on knowing
 when a promotion is allowed.
+
+---
+
+## Automatic Stop Triggers
+
+This is BRR Phase 2's fourth deliverable (`docs/BRR_PLAN.md` Phase 2 item 4).
+It is the "stop" half of the model the Governing Principles describe: where the
+Safe Next-Task Drafting Rules say when PCC may proceed, this says when it must
+stop instead of guessing, and makes the *deterministically-checkable* stop
+conditions detectable automatically.
+
+`scripts/check-stop-conditions.ps1` is the mechanism (`DECISION-040`). It reads
+live state and reports **CLEAR TO PROCEED** or **STOP** with reasons, detecting:
+
+* an unresolved `owner_decision_request` on the active task (an owner decision
+  is pending, `DECISION-037`);
+* a repo-health `[ISSUE]` reported by `doctor.ps1`;
+* an active task in an attention-needed status (`blocked`, `verified_fail`,
+  `insufficient_evidence`, `out_of_scope`);
+* a self-promoted task (`promotion_basis` populated) whose recorded `lane` does
+  not reference a recognized approved-lane source — a *formal* check that the
+  justification points at a real approved lane, not a check of whether the
+  cited lane/priority is semantically correct (that stays the verifier's job).
+
+### Advisory and non-gating, on purpose
+
+The check is advisory: it **always exits 0** and never hard-blocks any script,
+task, or owner-directed action. A reported STOP is a recommendation to stop
+instead of guess — to be surfaced through the Owner-Decision Capture Flow or
+resolved — not an automatic halt of the whole system. This is deliberate: the
+plan's Phase 2 special caution is "controlled forward motion, not friction; do
+not let this become automatic blocking everywhere." `scripts/enforce-handoff-restart-safety.ps1`
+remains the only script permitted to gate a handoff. Automatic stop triggers
+constrain PCC's *own* autonomous forward motion; they do not gate the owner.
+
+### What it honestly does not detect
+
+Some stop conditions are not mechanically decidable, and this check does not
+pretend to detect them (`DECISION-008`, no fake intelligence): whether more
+than one defensible next step exists (a fork), whether work aligns with the
+north star, and whether a new owner-level decision is required. These remain a
+matter of judgment, surfaced through `owner_decision_request` when recognized.
+The check certifies only the mechanical conditions above — a CLEAR result means
+"no *detectable* stop condition," not "no stop condition of any kind."
+
+### What this does not yet enable
+
+Detecting and surfacing stop conditions is not the same as *automatically
+acting* on them, and this deliverable does not switch on unattended execution.
+Full unattended draft-and-run still additionally requires Phase 2 item 5
+(Acceptance Boundary Rules) and a verified pilot, per `DECISION-038`.

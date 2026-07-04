@@ -944,3 +944,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-038, DECISION-037, DECISION-028, DECISION-022, docs/BRR_POLICY.md, docs/BRR_PLAN.md, docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, schemas/task-state.schema.json, backlog/IDEAS.md
+
+---
+
+## DECISION-040: Automatic Stop Triggers Fielded As An Advisory Detector (pcc-brr2-009)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+BRR Phase 2's fourth deliverable (`docs/BRR_PLAN.md` Phase 2 item 4, "Automatic Stop Triggers") is fielded as `scripts/check-stop-conditions.ps1`, an advisory, non-gating local detector of the deterministically-checkable stop conditions, plus an "Automatic Stop Triggers" section in `docs/BRR_POLICY.md`. Separately, the owner's two governing maxims are recorded verbatim in a shared "Governing Principles" note in `docs/BRR_POLICY.md`.
+
+Reason:
+
+The Safe Next-Task Drafting Rules (`DECISION-039`) defined *when PCC may proceed*; this defines *when it must stop instead of guessing* and makes the mechanically-decidable stop conditions detectable automatically, which is what item 4 is for. The plan's Phase 2 special caution — "controlled forward motion, not friction; do not let this become automatic blocking everywhere" — and PCC's standing rejection of hidden gating both require this to be advisory, not a hard gate. The owner also asked (this session) to solidify two governing maxims; rather than manufacture a dedicated cycle for what is already substantively canonical, the exact wording was folded in here as connective tissue between the promotion rules and the stop triggers, at near-zero marginal cost.
+
+Implications:
+
+`scripts/check-stop-conditions.ps1` reads live state and reports CLEAR TO PROCEED vs. STOP with reasons. It detects: an unresolved `owner_decision_request`; a `doctor.ps1` `[ISSUE]`; an active task in an attention-needed status (`blocked`/`verified_fail`/`insufficient_evidence`/`out_of_scope`); and a self-promoted task whose `promotion_basis.lane` does not reference a recognized approved-lane source (a formal check, not a semantic one — confirming the cited lane is correct stays the verifier's job). It **always exits 0** and hard-blocks nothing; a STOP is a surfaced recommendation, not an automatic halt. `scripts/enforce-handoff-restart-safety.ps1` remains the only script permitted to gate a handoff. The check deliberately does **not** attempt to auto-detect judgment-based conditions — fork/multiple-defensible-paths, north-star alignment, or whether a new owner decision is required — and says so explicitly (`DECISION-008`, no fake intelligence); those remain judgment surfaced via `owner_decision_request`. This does not switch on unattended execution: that still requires Phase 2 item 5 (Acceptance Boundary Rules) and a verified pilot per `DECISION-038`. The "Governing Principles" note records verbatim: (1) owner approval is for direction changes, not routine continuation inside an already-approved lane; (2) the pre-task prep work is what justifies the automation. `docs/HANDOFF_PACKET_SPEC.md`, `docs/REPO_GOVERNANCE.md`, and `README.md` are updated to reference the new detector. No verdicts, task safety classes, or existing stop conditions were changed or weakened.
+
+Supersedes: None
+Related: DECISION-008, DECISION-037, DECISION-038, DECISION-039, docs/BRR_POLICY.md, docs/BRR_PLAN.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, scripts/check-stop-conditions.ps1
