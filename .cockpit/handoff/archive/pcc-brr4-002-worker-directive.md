@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-brr4-002
 * Task Title: Honesty Checks: Retry Log
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Objective

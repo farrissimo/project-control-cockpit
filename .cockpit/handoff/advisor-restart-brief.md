@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-04T10:54:10-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T11:36:07-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,17 +10,17 @@ Current phase: brr-phase-4
 
 ## Active Task
 
-* Task ID: pcc-brr4-003
-* Title: Honesty Checks: Metrics Summary
-* Status: returned_for_verification
-* Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: PILOT RUN #2, CYCLE 2 of 2 (docs/BRR_PLAN.md Phase 4 item 2; scope finalized in DECISION-056). Add a read-only script that summarizes .cockpit/logs/routing-log.jsonl into: a count of each existing event type, and the one ratio docs/BRR_PLAN.md Phase 4 item 2 names explicitly ('claimed-vs-verified completion rate' = verified_pass count divided by total verified_* event count). Explicitly report, rather than approximate, which of item 2's named metrics are not currently derivable from existing log data (owner interruptions per task, repeated instruction frequency, owner-review triggers by category). No new event types, no state mutation, no scoring, no invented categories -- strictly mechanical counting over already-structured, already-labeled data.
+* Task ID: pcc-brr4-002
+* Title: Honesty Checks: Retry Log
+* Status: complete
+* Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
+* Objective: PILOT RUN #2, CYCLE 1 of 2 (docs/BRR_PLAN.md Phase 4 item 1; scope finalized in DECISION-056). Deliver IDEA-008's remaining 'retry' half: increment task-state.json's currently-unused 'attempts' field on every worker handback, and log a factual 'retry_attempted' event via scripts/log-event.ps1 specifically when a handback follows a prior non-PASS verdict on the same task_id (not on a task's first-ever handback). No new script; the change lives in scripts/finalize-worker-handback.ps1 (attempts/logging) and scripts/log-event.ps1 (new event type).
 
 ## Last Verified
 
 * Verdict: PASS for task 'pcc-brr4-002', verified at 2026-07-04T10:50:00-06:00
 * Summary: Verified pcc-brr4-002 (cycle 1 of pilot run #2) at 'strict' depth. The retry-detection read-before-increment ordering is correct (confirmed by direct diff inspection, not just narrative), the logging failure path is non-fatal by design, and no existing behavior of either touched script changed. All ten completion criteria are met with direct evidence, cross-checked against the raw execution transcript. Per DECISION-056, this cycle resolved cleanly enough to chain into cycle 2 without waiting for review -- that determination, and this held PASS candidate itself, are both submitted for actual owner/GPT review, not treated as self-settled.
-* Last verified handoff: .cockpit/handoff/archive/pcc-brr4-001-worker-directive.md
+* Last verified handoff: .cockpit/handoff/archive/pcc-brr4-002-worker-directive.md
 
 ## Open Issues
 
@@ -42,5 +42,5 @@ Current phase: brr-phase-4
 
 ## What Happens Next
 
-* Task-level: Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.
-* Project-level: Worker evidence for task 'pcc-brr4-003' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict.
+* Task-level: Task 'pcc-brr4-002' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Project-level: Task 'pcc-brr4-002' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
