@@ -780,9 +780,14 @@ the diff is "really" fine.
   task's objective and completion criteria actually called for (e.g. a task
   allowed to add one new section to a doc that also, quietly, edits an
   unrelated existing section). Being in an allowed file does not license
-  every change within it. Check: for each allowed file, confirm the diff's
-  location and content match what the objective/completion criteria describe
-  — not just that the file itself was a legitimate target.
+  every change within it. Check: for each allowed file, the verifier reads
+  the diff's location and content against what the objective/completion
+  criteria describe. This is a **required reviewer discipline, not a
+  precise or deterministic detector** — unlike the first two failure modes,
+  which are checkable by mechanical enumeration against a list, this one
+  depends on the verifier actually reading the diff with judgment. It is
+  named and required so it is not skipped, not because it is claimed to
+  catch every case with the same reliability as the other two checks.
 
 ### Required verification procedure
 
@@ -797,9 +802,10 @@ safety class), the verifier must, and must record in
    that is a truth surface but was not specifically named in this task's
    `boundaries.allowed` is a finding under "unintended truth-surface edits,"
    even if it is also, separately, an "unauthorized file change."
-4. For each allowed file, spot-check that the diff's content matches the
-   objective/completion criteria's description; anything that doesn't is a
-   finding under "silent adjacent-scope edits."
+4. For each allowed file, as a required reviewer discipline rather than a
+   precise detector, read the diff's content against the
+   objective/completion criteria's description; anything that doesn't match
+   is a finding under "silent adjacent-scope edits."
 5. Record the result explicitly — "none found, confirmed via `git diff`" is
    an acceptable and expected `out_of_scope_findings` entry; it is not
    optional filler, since it is exactly what step 1–4 are supposed to
@@ -832,4 +838,110 @@ does not add to or change.
   condition is redefined or weakened. Cross-checked against the Owner Review
   Matrix (row 7), Task Safety Classification, the Acceptance Boundary Rules,
   the Verification Depth Policy, and the Self-Verification Restrictions while
+  drafting — no contradiction was found.
+
+---
+
+## Inadequate-Work Return Path
+
+This is BRR Phase 3's fourth and final deliverable (`docs/BRR_PLAN.md` Phase
+3 item 4, `pcc-brr3-004`). The plan's own text is blunt about the goal: the
+`FAIL`/`INSUFFICIENT`/`BLOCKED`/`OUT_OF_SCOPE` path "must become normal and
+safe... routine, not exceptional." This section does not add these verdicts —
+they already exist (`docs/VERIFICATION_RESULT_SPEC.md`) — and it introduces
+no new state, path, or decision point. It names what already makes the path
+safe, is honest about the one place it is not yet as convenient as the `PASS`
+path, and restates what happens after each verdict so that is visible in one
+place rather than left to be re-derived from four other documents each time.
+
+### A non-PASS verdict is the system succeeding, not PCC failing
+
+Issuing `FAIL`, `INSUFFICIENT`, `BLOCKED`, or `OUT_OF_SCOPE` when the evidence
+genuinely calls for it is the verification model (`DECISION-005`,
+`DECISION-006`) doing exactly its job — it is not a mark against the worker,
+the verifier, or (under the `DECISION-033` fallback) the single party acting
+as both. Treating a non-PASS verdict as something to avoid, minimize, or feel
+bad about recreates the exact incentive — rounding weak evidence up to `PASS`
+to avoid an uncomfortable outcome — that `docs/VERIFICATION_RESULT_SPEC.md`
+and the Stop-Instead-of-Guess Policy (above, `pcc-brr1-003`) exist to prevent.
+A cycle that correctly stops is not a wasted cycle.
+
+### The mechanics are already symmetric with PASS
+
+`scripts/advance-cockpit-state.ps1` already maps **every** verdict, not only
+`PASS`, to a `task_status` (`FAIL` → `verified_fail`, `INSUFFICIENT` →
+`insufficient_evidence`, `BLOCKED` → `blocked`, `OUT_OF_SCOPE` →
+`out_of_scope`), propagates `current_blocker`/`next_action` from the
+verification result, and refreshes both live handoff artifacts
+unconditionally, regardless of verdict. The return path is not an improvised
+or degraded fallback bolted onto the "real" `PASS` path — it already runs on
+the identical underlying state-advance mechanism. This section names that
+explicitly so it does not have to be independently rediscovered each time a
+non-`PASS` verdict is issued.
+
+### The one real asymmetry, named honestly
+
+`scripts/close-out-verified-task.ps1` exists only for `PASS`: one command
+archives the cycle's directive/result/verification, advances state, runs the
+post-close-out health check, logs the event, and offers a commit. No
+equivalent convenience script exists yet for the four non-`PASS` verdicts —
+today, closing out a `FAIL`/`INSUFFICIENT`/`BLOCKED`/`OUT_OF_SCOPE` cycle
+correctly means calling `scripts/advance-cockpit-state.ps1` and
+`scripts/log-event.ps1` as separate manual steps, with no archived record
+made unless the verifier remembers to do that too. That extra friction, on
+exactly the path this section is trying to make routine, could unintentionally
+bias behavior toward `PASS` simply because `PASS` is easier to execute
+correctly — the opposite of what "must become normal and safe" calls for.
+Fielding a `scripts/return-inadequate-work.ps1` mirroring
+`close-out-verified-task.ps1`'s shape for the four non-`PASS` verdicts is
+named here as **recommended future work**, not built in this task, consistent
+with how every other Phase 3 policy section in this document deferred its own
+fielding.
+
+### What happens after each verdict
+
+This restates, for visibility, the mapping the Stop-Instead-of-Guess Policy
+(above) already establishes — it does not change or duplicate that mapping:
+
+* **FAIL** — the result did not meet the completion criteria. Retry only with
+  a genuinely different approach or new evidence; repeated failure with
+  nothing new is Stop-Instead-of-Guess trigger 4, Owner Review Matrix row 9,
+  and Task Safety Class D (`BLOCKED`), not another unattended attempt.
+* **INSUFFICIENT** — request exactly the missing evidence named in
+  `missing_evidence`; do not guess it or treat "probably fine" as sufficient
+  (trigger 3).
+* **BLOCKED** — the task cannot proceed until a blocker, dependency, or
+  required owner decision is resolved, or a trusted verification method
+  exists where none did (triggers 6–7 as applicable).
+* **OUT_OF_SCOPE** — the out-of-scope change is reviewed explicitly and a
+  decision made to keep, revert, or re-scope it (trigger 5); it is not
+  silently absorbed into a future task's claimed scope.
+
+### Notes on scope
+
+* This section names and points at the Stop-Instead-of-Guess Policy's
+  existing trigger table rather than duplicating or changing it; no new
+  verdict, task status, or decision point is introduced.
+* Per the owner's explicit stop-conditions for this task: this section does
+  not alter the self-verification fallback (`DECISION-033`/`DECISION-036`),
+  the autonomous gate, the Acceptance Boundary Rules, any Task Safety Class's
+  core meaning, or the five verdict definitions themselves (`docs/VERIFICATION_RESULT_SPEC.md`)
+  — it names and clarifies already-existing mechanics only.
+* Fielding the recommended `scripts/return-inadequate-work.ps1` convenience
+  script is explicitly future work, not taken here.
+* Separately, and not part of this deliverable's own content: per explicit
+  owner instruction this cycle, the "silent adjacent-scope edits" wording in
+  the Out-of-Scope Detection section above (`pcc-brr3-003`) was reworded to
+  describe it as a required reviewer discipline rather than a precise or
+  deterministic detector, matching the owner's stated framing exactly. This
+  is disclosed here as a distinct, owner-directed micro-edit so it is never
+  read as part of this item's own self-promoted scope.
+* With this section, `docs/BRR_POLICY.md` contains all four BRR Phase 3
+  policy deliverables named in `docs/BRR_PLAN.md`. This decision does not
+  itself declare BRR Phase 3 complete or advance `current_phase` — that
+  remains a separate, explicit owner/advisor decision.
+* No existing verdict, task safety class, Owner Review Matrix row, or stop
+  condition is redefined or weakened. Cross-checked against
+  `docs/VERIFICATION_RESULT_SPEC.md`, the Stop-Instead-of-Guess Policy, the
+  Acceptance Boundary Rules, and `DECISION-033`/`DECISION-036` while
   drafting — no contradiction was found.

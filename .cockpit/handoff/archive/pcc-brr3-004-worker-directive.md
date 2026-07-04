@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-brr3-004
 * Task Title: BRR Policy: Inadequate-Work Return Path
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Auto-Promotion Basis
