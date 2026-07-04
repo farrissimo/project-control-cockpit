@@ -87,6 +87,7 @@ Current project phase, such as:
 * implementation
 * verification
 * paused
+* brr-phase-1 (Babysitter Reduction Role Phase 1 - see DECISION-021)
 
 ### current_task_id
 

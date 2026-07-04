@@ -501,3 +501,25 @@ This does not make `doctor` a gate — it stays advisory, per `backlog/details/i
 
 Supersedes: None
 Related: docs/HANDOFF_PACKET_SPEC.md, scripts/doctor.ps1, scripts/validate-cockpit-state.ps1, scripts/advance-cockpit-state.ps1
+
+---
+
+## DECISION-021: V1 Is Complete; BRR Phase 1 Begins
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+V1 is complete as of `pcc-v1-015`. The project now moves into BRR ("Babysitter Reduction Role") Phase 1, with reducing owner babysitting (DECISION-001) as the explicit, named top priority of this next phase.
+
+Reason:
+
+Every V1 Done Criterion in `docs/V1_Scope.md` has been demonstrated repeatedly across 15 real bounded cycles (`pcc-v1-001` through `pcc-v1-015`): canonical project/task state, generated worker directives, a local file bridge to Claude Code, evidence-based verification with all five verdict types exercised, state advancement gated on PASS, and restart-safe fresh-session handoff for both advisor and worker roles. The backlog's ready items (`IDEA-005` through `IDEA-011`, `IDEA-003`) are all delivered; the two remaining items (`IDEA-001`, `IDEA-009`) remain deliberately deferred per their own recorded reasoning, not because V1 is incomplete.
+
+Implications:
+
+`project-state.json`'s `current_phase` moves from `implementation` to `brr-phase-1` (added to `schemas/project-state.schema.json`'s enum alongside the existing V1 phase values, which are kept for historical accuracy rather than removed). BRR Phase 1's concrete task list is not yet defined by this decision — only its priority (babysitting reduction, per DECISION-001) and its name are established here. Future tasks drafted under this phase should be justified primarily by how directly they reduce owner babysitting, per the same non-negotiable rule that has governed V1 (`docs/PROJECT_CHARTER.md`, `docs/V1_Scope.md`). This decision does not authorize any new scope, automation, or governance beyond what is already recorded; it only marks the phase transition.
+
+Supersedes: None
+Related: DECISION-001, docs/V1_Scope.md, docs/PROJECT_CHARTER.md, .cockpit/state/project-state.json, schemas/project-state.schema.json

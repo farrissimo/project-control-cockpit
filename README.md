@@ -134,19 +134,15 @@ Local validation:
 
 ## Current Status
 
-Foundation is complete.
-
-The repo has completed the initial proof cycles and is now in bounded V1 implementation work.
-
-The core loop has now been exercised successfully:
+**V1 is complete** (see `DECISION-021`). The core loop was exercised successfully across 15 real bounded cycles (`pcc-v1-001` through `pcc-v1-015`):
 
 ```text
 state → directive → worker → evidence → verification → state update or retry
 ```
 
-Active next step:
+Every V1 Done Criterion (`docs/V1_Scope.md`) was demonstrated repeatedly, all five verification verdicts were exercised for real, and the ready backlog items (`IDEA-005` through `IDEA-011`, `IDEA-003`) are delivered. `IDEA-001` and `IDEA-009` remain deliberately deferred per their own recorded reasoning.
 
-* `pcc-v1-012` ("Safety Net: Clean Stop") is complete and verified PASS. Repo is paused at a natural break; next step is picking the next backlog idea to promote into a task.
+The project has now moved into **BRR Phase 1** ("Babysitter Reduction Role" - `current_phase: brr-phase-1`), with reducing owner babysitting (`DECISION-001`) as the explicit top priority. BRR Phase 1's concrete task list is not yet defined - only its name and priority are established so far.
 
 ## Plain-Language Task Names
 

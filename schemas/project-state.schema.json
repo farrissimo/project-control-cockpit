@@ -41,7 +41,8 @@
         "v1-proof",
         "implementation",
         "verification",
-        "paused"
+        "paused",
+        "brr-phase-1"
       ]
     },
     "current_task_id": {
