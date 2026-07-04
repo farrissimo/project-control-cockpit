@@ -1394,3 +1394,31 @@ Implications:
 
 Supersedes: None
 Related: DECISION-033, DECISION-036, DECISION-041, DECISION-054, DECISION-056, DECISION-057, docs/BRR_PLAN.md, scripts/summarize-routing-log.ps1
+
+---
+
+## DECISION-059: Pilot Run #2 Reviewed And Approved (GPT); Both Cycles Closed Out; A Chaining-Mechanics Defect Found And Fixed Along The Way
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+GPT reviewed both held cycles of pilot run #2 (`pcc-brr4-002`, `pcc-brr4-003`) and approved close-out of both: the chaining decision after cycle 1 was judged justified (no stop-trigger, no scope drift, no hidden relaxation of the self-close restriction), and the legacy-log-format handling in cycle 2 was judged the correct, honest, mechanical call rather than an invented mapping. GPT named one caveat to carry forward: run #2 proved safe chaining and honest defect-handling, not chained self-close — that remains untested and would be the new thing a run #3 examines. Both cycles are now closed out (`task_status: complete`, `verification_verdict: PASS` for each).
+
+Reason:
+
+The owner's approval to close out both held cycles is implemented here, but doing so surfaced a real mechanical gap in how chaining was executed: `pcc-brr4-002`'s live task files (`task-state.json`, `worker-result.md`, `verification-result.json`, `worker-directive.md`) were never archived before cycle 2 overwrote them by drafting `pcc-brr4-003` into the same live paths. This is disclosed honestly because it is exactly the kind of gap `DECISION-056`'s "chain without asking, but hold both for review" design should have anticipated and did not: nothing in that decision's text said cycle 1's evidence must be archived (not merely committed to git) before cycle 2 begins.
+
+Implications:
+
+**The defect and its recovery.** Because every prior commit in this session is preserved in git history, `pcc-brr4-002`'s exact live-file state was still recoverable from commit `6686bd9` (the commit made immediately after cycle 1's own handback, before cycle 2 began). Recovery was: `git checkout 6686bd9 -- <the five live files>`, run `scripts/close-out-verified-task.ps1 -Commit` (archiving `pcc-brr4-002` correctly and advancing state), then `git checkout ea0fbba -- <the same five files>` (the pushed tip, holding `pcc-brr4-003`'s state) and run the same close-out script again for `pcc-brr4-003`. Both tasks are now correctly archived (`'.cockpit/handoff/archive/pcc-brr4-00{2,3}-worker-directive.md'`, `'.cockpit/result/archive/pcc-brr4-00{2,3}-{worker-result.md,verification-result.json}'`) and `task_status: complete` for both, in the correct chronological order. No data was lost; nothing was reconstructed from memory or narrative — every recovered file is byte-identical to what was actually produced and reviewed.
+
+**The standing gap this reveals, named for future pilot design.** `DECISION-056`'s chaining rule authorized moving to cycle 2 without stopping to ask, but did not require archiving cycle 1's evidence first — a real omission, not a hypothetical one, since it happened on the very first attempt. A future multi-cycle run (a run #3, or any run with more than two cycles) should either archive each cycle's evidence immediately after its own self-verification (before drafting the next cycle), or explicitly accept that recovery-from-git-history is the fallback and confirm before starting that every intermediate commit needed for recovery is actually made (which, in this run, it fortunately was — both `6686bd9` and `ea0fbba` existed and were pushed). This is recorded as a lesson for the next pilot proposal's design, not retroactively blamed on `DECISION-056` or either worker-result.md, which both did what they were asked; the gap was in the scope's own completeness.
+
+**Review outcome, recorded as GPT found it, not softened:** GPT's approval covers what run #2 actually tested — safe chaining and honest review-before-acceptance — and explicitly does not extend to chained self-close, which remains untested. Any future pilot proposal testing self-close should name that explicitly as the new thing under test, consistent with the incremental-evidence pattern already used throughout this session (`DECISION-043`/`044`, `DECISION-054`/`055`).
+
+No verdict, task safety class, the autonomous gate, the Acceptance Boundary Rules, or `DECISION-033`/`036`'s fallback text was changed. Both closures were committed locally in this session; pushing remains a separate, explicit step.
+
+Supersedes: None
+Related: DECISION-006, DECISION-033, DECISION-036, DECISION-039, DECISION-041, DECISION-054, DECISION-055, DECISION-056, DECISION-057, DECISION-058, docs/BRR_PLAN.md
