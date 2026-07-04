@@ -988,3 +988,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-006, DECISION-008, DECISION-016, DECISION-025, DECISION-038, DECISION-039, DECISION-040, docs/BRR_POLICY.md, docs/BRR_PLAN.md, docs/REPO_GOVERNANCE.md
+
+---
+
+## DECISION-042: Self-Gate Wired On PCC's Autonomous Path (pcc-brr2-011)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+The seam described in the Acceptance Boundary Rules (`DECISION-041`) is wired: `scripts/check-autonomous-gate.ps1` is the fail-closed gate PCC's own autonomous path — self-promotion of the next task, and unattended self-acceptance/self-continuation — must pass before proceeding. It gates PCC's autonomous path only; owner-directed work is never gated by it. Wiring the gate does not by itself start unattended operation; that is the supervised pilot (`pcc-brr2-012`).
+
+Reason:
+
+The owner chose option 2 after `pcc-brr2-010` (build the gate + run a supervised pilot) as the shortest honest path from "the BRR rulebook exists" to "walk-away BRR is actually proven," and gave explicit constraints: keep the gate narrow (PCC's own path only, never a broad blocker on owner work), reuse the existing stop machinery rather than redesigning it, keep the owner-vs-autonomous distinction explicit, and do not start unattended operation in this step. The build was split from the pilot so the gate could be verified in isolation before anything runs through it.
+
+Implications:
+
+`scripts/check-autonomous-gate.ps1` takes `-Action self_promote|self_accept` and reports `GATE: PROCEED` (exit 0) or `GATE: BLOCKED` (non-zero). It composes the already-defined machinery: it BLOCKS if `scripts/check-stop-conditions.ps1` does not report CLEAR (a fork or pending owner decision populates `owner_decision_request`, which that check catches), and — for `self_accept` — if the task's class is not A (Class B must not self-accept, `DECISION-041`). It is fail-closed: any non-PROCEED outcome means do not take the autonomous step. It is narrow by construction — only PCC's autonomous path invokes it; none of the owner-directed scripts (`finalize-worker-handback`, `close-out-verified-task`, `verify-handback-guardrails`, `doctor`, `advance-cockpit-state`, `enforce-handoff-restart-safety`) were modified or call it, verified by their being untouched in this cycle's diff. It does not redesign the stop model or acceptance boundary, weakens no existing stop condition, and adds no gate on owner-directed work. Demonstrated: PROCEED on a clean self_promote and on a clean Class A self_accept; BLOCKED on a Class B self_accept and on a tripped stop condition; and fail-closed on an unhealthy repo. `PROCEED` remains a floor not a guarantee — judgment conditions (fork, north-star, new-owner-decision) stay outside automatic detection (`DECISION-008`). Building the gate does not start unattended operation; the first gated autonomous run is the supervised pilot (`pcc-brr2-012`), after which walk-away BRR can be judged against real outcomes. `docs/BRR_POLICY.md`, `docs/HANDOFF_PACKET_SPEC.md`, and `README.md` are updated.
+
+Supersedes: None
+Related: DECISION-038, DECISION-039, DECISION-040, DECISION-041, docs/BRR_POLICY.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, scripts/check-autonomous-gate.ps1, scripts/check-stop-conditions.ps1

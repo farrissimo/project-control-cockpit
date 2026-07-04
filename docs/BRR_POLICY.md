@@ -441,20 +441,32 @@ draft-and-run remains **off** and requires two further, deliberate steps that
 are explicitly *not* taken here: wiring the gate (below), and a verified pilot
 (`DECISION-038`).
 
-### The seam left for a later task (not wired now)
+### The self-gate on PCC's autonomous path (now wired)
 
-A later, explicitly-authorized task may make PCC's *own* autonomous path
-self-gating by requiring, before PCC self-promotes or self-accepts a step
-unattended, that **both**:
+`scripts/check-autonomous-gate.ps1` (`DECISION-042`, `pcc-brr2-011`) wires the
+seam this section described. Before PCC self-promotes or self-accepts a step
+**unattended**, that gate must report `GATE: PROCEED`, which it does only when
+**both**:
 
 * `scripts/check-stop-conditions.ps1` reports CLEAR; **and**
-* the task's class permits self-acceptance per the table above (i.e. Class A).
+* the task's class permits the action per the table above (self-acceptance
+  requires Class A; Class B must not self-accept).
 
-That gate would apply **only** to PCC's self-promotion / autonomous-continuation
-path — never to owner-directed work, and never as a generic blocker. It is
-deliberately **not** wired now; the stop-detector (`pcc-brr2-009`) remains
-advisory, and this section only describes the seam so a future task can
-implement it cleanly.
+Unlike the advisory stop-detector (which always exits 0), this gate is
+**fail-closed**: exit 0 = PROCEED, any non-zero = do not proceed. It applies
+**only** to PCC's self-promotion / autonomous-continuation path — none of the
+owner-directed scripts (`finalize-worker-handback.ps1`, `close-out-verified-task.ps1`,
+`verify-handback-guardrails.ps1`, `doctor.ps1`, `advance-cockpit-state.ps1`,
+`enforce-handoff-restart-safety.ps1`) call it, so **owner-directed work is never
+gated by it**. `scripts/check-stop-conditions.ps1` itself remains advisory and
+unchanged; this gate composes it, it does not replace it.
+
+Wiring the gate does **not** by itself start unattended operation. It is the
+guard that *would make* unattended continuation safe; the first actual gated
+autonomous run is the **supervised** pilot (`pcc-brr2-012`). Until that pilot
+runs and is reviewed, no task runs unattended. `PROCEED` also remains a floor,
+not a guarantee — see "CLEAR is necessary, not sufficient" above; judgment
+conditions still govern regardless of the gate.
 
 ### CLEAR is necessary, not sufficient
 
