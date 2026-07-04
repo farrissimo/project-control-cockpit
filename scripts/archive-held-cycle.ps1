@@ -62,6 +62,9 @@ Copy-Item -LiteralPath $verificationPath -Destination $verificationArchivePath
 Write-Output "Archived held cycle for task '$taskId' (verdict: $($verification.verdict), task_status unchanged: '$($taskState.task_status)')."
 Write-Output "This is a preservation step only -- no state was advanced, no verdict was accepted. The cycle remains exactly as held as it was before this ran."
 
+# Per DECISION-065 (standing owner authorization, not time-boxed), a
+# successful -Commit is followed automatically by a push of the current
+# branch to origin.
 if ($Commit) {
   & git add -A
   if ($LASTEXITCODE -ne 0) {
@@ -72,7 +75,15 @@ if ($Commit) {
   if ($LASTEXITCODE -ne 0) {
     Fail "Archive succeeded but 'git commit' failed. Files are staged; review before retrying."
   }
-  Write-Output "Committed the archived evidence for task '$taskId'. Pushing to any remote still requires separate explicit owner approval (DECISION-020) and is not performed by this script."
+  Write-Output "Committed the archived evidence for task '$taskId'."
+
+  $currentBranch = (& git rev-parse --abbrev-ref HEAD).Trim()
+  & git push origin $currentBranch
+  if ($LASTEXITCODE -ne 0) {
+    Write-Output "[PUSH WARNING] 'git push origin $currentBranch' failed. The commit above succeeded and is safe locally; retry the push manually when ready."
+  } else {
+    Write-Output "Pushed '$currentBranch' to origin (DECISION-065: automatic push on commit, standing owner authorization)."
+  }
 } else {
-  Write-Output "Committing was not requested (-Commit was not passed); run 'git add' / 'git commit' manually, or re-run this script with -Commit, to also durably commit the archived evidence rather than relying on it only existing on disk."
+  Write-Output "Committing was not requested (-Commit was not passed); run 'git add' / 'git commit' manually, or re-run this script with -Commit, which now also pushes automatically per DECISION-065, to also durably commit and sync the archived evidence rather than relying on it only existing on disk."
 }

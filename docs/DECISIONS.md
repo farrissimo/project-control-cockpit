@@ -485,7 +485,7 @@ Related: DECISION-005, DECISION-006, DECISION-012, docs/VERIFICATION_RESULT_SPEC
 ## DECISION-020: Verifier Close-Out Includes A Repo Health Check And A Git Commit
 
 Date: 2026-07-03
-Status: Active
+Status: Active (push-approval clause superseded by DECISION-065, 2026-07-04 — push is now automatic on a successful -Commit, standing owner authorization; the close-out routine itself — doctor/validate-cockpit-state, archive, commit — remains unchanged and active)
 
 Owner Decision:
 
@@ -1532,3 +1532,27 @@ Implications:
 
 Supersedes: None
 Related: DECISION-041, DECISION-051, DECISION-059, DECISION-060, DECISION-061, docs/BRR_POLICY.md, docs/HANDOFF_PACKET_SPEC.md, scripts/archive-held-cycle.ps1
+
+**Later update (`pcc-brr5-003`, `DECISION-065`):** the "`-Commit` that never pushes" description above is superseded by a direct, owner-authorized change — `-Commit` across all three close-out/preservation scripts now pushes automatically on success. This note is a pointer added after this task closed, per `docs/REPO_GOVERNANCE.md`'s Post-Close Canonical Amendment Rule (`DECISION-051`); it does not rewrite this task's original claim, which was accurate when `pcc-brr5-002` was verified.
+
+---
+
+## DECISION-065: Standing Owner Authorization For Automatic Push On Every Commit (pcc-brr5-003); Supersedes DECISION-020's Per-Time Push Approval
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+Per the owner's direct, explicit, unambiguous instruction — "push automatically... I can't think of one reason why you wouldn't" — `scripts/close-out-verified-task.ps1`, `scripts/return-inadequate-work.ps1`, and `scripts/archive-held-cycle.ps1` now push the current branch to `origin` automatically immediately after a successful `-Commit`. This is a standing authorization, not time-boxed like `DECISION-036`'s earlier exception, and it supersedes `DECISION-020`'s "pushing to any remote requires separate explicit owner approval each time" clause specifically. `DECISION-020`'s other provisions (the close-out routine itself: doctor/validate-cockpit-state, archive, commit) are unaffected.
+
+Reason:
+
+Earlier in this session, the owner was asked directly whether repeated per-cycle push approval was a deliberate policy or accidental friction, and a response addressing that question was treated as the owner's own settled position without being clearly attributed. The owner has now corrected this directly: no such restriction was ever intended by them, and the friction was real and unwanted. Rather than continuing to infer policy from ambiguous prior turns, the owner's direct, current, unambiguous instruction is acted on immediately.
+
+Implications:
+
+All three scripts detect the current branch dynamically via `git rev-parse --abbrev-ref HEAD` (never hardcoded, since even a fresh scratch test repo used during this task's own testing defaulted to `master`, not `main`) and push only that branch to `origin` — no force-push, no other branch, no other remote. A push failure (network issue, remote rejection, etc.) is reported as a visible `[PUSH WARNING]` but does not fail the script or undo the already-successful local commit; it is meant to be retried manually. Push is only ever attempted after `-Commit` is explicitly passed and the commit itself succeeds — a script run without `-Commit` still never pushes, and `-Commit` itself was not made automatic/default anywhere it wasn't already. This was tested in an isolated scratch git repository with a local-only bare "remote" (never against the real GitHub remote): a successful push was confirmed end-to-end, and a push failure (remote pointed at a nonexistent path) was confirmed to produce the `[PUSH WARNING]` without losing the local commit. `docs/HANDOFF_PACKET_SPEC.md` and `docs/REPO_GOVERNANCE.md`'s Task Process are updated to describe the new default. Per `DECISION-051`, `DECISION-064`'s own "never pushes" claim about `archive-held-cycle.ps1` is not rewritten, only pointed at, since it was accurate when that task closed. This decision does not change any verdict, task safety class, the autonomous gate, the Acceptance Boundary Rules, or `DECISION-033`/`DECISION-036`'s fallback text — it is narrowly scoped to the push mechanic itself.
+
+Supersedes: DECISION-020 (push-approval clause only; its close-out-routine provisions are unaffected)
+Related: DECISION-020, DECISION-036, DECISION-051, DECISION-064, scripts/close-out-verified-task.ps1, scripts/return-inadequate-work.ps1, scripts/archive-held-cycle.ps1

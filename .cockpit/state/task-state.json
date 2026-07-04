@@ -1,38 +1,36 @@
 {
-  "task_id": "pcc-brr5-002",
-  "task_title": "Safety Net: Archive Before Chaining",
-  "task_objective": "Field the Semi-Autonomy Ceiling's policy-only 'archive before you chain' rule (docs/BRR_POLICY.md, DECISION-060/061) as an actual script, closing the gap DECISION-059 found: chaining into a next unattended cycle currently overwrites the prior cycle's live evidence (worker directive, worker result, verification result) before it is archived, with git history as the only fallback. Add scripts/archive-held-cycle.ps1 that preserves a held (self-verified but not yet accepted/closed) cycle's evidence into the same archive/ locations close-out-verified-task.ps1 uses, without advancing task_status or otherwise treating the cycle as accepted.",
+  "task_id": "pcc-brr5-003",
+  "task_title": "Safety Net: Automatic Push On Commit",
+  "task_objective": "Per explicit, direct owner instruction (not self-promoted), make push-to-remote automatic whenever a verified cycle is committed, removing the standing per-time push approval requirement (DECISION-020's push clause). Update scripts/close-out-verified-task.ps1, scripts/return-inadequate-work.ps1, and scripts/archive-held-cycle.ps1 so that, when -Commit is passed and the commit succeeds, the script also pushes the current branch to origin automatically. Record the policy change explicitly, since it supersedes a standing decision.",
   "task_status": "complete",
   "assigned_worker": "Claude Code",
   "task_safety_class": "B",
   "completion_criteria": [
-    "scripts/archive-held-cycle.ps1 exists. It copies the live .cockpit/handoff/worker-directive.md, .cockpit/result/worker-result.md, and .cockpit/result/verification-result.json to their archive/ counterparts (<task_id>-worker-directive.md, etc.), using the exact same paths/naming convention as scripts/close-out-verified-task.ps1.",
-    "The script does NOT advance task_status, does NOT call scripts/advance-cockpit-state.ps1, and does NOT change verification_verdict or any other task-state.json/project-state.json field -- it is a pure evidence-preservation step for a cycle still being held pending review, not a close-out or acceptance action.",
-    "The script refuses to run if any of the three archive paths already exists (never overwrites archived history) or if verification-result.json's task_id does not match task-state.json's task_id -- matching close-out-verified-task.ps1's existing safety properties.",
-    "The script works regardless of the verdict in verification-result.json (PASS or non-PASS) -- a held cycle's evidence should be preservable no matter what verdict it carries, since the point is preventing loss before a decision is made, not judging the decision itself.",
-    "An optional -Commit switch stages and commits the newly-archived files (git add -A; git commit), mirroring close-out-verified-task.ps1's -Commit exactly, and never pushes.",
-    "Functionally tested (not read-through only) in an isolated scratch copy: archiving a held cycle succeeds and task_status/verification_verdict remain unchanged in the live task-state.json; re-running against the same cycle refuses (archive path already exists); a task_id mismatch refuses.",
-    "docs/BRR_POLICY.md's Semi-Autonomy Ceiling section is updated with a narrow, disclosed pointer (per DECISION-051's Post-Close Canonical Amendment Rule, since pcc-brr4-004 is already closed) naming this new script as the fielded version of the archive-before-chaining rule, without rewriting pcc-brr4-004's original 'policy only... future fielding work' claim, which was accurate when made.",
-    "docs/HANDOFF_PACKET_SPEC.md is updated to name the new script alongside close-out-verified-task.ps1 and return-inadequate-work.ps1 as part of the recognized close-out/preservation family.",
-    "A new decision is recorded in docs/DECISIONS.md.",
-    "No change to any of the five verdicts, any Task Safety Class's meaning, the Acceptance Boundary Rules, the self-verification fallback, or any other existing script's behavior."
+    "scripts/close-out-verified-task.ps1, scripts/return-inadequate-work.ps1, and scripts/archive-held-cycle.ps1 each push the current branch to origin automatically immediately after a successful -Commit, using the actual current branch name (not a hardcoded 'main'), rather than requiring a separate manual git push.",
+    "-Commit's existing behavior (git add -A; git commit) is unchanged; only a push step is appended after a successful commit.",
+    "If the push fails (e.g. network issue, remote rejects), the script reports this clearly but does not fail the whole run destructively -- the commit already succeeded locally and is not undone; the failure is surfaced so it can be retried manually.",
+    "Push is only ever attempted after -Commit is explicitly passed and the commit succeeds -- a script run without -Commit still never pushes (no auto-commit-and-push forced on a caller who only wanted to inspect/hold).",
+    "No push is ever attempted to any branch or remote other than the current branch and 'origin' -- no new remote, no force-push, no history rewriting.",
+    "A new decision is recorded in docs/DECISIONS.md explicitly superseding DECISION-020's per-time push approval clause with a standing, explicit owner authorization for automatic push on every -Commit-ed cycle, effective immediately (not time-boxed like DECISION-036's earlier exception) until the owner says otherwise.",
+    "Functionally tested (not read-through only): tested in the real repo's own git history is not required, but the push-triggering logic must be demonstrated correctly -- either via a safe scratch git repo with a real (test-only) remote, or by direct, careful reasoning plus a live dry run against the real repo's own already-pushed-and-clean state, documented honestly either way.",
+    "No change to any of the five verdicts, any Task Safety Class's meaning, the Acceptance Boundary Rules, the self-verification fallback, or any other existing script behavior beyond the push addition.",
+    "docs/HANDOFF_PACKET_SPEC.md and docs/REPO_GOVERNANCE.md's Task Process are updated to reflect that -Commit now also pushes automatically, so the workflow description stays accurate."
   ],
   "boundaries": {
     "allowed": [
-      "Create scripts/archive-held-cycle.ps1.",
-      "Edit docs/BRR_POLICY.md to add the narrow pointer update to the existing Semi-Autonomy Ceiling section.",
-      "Edit docs/HANDOFF_PACKET_SPEC.md to name the new script.",
+      "Edit scripts/close-out-verified-task.ps1, scripts/return-inadequate-work.ps1, and scripts/archive-held-cycle.ps1 to add an automatic push step after a successful -Commit.",
       "Edit docs/DECISIONS.md to record the new decision.",
-      "Create and use a temporary, isolated scratch copy of relevant repo files (outside the live .cockpit/ state) to functionally test the change without touching real task/project state; delete the scratch copy when done."
+      "Edit docs/HANDOFF_PACKET_SPEC.md and docs/REPO_GOVERNANCE.md to reflect the new auto-push behavior.",
+      "Create and use a temporary, isolated scratch copy (including a scratch git repo with a local-only test remote if needed) to test the push logic without risking the real repo's remote."
     ],
     "forbidden": [
-      "Do not modify any existing script (close-out-verified-task.ps1, return-inadequate-work.ps1, advance-cockpit-state.ps1, finalize-worker-handback.ps1, log-event.ps1, doctor.ps1, check-stop-conditions.ps1, check-autonomous-gate.ps1).",
+      "Do not modify any other script.",
       "Do not modify any schema.",
-      "Do not have the new script advance task_status, call advance-cockpit-state.ps1, or otherwise treat a held cycle as accepted/closed.",
-      "Do not rewrite or delete pcc-brr4-004's original claim in docs/BRR_POLICY.md that fielding was 'not required by this task' / policy-only at the time -- only add a clearly-marked pointer noting later fielding.",
+      "Do not add force-push, push to any branch other than the current one, or push to any remote other than 'origin'.",
+      "Do not make -Commit itself automatic/default in any script that doesn't already have it -- only change what happens after -Commit is explicitly passed and succeeds.",
       "Do not touch the self-verification fallback (DECISION-033/036), the Acceptance Boundary Rules, or any Task Safety Class's core meaning.",
-      "Do not run any test of the new script against the live .cockpit/state/task-state.json, .cockpit/state/project-state.json, or .cockpit/result/verification-result.json -- all functional testing happens in an isolated scratch copy only.",
-      "Do not self-close this task via scripts/close-out-verified-task.ps1 -- Class B, hold the self-verified result for owner/GPT review."
+      "Do not run any real push test against the live PCC repo's actual remote in a way that could push broken or unintended state -- if testing against the real repo, only do so at a point where the repo is already clean/pushed/complete, and document this honestly.",
+      "Do not self-close this task via scripts/close-out-verified-task.ps1 -- Class B, hold the self-verified result for owner/GPT review; the owner has already given direct approval for this change, but that approval covers the policy, not a self-issued final verdict on this specific implementation."
     ]
   },
   "required_evidence": [
@@ -52,6 +50,6 @@
   "current_blocker": null,
   "owner_decision_request": null,
   "promotion_basis": null,
-  "next_action": "Task 'pcc-brr5-002' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T12:21:45-06:00"
+  "next_action": "Task 'pcc-brr5-003' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-04T12:42:22-06:00"
 }

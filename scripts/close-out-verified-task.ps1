@@ -90,8 +90,11 @@ Write-Output ""
 # Commit is the one remaining repo-sync duty this script performs only when
 # explicitly requested. DECISION-020 already authorizes the verifier to
 # commit the cycle's own verified changes; it does not authorize this script
-# to decide that moment automatically on every run, and it never authorizes
-# pushing, which always requires separate explicit owner approval.
+# to decide that moment automatically on every run. Per DECISION-065 (a
+# standing, non-time-boxed owner authorization, not time-boxed like the
+# earlier DECISION-036 exception), a successful -Commit is followed
+# automatically by a push of the current branch to origin -- no separate
+# push approval is required per-cycle anymore.
 if ($Commit) {
   & git add -A
   if ($LASTEXITCODE -ne 0) {
@@ -102,7 +105,15 @@ if ($Commit) {
   if ($LASTEXITCODE -ne 0) {
     Fail "Close-out aborted: 'git commit' failed. Files are staged; review before retrying."
   }
-  Write-Output "Committed the verified cycle for task '$taskId'. Pushing to any remote still requires separate explicit owner approval (DECISION-020) and is not performed by this script."
+  Write-Output "Committed the verified cycle for task '$taskId'."
+
+  $currentBranch = (& git rev-parse --abbrev-ref HEAD).Trim()
+  & git push origin $currentBranch
+  if ($LASTEXITCODE -ne 0) {
+    Write-Output "[PUSH WARNING] 'git push origin $currentBranch' failed. The commit above succeeded and is safe locally; retry the push manually when ready."
+  } else {
+    Write-Output "Pushed '$currentBranch' to origin (DECISION-065: automatic push on commit, standing owner authorization)."
+  }
 } else {
-  Write-Output "Repo is in a clean commit-ready state for task '$taskId'. Committing was not requested (-Commit was not passed); the verifier's remaining manual duty is to review and run 'git add' / 'git commit' (or re-run this script with -Commit). Pushing to any remote always requires separate explicit owner approval (DECISION-020) and is never performed by this script."
+  Write-Output "Repo is in a clean commit-ready state for task '$taskId'. Committing was not requested (-Commit was not passed); the verifier's remaining manual duty is to review and run 'git add' / 'git commit' (or re-run this script with -Commit, which now also pushes automatically per DECISION-065)."
 }
