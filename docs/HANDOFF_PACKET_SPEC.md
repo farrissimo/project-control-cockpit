@@ -255,6 +255,8 @@ last saw; it is not process theater for its own sake (`DECISION-032`).
 
 The normal advisor/verifier is Codex (`DECISION-023`). If Codex is unavailable and the owner wants work to continue, `DECISION-033` allows a degraded fallback where Claude Code also performs the verifier role. In that case, the verification artifact must say plainly that it was self-verified with no independent second-party review, and the verifier pass must still independently re-run the relevant local guardrails and evidence review rather than merely endorsing the worker narrative.
 
+During such a fallback, ChatGPT may act as a **secondary review input** (`DECISION-036`), with remote repo access only — no local file or script execution. Its review is additive context, not a replacement for the local guardrail re-run above, and repo truth must not describe it as independent verification or as equivalent to Codex's normal role. The standard self-verification disclosure wording (`docs/VERIFICATION_RESULT_SPEC.md`) states explicitly whether GPT review was performed for a given cycle. For ChatGPT's remote access to see completed work at all, `DECISION-036` also pre-authorizes committing *and* pushing every verified `PASS` for the remainder of the current BRR phase specifically — a time-boxed exception to `DECISION-020`'s normal per-time push approval, not a permanent change to it.
+
 ### Worker Handoff
 
 When handing to a worker, include:
@@ -325,7 +327,7 @@ Once a `PASS` verdict is written to `.cockpit/result/verification-result.json`, 
 3. **Run `doctor.ps1`** as the post-close-out health check, failing the whole close-out if it reports any `[ISSUE]`.
 4. **Log the event** with `scripts/log-event.ps1 -FromVerificationResult`.
 
-After these four steps, the repo is in a clean, commit-ready state. Committing is the one remaining step this script performs only when explicitly requested via `-Commit` (`git add -A` then `git commit`, using the verification summary as the message) — `DECISION-020` already authorizes the verifier to commit the cycle's own verified changes, but not to have that decided automatically on every close-out run. **Pushing to any remote is never performed by this script and always requires separate explicit owner approval each time**, unchanged from `DECISION-020`.
+After these four steps, the repo is in a clean, commit-ready state. Committing is the one remaining step this script performs only when explicitly requested via `-Commit` (`git add -A` then `git commit`, using the verification summary as the message) — `DECISION-020` already authorizes the verifier to commit the cycle's own verified changes, but not to have that decided automatically on every close-out run. **Pushing to any remote is never performed by this script itself** — that stays a deliberate, separate `git push` run by the verifier after `-Commit`, not something this script automates. Whether that push may happen without asking the owner each time is governed by `DECISION-020` (default: separate explicit approval every time) or, during the `DECISION-036` fallback window specifically, by that decision's time-boxed pre-authorization.
 
 Archiving before advancing (rather than after, as earlier cycles did) is what makes step 2's archive-path argument available in the first place.
 

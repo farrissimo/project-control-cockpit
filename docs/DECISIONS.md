@@ -844,3 +844,31 @@ Implications:
 
 Supersedes: None
 Related: DECISION-030, DECISION-034, docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, scripts/refresh-live-handoff-artifacts.ps1, scripts/advance-cockpit-state.ps1, scripts/finalize-worker-handback.ps1, scripts/close-out-verified-task.ps1
+
+---
+
+## DECISION-036: Secondary Workflow Canon — GPT Review Role, Fallback Disclosure Wording, Time-Boxed Push Authorization (pcc-brr2-006)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+Codex is currently unavailable (out of session usage). The owner has activated the `DECISION-033` degraded fallback: Claude Code performs both worker and advisor/verifier roles for the remainder of BRR Phase 2. ChatGPT is added as a secondary review input, with remote repo access only (no local file execution). This decision formalizes exactly what that means in repo truth, rather than leaving it as an unwritten chat-only arrangement.
+
+Reason:
+
+`DECISION-033` already authorized the dual-role fallback in principle but did not anticipate a second AI reviewer with a *different* access shape (remote-only, no local script execution) entering the picture, and did not address repo-sync push authorization during a fallback stretch. Leaving these unwritten would mean the next fresh session has to reconstruct this arrangement from chat history, which `docs/STATE_MODEL.md`'s truth priority explicitly says is not authoritative. `docs/REPO_GOVERNANCE.md`'s Change Propagation Rule requires this be recorded before being treated as settled.
+
+Implications:
+
+**1. Role structure during this fallback.** Claude Code is worker and verifier (`DECISION-033`, unchanged). ChatGPT is a **secondary review input**, not an independent verifier-of-record and not equivalent to Codex's normal role. This distinction is load-bearing, not cosmetic: `DECISION-031`/`DECISION-032` defined independent verification as independently *re-running the local guardrails* (`scripts/verify-handback-guardrails.ps1`, `check-schemas.ps1`, `validate-cockpit-state.ps1`, `doctor.ps1`) against the actual handed-back repo state. ChatGPT cannot do this — it has no local file or script execution, only remote (post-push) repo *reading*. Its review is therefore necessarily narrower: a second set of eyes on pushed content and reasoning, not a repeat of the guardrail-based independence check. GPT review does not by itself satisfy the "independent second party" gap self-verification leaves open; it is additive, not substitutive.
+
+**2. Required disclosure wording.** Every self-verified `verification-result.json` written under this fallback must state, in `summary` or `risks`, substantively: *"Self-verified under DECISION-033 degraded fallback (Codex unavailable). No independent second-party (Codex) review occurred. GPT secondary review: [performed via remote repo access, noting its scope is narrower than local guardrail re-verification / not performed this cycle]."* This is the standard wording so future fallback cycles do not each improvise disclosure language from scratch.
+
+**3. Repo-sync during this fallback: commit and push are both authorized per PASS, time-boxed.** `DECISION-020` already authorizes the verifier to commit verified work; pushing has always required separate explicit owner approval each time. For the remainder of this BRR phase specifically, the owner has explicitly pre-authorized both commit and push after every verified `PASS`, so ChatGPT's remote-only access can actually see completed work without a manual push request each cycle. This authorization is scoped to **verified, already-`PASS`ed changes for the remainder of BRR Phase 2** — it does not authorize force-push, history rewriting, or pushing unverified/uncommitted-elsewhere work, and it does not permanently amend `DECISION-020`'s standing per-time approval rule; that rule resumes by default once this phase closes or Codex returns, whichever the owner decides first.
+
+**4. Nothing else about the verification model changes.** The five verdicts, task safety classes, Owner Review Matrix, Stop-Instead-of-Guess Policy, and Operating Definitions (`docs/BRR_POLICY.md`) are unaffected. Self-verification must still independently re-run guardrails and remain honestly willing to issue `FAIL`/`INSUFFICIENT`/`BLOCKED`/`OUT_OF_SCOPE` against its own work, exactly as `DECISION-033` already required.
+
+Supersedes: None (extends `DECISION-033` and time-boxes an exception to `DECISION-020`'s push rule; does not replace either)
+Related: DECISION-020, DECISION-023, DECISION-031, DECISION-032, DECISION-033, docs/VERIFICATION_RESULT_SPEC.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md

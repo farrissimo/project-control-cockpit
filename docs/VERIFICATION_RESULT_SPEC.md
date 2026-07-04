@@ -271,7 +271,7 @@ A valid verification result must:
 * define the next action
 * explicitly state whether state update is allowed
 
-When the same agent performed both the worker and verifier roles under the degraded fallback authorized by `DECISION-033`, the verification result must also include an explicit self-verification disclosure in `risks` or `summary` stating that no independent second-party review occurred.
+When the same agent performed both the worker and verifier roles under the degraded fallback authorized by `DECISION-033`, the verification result must also include an explicit self-verification disclosure in `risks` or `summary` stating that no independent second-party review occurred. Per `DECISION-036`, the standard wording is: *"Self-verified under DECISION-033 degraded fallback (Codex unavailable). No independent second-party (Codex) review occurred. GPT secondary review: [performed via remote repo access, noting its scope is narrower than local guardrail re-verification / not performed this cycle]."* GPT's review, when performed, is a secondary review input via remote (post-push) repo access only — it does not have local file or script execution, so it cannot independently re-run `scripts/verify-handback-guardrails.ps1` or the other local checks `DECISION-031`/`DECISION-032` require of independent verification. It therefore does not, by itself, satisfy the "independent second party" gap this disclosure exists to name; it is additive context, not a substitute for local guardrail-based independence.
 
 ---
 
