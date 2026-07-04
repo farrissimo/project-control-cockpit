@@ -624,3 +624,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-022, DECISION-024, docs/BRR_PLAN.md, docs/BRR_POLICY.md
+
+---
+
+## DECISION-026: BRR Stop-Instead-of-Guess Policy Recorded (pcc-brr1-003)
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+The third BRR Phase 1 policy deliverable, the Stop-Instead-of-Guess Policy, is recorded canonically in `docs/BRR_POLICY.md`, extending it directly rather than creating a new doc, per `DECISION-022`'s task breakdown.
+
+Reason:
+
+`docs/BRR_PLAN.md` Phase 1 requires explicit rules that favor stopping over inventing, covering seven named trigger examples. `docs/BRR_POLICY.md` already held the Owner Review Matrix (`DECISION-024`) and Task Safety Classification (`DECISION-025`) it needed to align with, so extending it kept all three pieces of Phase 1 policy in one place per `docs/REPO_GOVERNANCE.md`'s New Canonical Doc Process (an existing canonical doc already covers this).
+
+Implications:
+
+`docs/BRR_POLICY.md` now maps all seven named triggers (ambiguous scope, conflicting truth surfaces, weak or missing evidence, repeated failure with no new evidence, out-of-scope drift, no trusted way to verify a risky task, unresolved owner-facing tradeoff) onto PCC's existing five verification verdicts — no new verdict, status, or state was introduced. The former "Relationship To Existing Verdicts" section (added under `DECISION-024`) was folded into this new section rather than left as a separate, now-redundant note, since both covered the same ground. This decision does not implement any automatic trigger detection, runtime enforcement, or gating — applying these triggers in live task flow remains Phase 2 (`docs/BRR_PLAN.md` Section 5). No runtime scripts, schemas, or verification mechanics were changed.
+
+Supersedes: None
+Related: DECISION-022, DECISION-024, DECISION-025, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/VERIFICATION_RESULT_SPEC.md
