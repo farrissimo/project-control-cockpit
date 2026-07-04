@@ -75,14 +75,13 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Output "Step 2/4: state consistency confirmed."
 
-# --- Step 3: regenerate the live handoff artifacts from the state just written. ---
-& pwsh -NoProfile -File "scripts/generate-worker-directive.ps1"
+# --- Step 3: regenerate the live handoff artifacts from the state just
+# written, via the one shared helper every status-mutating path now uses
+# (scripts/refresh-live-handoff-artifacts.ps1) rather than re-implementing
+# "call both generators" here. ---
+& pwsh -NoProfile -File "scripts/refresh-live-handoff-artifacts.ps1"
 if ($LASTEXITCODE -ne 0) {
-  Fail "Handback aborted: scripts/generate-worker-directive.ps1 failed while regenerating the live directive from the post-handback state."
-}
-& pwsh -NoProfile -File "scripts/generate-advisor-restart-brief.ps1"
-if ($LASTEXITCODE -ne 0) {
-  Fail "Handback aborted: scripts/generate-advisor-restart-brief.ps1 failed while regenerating the live restart brief from the post-handback state."
+  Fail "Handback aborted: scripts/refresh-live-handoff-artifacts.ps1 failed while regenerating the live handoff artifacts from the post-handback state."
 }
 Write-Output "Step 3/4: live handoff artifacts regenerated from the actual returned-for-verification state."
 

@@ -53,49 +53,37 @@ foreach ($archivePath in @($directiveArchivePath, $resultArchivePath, $verificat
   }
 }
 
-# --- Step 1/5: archive first, before any state advance. ---
+# --- Step 1/4: archive first, before any state advance. ---
 Copy-Item -LiteralPath ".cockpit/handoff/worker-directive.md" -Destination $directiveArchivePath
 Copy-Item -LiteralPath ".cockpit/result/worker-result.md" -Destination $resultArchivePath
 Copy-Item -LiteralPath $verificationPath -Destination $verificationArchivePath
-Write-Output "Step 1/5: archived directive, result, and verification for task '$taskId'."
+Write-Output "Step 1/4: archived directive, result, and verification for task '$taskId'."
 
-# --- Step 2/5: advance state, pointing last_verified_handoff at the archive. ---
+# --- Step 2/4: advance state, pointing last_verified_handoff at the archive.
+# scripts/advance-cockpit-state.ps1 now refreshes both live handoff artifacts
+# itself immediately after writing state (scripts/refresh-live-handoff-artifacts.ps1),
+# so this script no longer duplicates that call - one shared invariant, one
+# call site, rather than every status-mutating path re-implementing it. ---
 & pwsh -NoProfile -File "scripts/advance-cockpit-state.ps1" -ArchivedDirectivePath $directiveArchivePath
 if ($LASTEXITCODE -ne 0) {
   Fail "Close-out aborted: scripts/advance-cockpit-state.ps1 failed. Cycle artifacts are archived but state was not advanced; review before retrying."
 }
-Write-Output "Step 2/5: state advanced; last_verified_handoff points at the archived directive."
+Write-Output "Step 2/4: state advanced (last_verified_handoff points at the archived directive) and both live handoff artifacts refreshed."
 
-# --- Step 3/5: refresh both live handoff artifacts unconditionally. Advancing
-# state just changed task_status, current_phase, last_verified_handoff, and
-# next_expected_action out from under both the live directive and the live
-# brief - leaving either un-regenerated would reproduce the exact staleness
-# gap pcc-brr2-001 surfaced, just on the verifier side of close-out instead
-# of the worker side. ---
-& pwsh -NoProfile -File "scripts/generate-worker-directive.ps1"
-if ($LASTEXITCODE -ne 0) {
-  Fail "Close-out aborted: scripts/generate-worker-directive.ps1 failed while refreshing the directive after state advance."
-}
-& pwsh -NoProfile -File "scripts/generate-advisor-restart-brief.ps1"
-if ($LASTEXITCODE -ne 0) {
-  Fail "Close-out aborted: scripts/generate-advisor-restart-brief.ps1 failed while refreshing the brief after state advance."
-}
-Write-Output "Step 3/5: both live handoff artifacts refreshed against the post-close-out state."
-
-# --- Step 4/5: post-close-out health check. ---
+# --- Step 3/4: post-close-out health check. ---
 $doctorOutput = & pwsh -NoProfile -File "scripts/doctor.ps1" 2>&1
 $doctorOutput | ForEach-Object { Write-Output $_ }
 if ($doctorOutput -match "\[ISSUE\]") {
   Fail "Close-out aborted: scripts/doctor.ps1 reported at least one [ISSUE] after close-out. See the report above."
 }
-Write-Output "Step 4/5: post-close-out health check clean."
+Write-Output "Step 3/4: post-close-out health check clean."
 
-# --- Step 5/5: log the event from the (still-live, now also archived) verification result. ---
+# --- Step 4/4: log the event from the (still-live, now also archived) verification result. ---
 & pwsh -NoProfile -File "scripts/log-event.ps1" -FromVerificationResult
 if ($LASTEXITCODE -ne 0) {
   Fail "Close-out aborted: scripts/log-event.ps1 failed to record the event."
 }
-Write-Output "Step 5/5: event logged to .cockpit/logs/routing-log.jsonl."
+Write-Output "Step 4/4: event logged to .cockpit/logs/routing-log.jsonl."
 
 Write-Output ""
 

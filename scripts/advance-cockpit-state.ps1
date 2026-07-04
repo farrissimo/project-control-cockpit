@@ -106,3 +106,17 @@ if (Test-Path -LiteralPath $validator) {
     Fail "Post-update validation failed. State files were written but are inconsistent; review immediately."
   }
 }
+
+# This status change just moved task_status (and, on PASS, current_phase-
+# adjacent fields like last_verified_handoff) out from under both live
+# handoff artifacts. Regenerating only one of them here previously caused a
+# real, twice-recurring staleness defect (pcc-brr2-001, pcc-brr2-004); both
+# are refreshed unconditionally through the one shared helper so any caller
+# of this script gets the fix automatically rather than needing to remember it.
+$refresher = "scripts/refresh-live-handoff-artifacts.ps1"
+if (Test-Path -LiteralPath $refresher) {
+  & pwsh -NoProfile -File $refresher
+  if ($LASTEXITCODE -ne 0) {
+    Fail "State was advanced and validated, but scripts/refresh-live-handoff-artifacts.ps1 failed while refreshing the live handoff artifacts. Review before treating this state as handoff-ready."
+  }
+}

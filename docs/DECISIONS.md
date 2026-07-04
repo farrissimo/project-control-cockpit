@@ -822,3 +822,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-020, DECISION-030, DECISION-031, DECISION-032, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, scripts/close-out-verified-task.ps1
+
+---
+
+## DECISION-035: Shared Two-Artifact Refresh Invariant Centralized (pcc-brr2-005)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`scripts/refresh-live-handoff-artifacts.ps1` is added as the single shared helper for the rule that any repo-native path changing live task status must regenerate both live handoff artifacts (`worker-directive.md` and `advisor-restart-brief.md`) from the resulting state, not just one. `scripts/advance-cockpit-state.ps1` now calls it internally and unconditionally after writing state; `scripts/finalize-worker-handback.ps1` and `scripts/close-out-verified-task.ps1` were both updated to call this one helper instead of separately re-implementing the two-generator call.
+
+Reason:
+
+The same defect — regenerating only one of the two live artifacts after a status change — was found and fixed twice in this BRR sub-thread: `pcc-brr2-001` (worker handback side) and again during `pcc-brr2-004`'s own scratch testing (verifier close-out side). Two independent recurrences of the identical mistake is a structural signal, not a coincidence: each new status-mutating script had to remember and correctly re-implement the same two-call sequence by hand, and nothing stopped a third script from getting it wrong the same way. The root cause was that `scripts/advance-cockpit-state.ps1` itself — the actual verdict-driven state-mutation path — had no refresh logic at all; both `pcc-brr2-002`'s and `pcc-brr2-004`'s wrapper scripts only patched the gap at their own call sites, not at the source.
+
+Implications:
+
+`scripts/refresh-live-handoff-artifacts.ps1` is the one place "regenerate both live artifacts" is implemented; every other script that needs it calls this one, rather than calling both generators directly. Because it is now wired into `scripts/advance-cockpit-state.ps1` itself, any future path that ends up advancing state through that script inherits the fix automatically, not only the two wrapper scripts audited so far. `scripts/close-out-verified-task.ps1`'s own separate refresh step (added under `DECISION-034`) was removed as redundant now that `advance-cockpit-state.ps1` performs it internally, collapsing that script from five steps to four. `scripts/finalize-worker-handback.ps1`'s two direct generator calls were replaced with one call to the shared helper; its own state-mutation logic (the `ready_for_worker`/`in_progress` → `returned_for_verification` transition, which is not verdict-driven and so does not go through `advance-cockpit-state.ps1`) was left unchanged, since unifying that with `advance-cockpit-state.ps1`'s verdict-mapping logic would be a larger redesign than this task's narrow scope warrants. `docs/STATE_MODEL.md`, `docs/HANDOFF_PACKET_SPEC.md`, and `docs/REPO_GOVERNANCE.md` are updated to describe the shared helper and where it is now called from. This does not redesign `doctor.ps1`, `check-schemas.ps1`, `validate-cockpit-state.ps1`, the verification verdict model, or BRR policy content.
+
+Supersedes: None
+Related: DECISION-030, DECISION-034, docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, scripts/refresh-live-handoff-artifacts.ps1, scripts/advance-cockpit-state.ps1, scripts/finalize-worker-handback.ps1, scripts/close-out-verified-task.ps1

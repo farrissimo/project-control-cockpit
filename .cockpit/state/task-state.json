@@ -2,7 +2,7 @@
   "task_id": "pcc-brr2-005",
   "task_title": "BRR Execution: Status-Change Refresh Invariant",
   "task_objective": "Operationalize the generic invariant that any repo-native path which changes live task status must leave both live handoff artifacts regenerated from the post-write state, not just one of them. Build the lightest viable repo-native mechanism, guardrail, or shared helper that makes this two-artifact refresh rule explicit across the existing status-mutating workflow paths so the recurring stale-artifact defect becomes structurally harder to reintroduce.",
-  "task_status": "ready_for_worker",
+  "task_status": "complete",
   "assigned_worker": "Claude Code",
   "task_safety_class": "B",
   "completion_criteria": [
@@ -41,8 +41,8 @@
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
-  "verification_verdict": null,
+  "verification_verdict": "PASS",
   "current_blocker": null,
-  "next_action": "Read .cockpit/handoff/worker-directive.md, implement pcc-brr2-005 within scope, and return evidence to .cockpit/result/worker-result.md.",
-  "updated_at": "2026-07-04T00:08:00-06:00"
+  "next_action": "Task 'pcc-brr2-005' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-04T00:16:49-06:00"
 }
