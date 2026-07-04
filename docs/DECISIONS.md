@@ -602,3 +602,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-021, DECISION-022, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md
+
+---
+
+## DECISION-025: BRR Task Safety Classification Recorded (pcc-brr1-002)
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+The second BRR Phase 1 policy deliverable, Task Safety Classification, is recorded canonically in `docs/BRR_POLICY.md`, extending it directly rather than creating a new doc, per `DECISION-022`'s task breakdown.
+
+Reason:
+
+`docs/BRR_PLAN.md` Phase 1 requires a concrete Class A/B/C/D model so tasks can be classified before execution. `docs/BRR_POLICY.md` already existed as the narrow-purpose home for BRR Phase 1 policy text (`DECISION-024`), so extending it kept the classification tied directly to the Owner Review Matrix it builds on, per `docs/REPO_GOVERNANCE.md`'s New Canonical Doc Process (question 1: can an existing canonical doc handle this — yes).
+
+Implications:
+
+`docs/BRR_POLICY.md` now defines four classes (A: safe unattended, B: safe to execute but not self-accept, C: owner approval required before execution, D: blocked) with an explicit, direct mapping back onto the Owner Review Matrix rows added by `DECISION-024`: matrix rows 1-8 map to Class C, row 9 maps to Class D, and rows 10-11 explain why a task is Class B rather than Class A. This decision does not implement Phase 2 fielding (recording a task's class in `task-state.json`, checking it automatically, or gating on it) — that remains future work per `docs/BRR_PLAN.md` Section 5, Phase 2 "Task Classification Fielding." No runtime scripts, schemas, or verification mechanics were changed.
+
+Supersedes: None
+Related: DECISION-022, DECISION-024, docs/BRR_PLAN.md, docs/BRR_POLICY.md
