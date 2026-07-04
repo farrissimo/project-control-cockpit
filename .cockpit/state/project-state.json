@@ -3,7 +3,7 @@
   "project_name": "Project Control Cockpit",
   "project_goal": "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
   "current_phase": "post-brr",
-  "current_task_id": "pcc-brr5-005",
+  "current_task_id": "pcc-postbrr-001",
   "active_repo_path": "C:\\ProjectControlCockpit",
   "active_branch": "main",
   "owner_decisions": [
@@ -152,9 +152,9 @@
     "Claude Code is ready and pointed at this repository workspace.",
     "PCC owns the worker handoff contract through repo files; the owner should not need to restate the instructions manually."
   ],
-  "current_blocker": null,
+  "current_blocker": "Independent verification found the main implementation and guardrail re-run broadly consistent with the intended retry-governor behavior, but the cycle cannot pass because the worker also changed backlog/IDEAS.md outside the task's authorized scope. Under the verification spec, that requires an OUT_OF_SCOPE verdict even when the primary code change itself appears sound.",
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-brr5-005-worker-directive.md",
-  "last_verification_verdict": "PASS",
-  "next_expected_action": "BRR Phase 5 is closed (DECISION-069). Owner selects the first post-BRR task.",
-  "updated_at": "2026-07-04T13:50:00-06:00"
+  "last_verification_verdict": "OUT_OF_SCOPE",
+  "next_expected_action": "Remove or explicitly authorize the backlog/IDEAS.md change, then resubmit the task for verification with scope aligned to the actual files touched.",
+  "updated_at": "2026-07-04T14:14:47-06:00"
 }

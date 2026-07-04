@@ -1,6 +1,7 @@
 param(
   [string]$TaskId = $null,
-  [string]$NextAction = $null
+  [string]$NextAction = $null,
+  [int]$MaxAttemptsBeforeBlock = 2
 )
 
 $ErrorActionPreference = "Stop"
@@ -61,28 +62,70 @@ $resolvedNextAction = if ($NextAction) { $NextAction } else {
 # other than PASS). This must be read BEFORE attempts is incremented below,
 # since incrementing first would make every handback look like "attempts > 0".
 $wasRetry = ($taskState.attempts -gt 0) -and $taskState.verification_verdict -and ($taskState.verification_verdict -ne "PASS")
-$taskState.attempts = [int]$taskState.attempts + 1
 
-# --- Step 1: the final state update happens first. ---
-$taskState.task_status = "returned_for_verification"
-$taskState.current_blocker = $null
-$taskState.next_action = $resolvedNextAction
-$taskState.updated_at = $timestamp
+# IDEA-009 (pcc-postbrr-001): a repeated failure -- the one retry policy
+# already allows has ALSO come back non-PASS -- must stop instead of handing
+# back a third time, per docs/BRR_POLICY.md's Stop-Instead-of-Guess trigger 4
+# / Owner Review Matrix row 9 ("repeated failure with no new evidence...
+# further unattended retries stop") and its FAIL verdict mapping ("repeated
+# failure with nothing new is... Class D (BLOCKED), not another unattended
+# attempt"). This is read BEFORE attempts is incremented, same reasoning as
+# $wasRetry above: pre-increment attempts already at or past the threshold
+# means the retry that just happened is itself the second failure.
+$repeatedFailure = $wasRetry -and ([int]$taskState.attempts -ge $MaxAttemptsBeforeBlock)
 
-$projectState.current_blocker = $null
-$projectState.next_expected_action = "Worker evidence for task '$($taskState.task_id)' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict."
-$projectState.updated_at = $timestamp
+if ($repeatedFailure) {
+  # --- Repeated-failure path: stop instead of handing back a third time. ---
+  # attempts is deliberately NOT incremented -- this handback did not happen.
+  $taskState.task_status = "blocked"
+  $taskState.current_blocker = "Task '$($taskState.task_id)' has failed $($taskState.attempts) time(s) (last verdict: '$($taskState.verification_verdict)') with no new evidence; further unattended retries stop per docs/BRR_POLICY.md trigger 4 / Owner Review Matrix row 9."
+  $taskState.owner_decision_request = [ordered]@{
+    question      = "Task '$($taskState.task_id)' has failed $($taskState.attempts) time(s) (last verdict: '$($taskState.verification_verdict)'). How should we proceed?"
+    reason        = "docs/BRR_POLICY.md Stop-Instead-of-Guess trigger 4 / Owner Review Matrix row 9: repeated failure with no new evidence means the task itself needs the owner to change approach, scope, or evidence before it may proceed again, not another unattended attempt."
+    options       = @("Retry with a genuinely different approach or new evidence", "Reduce or re-scope the task", "Abandon the task")
+    blocked_until = "Owner reviews the failure history and decides how to proceed."
+  }
+  $taskState.next_action = "Task '$($taskState.task_id)' is blocked after repeated failure. Owner decision required (see owner_decision_request); do not attempt another unattended handback."
+  $taskState.updated_at = $timestamp
 
-$taskState | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $taskStatePath
-$projectState | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $projectStatePath
-Write-Output "Step 1/4: task '$($taskState.task_id)' set to 'returned_for_verification' (attempt $($taskState.attempts))."
+  $projectState.current_blocker = $taskState.current_blocker
+  $projectState.next_expected_action = "Task '$($taskState.task_id)' is blocked after repeated failure. Owner decision required."
+  $projectState.updated_at = $timestamp
 
-if ($wasRetry) {
+  $taskState | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $taskStatePath
+  $projectState | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $projectStatePath
+  Write-Output "Step 1/4: task '$($taskState.task_id)' set to 'blocked' (repeated failure at attempt $($taskState.attempts); no further unattended handback)."
+
   # A logging failure here must never abort or change the outcome of an
   # otherwise-successful handback -- it is surfaced visibly, not fatal.
-  & pwsh -NoProfile -File "scripts/log-event.ps1" -EventType "retry_attempted" -TaskId $taskState.task_id -Detail "Task '$($taskState.task_id)' handed back for verification again after a prior '$($taskState.verification_verdict)' verdict. This is attempt $($taskState.attempts)."
+  & pwsh -NoProfile -File "scripts/log-event.ps1" -EventType "repeated_failure_blocked" -TaskId $taskState.task_id -Detail "Task '$($taskState.task_id)' blocked after $($taskState.attempts) attempt(s); last verdict '$($taskState.verification_verdict)'. Owner decision required before further work."
   if ($LASTEXITCODE -ne 0) {
-    Write-Output "[LOGGING WARNING] Failed to record retry_attempted event (scripts/log-event.ps1 exited $LASTEXITCODE). The handback above is still valid and unaffected."
+    Write-Output "[LOGGING WARNING] Failed to record repeated_failure_blocked event (scripts/log-event.ps1 exited $LASTEXITCODE). The block above is still valid and unaffected."
+  }
+} else {
+  $taskState.attempts = [int]$taskState.attempts + 1
+
+  # --- Step 1: the final state update happens first. ---
+  $taskState.task_status = "returned_for_verification"
+  $taskState.current_blocker = $null
+  $taskState.next_action = $resolvedNextAction
+  $taskState.updated_at = $timestamp
+
+  $projectState.current_blocker = $null
+  $projectState.next_expected_action = "Worker evidence for task '$($taskState.task_id)' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict."
+  $projectState.updated_at = $timestamp
+
+  $taskState | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $taskStatePath
+  $projectState | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $projectStatePath
+  Write-Output "Step 1/4: task '$($taskState.task_id)' set to 'returned_for_verification' (attempt $($taskState.attempts))."
+
+  if ($wasRetry) {
+    # A logging failure here must never abort or change the outcome of an
+    # otherwise-successful handback -- it is surfaced visibly, not fatal.
+    & pwsh -NoProfile -File "scripts/log-event.ps1" -EventType "retry_attempted" -TaskId $taskState.task_id -Detail "Task '$($taskState.task_id)' handed back for verification again after a prior '$($taskState.verification_verdict)' verdict. This is attempt $($taskState.attempts)."
+    if ($LASTEXITCODE -ne 0) {
+      Write-Output "[LOGGING WARNING] Failed to record retry_attempted event (scripts/log-event.ps1 exited $LASTEXITCODE). The handback above is still valid and unaffected."
+    }
   }
 }
 
@@ -126,4 +169,8 @@ if ($doctorOutput -match "\[ISSUE\]") {
 Write-Output "Step 4/4: check-schemas.ps1 and doctor.ps1 both clean against the actual returned-for-verification state."
 
 Write-Output ""
-Write-Output "Handback finalized for task '$($taskState.task_id)': state, artifacts, and health checks all agree. Safe to write .cockpit/result/worker-result.md now."
+if ($repeatedFailure) {
+  Write-Output "Task '$($taskState.task_id)' is blocked after repeated failure: state, artifacts, and health checks all agree. Do not write .cockpit/result/worker-result.md or attempt another handback -- an owner decision is required first (see owner_decision_request)."
+} else {
+  Write-Output "Handback finalized for task '$($taskState.task_id)': state, artifacts, and health checks all agree. Safe to write .cockpit/result/worker-result.md now."
+}

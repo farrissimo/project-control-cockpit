@@ -91,11 +91,11 @@ Already delivered / fulfilled: IDEA-004 (delivered by pcc-v1-007..009); IDEA-002
   Notes: Rank 4. Non-blocking by nature (records only), low bloat. Lower immediate payoff than IDEA-005..007 but safe and cheap; enables the honest metrics from original scope 7.22/7.23. CCB #7. Keep events factual (what happened), not narrative (why we think it happened). DELIVERED across two BRR Phase 4 Multi-Cycle Pilot cycles: pcc-brr4-001 (run #1) added the "quality-gate" half -- scripts/check-stop-conditions.ps1 and scripts/check-autonomous-gate.ps1 log stop_condition_fired / gate_blocked events; pcc-brr4-002 (run #2, cycle 1) added the "retry" half -- scripts/finalize-worker-handback.ps1 now increments task-state.json's "attempts" field on every handback and logs a retry_attempted event specifically when a handback follows a prior non-PASS verdict on the same task.
 
 - IDEA-009: Deterministic retry governor / circuit breaker
-  Status: proposed
+  Status: promoted-to-task
   Plain name: Honesty Checks: Retry Limit
   Summary: Track repeated failures by stable signature (using the existing unused task-state "attempts" field) and stop useless retries automatically.
   Details: none
-  Notes: Rank 7. DEFER. Real ROI only once PCC runs semi-autonomously, which it does not yet (cycles are owner-driven). CCB #6; original scope 7.11 (failure recovery loop). Revisit alongside any autonomy work.
+  Notes: Rank 7. Originally DEFER pending PCC running semi-autonomously (CCB #6; original scope 7.11). Promoted and DELIVERED via pcc-postbrr-001 (DECISION-070, 2026-07-04) once pcc-brr5-004/005 demonstrated real semi-autonomous, independently-verified cycles. scripts/finalize-worker-handback.ps1 now blocks a task (task_status: blocked, owner_decision_request populated) after a second consecutive non-PASS verdict rather than allowing a third unattended handback, per docs/BRR_POLICY.md's existing Stop-Instead-of-Guess trigger 4 / Owner Review Matrix row 9.
 
 - IDEA-010: Deferred non-V1 concepts (holding entry)
   Status: rejected

@@ -640,6 +640,18 @@ Classification, Acceptance Boundary Rules, Semi-Autonomy Ceiling, etc.)
 remains fully active and unchanged. Closing the phase ends BRR's status as
 the project's current named phase; it does not relax any safety rule.
 
+> **Later update (`pcc-postbrr-001`, `DECISION-070`):** `backlog/IDEA-009`
+> (Deterministic retry governor / circuit breaker) is delivered — this note
+> is a pointer added per `docs/REPO_GOVERNANCE.md`'s Post-Close Canonical
+> Amendment Rule (`DECISION-051`), not a rewrite of the closure above, which
+> was accurate when Phase 5 closed. `IDEA-009` was not one of the four items
+> listed above; it was a separately-tracked backlog item unlocked by this
+> same closure (deferred since V1 pending semi-autonomous operation, which
+> `pcc-brr5-004`/`005` demonstrated). It was run as the first of a two-task
+> post-BRR bundle specifically chosen to also exercise item 2 above
+> (unattended chaining beyond two cycles) as a natural byproduct of running
+> consecutive real cycles through the now-live `PCC-CodexVerifyWatcher`.
+
 ---
 
 # 6. Areas Requiring Special Caution

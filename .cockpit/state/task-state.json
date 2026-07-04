@@ -1,26 +1,35 @@
 {
-  "task_id": "pcc-brr5-005",
-  "task_title": "Record Scheduled Watcher Deployment",
-  "task_objective": "Document that scripts/codex-verify-watcher.ps1 (pcc-brr5-004) is now deployed as a native Windows Scheduled Task ('PCC-CodexVerifyWatcher', 3-minute interval, running the script with -Once) rather than left as code the owner must run manually or in an open loop. This is a docs-only record of an operational deployment step, not a code change: no script's behavior changes as part of this task. This task is also the first real end-to-end test of the deployed watcher itself -- it is deliberately left in 'returned_for_verification' for the running scheduled task to pick up and invoke real Codex verification on its own, with no manual 'codex exec' invocation by the worker.",
-  "task_status": "complete",
+  "task_id": "pcc-postbrr-001",
+  "task_title": "Deterministic Retry Governor (IDEA-009)",
+  "task_objective": "Field IDEA-009: use the existing task-state.json 'attempts' field so a task that fails twice in a row with no new evidence automatically stops itself (task_status: 'blocked', an owner_decision_request populated) instead of allowing a third unattended handback. This implements, mechanically, the rule already stated in docs/BRR_POLICY.md's Stop-Instead-of-Guess trigger 4 / Owner Review Matrix row 9 ('repeated failure with no new evidence... further unattended retries stop... the task itself needs the owner to change approach, scope, or evidence') and docs/BRR_POLICY.md's own restated verdict mapping for FAIL ('repeated failure with nothing new is... Class D (BLOCKED), not another unattended attempt'). This is deliberately a narrow, deterministic mechanism (count-based), not a judgment call about whether a failure is 'the same approach' -- it fires on attempt count and non-PASS verdict alone, exactly as the check-stop-conditions.ps1 precedent already treats 'blocked' as an existing attention-needed status it detects.",
+  "task_status": "out_of_scope",
   "assigned_worker": "Claude Code",
-  "task_safety_class": "A",
+  "task_safety_class": "B",
   "completion_criteria": [
-    "A new decision is recorded in docs/DECISIONS.md describing the scheduled task: name (PCC-CodexVerifyWatcher), the command it runs (pwsh.exe -File scripts/codex-verify-watcher.ps1 -Once), the interval (3 minutes), and that it was manually triggered three times against live idle state (task_status: complete) confirming zero side effects (no lock file, no git changes) before being left running.",
-    "docs/REPO_GOVERNANCE.md's description of the watcher is updated to note it is now actually deployed via a native OS scheduled task rather than purely available-but-unstarted.",
-    "No existing script is modified. No schema is modified. No existing verdict, safety class, or Acceptance Boundary Rule is changed.",
-    "This task's own verification is NOT performed by the worker invoking codex exec manually. The task is left in 'returned_for_verification' and the already-running 'PCC-CodexVerifyWatcher' scheduled task is expected to detect it and invoke Codex on its own within one poll interval (up to ~3 minutes)."
+    "scripts/finalize-worker-handback.ps1 is extended (not a new script) with a new -MaxAttemptsBeforeBlock parameter, default 2, documented in a comment referencing the exact BRR_POLICY.md trigger-4 / row-9 language above.",
+    "Exact rule: read the SAME 'wasRetry' condition already computed in this script (attempts > 0 AND verification_verdict is set and non-PASS) BEFORE incrementing attempts. If wasRetry is true AND the current (pre-increment) attempts value is >= MaxAttemptsBeforeBlock, this handback represents a repeated failure (the prior retry itself already failed). In that case: do NOT increment attempts, do NOT set task_status to 'returned_for_verification'. Instead set task_status to 'blocked', set current_blocker to a factual one-sentence description naming the task_id, attempts count, and last verdict, and populate owner_decision_request per its schema (question, reason citing docs/BRR_POLICY.md trigger 4 / row 9 by name, options including at minimum 'retry with a genuinely different approach', 'reduce or re-scope the task', 'abandon the task', blocked_until describing that an owner decision is required). Then still run the same state-consistency, artifact-refresh, and schema/doctor checks the normal path runs (steps 2-4), and exit 0 (this is a correct, designed outcome, not a script error).",
+    "When the repeated-failure path fires, log a new event type 'repeated_failure_blocked' via scripts/log-event.ps1 (task_id, a factual detail string), with the same non-fatal logging-failure handling pattern already used elsewhere in this script (a logging failure must never change the outcome or exit code).",
+    "The normal single-retry case (attempts == 1 at handback time, wasRetry true) is NOT affected -- it must still hand back to 'returned_for_verification' exactly as today. Only a SECOND consecutive non-PASS cycle for the same task triggers the block.",
+    "check-stop-conditions.ps1 requires no code change to detect this: 'blocked' is already in its existing $attentionStatuses list. Confirm this by reading the script, not by assuming; if this assumption is wrong, report it as a real finding rather than silently working around it.",
+    "Functionally tested (not read-through only) in an isolated scratch copy: construct a task-state.json with attempts=1 and a non-PASS verification_verdict, call the modified finalize-worker-handback.ps1, and confirm (a) task_status becomes 'blocked', not 'returned_for_verification'; (b) attempts is NOT incremented; (c) owner_decision_request is populated and schema-valid; (d) a normal single-retry scratch case (attempts=0 or the prior-non-PASS-but-first-retry case) still hands back normally, unaffected.",
+    "A new decision is recorded in docs/DECISIONS.md.",
+    "docs/BRR_PLAN.md's carried-forward backlog note (from DECISION-069) is updated to mark this item delivered, mirroring how other delivered backlog items are annotated elsewhere in this repo's docs.",
+    "No existing verdict, task safety class, Acceptance Boundary Rule, or schema is changed. No other script is modified. This task's own verification is performed by the live 'PCC-CodexVerifyWatcher' scheduled task (no manual codex exec by the worker), continuing the pattern proven in pcc-brr5-005."
   ],
   "boundaries": {
     "allowed": [
+      "Edit scripts/finalize-worker-handback.ps1 to add the -MaxAttemptsBeforeBlock parameter and the repeated-failure branch described above.",
+      "Edit scripts/log-event.ps1 ONLY to add 'repeated_failure_blocked' as one new value in its existing -EventType ValidateSet list (found by scratch-testing: the script hard-validates event types and a new type cannot be logged without this one-line addition). No other line of log-event.ps1 may change.",
       "Edit docs/DECISIONS.md to record the new decision.",
-      "Edit docs/REPO_GOVERNANCE.md to reflect the watcher's actual deployment state."
+      "Edit docs/BRR_PLAN.md to mark the carried-forward backlog item delivered.",
+      "Create and use a temporary, isolated scratch copy to functionally test the new branch without touching live state."
     ],
     "forbidden": [
-      "Do not modify any existing script, including scripts/codex-verify-watcher.ps1 itself.",
+      "Do not modify scripts/check-stop-conditions.ps1 or any other script besides scripts/finalize-worker-handback.ps1 and the one-line scripts/log-event.ps1 ValidateSet addition above.",
       "Do not modify any schema.",
-      "Do not manually invoke 'codex exec' for this task's verification -- that is the point of this test.",
-      "Do not touch the Acceptance Boundary Rules, Task Safety Classification, or any existing verdict."
+      "Do not change the meaning of any existing verdict, task status, or Task Safety Class.",
+      "Do not manually invoke 'codex exec' for this task's own verification -- let the live scheduled watcher handle it, per DECISION-068.",
+      "Do not touch the Acceptance Boundary Rules or the Owner Review Matrix."
     ]
   },
   "required_evidence": [
@@ -36,10 +45,14 @@
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
-  "verification_verdict": "PASS",
-  "current_blocker": null,
+  "verification_verdict": "OUT_OF_SCOPE",
+  "current_blocker": "Independent verification found the main implementation and guardrail re-run broadly consistent with the intended retry-governor behavior, but the cycle cannot pass because the worker also changed backlog/IDEAS.md outside the task's authorized scope. Under the verification spec, that requires an OUT_OF_SCOPE verdict even when the primary code change itself appears sound.",
   "owner_decision_request": null,
-  "promotion_basis": null,
-  "next_action": "Task 'pcc-brr5-005' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T13:38:24-06:00"
+  "promotion_basis": {
+    "lane": "backlog/IDEAS.md",
+    "priority_ref": "IDEA-009",
+    "justification": "Owner-approved 2026-07-04: IDEA-009 was deferred pending PCC running semi-autonomously, which pcc-brr5-004/005 just demonstrated for real (unattended, independently-verified cycles). This is the first post-BRR task, owner-selected from the backlog after explicit review of the net benefit and cost."
+  },
+  "next_action": "Remove or explicitly authorize the backlog/IDEAS.md change, then resubmit the task for verification with scope aligned to the actual files touched.",
+  "updated_at": "2026-07-04T14:14:47-06:00"
 }

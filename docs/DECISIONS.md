@@ -1644,3 +1644,25 @@ BRR Phase 5 is closed. The four items above are carried forward as backlog, to b
 
 Supersedes: None (closes Phase 5 per its own exit criteria; does not amend or invalidate any prior BRR-phase decision or verified result)
 Related: DECISION-001, DECISION-012, DECISION-021, DECISION-023, DECISION-033, DECISION-062, DECISION-066, DECISION-067, DECISION-068, docs/BRR_PLAN.md, docs/BRR_POLICY.md
+
+---
+
+## DECISION-070: Deterministic Retry Governor Fielded (pcc-postbrr-001, IDEA-009); First Post-BRR Task
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`scripts/finalize-worker-handback.ps1` now stops a task automatically after a second consecutive non-`PASS` verdict, rather than allowing a third unattended handback. This fields `IDEA-009` (deferred since V1 pending PCC running semi-autonomously, which `pcc-brr5-004`/`pcc-brr5-005` just demonstrated), and it is the first task drafted after BRR's close (`DECISION-069`).
+
+Reason:
+
+`docs/BRR_POLICY.md`'s Stop-Instead-of-Guess trigger 4 / Owner Review Matrix row 9 and its FAIL-verdict mapping already state the rule in words: repeated failure with no new evidence means the task itself needs an owner decision, not another unattended attempt, and should become Class D (`BLOCKED`). Nothing enforced that mechanically before this task — it depended on a human, or Claude Code reading policy, noticing and acting on a failure pattern. That gap became more consequential the moment `scripts/codex-verify-watcher.ps1` started running on an unattended schedule (`DECISION-068`): a stuck retry loop could now run for a while before anyone noticed, where previously every cycle was manually driven and failures would have been seen as they happened.
+
+Implications:
+
+`finalize-worker-handback.ps1` gained a `-MaxAttemptsBeforeBlock` parameter (default 2). It reuses the exact `wasRetry` condition already computed for `IDEA-008`'s retry-tracking (`pcc-brr4-002`): if a handback is a retry (attempts > 0, prior verdict non-`PASS`) AND the pre-increment attempts count has already reached the threshold, this represents a repeated failure, not a first retry. In that case the script does not increment `attempts` or advance to `returned_for_verification`; instead it sets `task_status` to `blocked`, writes a factual `current_blocker`, and populates `owner_decision_request` (question, reason citing the policy trigger by name, options: retry differently, re-scope, or abandon) per its schema, then still runs the normal state-consistency/artifact-refresh/schema-and-doctor checks and exits 0 — this is a designed outcome, not a script error. A single genuine retry (attempts == 1 at handback time) is unaffected and still hands back normally. `scripts/check-stop-conditions.ps1` needed no change: `blocked` was already in its `$attentionStatuses` list and an `owner_decision_request` was already one of its detected stop conditions — both confirmed by direct testing, not assumed. A new `repeated_failure_blocked` event type was added to `scripts/log-event.ps1`'s `-EventType` `ValidateSet` (a one-line addition, the only change to that script) after scratch testing surfaced that the new event type could not otherwise be logged — this was a real scoping gap in the original task draft, disclosed and corrected rather than worked around by reusing a misleading existing event type. Functional testing (not read-through only) in an isolated scratch copy confirmed: a normal single retry (attempts=1, non-`PASS`) still hands back correctly; a repeated failure (attempts=2, non-`PASS`) blocks correctly with `attempts` unchanged and a schema-valid `owner_decision_request`; and `check-stop-conditions.ps1` independently flags the resulting blocked state via two separate mechanisms. No existing verdict, Task Safety Class, Acceptance Boundary Rule, or schema changed. This task's own verification was performed by the live `PCC-CodexVerifyWatcher` scheduled task, continuing the pattern proven in `pcc-brr5-005`, as the first of a two-task bundle (with a second, BRR-Metrics task to follow) testing the post-BRR pipeline across consecutive cycles.
+
+Supersedes: None
+Related: DECISION-069, DECISION-068, DECISION-067, docs/BRR_POLICY.md, backlog/IDEAS.md (IDEA-008, IDEA-009), scripts/finalize-worker-handback.ps1, scripts/log-event.ps1, scripts/check-stop-conditions.ps1
