@@ -564,6 +564,19 @@ exit criteria ("the next roadmap lane is chosen deliberately" by the owner).
   per task, repeated instruction frequency, and owner-review triggers by
   category are not instrumented at all; only raw event-type counts and one
   named ratio exist (`pcc-brr4-003`).
+
+  > **Later update (`pcc-postbrr-002`, `DECISION-073`):** two of the three
+  > gaps above are delivered — `scripts/summarize-routing-log.ps1` now
+  > reports a review-trigger category breakdown (mechanically exact where a
+  > mapping exists, honestly disclosed as ambiguous where it does not) and a
+  > per-task breakdown that serves as a disclosed proxy for "owner
+  > interruptions per task." "Repeated instruction frequency" remains
+  > undelivered by deliberate, permanent decision, not oversight: no log
+  > signal captures owner chat interjections, and fabricating one would
+  > require capturing conversational content, which `DECISION-008` forbids.
+  > This is a pointer added per `docs/REPO_GOVERNANCE.md`'s Post-Close
+  > Canonical Amendment Rule (`DECISION-051`), not a rewrite of the
+  > assessment above, which was accurate when Phase 5 closed.
 * **A formalized Failure Review Loop does not exist.** Real failures this
   session were reviewed diligently, but ad hoc and by narrative each time,
   not against a standing, repeatable checklist a future session would
@@ -651,6 +664,17 @@ the project's current named phase; it does not relax any safety rule.
 > post-BRR bundle specifically chosen to also exercise item 2 above
 > (unattended chaining beyond two cycles) as a natural byproduct of running
 > consecutive real cycles through the now-live `PCC-CodexVerifyWatcher`.
+
+> **Later update (`pcc-postbrr-002`, `DECISION-073`):** item 3 above (fuller
+> BRR Metrics) is now two-thirds delivered: `scripts/summarize-routing-log.ps1`
+> reports a review-trigger category breakdown and a per-task breakdown (a
+> disclosed proxy for owner-interruption tracking). "Repeated instruction
+> frequency" remains permanently declined, not oversight — no log signal
+> captures owner chat interjections, and fabricating one would violate
+> `DECISION-008`. The second bundled post-BRR task also further exercised
+> item 2 (chaining beyond two cycles), since `pcc-postbrr-001`'s real
+> resubmission-and-retry made this cycle a genuine multi-attempt chain, not
+> a clean single pass.
 
 ---
 

@@ -1710,3 +1710,25 @@ Both scripts now check whether any of their three archive paths already exist be
 
 Supersedes: None
 Related: DECISION-070, DECISION-071, pcc-postbrr-001, scripts/close-out-verified-task.ps1, scripts/return-inadequate-work.ps1
+
+---
+
+## DECISION-073: Fuller BRR Metrics — Review-Trigger Categorization And Per-Task Breakdown (pcc-postbrr-002)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`scripts/summarize-routing-log.ps1` now reports a review-trigger category breakdown and a per-task breakdown, closing two of the three metrics `docs/BRR_PLAN.md`'s Phase 4 item 2 and its Phase 5 Readiness Review named as undelivered. The third, "repeated instruction frequency," is explicitly and permanently declined: no existing log signal captures owner chat interjections at all, and measuring it honestly would require capturing conversational content into `routing-log.jsonl` — new, invasive instrumentation, not a read-only reporting extension, and exactly the kind of fabricated signal `DECISION-008` forbids.
+
+Reason:
+
+Of the seven metrics `docs/BRR_PLAN.md` originally named, five were already delivered by `pcc-brr4-003` (manual correction count via `correction_applied`, failed handoff count via the `verified_*` counts, claimed-vs-verified completion rate, stop-trigger count via `stop_condition_fired`) — this was confirmed by reading that script directly rather than assuming, before scoping this task. Only "owner interruptions per task," "repeated instruction frequency," and "owner-review triggers by category" remained. The first two are related: a per-task breakdown of already-logged review/stop events is an honest, disclosed proxy for "owner interruptions per task" (system-detected review touchpoints), not a claim to measure real chat interjections, which is what "repeated instruction frequency" would actually require and what this decision declines to fabricate.
+
+Implications:
+
+The script's categorization is mechanically exact wherever a mapping exists: `repeated_failure_blocked` -> Stop-Instead-of-Guess trigger 4 (docs/BRR_POLICY.md), `verified_insufficient` -> trigger 3, `verified_out_of_scope` -> trigger 5 (each is that trigger's unique verdict, not inferred), `gate_blocked` -> its own BRR Phase 2 category, and `stop_condition_fired` is split into the 4 deterministic sub-reasons `scripts/check-stop-conditions.ps1` itself writes as fixed-prefix sentences, matched by literal substring against that script's own known output (never against arbitrary free text — a single event's joined detail can legitimately increment more than one sub-reason). Where the event type alone cannot disambiguate further (`verified_blocked` could stem from Stop-Instead-of-Guess triggers 1, 2, 6, or 7; a bare `verified_fail` is not necessarily a *repeated* failure), the script reports that honestly as its own category rather than guessing which specific trigger applies. The per-task breakdown groups all of the above (plus the existing known event-type counts) by `task_id`, purely reorganizing already-logged data — no new log event type was added, no other script was modified, and the script remains strictly read-only. Functionally tested (not read-through only) against the real, 81-line `routing-log.jsonl` spanning legacy and current formats: ran cleanly with no crash, the existing legacy-format handling (`pcc-brr4-003`/`DECISION-058`) was unaffected (26 legacy lines still counted correctly), and the new output correctly reflected known real history — e.g. `pcc-brr2-001`'s real `FAIL`-then-`correction_applied` cycle and `pcc-postbrr-001`'s real `OUT_OF_SCOPE` cycle both categorized exactly as expected.
+
+Supersedes: None
+Related: DECISION-008, DECISION-058, DECISION-069, DECISION-070, docs/BRR_PLAN.md, docs/BRR_POLICY.md, backlog/IDEAS.md (IDEA-008), scripts/summarize-routing-log.ps1

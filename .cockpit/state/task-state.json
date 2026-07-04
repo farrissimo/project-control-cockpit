@@ -1,35 +1,34 @@
 {
-  "task_id": "pcc-postbrr-001",
-  "task_title": "Deterministic Retry Governor (IDEA-009)",
-  "task_objective": "Field IDEA-009: use the existing task-state.json 'attempts' field so a task that fails twice in a row with no new evidence automatically stops itself (task_status: 'blocked', an owner_decision_request populated) instead of allowing a third unattended handback. This implements, mechanically, the rule already stated in docs/BRR_POLICY.md's Stop-Instead-of-Guess trigger 4 / Owner Review Matrix row 9 ('repeated failure with no new evidence... further unattended retries stop... the task itself needs the owner to change approach, scope, or evidence') and docs/BRR_POLICY.md's own restated verdict mapping for FAIL ('repeated failure with nothing new is... Class D (BLOCKED), not another unattended attempt'). This is deliberately a narrow, deterministic mechanism (count-based), not a judgment call about whether a failure is 'the same approach' -- it fires on attempt count and non-PASS verdict alone, exactly as the check-stop-conditions.ps1 precedent already treats 'blocked' as an existing attention-needed status it detects.",
+  "task_id": "pcc-postbrr-002",
+  "task_title": "Fuller BRR Metrics: Review-Trigger Categorization And Per-Task Breakdown",
+  "task_objective": "Extend scripts/summarize-routing-log.ps1 (read-only, no state mutation, unchanged principle from pcc-brr4-003) to close two of the three gaps docs/BRR_PLAN.md's Phase 4 item 2 and its own Phase 5 Readiness Review explicitly name as undelivered: 'owner-review triggers by category' and a per-task view enabling 'owner interruptions per task'. The third named gap, 'repeated instruction frequency', has no existing log signal at all (no event captures raw owner chat interjections) and inventing one would mean parsing conversational content into routing-log.jsonl -- a new, invasive instrumentation change far beyond read-only reporting on already-logged data, and exactly the kind of invented interpretation DECISION-008 forbids. This task explicitly declines to attempt it and documents why, rather than fabricating a proxy.",
   "task_status": "complete",
   "assigned_worker": "Claude Code",
-  "task_safety_class": "B",
+  "task_safety_class": "A",
   "completion_criteria": [
-    "scripts/finalize-worker-handback.ps1 is extended (not a new script) with a new -MaxAttemptsBeforeBlock parameter, default 2, documented in a comment referencing the exact BRR_POLICY.md trigger-4 / row-9 language above.",
-    "Exact rule: read the SAME 'wasRetry' condition already computed in this script (attempts > 0 AND verification_verdict is set and non-PASS) BEFORE incrementing attempts. If wasRetry is true AND the current (pre-increment) attempts value is >= MaxAttemptsBeforeBlock, this handback represents a repeated failure (the prior retry itself already failed). In that case: do NOT increment attempts, do NOT set task_status to 'returned_for_verification'. Instead set task_status to 'blocked', set current_blocker to a factual one-sentence description naming the task_id, attempts count, and last verdict, and populate owner_decision_request per its schema (question, reason citing docs/BRR_POLICY.md trigger 4 / row 9 by name, options including at minimum 'retry with a genuinely different approach', 'reduce or re-scope the task', 'abandon the task', blocked_until describing that an owner decision is required). Then still run the same state-consistency, artifact-refresh, and schema/doctor checks the normal path runs (steps 2-4), and exit 0 (this is a correct, designed outcome, not a script error).",
-    "When the repeated-failure path fires, log a new event type 'repeated_failure_blocked' via scripts/log-event.ps1 (task_id, a factual detail string), with the same non-fatal logging-failure handling pattern already used elsewhere in this script (a logging failure must never change the outcome or exit code).",
-    "The normal single-retry case (attempts == 1 at handback time, wasRetry true) is NOT affected -- it must still hand back to 'returned_for_verification' exactly as today. Only a SECOND consecutive non-PASS cycle for the same task triggers the block.",
-    "check-stop-conditions.ps1 requires no code change to detect this: 'blocked' is already in its existing $attentionStatuses list. Confirm this by reading the script, not by assuming; if this assumption is wrong, report it as a real finding rather than silently working around it.",
-    "Functionally tested (not read-through only) in an isolated scratch copy: construct a task-state.json with attempts=2 (at the default MaxAttemptsBeforeBlock threshold) and a non-PASS verification_verdict, call the modified finalize-worker-handback.ps1, and confirm (a) task_status becomes 'blocked', not 'returned_for_verification'; (b) attempts is NOT incremented; (c) owner_decision_request is populated and schema-valid; (d) a normal single-retry scratch case (attempts=1, non-PASS verdict, below the threshold) still hands back normally to 'returned_for_verification' with attempts incremented, unaffected. CORRECTED wording (post OUT_OF_SCOPE verdict on the first submission): the original draft of this bullet said 'attempts=1' should trigger the block, which contradicted the 'exact rule' criterion above (threshold is >= MaxAttemptsBeforeBlock, default 2) and the normal-single-retry criterion. This was a drafting error in the task scope, not in the implementation -- the actual scratch testing performed and the actual code both correctly used attempts=2 as the blocking case and attempts=1 as the normal-retry case.",
+    "scripts/summarize-routing-log.ps1 gains a category breakdown of owner-review-triggering log events, using ONLY mappings that are mechanically exact (the event type or a fixed-format detail string this codebase itself writes, never free-text interpretation of arbitrary content): (a) 'repeated_failure_blocked' events map exactly to Stop-Instead-of-Guess trigger 4 / Owner Review Matrix row 9 (docs/BRR_POLICY.md) -- this event type is only ever logged by that exact branch; (b) 'verified_insufficient' events map exactly to trigger 3 (INSUFFICIENT is that trigger's unique verdict); (c) 'verified_out_of_scope' events map exactly to trigger 5 (OUT_OF_SCOPE is that trigger's unique verdict); (d) 'gate_blocked' events are reported as their own distinct category (BRR Phase 2 autonomous-gate mechanism, not itself one of the 7 numbered triggers); (e) 'stop_condition_fired' events are broken down further into the 4 known deterministic sub-reasons scripts/check-stop-conditions.ps1 itself writes as fixed-prefix sentences (owner decision pending / attention-needed status / repo health ISSUE / unrecognized self-promotion lane), matched by literal string prefix against that script's own known output format, not guessed from arbitrary text; (f) 'verified_blocked' and 'verified_fail' events are reported in their own honest category explicitly labeled as NOT uniquely attributable to one trigger from the event type alone (BLOCKED can result from triggers 1, 2, 6, or 7; a bare FAIL is not necessarily a REPEATED failure) -- disclosing this real limit rather than guessing further; (g) 'correction_applied' remains its own category, not force-mapped into the 7-trigger taxonomy since it is a distinct signal (a correction already applied, not itself a stop trigger).",
+    "scripts/summarize-routing-log.ps1 gains a per-task_id breakdown (grouping the existing known event-type counts, plus the new category breakdown above, by task_id) so a per-task view of review-touchpoint density is possible -- this directly enables an honest, disclosed proxy for 'owner interruptions per task': the count of owner-review-triggering events (the union of stop_condition_fired, gate_blocked, verified_blocked, verified_out_of_scope, verified_insufficient, repeated_failure_blocked, correction_applied) per task_id. This MUST be labeled in the script's own output as a proxy for 'system-detected review/stop points', explicitly NOT a claim to measure actual owner chat interjections -- overclaiming this distinction would misrepresent what is actually measured.",
+    "The script's output explicitly states that 'repeated instruction frequency' remains undelivered and names why (no log signal exists at the chat-instruction level; fabricating one would require capturing conversational content, which this task deliberately does not do), mirroring how pcc-brr4-003 already discloses its own gaps rather than silently dropping them.",
+    "No new log event type is added. No existing script other than scripts/summarize-routing-log.ps1 is modified. This remains strictly read-only: no file is written, no state mutated, no other script called.",
+    "Functionally tested (not read-through only) against the real .cockpit/logs/routing-log.jsonl (70+ real entries spanning legacy and current formats) to confirm the new category and per-task breakdowns produce sane, correct-looking output and do not crash on the known legacy pre-event_type format (pcc-brr4-003's existing handling for that format must remain intact and unchanged).",
     "A new decision is recorded in docs/DECISIONS.md.",
-    "docs/BRR_PLAN.md's carried-forward backlog note (from DECISION-069) is updated to mark this item delivered, mirroring how other delivered backlog items are annotated elsewhere in this repo's docs.",
-    "No existing verdict, task safety class, Acceptance Boundary Rule, or schema is changed. No other script is modified. This task's own verification is performed by the live 'PCC-CodexVerifyWatcher' scheduled task (no manual codex exec by the worker), continuing the pattern proven in pcc-brr5-005."
+    "docs/BRR_PLAN.md's Phase 5 Readiness Review 'what remains unsafe or immature' bullet on the fuller BRR Metrics gap, and DECISION-069's carried-forward backlog note, are both updated with a 'Later update' pointer (per DECISION-051's Post-Close Canonical Amendment Rule) noting two of the three named items are now delivered and the third is explicitly and permanently declined with reasoning, not silently dropped.",
+    "No existing verdict, task safety class, Acceptance Boundary Rule, or schema is changed. This task's own verification is performed by the live 'PCC-CodexVerifyWatcher' scheduled task (no manual codex exec by the worker)."
   ],
   "boundaries": {
     "allowed": [
-      "Edit scripts/finalize-worker-handback.ps1 to add the -MaxAttemptsBeforeBlock parameter and the repeated-failure branch described above.",
-      "Edit scripts/log-event.ps1 ONLY to add 'repeated_failure_blocked' as one new value in its existing -EventType ValidateSet list (found by scratch-testing: the script hard-validates event types and a new type cannot be logged without this one-line addition). No other line of log-event.ps1 may change.",
+      "Edit scripts/summarize-routing-log.ps1 to add the category breakdown and per-task grouping described above.",
       "Edit docs/DECISIONS.md to record the new decision.",
-      "Edit docs/BRR_PLAN.md to mark the carried-forward backlog item delivered.",
-      "Edit backlog/IDEAS.md to mark IDEA-009 promoted-to-task/delivered. RETROACTIVE AUTHORIZATION (post OUT_OF_SCOPE verdict, per docs/BRR_POLICY.md's OUT_OF_SCOPE handling, trigger 5: the change is reviewed explicitly and a decision made to keep, revert, or re-scope): this edit was made without being in the original allowed list -- a real scoping gap in the initial draft, not a worker overreach. The content itself is factually accurate and low-risk (marking an already-delivered backlog item as delivered, consistent with how every other delivered IDEA entry in that file is annotated). Decision: KEEP and explicitly re-scope, not revert, since reverting a correct doc update to satisfy a process technicality would make the backlog registry state fiction. This line is the re-scoping.",
-      "Create and use a temporary, isolated scratch copy to functionally test the new branch without touching live state."
+      "Edit docs/BRR_PLAN.md to add the 'Later update' pointer described above.",
+      "Edit backlog/IDEAS.md ONLY if a corresponding IDEA entry needs a delivered-status update for this exact change (check first; do not edit if none applies)."
     ],
     "forbidden": [
-      "Do not modify scripts/check-stop-conditions.ps1 or any other script besides scripts/finalize-worker-handback.ps1 and the one-line scripts/log-event.ps1 ValidateSet addition above.",
+      "Do not modify any script other than scripts/summarize-routing-log.ps1 (and backlog/IDEAS.md/docs only as scoped above).",
+      "Do not add any new log event type to scripts/log-event.ps1's ValidateSet.",
       "Do not modify any schema.",
+      "Do not attempt to instrument or approximate 'repeated instruction frequency' by any means, including parsing chat content, conversation logs, or inventing a new signal -- explicitly decline it with documented reasoning instead.",
       "Do not change the meaning of any existing verdict, task status, or Task Safety Class.",
-      "Do not manually invoke 'codex exec' for this task's own verification -- let the live scheduled watcher handle it, per DECISION-068.",
+      "Do not manually invoke 'codex exec' for this task's own verification -- let the live scheduled watcher handle it.",
       "Do not touch the Acceptance Boundary Rules or the Owner Review Matrix."
     ]
   },
@@ -42,7 +41,7 @@
     "Unresolved assumptions.",
     "Confirmation that forbidden scope was not touched."
   ],
-  "attempts": 2,
+  "attempts": 1,
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
@@ -50,10 +49,10 @@
   "current_blocker": null,
   "owner_decision_request": null,
   "promotion_basis": {
-    "lane": "backlog/IDEAS.md",
-    "priority_ref": "IDEA-009",
-    "justification": "Owner-approved 2026-07-04: IDEA-009 was deferred pending PCC running semi-autonomously, which pcc-brr5-004/005 just demonstrated for real (unattended, independently-verified cycles). This is the first post-BRR task, owner-selected from the backlog after explicit review of the net benefit and cost."
+    "lane": "BRR_PLAN",
+    "priority_ref": "DECISION-069 carried-forward backlog item 3 (fuller BRR Metrics)",
+    "justification": "Second of a two-task, owner-approved post-BRR bundle testing the independent-verification pipeline across consecutive cycles. Scoped after reading docs/BRR_PLAN.md's exact gap list and scripts/summarize-routing-log.ps1's existing coverage, and docs/BRR_POLICY.md's Stop-Instead-of-Guess trigger table, to avoid guessing at what is honestly measurable."
   },
-  "next_action": "Task 'pcc-postbrr-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T14:46:18-06:00"
+  "next_action": "Task 'pcc-postbrr-002' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-04T15:05:20-06:00"
 }
