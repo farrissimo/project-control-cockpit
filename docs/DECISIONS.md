@@ -1600,3 +1600,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-004, DECISION-012, DECISION-018, DECISION-023, DECISION-031, DECISION-032, DECISION-033, DECISION-036, DECISION-066, docs/REPO_GOVERNANCE.md, docs/VERIFICATION_RESULT_SPEC.md, scripts/codex-verify-watcher.ps1
+
+---
+
+## DECISION-068: Codex Verification Watcher Deployed As A Native Scheduled Task (pcc-brr5-005)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`scripts/codex-verify-watcher.ps1` (`DECISION-067`) is now actually running, not just available code the owner must start manually. A native Windows Scheduled Task, `PCC-CodexVerifyWatcher`, runs `pwsh.exe -File scripts/codex-verify-watcher.ps1 -Once` every 3 minutes against the live repo.
+
+Reason:
+
+`DECISION-067` fielded the watcher script but left it as something "the owner starts (or schedules) deliberately" — its own forbidden-scope list explicitly permitted owner-deliberate scheduling while forbidding any other script from auto-starting it. Running it manually per cycle, or leaving its internal loop mode open in a terminal, would still require owner attention or a fragile always-open window; the loop mode itself was also never live-tested (only `-Once` was, both in stub scratch tests and the one real invocation in `DECISION-067`). A native OS-level scheduled task running the already-proven `-Once` path is the lowest-babysitting option available: it survives logout/reboot, requires no open terminal, and exercises only the tested code path.
+
+Implications:
+
+The scheduled task was manually triggered three times against live idle state (`task_status: complete`, no work pending) before being left to run on its own interval; each run exited 0 with no lock file created and no git-visible state change, confirming the zero-idle-cost property holds in the real deployment environment, not just the scratch stub tests. This task (`pcc-brr5-005`) is deliberately left in `returned_for_verification` without a manual `codex exec` call, as the first true end-to-end test of the deployed watcher picking up and verifying a real task entirely on its own schedule. No existing script was modified — the watcher's own code is unchanged; only its deployment method changed from "available but unstarted" to "actually running." No schema, verdict, task safety class, or Acceptance Boundary Rule was touched.
+
+Supersedes: None
+Related: DECISION-023, DECISION-066, DECISION-067, scripts/codex-verify-watcher.ps1

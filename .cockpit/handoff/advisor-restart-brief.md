@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-04T13:18:10-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T13:38:28-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,23 +10,22 @@ Current phase: brr-phase-5
 
 ## Active Task
 
-* Task ID: pcc-brr5-004
-* Title: Fresh Start: Codex Verification Watcher
+* Task ID: pcc-brr5-005
+* Title: Record Scheduled Watcher Deployment
 * Status: complete
-* Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Field DECISION-066's restored two-role split (Claude Code worker, Codex advisor/verifier) as a real, low-cost mechanism instead of a manually-run, manually-relayed Codex session. Add scripts/codex-verify-watcher.ps1, a plain (non-AI) polling script that watches task-state.json's task_status and invokes 'codex exec' exactly once per task needing verification -- never polling Codex itself, never invoking it just to check for work, so idle time costs zero session usage and real invocations happen at the same rate as today's manual process (once per cycle), not more.
+* Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
+* Objective: Document that scripts/codex-verify-watcher.ps1 (pcc-brr5-004) is now deployed as a native Windows Scheduled Task ('PCC-CodexVerifyWatcher', 3-minute interval, running the script with -Once) rather than left as code the owner must run manually or in an open loop. This is a docs-only record of an operational deployment step, not a code change: no script's behavior changes as part of this task. This task is also the first real end-to-end test of the deployed watcher itself -- it is deliberately left in 'returned_for_verification' for the running scheduled task to pick up and invoke real Codex verification on its own, with no manual 'codex exec' invocation by the worker.
 
 ## Last Verified
 
-* Verdict: PASS for task 'pcc-brr5-004', verified at 2026-07-04T13:14:00-06:00
-* Summary: Verified pcc-brr5-004 (Fresh Start: Codex Verification Watcher) at strict depth. I independently re-ran scripts/verify-handback-guardrails.ps1, read the new watcher script and the governing docs directly, confirmed the real Codex CLI flag shape, and reproduced the watcher's core behavior in a disposable scratch copy using a stub Codex command. The watcher performs only cheap local polling reads until genuine verification work appears, invokes Codex exactly once per task needing verification, holds a lock to prevent double-invocation while a verdict is pending, and clears that lock once verification-result.json matches again. DECISION-067 is recorded, no existing script behavior was modified, and this verification session itself is the required real Codex invocation for the task's own live verification.
-* Last verified handoff: .cockpit/handoff/archive/pcc-brr5-004-worker-directive.md
+* Verdict: PASS for task 'pcc-brr5-005', verified at 2026-07-04T13:35:47-06:00
+* Summary: Verified pcc-brr5-005 at strict evidence depth. I independently re-ran scripts/verify-handback-guardrails.ps1, reviewed the live task state, worker evidence, DECISION-068, and the REPO_GOVERNANCE watcher paragraph directly, and confirmed the live diff stays within the allowed docs-only scope. The repo-side evidence also shows this verification was picked up through the watcher path for task pcc-brr5-005: the current codex-watcher lock names this task, and the watcher script contains the exact brief-based verifier prompt used for this run. No script or schema change was introduced by this task.
+* Last verified handoff: .cockpit/handoff/archive/pcc-brr5-005-worker-directive.md
 
 ## Open Issues
 
-* Risk from last verification of 'pcc-brr5-004': The watcher intentionally leaves the lock in place if 'codex exec' exits non-zero. That avoids double-invocation but means a failed or interrupted run may require manual lock cleanup before retrying; this is disclosed by the worker and present in the script.
-* Risk from last verification of 'pcc-brr5-004': The loop mode itself was not exercised against a long-running real multi-cycle live scenario during verification; I independently verified the core once-per-task decision logic and lock behavior via -Once, which is the substantive risk area for this task.
-* Risk from last verification of 'pcc-brr5-004': The prompt tells Codex not to advance state or run close-out scripts, but that remains an instruction-following boundary rather than an enforced sandbox rule inside the watcher.
+* Risk from last verification of 'pcc-brr5-005': Direct Scheduled Task API inspection (Get-ScheduledTask / Get-ScheduledTaskInfo) was permission-blocked with Access denied in this verifier session, so OS-level task metadata was not independently re-queried here; the PASS verdict relies on the recorded docs changes, worker evidence, the live watcher lock for pcc-brr5-005, and the clean independent guardrail pass.
+* Risk from last verification of 'pcc-brr5-005': The worker's claimed three idle-state manual trigger results were not replayed by the verifier because this task is explicitly docs-only and this verification run must not advance state or perform its own operational close-out.
 
 ## Read First
 
@@ -40,5 +39,5 @@ Current phase: brr-phase-5
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-brr5-004' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-brr5-004' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Task-level: Task 'pcc-brr5-005' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Project-level: Task 'pcc-brr5-005' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
