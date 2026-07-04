@@ -13,10 +13,10 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-brr4-002
-* Task Title: Honesty Checks: Retry Log
+* Task ID: pcc-brr4-003
+* Task Title: Honesty Checks: Metrics Summary
 * Task Status: returned_for_verification
-* Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
+* Task Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Objective
 
@@ -36,44 +36,44 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-PILOT RUN #2, CYCLE 1 of 2 (docs/BRR_PLAN.md Phase 4 item 1; scope finalized in DECISION-056). Deliver IDEA-008's remaining 'retry' half: increment task-state.json's currently-unused 'attempts' field on every worker handback, and log a factual 'retry_attempted' event via scripts/log-event.ps1 specifically when a handback follows a prior non-PASS verdict on the same task_id (not on a task's first-ever handback). No new script; the change lives in scripts/finalize-worker-handback.ps1 (attempts/logging) and scripts/log-event.ps1 (new event type).
+PILOT RUN #2, CYCLE 2 of 2 (docs/BRR_PLAN.md Phase 4 item 2; scope finalized in DECISION-056). Add a read-only script that summarizes .cockpit/logs/routing-log.jsonl into: a count of each existing event type, and the one ratio docs/BRR_PLAN.md Phase 4 item 2 names explicitly ('claimed-vs-verified completion rate' = verified_pass count divided by total verified_* event count). Explicitly report, rather than approximate, which of item 2's named metrics are not currently derivable from existing log data (owner interruptions per task, repeated instruction frequency, owner-review triggers by category). No new event types, no state mutation, no scoring, no invented categories -- strictly mechanical counting over already-structured, already-labeled data.
 
 ## Allowed Scope
 
 The worker may:
 
-* Edit scripts/finalize-worker-handback.ps1 to add attempts-incrementing and conditional retry_attempted logging.
-* Edit scripts/log-event.ps1 to add the one new event type to its ValidateSet only.
+* Create one new read-only script (e.g. scripts/summarize-routing-log.ps1).
 * Edit docs/DECISIONS.md to record the new decision.
-* Edit backlog/IDEAS.md to update IDEA-008's note.
 * Create and use a temporary, isolated scratch copy of relevant repo files (outside the live .cockpit/ state) to functionally test the change without touching real task/project state; delete the scratch copy when done.
 
 ## Forbidden Scope
 
 The worker must not:
 
-* Do not change finalize-worker-handback.ps1's existing refusal conditions, its four-step order, or any of its other existing behavior beyond the attempts/logging addition.
-* Do not modify any other script (advance-cockpit-state.ps1, close-out-verified-task.ps1, check-stop-conditions.ps1, check-autonomous-gate.ps1, doctor.ps1, return-inadequate-work.ps1).
+* Do not modify any existing script.
 * Do not modify any schema.
+* Do not add any new event type or call scripts/log-event.ps1 from the new script.
+* Do not have the new script write to any file other than its own stdout (no state mutation, no log mutation).
+* Do not invent proxy metrics for owner interruptions, repeated instruction frequency, or owner-review triggers by category -- report them as not currently measurable instead.
 * Do not self-close this task via scripts/close-out-verified-task.ps1 -- per DECISION-056, hold the self-verified result for owner/GPT review regardless of class.
 * Do not touch the self-verification fallback (DECISION-033/036), the Acceptance Boundary Rules, or any Task Safety Class's core meaning.
-* Do not run any test of this change against the live .cockpit/state/task-state.json, .cockpit/state/project-state.json, or .cockpit/result/verification-result.json -- all functional testing happens in an isolated scratch copy only.
-* Do not draft or start cycle 2 (pcc-brr4-003) unless this cycle resolves cleanly per DECISION-056's chaining rule (a clean self-verified PASS candidate, no stop-trigger fired, no forbidden-scope issue).
+* Do not run any test of this change against the live .cockpit/state/task-state.json, .cockpit/state/project-state.json, or .cockpit/result/verification-result.json -- functional testing happens against a copied routing-log.jsonl in an isolated scratch copy only.
+* Do not draft or start a pilot run #3 -- this is the last cycle of run #2; a further run requires a separate review and proposal first.
 
 ## Completion Criteria
 
 The task is complete only if:
 
-* PRE-RUN RECORD (per DECISION-056, recorded before execution): Class B (touches scripts/; judgment-heavy in defining what mechanically counts as a 'retry'). Self-close NOT attempted this pilot run regardless of class -- held for owner/GPT review-before-acceptance, per DECISION-056 revision 1. In-lane basis: IDEA-008 (backlog/IDEAS.md, rank 4), completing the half explicitly deferred from pcc-brr4-001.
-* scripts/finalize-worker-handback.ps1 increments task-state.json's 'attempts' field by 1 on every successful handback (first handback -> 1, next -> 2, etc.).
-* scripts/finalize-worker-handback.ps1 logs a 'retry_attempted' event via log-event.ps1 if and only if, at the time of handback, 'attempts' was already greater than 0 AND 'verification_verdict' was already non-null and not 'PASS' (i.e., this handback follows a prior non-PASS verdict on this exact task_id) -- not on a task's first-ever handback.
-* scripts/log-event.ps1's ValidateSet gains exactly one new event type: retry_attempted. No existing event type or behavior changed.
-* A logging failure in the new retry_attempted call surfaces visibly (a printed [LOGGING WARNING]) but never aborts or changes the outcome of the handback itself -- same safe-logging pattern as pcc-brr4-001.
-* No change to finalize-worker-handback.ps1's existing four-step order, its refusal conditions (task_status must be ready_for_worker or in_progress), or any of its other existing behavior.
-* Functionally tested (not read-through only) in an isolated scratch copy: a first handback increments attempts to 1 and logs nothing; a simulated second handback (attempts already 1, verification_verdict already set to a non-PASS value) increments attempts to 2 and logs retry_attempted; a simulated handback where the prior verdict was PASS (should not happen in practice, since a PASS-verdict task would be complete, but tested anyway as a boundary case) does not log retry_attempted.
+* PRE-RUN RECORD (per DECISION-056, recorded before execution): proposed Class A (purely mechanical counting over already-structured, already-labeled data; no judgment about what counts as what). Self-close NOT attempted this pilot run regardless of class, per DECISION-056 revision 1 (this run deliberately defers testing self-close to a later run) -- held for owner/GPT review-before-acceptance. In-lane basis: docs/BRR_PLAN.md Phase 4 item 2, an already-approved phase-plan deliverable.
+* A new script (e.g. scripts/summarize-routing-log.ps1) reads .cockpit/logs/routing-log.jsonl only, read-only, and reports a count of each existing event type present in the log: next_task_drafted, verified_pass, verified_fail, verified_insufficient, verified_blocked, verified_out_of_scope, correction_applied, stop_condition_fired, gate_blocked, retry_attempted.
+* The script computes exactly one ratio: 'claimed-vs-verified completion rate' = verified_pass count / (verified_pass + verified_fail + verified_insufficient + verified_blocked + verified_out_of_scope count). No other ratio, score, or derived judgment is computed.
+* The script explicitly reports, by name, which of docs/BRR_PLAN.md Phase 4 item 2's named metrics it does NOT compute because they are not currently derivable from existing log data (owner interruptions per task; repeated instruction frequency; owner-review triggers by category) -- rather than silently omitting them or inventing a proxy for them.
+* The script performs no state mutation: it does not write to task-state.json, project-state.json, verification-result.json, or routing-log.jsonl itself. It is a read-only reporting tool.
+* The script introduces no new event type, no new schema field, and does not call log-event.ps1.
+* Functionally tested (not read-through only) in an isolated scratch copy against the real (copied) routing-log.jsonl content, confirming the reported counts and ratio are arithmetically correct against a manual count of the same file.
 * A new decision is recorded in docs/DECISIONS.md.
-* backlog/IDEAS.md's IDEA-008 note is updated to reflect that both the quality-gate half and the retry half are now delivered.
-* No change to any of the five verdicts, any Task Safety Class's meaning, the Acceptance Boundary Rules, the self-verification fallback, or any other existing script's behavior.
+* docs/BRR_PLAN.md Phase 4 item 2 is not rewritten or marked fully complete -- this delivers a first, narrow, read-only slice of it (counts + one named ratio), not the full metrics deliverable.
+* No change to any of the five verdicts, any Task Safety Class's meaning, the Acceptance Boundary Rules, the self-verification fallback, or any existing script's behavior.
 
 ## Required Evidence
 
@@ -86,7 +86,7 @@ Return the following evidence:
 * Known risks.
 * Unresolved assumptions.
 * Confirmation that forbidden scope was not touched.
-* Pilot-specific: whether any owner interruption was needed, whether the claimed result matches the verified result, whether any stop-trigger fired, and an explicit statement of whether this cycle resolved cleanly enough to chain into cycle 2 per DECISION-056.
+* Pilot-specific: whether any owner interruption was needed, whether the claimed result matches the verified result, whether any stop-trigger fired, and confirmation that the output stayed strictly mechanical (no invented categories or scoring).
 
 ## Expected Return Format
 

@@ -1,40 +1,39 @@
 {
-  "task_id": "pcc-brr4-002",
+  "task_id": "pcc-brr4-003",
   "verdict": "PASS",
-  "verified_at": "2026-07-04T10:50:00-06:00",
+  "verified_at": "2026-07-04T10:56:00-06:00",
   "completion_criteria_checked": [
-    "PRE-RUN RECORD: Class B before execution, self-close not attempted. -- MET: recorded in DECISION-056 before this task was even drafted, carried forward into task-state.json unchanged.",
-    "attempts increments by 1 on every handback. -- MET: re-read the diff; the increment is unconditional, placed before the state write.",
-    "retry_attempted logs only when attempts already >0 AND verification_verdict already non-null/non-PASS. -- MET: re-read the diff; the $wasRetry condition is read BEFORE the increment, correctly avoiding the off-by-one trap of checking after incrementing.",
-    "log-event.ps1 gains exactly one new type, nothing else changed. -- MET: single-line diff confirmed.",
-    "Logging failure surfaces visibly, never aborts the handback. -- MET: the log-event.ps1 call's exit code is checked and only produces a Write-Output warning; no Fail call wraps it.",
-    "No change to finalize-worker-handback.ps1's existing four-step order or refusal preconditions. -- MET: re-read the full file; steps 2-4 and the $allowedFromStatus check are byte-identical to before, confirmed via diff (only the new block was inserted).",
-    "Functionally tested in an isolated scratch copy: first handback, retry, and PASS-boundary cases. -- MET AND INDEPENDENTLY CROSS-CHECKED: the worker-result.md claims for all three scenarios match the raw tool-call transcript from this cycle's own execution, not accepted on narrative alone.",
-    "A new decision recorded. -- MET: DECISION-057 present.",
-    "backlog/IDEAS.md updated to reflect full IDEA-008 delivery. -- MET: read directly.",
-    "No change to verdicts, class meanings, Acceptance Boundary Rules, fallback text, or any other script. -- MET: git diff --stat confirms only finalize-worker-handback.ps1 and log-event.ps1 changed under scripts/; no schema, no docs/VERIFICATION_RESULT_SPEC.md, no docs/BRR_POLICY.md's Acceptance Boundary Rules section touched."
+    "PRE-RUN RECORD: proposed Class A, self-close not attempted this run. -- MET: recorded in DECISION-056 before either cycle 1 or cycle 2 started.",
+    "New read-only script reports counts of all ten known event types. -- MET: re-read scripts/summarize-routing-log.ps1 in full; independently re-ran it myself (as verifier, in a freshly created scratch copy, not reusing the worker's) against the real, current routing-log.jsonl and got identical output to what worker-result.md claims.",
+    "Computes exactly one ratio (claimed-vs-verified completion rate), nothing else. -- MET: only one ratio is computed in the code; verified the arithmetic by hand (26/27 = 96.3%).",
+    "Explicitly reports the three un-instrumented metrics rather than approximating them. -- MET: read directly in the script's final output block; no proxy computation exists in the code for these three.",
+    "No state mutation; read-only. -- MET: re-read the full script; the only file operations are Test-Path and Get-Content, both read-only. No Set-Content, no Add-Content, no call to any other script.",
+    "No new event type, no log-event.ps1 call. -- MET: confirmed by reading the script and by grep -- 'log-event' does not appear anywhere in the new file.",
+    "Functionally tested against real (copied) log content, arithmetically cross-checked. -- MET AND INDEPENDENTLY REPEATED: re-ran the script myself against a separately-created scratch copy of the real log; output matched the worker's claimed output exactly. Cross-checked several of the counts by hand against grep -c on the real log file directly.",
+    "A new decision recorded. -- MET: DECISION-058 present, accurately describes the real defect-and-fix.",
+    "docs/BRR_PLAN.md Phase 4 item 2 not marked complete; this is a narrow slice. -- MET: docs/BRR_PLAN.md is not in the changed-file list at all (git diff --stat confirms).",
+    "No change to verdicts, class meanings, Acceptance Boundary Rules, fallback text, or any existing script. -- MET: git status confirms only the new script plus docs/DECISIONS.md and the expected live state/handoff/result files changed; zero existing scripts touched."
   ],
   "evidence_reviewed": [
-    ".cockpit/result/worker-result.md (including the Pilot-Specific Report and chaining determination)",
-    "scripts/finalize-worker-handback.ps1, scripts/log-event.ps1 (full text and diff, read directly)",
-    "backlog/IDEAS.md (IDEA-008 entry, read directly)",
-    "docs/DECISIONS.md (DECISION-056, DECISION-057)",
+    ".cockpit/result/worker-result.md",
+    "scripts/summarize-routing-log.ps1 (full text, read directly)",
+    "docs/DECISIONS.md (DECISION-056, DECISION-057, DECISION-058)",
     "git status --short and git diff --stat HEAD",
-    "Raw tool-call transcript from this cycle's execution (three scratch-test scenarios), cross-checked against worker-result.md's claims",
-    "This task's own live task-state.json: attempts is now 1 after its own real (non-synthetic) handback -- an incidental live confirmation that the increment fires correctly outside the scratch tests too"
+    "Independent verifier re-run: created a separate, fresh scratch copy (distinct from the worker's own, already deleted) containing only a copy of the current real routing-log.jsonl and the new script; ran it myself; output was byte-for-byte identical to the worker's claimed output",
+    "Manual grep -c cross-check on the real log file for several event types plus the legacy-format count, confirming the script's arithmetic independently of both the worker's and my own script run"
   ],
   "missing_evidence": [],
   "out_of_scope_findings": [
-    "None found. git diff --stat confirms only scripts/finalize-worker-handback.ps1, scripts/log-event.ps1, backlog/IDEAS.md, docs/DECISIONS.md, and the expected live state/handoff/result files changed."
+    "None found. git status --short confirms the only new file is scripts/summarize-routing-log.ps1; the only other changes are docs/DECISIONS.md plus the expected live state/handoff/result files. No existing script or schema touched."
   ],
   "risks": [
-    "Self-verified under DECISION-033 degraded fallback. No independent second-party (Codex) review has occurred. GPT secondary review not yet performed on this specific cycle.",
-    "PILOT DESIGN (DECISION-056): Class B, self-close not attempted this run regardless of class. This verification-result.json is a HELD candidate. scripts/close-out-verified-task.ps1 has NOT been run; task_status remains 'returned_for_verification'.",
-    "Verification Depth Policy row applied: Class B, truth-surface-affecting -> strict. Applied via full re-read of both changed scripts, diff review, and cross-checking the test transcript against worker-result.md's narrative.",
-    "The retry-detection mechanism depends on an implicit cross-script invariant (verification_verdict is never cleared to null between cycles by any other script) rather than an enforced contract -- confirmed true today by re-reading advance-cockpit-state.ps1, close-out-verified-task.ps1, and return-inadequate-work.ps1, but a future script change could silently break this assumption without any test catching it until a real retry happens.",
-    "CHAINING DETERMINATION: this cycle resolved cleanly by DECISION-056's stated definition (self-verified PASS candidate, no stop-trigger, no scope issue), so per that decision's interpretation, cycle 2 (pcc-brr4-003) may be drafted next without waiting for this cycle's review to complete first. This interpretation was stated explicitly in DECISION-056 as correctable if wrong -- flagging again here so review of BOTH cycles together can catch it if the chaining judgment itself was premature."
+    "Self-verified under DECISION-033 degraded fallback. No independent second-party (Codex) review has occurred. GPT review not yet performed on this specific cycle.",
+    "PILOT DESIGN (DECISION-056): proposed Class A, but self-close not attempted this run regardless. This is a HELD candidate, alongside pcc-brr4-002 -- neither has been closed out.",
+    "Verification Depth Policy: even though this task is Class A (which would normally warrant lighter 'light' or 'normal' depth per the Verification Depth Policy's own table), I applied a fuller check here anyway -- independently re-running the script myself rather than only reading the code -- because this is a held pilot cycle under active second-party review, not an ordinary Class A self-accept.",
+    "The legacy-format handling (26 of 70 log lines) is a real, disclosed finding about the repo's own history, not a flaw introduced by this task -- but it does mean routing-log.jsonl itself is not a fully uniform data source, a fact this script surfaces honestly rather than papering over.",
+    "This script's 'known event types' list is a hardcoded snapshot of log-event.ps1's current ValidateSet; if a future task adds another event type to log-event.ps1 without also updating this script, that new type would silently fall into the 'unrecognized' bucket rather than get its own line. Disclosed here, not fixed (fixing it would mean deriving the list from log-event.ps1's ValidateSet directly, a reasonable future improvement not required by this task's narrow scope)."
   ],
-  "summary": "Verified pcc-brr4-002 (cycle 1 of pilot run #2) at 'strict' depth. The retry-detection read-before-increment ordering is correct (confirmed by direct diff inspection, not just narrative), the logging failure path is non-fatal by design, and no existing behavior of either touched script changed. All ten completion criteria are met with direct evidence, cross-checked against the raw execution transcript. Per DECISION-056, this cycle resolved cleanly enough to chain into cycle 2 without waiting for review -- that determination, and this held PASS candidate itself, are both submitted for actual owner/GPT review, not treated as self-settled.",
-  "next_action": "This is a HELD result, not a close-out (per DECISION-056). Do not run scripts/close-out-verified-task.ps1 until reviewed. Proceeding next to draft and execute cycle 2 (pcc-brr4-003, the metrics summary task) per the chaining determination above -- both cycles' results will be held together for review before either is closed out.",
+  "summary": "Verified pcc-brr4-003 (cycle 2, final cycle of pilot run #2) with an independent re-run of the script itself, not just a code read-through -- created my own fresh scratch copy and reproduced the worker's exact output against the real log, then spot-checked several counts by hand with grep. The script is genuinely read-only, strictly mechanical (raw counts plus one named ratio, explicit non-computation of three un-instrumented metrics), and the real legacy-format defect found during the worker's own testing was fixed honestly rather than papered over with an invented mapping. All ten completion criteria are met with direct, independently-reproduced evidence. This held PASS candidate, together with pcc-brr4-002's, is submitted for actual owner/GPT review -- pilot run #2 (both cycles) is complete and awaiting that review, not self-declared successful.",
+  "next_action": "This is a HELD result, not a close-out (per DECISION-056). Do not run scripts/close-out-verified-task.ps1 for either pcc-brr4-002 or pcc-brr4-003 until reviewed. Pilot run #2 has no further cycles (per its own scope). Await owner/GPT review of both cycles together before deciding on a pilot run #3 or any other next step.",
   "state_update_allowed": true
 }

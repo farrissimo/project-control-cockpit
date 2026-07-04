@@ -1366,3 +1366,31 @@ Implications:
 
 Supersedes: None
 Related: DECISION-033, DECISION-036, DECISION-041, DECISION-054, DECISION-056, backlog/IDEAS.md, scripts/finalize-worker-handback.ps1, scripts/log-event.ps1
+
+---
+
+## DECISION-058: Pilot Run #2, Cycle 2 Executed (pcc-brr4-003, BRR Metrics Summary); Both Cycles Held For Review
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`pcc-brr4-003` delivers a first, narrow slice of `docs/BRR_PLAN.md` Phase 4 item 2 ("BRR Metrics"): a new read-only script, `scripts/summarize-routing-log.ps1`, reports raw counts of each existing `routing-log.jsonl` event type plus the one ratio the plan names explicitly ("claimed-vs-verified completion rate"). Proposed Class A, but per `DECISION-056` revision 1, self-close was **not** attempted regardless — this cycle is held for review alongside `pcc-brr4-002`. This is the second and last cycle of pilot run #2.
+
+Reason:
+
+Completes the two-cycle scope `DECISION-056` finalized before either cycle began, keeping the metrics task strictly mechanical per revision 2 (raw counts and one named ratio only, no invented categories or proxies for un-instrumented metrics) and deliberately not testing self-close per revision 1, even though the honest classification (Class A) would normally permit it.
+
+Implications:
+
+**What was built:** `scripts/summarize-routing-log.ps1` reads `.cockpit/logs/routing-log.jsonl` only, writes to no file, mutates no state, calls no other script (including `log-event.ps1` — this is a report, not an event). It reports a count of each of the ten known event types (the seven pre-existing plus `stop_condition_fired`/`gate_blocked`/`retry_attempted` added by this pilot's own earlier cycles), the named completion-rate ratio, and explicitly lists the three Phase 4 item 2 metrics it does **not** compute (owner interruptions per task, repeated instruction frequency, owner-review triggers by category) because they are not currently instrumented — reported as unmeasured, not approximated.
+
+**A real defect caught by testing, not glossed over:** the first version crashed (`Contains` called with a null key) when run against the real, copied `routing-log.jsonl`, because roughly a third of the log's entries predate `scripts/log-event.ps1`'s current `{timestamp, task_id, event_type, detail}` shape and instead use an older `{timestamp, task_id, route, reason, result}` shape from the `pcc-v1-0XX` era, with no `event_type` field at all. The fix adds an explicit, honestly-labeled "legacy pre-`event_type` format" bucket for these entries rather than guessing a mapping from `route`/`result` onto a current event type — inventing that correspondence would have been exactly the interpretation layer this task's own scope forbids.
+
+**Testing, against the real (copied) log content in an isolated scratch copy:** all ten event-type counts plus the legacy-format count were independently cross-checked against `grep -c` counts of the same raw file and matched exactly (16 + 26 + 1 + 1 + 26 legacy = 70, the log's full line count, fully accounted for); the completion-rate arithmetic (26 ÷ 27 = 96.3%) was verified by hand.
+
+**Chaining and pilot status:** this is the last cycle of run #2. Both `pcc-brr4-002` and `pcc-brr4-003` remain held (`task_status: returned_for_verification`, not `complete`) pending owner/GPT review, per `DECISION-056`. No self-close was attempted for either cycle. `docs/BRR_PLAN.md` Phase 4 item 2 is not marked complete — this is a narrow first slice, not the full metrics deliverable. No verdict, task safety class, the autonomous gate, the Acceptance Boundary Rules, or `DECISION-033`/`036`'s fallback text was changed.
+
+Supersedes: None
+Related: DECISION-033, DECISION-036, DECISION-041, DECISION-054, DECISION-056, DECISION-057, docs/BRR_PLAN.md, scripts/summarize-routing-log.ps1
