@@ -495,3 +495,107 @@ every sense." The judgment-based conditions remain outside automatic detection
 whether the work aligns with the north star, and whether a new owner-level
 decision is required. A CLEAR stop-check plus a self-acceptable class is a
 floor, not a guarantee; genuine judgment still governs.
+
+---
+
+## Verification Depth Policy
+
+This is BRR Phase 3's first deliverable (`docs/BRR_PLAN.md` Phase 3 item 1,
+`pcc-brr3-001`). It answers a question the prior sections leave open: the
+Acceptance Boundary Rules say *whether* a result may be self-accepted or must
+go to review; this section says *how much rigor* that review (self- or
+independent) must actually apply. Not every task in scope for review deserves
+the same depth of checking — treating a one-line mechanical script fix and a
+change to the verification model itself with identical rigor either wastes
+effort or under-checks the riskier case.
+
+### The three levels
+
+* **light** — Confirm the mechanical result matches its deterministic check
+  (a script's exit code, a schema validator's pass/fail, a byte-for-byte
+  diff against an expected output). No independent read-through of reasoning
+  or prose is required, because there is no reasoning or prose to
+  mis-verify — the check *is* the evidence.
+* **normal** — Read the worker's evidence against each completion criterion
+  individually, run the standard guardrail scripts
+  (`scripts/verify-handback-guardrails.ps1`), and confirm the diff matches
+  the allowed scope with no drift. This is the default depth for ordinary
+  work that is not purely mechanical but also does not touch a truth
+  surface.
+* **strict** — Everything `normal` requires, plus: read the full changed
+  content itself (not a diff summary), explicitly cross-check it line-by-line
+  against every other canonical doc, schema, or decision it references or
+  could contradict, and record that cross-check in the verification result
+  rather than asserting it happened. Self-verification performed at `strict`
+  depth still requires the standard `DECISION-036` disclosure wording, and
+  independent secondary review (currently GPT, per `DECISION-036`) is
+  recommended before the result is treated as settled, even though it cannot
+  substitute for local guardrail re-verification (`DECISION-031`/`DECISION-032`).
+
+No new verdict is introduced. Depth governs how the verifier reaches a verdict
+(`PASS`/`FAIL`/`INSUFFICIENT`/`BLOCKED`/`OUT_OF_SCOPE`), not which verdicts
+exist.
+
+### Mapping: Task Safety Class × task type → depth
+
+Depth is a lookup against two already-existing facts about a task — its
+Task Safety Class (`docs/BRR_POLICY.md` "Task Safety Classification") and its
+task type — not a fresh judgment call each cycle. Three task types cover the
+cases seen so far:
+
+* **Deterministic/mechanical** — correctness is fully checkable by rerunning
+  a script, a validator, or a diff; no prose judgment is involved (e.g. a
+  schema field addition, a state-transition script, a mechanical rename).
+* **Judgment-heavy / prose** — correctness depends on reading and judging
+  written content (policy wording, documentation, explanatory text) that does
+  **not** define or alter a truth surface.
+* **Truth-surface / governance-affecting** — the change defines or alters a
+  truth surface itself: the verification model, task safety classification,
+  the Owner Review Matrix, Stop-Instead-of-Guess triggers, schemas, or the
+  state machine's semantics (Owner Review Matrix row 7, `docs/BRR_POLICY.md`).
+
+| Task Safety Class | Task type | Verification depth |
+|---|---|---|
+| A | Deterministic/mechanical | light |
+| A | Judgment-heavy / prose (non-truth-surface) | normal |
+| A | Truth-surface / governance-affecting | not applicable — a truth-surface change is an Owner Review Matrix row 7 case and is Class C by definition (see "Task Safety Classification" above), so no Class A task can be truth-surface-affecting |
+| B | Deterministic/mechanical | normal (Class B's acceptance restriction already requires independent review or owner override regardless of depth; `normal` is the floor since some non-triviality is why the task is Class B rather than Class A) |
+| B | Judgment-heavy / prose (non-truth-surface) | normal |
+| B | Truth-surface / governance-affecting | strict |
+| C | any | not applicable — a Class C task does not execute unattended, so no verification-depth question arises until the owner approves it and it is (re)classified for execution |
+| D | any | not applicable — a Class D task does not proceed |
+
+This BRR Phase 3 policy task (`pcc-brr3-001`) is itself Class B,
+judgment-heavy prose that edits a truth surface (`docs/BRR_POLICY.md`,
+`docs/DECISIONS.md`) — by its own table, it requires **strict** depth, which
+is the depth actually applied to verify it.
+
+### Relationship to Acceptance Boundary Rules
+
+These two sections answer different questions and do not overlap:
+Acceptance Boundary Rules gate *whether* PCC may self-accept a result at all
+(Class A yes if the stop-check is CLEAR; Class B no, regardless of depth).
+Verification Depth governs *how thoroughly* whichever party performs the
+review — self or independent — must check the work once review is happening.
+A Class B result is never self-accepted no matter its depth; a Class A result
+may be self-accepted, but a truth-surface Class A task cannot exist (see the
+mapping table), so self-acceptance under this policy is always at `light` or
+`normal` depth, never `strict`.
+
+### Notes on scope
+
+* This section defines the three levels and the class × type mapping. It does
+  not implement automatic depth selection, does not modify
+  `scripts/verify-handback-guardrails.ps1` or any other script to enforce a
+  minimum depth, and does not change `verification-result.json`'s required
+  shape (`docs/VERIFICATION_RESULT_SPEC.md`) — applying this policy inside a
+  script is future work, not taken here, consistent with how prior BRR policy
+  sections were defined before being fielded.
+* This section does not change Self-Verification Restrictions (BRR Phase 3
+  item 2), Out-of-Scope Detection Hardening (item 3), or the Inadequate-Work
+  Return Path (item 4) — those remain separate, not-yet-drafted Phase 3 tasks
+  per `docs/BRR_PLAN.md`.
+* No existing verdict, task safety class, Owner Review Matrix row, or stop
+  condition is redefined or weakened by this section. Cross-checked against
+  Task Safety Classification, the Acceptance Boundary Rules, and the
+  Stop-Instead-of-Guess Policy while drafting — no contradiction was found.

@@ -1076,3 +1076,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-021, DECISION-028, DECISION-038, DECISION-039, DECISION-040, DECISION-041, DECISION-042, DECISION-043, DECISION-044, docs/BRR_PLAN.md
+
+---
+
+## DECISION-046: Verification Depth Policy Recorded (pcc-brr3-001)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+BRR Phase 3's first deliverable (`docs/BRR_PLAN.md` Phase 3 item 1, "Verification Depth Policy") is recorded canonically in `docs/BRR_POLICY.md`, defining three verification rigor levels (`light`/`normal`/`strict`) and a concrete mapping from Task Safety Class (A/B/C/D) and task type to the depth required.
+
+Reason:
+
+`docs/BRR_PLAN.md` Phase 3's objective is to raise trustworthiness enough that unattended work is reasonable for low-risk task classes, and its first listed deliverable requires tying verification rigor to task safety class and task type rather than applying uniform scrutiny to every task regardless of risk. The task itself was owner-directed this cycle (the owner named `pcc-brr3-001` and its source directly), not a PCC self-promotion, so the Safe Next-Task Drafting Rules' auto-promotion gate (`docs/BRR_POLICY.md`, `DECISION-039`) does not apply; `promotion_basis` is `null`.
+
+Implications:
+
+`docs/BRR_POLICY.md` gains a "Verification Depth Policy" section defining `light` (mechanical/deterministic checks only), `normal` (standard evidence-against-criteria review plus guardrail scripts, the default), and `strict` (full read-through of changed content plus explicit cross-checking against every canonical doc/schema it touches, required for anything truth-surface- or governance-affecting). The mapping table ties Task Safety Class × task type (deterministic/mechanical, judgment-heavy/prose, truth-surface/governance-affecting) to a required depth, and explicitly notes that a truth-surface-affecting task can never be Class A (Owner Review Matrix row 7 makes it Class C by definition), so Class A self-acceptance is always at `light` or `normal` depth, never `strict`. This task is itself classified against its own new table: Class B, truth-surface/governance-affecting (it edits `docs/BRR_POLICY.md` and `docs/DECISIONS.md`), requiring `strict` depth — which is the depth actually applied to verify it (full read of the added section, explicit cross-check against Task Safety Classification, Acceptance Boundary Rules, and the Stop-Instead-of-Guess Policy; no contradiction found). This decision defines the policy only: it does not implement automatic depth selection, does not modify `scripts/verify-handback-guardrails.ps1` or any other script, does not change `verification-result.json`'s required shape, and does not touch BRR Phase 3 items 2–4 (Self-Verification Restrictions, Out-of-Scope Detection Hardening, Inadequate-Work Return Path), which remain separate future tasks. No existing verdict, task safety class, Owner Review Matrix row, or stop condition was redefined or weakened. Per `DECISION-036`'s own text, its commit-and-push-every-PASS authorization was time-boxed to "the remainder of BRR Phase 2" and has lapsed now that PCC is in BRR Phase 3; this cycle's verified changes are committed locally per the standing `DECISION-020` default, but pushing to any remote requires a fresh, explicit owner approval rather than assuming `DECISION-036` still applies.
+
+Supersedes: None
+Related: DECISION-020, DECISION-036, DECISION-038, DECISION-039, DECISION-041, DECISION-045, docs/BRR_PLAN.md, docs/BRR_POLICY.md
