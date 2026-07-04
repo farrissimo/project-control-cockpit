@@ -2,7 +2,7 @@
   "project_id": "project-control-cockpit",
   "project_name": "Project Control Cockpit",
   "project_goal": "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
-  "current_phase": "brr-phase-2",
+  "current_phase": "brr-phase-3",
   "current_task_id": "pcc-brr2-013",
   "active_repo_path": "C:\\ProjectControlCockpit",
   "active_branch": "main",
@@ -143,6 +143,6 @@
   "current_blocker": null,
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-brr2-013-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Task 'pcc-brr2-013' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T08:48:38-06:00"
+  "next_expected_action": "BRR Phase 2 is complete (DECISION-045). Owner/advisor drafts the first bounded BRR Phase 3 task (pcc-brr3-001, Verification Depth Policy per docs/BRR_PLAN.md Phase 3).",
+  "updated_at": "2026-07-04T02:45:00-06:00"
 }

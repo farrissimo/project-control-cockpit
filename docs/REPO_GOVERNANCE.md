@@ -217,6 +217,7 @@ Examples:
 
 * `pcc-brr1-001` = BRR Phase 1
 * `pcc-brr2-001` = BRR Phase 2
+* `pcc-brr3-001` = BRR Phase 3
 
 `pcc-` remains the stable project prefix; `brr1`, `brr2`, etc. mark the BRR phase. The plain-language naming convention above still applies to `task_title` for these tasks.
 

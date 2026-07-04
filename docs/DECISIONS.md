@@ -1054,3 +1054,25 @@ The result strengthens, with real (if limited) evidence, the case that **mechani
 
 Supersedes: None
 Related: DECISION-038, DECISION-040, DECISION-041, DECISION-042, DECISION-043, docs/BRR_POLICY.md, docs/BRR_PLAN.md
+
+---
+
+## DECISION-045: BRR Phase 2 Complete; Walk-Away Model Has Meaningful Evidence, Not Absolute Proof; PCC Moves To BRR Phase 3
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+BRR Phase 2 is complete. All five planned deliverables are built (`DECISION-038`–`042`) and the walk-away model has meaningful positive evidence, including a passed blind pilot (`DECISION-044`) — but it is **not** declared fully proven in an absolute sense. The honest distinction going forward is no longer "Phase 2 unfinished vs. finished"; it is "how much additional proof is required before widening unattended authority further." PCC moves to BRR Phase 3 (Verification Hardening), with optional future adversarial pilot testing available if stronger confidence is wanted before expanding autonomy trust.
+
+Reason:
+
+Phase 2's planned machinery is built, its biggest known weakness (`self_promote` leaning entirely on the mechanical stop-check) was surfaced honestly rather than hidden, and the blind pilot directly tested that exact weakness and passed (5/5, including two disguised forks neither rationalized into continuation). That is a real, disciplined stopping point: declaring the phase done is supported by what was actually built and tested; declaring the *model* absolutely proven would overstate a small, owner-authored (not fully independent-adversarial) sample. Keeping both facts on record — phase complete, evidence meaningful but not absolute — is more honest than collapsing them into a single verdict.
+
+Implications:
+
+`project-state.json`'s `current_phase` advances from `brr-phase-2` to `brr-phase-3`. Phase 3 task IDs use the format `pcc-brr3-0XX`, per the established per-phase reset convention (`DECISION-021`, `DECISION-028`). Unattended draft-and-run remains exactly where `DECISION-038`/`042` left it: the self-gate is wired and pilot-tested, but no default-on unattended operation exists — `pcc-brr2-013`'s own blind test caught precisely that expansion (candidate #2) as a disguised fork requiring an owner decision, which underscores why it is not casually assumed here either. Further adversarial/blind pilot testing remains available as optional future evidence-gathering, not a blocking requirement, if stronger confidence is wanted before widening autonomy trust; it is not scheduled as a mandatory Phase 3 task by this decision. `docs/BRR_PLAN.md`'s Phase 3 deliverables (Verification Depth Policy, Self-Verification Restrictions, Out-of-Scope Detection Hardening, Inadequate-Work Return Path) become the active lane; the first bounded task is `pcc-brr3-001`, drafted separately. `README.md` and `docs/DECISIONS.md` are updated to reflect the phase transition; `docs/BRR_PLAN.md` itself is not annotated per-item, consistent with existing precedent (no such annotation exists for Phase 1 or Phase 2 items either).
+
+Supersedes: None
+Related: DECISION-021, DECISION-028, DECISION-038, DECISION-039, DECISION-040, DECISION-041, DECISION-042, DECISION-043, DECISION-044, docs/BRR_PLAN.md

@@ -43,7 +43,8 @@
         "verification",
         "paused",
         "brr-phase-1",
-        "brr-phase-2"
+        "brr-phase-2",
+        "brr-phase-3"
       ]
     },
     "current_task_id": {
