@@ -90,6 +90,19 @@ if ($stops.Count -gt 0) {
   foreach ($s in $stops) { Write-Output "  - $s" }
   Write-Output ""
   Write-Output "This is a recommendation to stop instead of guess, not an automatic halt. Surface these to the owner (owner_decision_request) or resolve them before autonomous continuation."
+
+  # Record this STOP as a factual event (IDEA-008/pcc-brr4-001, BRR Phase 4
+  # Multi-Cycle Pilot run #1) so stop-trigger occurrences become measurable
+  # history instead of console-only output. A logging failure here must
+  # never change this script's own advisory, always-exit-0 contract, so it
+  # is surfaced visibly but never allowed to alter the exit path or the
+  # STOP recommendation already printed above.
+  $logDetail = ($stops -join " | ")
+  & pwsh -NoProfile -File "scripts/log-event.ps1" -EventType "stop_condition_fired" -TaskId $taskId -Detail $logDetail
+  if ($LASTEXITCODE -ne 0) {
+    Write-Output ""
+    Write-Output "[LOGGING WARNING] Failed to record this STOP as a routing-log.jsonl event (scripts/log-event.ps1 exited $LASTEXITCODE). The STOP recommendation above is still valid and unaffected."
+  }
 } else {
   Write-Output "CLEAR TO PROCEED on the deterministically-checkable stop conditions."
 }

@@ -1252,3 +1252,33 @@ Implications:
 
 Supersedes: None
 Related: DECISION-008, DECISION-021, DECISION-028, DECISION-038, DECISION-044, DECISION-045, DECISION-050, DECISION-052, docs/BRR_PLAN.md, schemas/project-state.schema.json, .cockpit/state/project-state.json
+
+---
+
+## DECISION-054: BRR Phase 4 Multi-Cycle Pilot, Run #1 Executed (pcc-brr4-001, IDEA-008 partial); Result Held For Review, Not Self-Closed
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+The owner approved a specific, bounded scope for BRR Phase 4's Multi-Cycle Pilot run #1 (one cycle only, no chaining), with two required additions: classify the task's safety class and self-close eligibility *before* execution rather than discovering it at the end, and treat the pilot as failed if later review shows PCC exercised bad judgment even if the task mechanically completed. `pcc-brr4-001` delivers the "quality-gate" half of `IDEA-008` (`backlog/IDEAS.md`) under that scope: `scripts/check-stop-conditions.ps1` and `scripts/check-autonomous-gate.ps1` now log `stop_condition_fired`/`gate_blocked` events. Classified **Class B before execution**; self-close is **not** attempted — the self-verified result is held for owner/GPT review rather than closed via `scripts/close-out-verified-task.ps1`.
+
+Reason:
+
+`docs/BRR_PLAN.md` Phase 4's own text calls its pilot "the first real proof that BRR works in practice rather than on paper" and cautions against broadening autonomy during it. The owner's two required revisions target exactly the risk that distinguishes a pilot from an ordinary task: deciding acceptance boundaries after the fact (rather than up front) blurs the thing being tested, and judging success only by "did it finish" rather than "did PCC judge correctly" would let a mechanically-clean but judgment-poor run count as a pass. Both are applied here rather than treated as aspirational framing.
+
+Implications:
+
+**Pre-execution classification (recorded before any code was written):** Class B — the change touches `scripts/` (a truth surface, `pcc-brr3-003`'s Out-of-Scope Detection policy) and requires judgment about what counts as a "factual, not narrative" event and where to log it. Per the Acceptance Boundary Rules (`DECISION-041`), Class B must not be self-accepted. For this pilot specifically, that is enforced more strictly than this session's usual `DECISION-033` fallback pattern: rather than self-verify-and-close-with-disclosure (the pattern used for `pcc-brr3-001` through `pcc-brr3-005`), the self-verified result is held — `close-out-verified-task.ps1` is deliberately not run — so the review-before-acceptance boundary is actually exercised, not merely disclosed as skipped.
+
+**What was built:** `scripts/log-event.ps1`'s `ValidateSet` gains two event types, `stop_condition_fired` and `gate_blocked`; no existing event type changed. `scripts/check-stop-conditions.ps1` logs `stop_condition_fired` when and only when it reports STOP; `scripts/check-autonomous-gate.ps1` logs `gate_blocked` when and only when it reports `GATE: BLOCKED`. Both scripts' actual decision logic (what makes them report STOP/BLOCKED vs. CLEAR/PROCEED) is unchanged; `check-stop-conditions.ps1` still always exits 0 and `check-autonomous-gate.ps1` remains fail-closed (still exits 3 on BLOCKED) regardless of whether the new logging call itself succeeds — a logging failure surfaces as a visible `[LOGGING WARNING]` but never changes either script's exit behavior. `IDEA-008`'s "retry" half (logging `task-state.json`'s `attempts` field) is explicitly deferred: no script currently increments `attempts` at all, so wiring that up is separate, larger future work, not folded into this pilot.
+
+**Functional testing, in an isolated scratch copy (never against live state), including a real defect caught along the way:** setting up the first scratch copy surfaced that the live repo's `advisor-restart-brief.md` had gone stale relative to `task-state.json` (drafting `pcc-brr4-001` had used `generate-worker-directive.ps1` alone instead of the paired `refresh-live-handoff-artifacts.ps1`) — `doctor.ps1` caught it immediately, it was fixed in the live repo before continuing, and the scratch copy was rebuilt from the corrected state. Four scenarios were then tested and confirmed: a CLEAR stop-check logs nothing; a forced STOP (synthetic `blocked` task status) logs `stop_condition_fired` with a factual detail string; a forced `GATE: BLOCKED` logs `gate_blocked` and still exits 3; a clean `GATE: PROCEED` logs nothing. The scratch copy was deleted after use; `git status` confirmed no test artifacts reached the live repo.
+
+**Pilot self-assessment against the owner's failure criterion:** the task was classified Class B *before* any code was written (not discovered at the end); self-close was correctly identified as ineligible and was not attempted; no ambiguity, fork, or scope creep arose during execution; the one real finding (the stale-artifact defect) was caught by existing tooling exactly as designed and fixed before proceeding, not glossed over. No owner interruption was needed during drafting or execution. Whether this self-assessment itself holds up is exactly what the owner/GPT review this decision requests is for — it is not asserted as settled by this decision.
+
+This decision does not close `pcc-brr4-001` as `complete`; `task_status` remains `returned_for_verification`-equivalent pending that review, and `verification-result.json` records a self-verified `PASS` candidate under the standard `DECISION-036` disclosure, explicitly marked as awaiting the owner/GPT review this pilot design requires before `scripts/close-out-verified-task.ps1` may be run. No existing verdict, task safety class, the autonomous gate's own decision logic, the Acceptance Boundary Rules, or `DECISION-033`/`036`'s fallback text was changed.
+
+Supersedes: None
+Related: DECISION-006, DECISION-008, DECISION-033, DECISION-036, DECISION-040, DECISION-041, DECISION-042, DECISION-053, docs/BRR_PLAN.md, backlog/IDEAS.md, scripts/check-stop-conditions.ps1, scripts/check-autonomous-gate.ps1, scripts/log-event.ps1

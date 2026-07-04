@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("next_task_drafted", "verified_pass", "verified_fail", "verified_insufficient", "verified_blocked", "verified_out_of_scope", "correction_applied")]
+  [ValidateSet("next_task_drafted", "verified_pass", "verified_fail", "verified_insufficient", "verified_blocked", "verified_out_of_scope", "correction_applied", "stop_condition_fired", "gate_blocked")]
   [string]$EventType,
 
   [string]$TaskId,

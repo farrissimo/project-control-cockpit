@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-04T10:12:29-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T10:27:36-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,11 +10,11 @@ Current phase: brr-phase-4
 
 ## Active Task
 
-* Task ID: pcc-brr3-005
-* Title: Safety Net: Non-PASS Close-Out Script
-* Status: complete
+* Task ID: pcc-brr4-001
+* Title: Honesty Checks: Activity Log
+* Status: returned_for_verification
 * Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Add scripts/return-inadequate-work.ps1, mirroring scripts/close-out-verified-task.ps1's shape (archive, advance state, health-check, log, optional local-only commit) for the four non-PASS verdicts (FAIL/INSUFFICIENT/BLOCKED/OUT_OF_SCOPE), fielding the asymmetry named as future work in pcc-brr3-004/DECISION-049. Update docs/HANDOFF_PACKET_SPEC.md and docs/REPO_GOVERNANCE.md's Task Process to name the new script, and make a narrow, disclosed update to docs/BRR_POLICY.md's 'Inadequate-Work Return Path' section noting the script now exists, per DECISION-051's Post-Close Canonical Amendment Rule.
+* Objective: PILOT RUN #1 of the BRR Phase 4 Multi-Cycle Pilot (docs/BRR_PLAN.md Phase 4 item 1; owner-approved scope, this session). Deliver IDEA-008 (backlog/IDEAS.md, rank 4, 'NEXT UP'): extend the append-only event log with two new factual event types -- 'stop_condition_fired' (logged by scripts/check-stop-conditions.ps1 when it reports STOP) and 'gate_blocked' (logged by scripts/check-autonomous-gate.ps1 when it reports GATE: BLOCKED) -- so automatic stop-trigger and gate-block occurrences become measurable history instead of console-only output. Retry-event logging (the other half of IDEA-008's wording) is explicitly deferred as a separate future task; the task-state.json 'attempts' field is not currently incremented by any script, and wiring that up is a larger, separate change.
 
 ## Last Verified
 
@@ -43,5 +43,5 @@ Current phase: brr-phase-4
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-brr3-005' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: BRR Phase 4 (Controlled Semi-Autonomous Operation) has begun (DECISION-053). This decision only flips the phase marker and follows the same shape as prior phase transitions (DECISION-021/028/045) -- it does not by itself start Phase 4's first deliverable, the Multi-Cycle BRR Pilot (docs/BRR_PLAN.md), which docs/BRR_PLAN.md itself flags as the first real test of reduced-oversight operation and cautions against broadening autonomy going in. Owner explicit go-ahead is needed before that pilot's scope and safeguards are drafted and it is actually run.
+* Task-level: Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.
+* Project-level: Worker evidence for task 'pcc-brr4-001' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict.

@@ -13,9 +13,9 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-brr3-005
-* Task Title: Safety Net: Non-PASS Close-Out Script
-* Task Status: complete
+* Task ID: pcc-brr4-001
+* Task Title: Honesty Checks: Activity Log
+* Task Status: returned_for_verification
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Objective
@@ -36,42 +36,46 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-Add scripts/return-inadequate-work.ps1, mirroring scripts/close-out-verified-task.ps1's shape (archive, advance state, health-check, log, optional local-only commit) for the four non-PASS verdicts (FAIL/INSUFFICIENT/BLOCKED/OUT_OF_SCOPE), fielding the asymmetry named as future work in pcc-brr3-004/DECISION-049. Update docs/HANDOFF_PACKET_SPEC.md and docs/REPO_GOVERNANCE.md's Task Process to name the new script, and make a narrow, disclosed update to docs/BRR_POLICY.md's 'Inadequate-Work Return Path' section noting the script now exists, per DECISION-051's Post-Close Canonical Amendment Rule.
+PILOT RUN #1 of the BRR Phase 4 Multi-Cycle Pilot (docs/BRR_PLAN.md Phase 4 item 1; owner-approved scope, this session). Deliver IDEA-008 (backlog/IDEAS.md, rank 4, 'NEXT UP'): extend the append-only event log with two new factual event types -- 'stop_condition_fired' (logged by scripts/check-stop-conditions.ps1 when it reports STOP) and 'gate_blocked' (logged by scripts/check-autonomous-gate.ps1 when it reports GATE: BLOCKED) -- so automatic stop-trigger and gate-block occurrences become measurable history instead of console-only output. Retry-event logging (the other half of IDEA-008's wording) is explicitly deferred as a separate future task; the task-state.json 'attempts' field is not currently incremented by any script, and wiring that up is a larger, separate change.
 
 ## Allowed Scope
 
 The worker may:
 
-* Create scripts/return-inadequate-work.ps1.
-* Edit docs/HANDOFF_PACKET_SPEC.md and docs/REPO_GOVERNANCE.md to name the new script.
-* Make the narrow, disclosed pointer update to docs/BRR_POLICY.md's existing 'Inadequate-Work Return Path' section noting the script now exists.
+* Edit scripts/log-event.ps1 to add the two new event types to its ValidateSet only.
+* Edit scripts/check-stop-conditions.ps1 to add a logging call on STOP.
+* Edit scripts/check-autonomous-gate.ps1 to add a logging call on GATE: BLOCKED.
 * Edit docs/DECISIONS.md to record the new decision.
-* Create and use a temporary, isolated scratch copy of relevant repo files (outside the live .cockpit/ state) to functionally test the new script without touching real task/project state; delete the scratch copy when done.
+* Edit backlog/IDEAS.md to update IDEA-008's status.
+* Create and use a temporary, isolated scratch copy of relevant repo files (outside the live .cockpit/ state) to functionally test the change without touching real task/project state; delete the scratch copy when done.
 
 ## Forbidden Scope
 
 The worker must not:
 
-* Do not run scripts/return-inadequate-work.ps1 (or any test of it) against the live .cockpit/state/task-state.json, .cockpit/state/project-state.json, or .cockpit/result/verification-result.json -- all functional testing happens in an isolated scratch copy only.
-* Do not wire the new script to be called automatically by any other script (finalize-worker-handback.ps1, verify-handback-guardrails.ps1, advance-cockpit-state.ps1, close-out-verified-task.ps1, check-stop-conditions.ps1, check-autonomous-gate.ps1, enforce-handoff-restart-safety.ps1) -- it stays a manually-invoked convenience tool.
-* Do not alter close-out-verified-task.ps1, advance-cockpit-state.ps1, log-event.ps1, doctor.ps1, or any other existing script's behavior.
+* Do not touch the task-state.json 'attempts' field or add any retry-logging logic -- explicitly deferred, separate future work.
+* Do not change what makes check-stop-conditions.ps1 report STOP vs CLEAR, or what makes check-autonomous-gate.ps1 report PROCEED vs BLOCKED -- only add logging around the existing, unchanged decision logic.
+* Do not make check-stop-conditions.ps1 gate anything (it must remain advisory, always exit 0) or make check-autonomous-gate.ps1 non-fail-closed.
 * Do not modify any schema.
-* Do not rewrite or delete pcc-brr3-004's original claim in docs/BRR_POLICY.md that fielding was 'not built here' at the time -- only add a clearly-marked pointer noting later fielding.
-* Do not touch the self-verification fallback (DECISION-033/036), the autonomous gate's own logic, the Acceptance Boundary Rules, or any Task Safety Class's core meaning.
-* Do not mark BRR Phase 3 complete (already recorded, DECISION-050) or advance current_phase.
+* Do not self-close this task via scripts/close-out-verified-task.ps1 -- this is a Class B pilot task targeting review-before-acceptance; hand the self-verified result to the owner/GPT instead.
+* Do not touch the self-verification fallback (DECISION-033/036), the Acceptance Boundary Rules, or any Task Safety Class's core meaning.
+* Do not run any test of this change against the live .cockpit/state/task-state.json, .cockpit/state/project-state.json, or .cockpit/result/verification-result.json -- all functional testing happens in an isolated scratch copy only.
+* Do not start a second pilot cycle after this one -- pilot run #1 is exactly one cycle; chaining to a run #2 requires a separate review of this run's results first.
 
 ## Completion Criteria
 
 The task is complete only if:
 
-* scripts/return-inadequate-work.ps1 exists and mirrors close-out-verified-task.ps1's shape (archive-then-advance-then-healthcheck-then-log, optional -Commit that never pushes) for the four non-PASS verdicts.
-* The script refuses to run if the verdict is PASS (pointing to close-out-verified-task.ps1 instead), if verification-result.json's task_id does not match task-state.json's, or if an archive path already exists -- matching close-out-verified-task.ps1's existing safety properties.
-* The script is actually tested against a synthetic non-PASS cycle in an isolated scratch copy of the repo (not the live repo), demonstrating correct archiving, state advancement, doctor/schema health, and event logging for at least one non-PASS verdict, plus at least one negative test (e.g. refusing on a PASS verdict or a task_id mismatch) -- a real functional test, not a code read-through only, since this is new executable behavior rather than policy prose.
-* docs/HANDOFF_PACKET_SPEC.md's 'Recommended Close-Out Order' and docs/REPO_GOVERNANCE.md's Task Process name the new script for the non-PASS path.
-* docs/BRR_POLICY.md's 'Inadequate-Work Return Path' section (pcc-brr3-004) receives a narrow, disclosed pointer update noting the script now exists and naming this task -- not a rewrite of pcc-brr3-004's original claim, which was accurate when made, per DECISION-051's Post-Close Canonical Amendment Rule.
+* PILOT NOTE (classified before execution, per owner instruction): Task Safety Class B (touches scripts/, a truth surface; judgment-heavy in deciding what is a 'factual, not narrative' event and where to log it) means self-close is NOT eligible under the existing Acceptance Boundary Rules (docs/BRR_POLICY.md, DECISION-041). This pilot deliberately targets review-before-acceptance: the cycle is self-verified as usual, but scripts/close-out-verified-task.ps1 is NOT run to finalize/commit it -- the completed, self-verified cycle is instead handed to the owner/GPT for actual review before being closed out. This is stricter than this session's usual DECISION-033 fallback pattern (self-verify-and-close-with-disclosure), chosen specifically because testing genuine review-before-acceptance is this pilot's whole point.
+* PILOT FAILURE CRITERION (per owner instruction): the pilot is counted as FAILED if the task completes mechanically but later review (by the owner or GPT) shows the task should have stopped, should have been differently classified, or should not have self-closed -- regardless of the task's own PASS/FAIL/INSUFFICIENT/BLOCKED/OUT_OF_SCOPE verdict. This is a judgment-quality check layered on top of, and separate from, that verdict.
+* scripts/log-event.ps1's ValidateSet gains exactly two new event types: stop_condition_fired and gate_blocked. No existing event type or behavior is changed.
+* scripts/check-stop-conditions.ps1 logs a stop_condition_fired event via log-event.ps1 when and only when it reports STOP, with a factual (not narrative) detail string drawn from the actual detected reasons. It remains otherwise unchanged: still always exits 0, still never gates anything.
+* scripts/check-autonomous-gate.ps1 logs a gate_blocked event via log-event.ps1 when and only when it reports GATE: BLOCKED, with a factual detail string. It remains otherwise unchanged: still exits 0 on PROCEED, non-zero on BLOCKED.
+* Neither script's new logging call can cause a false CLEAR/PROCEED result or silently swallow a real STOP/BLOCKED result; if logging itself fails, that failure surfaces visibly rather than being hidden, and this choice is documented in the worker result.
+* Functionally tested (not read-through only) in an isolated scratch copy: both new event types are confirmed to actually append to routing-log.jsonl when the respective condition is real, and confirmed that NO new event is logged on a CLEAR/PROCEED result.
 * A new decision is recorded in docs/DECISIONS.md.
-* No existing verdict, task safety class, the autonomous gate, the Acceptance Boundary Rules, or DECISION-033/036's fallback authority is changed.
-* The new script is not made self-invoking, automatic, or gating anywhere -- it remains a manual convenience tool the verifier chooses to run, exactly like close-out-verified-task.ps1; no other script is edited to call it automatically.
+* backlog/IDEAS.md's IDEA-008 entry status is updated to 'promoted-to-task', consistent with existing entries for delivered ideas.
+* No change to any of the five verdicts, any Task Safety Class's meaning, the Acceptance Boundary Rules, the self-verification fallback, or the advisory/fail-closed nature of either script being touched.
 
 ## Required Evidence
 
@@ -84,6 +88,7 @@ Return the following evidence:
 * Known risks.
 * Unresolved assumptions.
 * Confirmation that forbidden scope was not touched.
+* Pilot-specific: whether any owner interruption was needed during execution, whether the claimed result matches the verified result, whether any stop-trigger fired, and an explicit self-assessment against the pilot failure criterion above.
 
 ## Expected Return Format
 

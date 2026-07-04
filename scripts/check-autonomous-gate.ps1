@@ -75,6 +75,20 @@ if ($blocks.Count -gt 0) {
   foreach ($b in $blocks) { Write-Output "  - $b" }
   Write-Output ""
   Write-Output "Stop and surface via the Owner-Decision Capture Flow (owner_decision_request) or resolve the condition. Do not rationalize a fork into continuation."
+
+  # Record this block as a factual event (IDEA-008/pcc-brr4-001, BRR Phase 4
+  # Multi-Cycle Pilot run #1) so gate-block occurrences become measurable
+  # history instead of console-only output. This gate is fail-closed by
+  # design (DECISION-042); a logging failure here must never turn a real
+  # BLOCKED into a PROCEED, so the block and the non-zero exit below happen
+  # regardless of whether logging itself succeeds.
+  $logDetail = "Action '$Action': " + ($blocks -join " | ")
+  & pwsh -NoProfile -File "scripts/log-event.ps1" -EventType "gate_blocked" -TaskId $taskId -Detail $logDetail
+  if ($LASTEXITCODE -ne 0) {
+    Write-Output ""
+    Write-Output "[LOGGING WARNING] Failed to record this GATE: BLOCKED as a routing-log.jsonl event (scripts/log-event.ps1 exited $LASTEXITCODE). The block below is still in effect and unaffected."
+  }
+
   exit 3
 }
 
