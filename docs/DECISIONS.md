@@ -1622,3 +1622,25 @@ The scheduled task was manually triggered three times against live idle state (`
 
 Supersedes: None
 Related: DECISION-023, DECISION-066, DECISION-067, scripts/codex-verify-watcher.ps1
+
+---
+
+## DECISION-069: BRR Phase 5 Closed; BRR Program Goal Declared Satisfied; PCC Moves To Post-BRR Work
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+BRR Phase 5's own exit criteria required two things: the scope be honestly assessed, and the next roadmap lane be chosen deliberately by the owner (per the Owner Review Matrix, roadmap-lane selection is a Class C action, never self-promoted). The first was satisfied by the Phase 5 Readiness Review (`pcc-brr5-001`, `DECISION-062`). The owner has now made the second: BRR's original goal (`DECISION-001`/`DECISION-021` — reduce owner babysitting as much as *safely* possible, while preserving canonical truth, bounded tasks, and explicit verification) is declared satisfied. BRR Phase 5, and the BRR program as its own named phase, is closed. PCC moves to post-BRR work (`current_phase: post-brr`).
+
+Reason:
+
+The Phase 5 Readiness Review named one item as standing apart from the rest: "the single largest standing risk: every verification across BRR Phases 2 through 5 has been performed by the same party that did the work," because Codex was unavailable for the review's entire recorded history. That is the core safety property BRR exists to protect — not incidental polish. It is now resolved for real, not merely on paper: `DECISION-066` restored the two-role split when Codex became available again, and `pcc-brr5-004`/`pcc-brr5-005` fielded and then proved, end-to-end and fully unattended, a real independent-verification mechanism (`scripts/codex-verify-watcher.ps1`, deployed as the native scheduled task `PCC-CodexVerifyWatcher`) — Codex autonomously detected a task needing verification, verified it independently, and wrote a correct `PASS` verdict with zero manual invocation. The four remaining items named in the Phase 5 review (Class A self-accept never exercised in a real cycle; chaining beyond two cycles untested; the fuller BRR Metrics deliverable undelivered; no formalized Failure Review Loop) are extensions of an already-safe, already-independently-verified core loop, not unverified or unsafe gaps — they represent how far autonomy could be pushed further, not whether what exists today is trustworthy. Treating them as a blocking gate would conflate "not yet built" with "built and risky."
+
+Implications:
+
+BRR Phase 5 is closed. The four items above are carried forward as backlog, to be picked up opportunistically during post-BRR work rather than gating it: (1) exercising Class A self-accept in a real cycle, (2) testing unattended chaining beyond two cycles, (3) completing the fuller BRR Metrics deliverable (owner-interruption tracking, review-trigger categorization), (4) formalizing a Failure Review Loop. The two-role split (`DECISION-012`/`DECISION-023`), the Acceptance Boundary Rules, Task Safety Classification, and all other standing BRR-era policy in `docs/BRR_POLICY.md` remain fully active and unchanged — closing the phase does not relax any safety rule; it only ends BRR's status as the project's current named phase. `docs/BRR_PLAN.md`'s Phase 5 section is updated to record this closure. `current_phase` in `project-state.json` moves from `brr-phase-5` to the newly added `post-brr` schema value; `current_task_id` is cleared pending selection of the first post-BRR task.
+
+Supersedes: None (closes Phase 5 per its own exit criteria; does not amend or invalidate any prior BRR-phase decision or verified result)
+Related: DECISION-001, DECISION-012, DECISION-021, DECISION-023, DECISION-033, DECISION-062, DECISION-066, DECISION-067, DECISION-068, docs/BRR_PLAN.md, docs/BRR_POLICY.md

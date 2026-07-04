@@ -612,6 +612,36 @@ follow-on items.
 
 ---
 
+## Phase 5 Closed (`DECISION-069`, 2026-07-04)
+
+The recommendation above was written while the self-verification gap was
+still open. It no longer is: `DECISION-066` restored the two-role split
+once Codex became available again, and `pcc-brr5-004`/`pcc-brr5-005`
+fielded and then proved, fully unattended end-to-end, a real independent
+Codex verification mechanism (`scripts/codex-verify-watcher.ps1`, deployed
+as the native scheduled task `PCC-CodexVerifyWatcher`). That was named as
+the single largest standing risk in this review; it is now resolved for
+real, not on paper.
+
+Per `DECISION-069`, the owner has declared BRR's original goal
+(`DECISION-001`/`DECISION-021`) satisfied and closed BRR Phase 5. The four
+remaining items below are carried forward as backlog, not as a blocking
+gate, since none of them represent an unverified or unsafe path — they are
+extensions of an already-safe, already-independently-verified core loop:
+
+1. Exercise Class A self-accept in a real cycle (never yet exercised).
+2. Test unattended chaining beyond two cycles (untested beyond two).
+3. Complete the fuller BRR Metrics deliverable (owner-interruption
+   tracking, review-trigger categorization by category).
+4. Formalize a Failure Review Loop (currently ad hoc, by narrative).
+
+All standing BRR-era policy (`docs/BRR_POLICY.md`'s Task Safety
+Classification, Acceptance Boundary Rules, Semi-Autonomy Ceiling, etc.)
+remains fully active and unchanged. Closing the phase ends BRR's status as
+the project's current named phase; it does not relax any safety rule.
+
+---
+
 # 6. Areas Requiring Special Caution
 
 ## A. Self-verification

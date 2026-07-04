@@ -2,7 +2,7 @@
   "project_id": "project-control-cockpit",
   "project_name": "Project Control Cockpit",
   "project_goal": "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
-  "current_phase": "brr-phase-5",
+  "current_phase": "post-brr",
   "current_task_id": "pcc-brr5-005",
   "active_repo_path": "C:\\ProjectControlCockpit",
   "active_branch": "main",
@@ -132,6 +132,12 @@
       "decision": "Codex is available again. The DECISION-033 degraded self-verification fallback ends per its own terms; PCC returns to the canonical two-role split of DECISION-012/DECISION-023 (Claude Code worker, Codex advisor/verifier). A file-based polling bridge between the two is being scoped as a separate task.",
       "date": "2026-07-04",
       "status": "active"
+    },
+    {
+      "id": "DECISION-069",
+      "decision": "BRR Phase 5 is closed and BRR's original goal (DECISION-001/DECISION-021) is declared satisfied, now that independent Codex verification (the single largest standing risk named in the Phase 5 Readiness Review) has been fielded and proven fully unattended end-to-end (pcc-brr5-004/pcc-brr5-005). PCC moves to post-BRR work. Four items (Class A self-accept unexercised, chaining beyond two cycles untested, fuller BRR Metrics undelivered, no formalized Failure Review Loop) are carried forward as non-blocking backlog. All standing BRR-era policy remains active.",
+      "date": "2026-07-04",
+      "status": "active"
     }
   ],
   "active_constraints": [
@@ -149,6 +155,6 @@
   "current_blocker": null,
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-brr5-005-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Task 'pcc-brr5-005' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T13:38:24-06:00"
+  "next_expected_action": "BRR Phase 5 is closed (DECISION-069). Owner selects the first post-BRR task.",
+  "updated_at": "2026-07-04T13:50:00-06:00"
 }
