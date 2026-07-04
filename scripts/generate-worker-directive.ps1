@@ -38,10 +38,13 @@ $taskState = Read-Json $taskStatePath
 
 # The directive cannot be drafted without the task fields that give the worker
 # a bounded, executable action. Fail loudly rather than emit a vague directive.
-foreach ($field in @("task_id", "task_title", "task_status", "task_objective")) {
+foreach ($field in @("task_id", "task_title", "task_status", "task_objective", "task_safety_class")) {
   if ([string]::IsNullOrWhiteSpace($taskState.$field)) {
     Fail "task-state.json field '$field' is empty. Cannot draft a bounded directive without it."
   }
+}
+if ($taskState.task_safety_class -notin @("A", "B", "C", "D")) {
+  Fail "task-state.json field 'task_safety_class' must be one of A, B, C, D per docs/BRR_POLICY.md; found '$($taskState.task_safety_class)'."
 }
 if (-not $taskState.boundaries.allowed -or $taskState.boundaries.allowed.Count -eq 0) {
   Fail "task-state.json boundaries.allowed is empty. Refusing to draft a directive with no allowed scope."
@@ -107,6 +110,7 @@ Worker
 * Task ID: $($taskState.task_id)
 * Task Title: $($taskState.task_title)
 * Task Status: $($taskState.task_status)
+* Task Safety Class: $($taskState.task_safety_class) (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Objective
 

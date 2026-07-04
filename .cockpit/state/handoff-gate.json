@@ -2,6 +2,6 @@
   "task_id": "pcc-brr2-001",
   "gate_result": "PASS",
   "reason": "Task status is 'ready_for_worker' and the dual-restart proof passed.",
-  "checked_at": "2026-07-03T22:31:50-06:00",
+  "checked_at": "2026-07-03T22:56:40-06:00",
   "checked_via": "scripts/enforce-handoff-restart-safety.ps1"
 }

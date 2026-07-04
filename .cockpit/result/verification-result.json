@@ -1,31 +1,39 @@
 {
-  "task_id": "pcc-brr1-004",
-  "verdict": "PASS",
-  "verified_at": "2026-07-04T00:20:00-06:00",
+  "task_id": "pcc-brr2-001",
+  "verdict": "FAIL",
+  "verified_at": "2026-07-04T00:50:00-06:00",
   "completion_criteria_checked": [
-    "The repo gains canonical policy text defining the BRR Operating Definitions named in docs/BRR_PLAN.md Phase 1.",
-    "Each definition is explicit enough to stabilize the terminology already used in the Owner Review Matrix, Task Safety Classification, and Stop-Instead-of-Guess Policy.",
-    "The definitions reconcile with, and do not contradict, the prior three BRR Phase 1 policy sections already recorded in docs/BRR_POLICY.md.",
-    "The policy stays practical and docs-only, with no runtime enforcement, no automatic gating logic, and no premature implementation of Phase 2 flow.",
-    "Truth-surface propagation is handled honestly across the named docs, updating only what the new operating definitions actually make stale.",
-    "Claude returns evidence in .cockpit/result/worker-result.md using the required format and calls out any places where independent secondary review is still recommended."
+    "task-state schema and live task-state gain one explicit BRR task safety class field limited to the four canonical classes defined in docs/BRR_POLICY.md: A, B, C, and D.",
+    "The live task for pcc-brr2-001 is classified explicitly using that field, and the chosen class is justified by the existing BRR policy rather than invented ad hoc.",
+    "The generated worker directive and advisor restart brief both surface the active task's class clearly, so a fresh worker or advisor can see the safety classification without re-deriving it from policy prose.",
+    "docs/HANDOFF_PACKET_SPEC.md, docs/STATE_MODEL.md, docs/REPO_GOVERNANCE.md, README.md, and docs/DECISIONS.md are updated only where this new live task-class field makes them stale.",
+    "Local validation remains healthy: any touched generators, schemas, or state files work cleanly with scripts/check-schemas.ps1, scripts/validate-cockpit-state.ps1, and scripts/doctor.ps1.",
+    "No automatic stop triggers, owner-decision capture flow, acceptance-boundary enforcement, or autonomous task-selection behavior is introduced."
   ],
   "evidence_reviewed": [
-    "docs/BRR_POLICY.md",
-    "docs/DECISIONS.md",
     ".cockpit/result/worker-result.md",
     ".cockpit/state/task-state.json",
     ".cockpit/state/project-state.json",
-    "powershell -ExecutionPolicy Bypass -File .\\scripts\\validate-cockpit-state.ps1"
+    ".cockpit/handoff/worker-directive.md",
+    ".cockpit/handoff/advisor-restart-brief.md",
+    "schemas/task-state.schema.json",
+    "scripts/generate-worker-directive.ps1",
+    "scripts/generate-advisor-restart-brief.ps1",
+    "docs/STATE_MODEL.md",
+    "docs/HANDOFF_PACKET_SPEC.md",
+    "docs/REPO_GOVERNANCE.md",
+    "docs/DECISIONS.md",
+    "pwsh -NoProfile -File .\\scripts\\check-schemas.ps1",
+    "pwsh -NoProfile -File .\\scripts\\validate-cockpit-state.ps1",
+    "powershell -ExecutionPolicy Bypass -File .\\scripts\\doctor.ps1"
   ],
   "missing_evidence": [],
   "out_of_scope_findings": [],
   "risks": [
-    "All four BRR Phase 1 policy deliverables now exist, but whether to declare Phase 1 complete and move into Phase 2 remains an explicit owner/advisor decision rather than an automatic transition.",
-    "This remains judgment-heavy policy content rather than deterministically testable behavior; independent secondary review remains the right standing BRR Phase 1 practice.",
-    "The new glossary defines escalation as current reporting behavior rather than a hardened mechanism; building that mechanism remains future Phase 2 work."
+    "The Class B classification for pcc-brr2-001 is the right call and should be preserved on retry: this task is safe to execute, but correctness is judgment-heavy and touches truth surfaces.",
+    "The new task_safety_class field is now part of live task state and generated handoff surfaces, but advance-cockpit-state.ps1 has still only been compatibility-checked structurally rather than exercised through a PASS close-out for this field."
   ],
-  "summary": "Reviewed the new Operating Definitions against the task criteria and the three prior BRR policy sections. The six required terms are now explicit, cross-reconciled, and consistent with the existing matrix, classification, and stop-policy language. The worker was also right not to declare the phase transition unilaterally: BRR Phase 1 policy scope is now complete, but deciding whether to continue hardening Phase 1, move to Phase 2, or choose another lane is a separate boundary decision. All completion criteria met; no out-of-scope changes found.",
-  "next_action": "Task 'pcc-brr1-004' is complete and verified PASS. BRR Phase 1 policy scope is complete; owner/advisor explicitly decides whether to declare the phase complete and continue hardening, transition to Phase 2, or choose another next lane.",
-  "state_update_allowed": true
+  "summary": "The core fielding work is sound: task_safety_class is added to schema and live state, surfaced in both generated handoff artifacts, and the task's own Class B classification is justified correctly. However, the task does not satisfy its completion contract as returned because after task-state/project-state were moved to returned_for_verification, the live advisor restart brief was left stale. Re-running doctor.ps1 against the repo as handed back reports a real restart-safety issue on the advisor side, so the 'local validation remains healthy' criterion is not met in the actual returned state.",
+  "next_action": "Keep task 'pcc-brr2-001' as Class B. Refresh the live handoff artifacts from the actual post-return state, ensure doctor.ps1 is clean on the repo as handed back for verification, and return updated evidence.",
+  "state_update_allowed": false
 }

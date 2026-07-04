@@ -2,54 +2,52 @@
 
 ### Summary
 
-Completed task `pcc-brr1-004` ("BRR Policy: Operating Definitions") by adding an "Operating Definitions" section to `docs/BRR_POLICY.md` that defines all six required terms (safe unattended, safe with review, owner decision, blocked, insufficient evidence, escalation), each tied explicitly to the specific Task Safety Class, Owner Review Matrix row, Stop-Instead-of-Guess trigger, and/or verification verdict it corresponds to. Included a "Reconciliation notes" subsection confirming no contradiction was found against the three prior sections after cross-checking all of them against this glossary.
+Retry of `pcc-brr2-001` after `verification-result.json`'s `FAIL` verdict. The verifier confirmed the substantive fielding work was sound (schema, live state, both generator scripts, and the Class B classification), but caught a real process defect: I had regenerated `.cockpit/handoff/advisor-restart-brief.md` *before* moving `task-state.json`/`project-state.json` to `returned_for_verification`, so the brief handed back for review was stale (it still described the task as in-progress rather than returned). `doctor.ps1`'s restart-safety check would have caught this if re-run at the actual hand-back moment — which is exactly what it's for.
 
-With this task, `docs/BRR_POLICY.md` now contains all four BRR Phase 1 policy deliverables named in `docs/BRR_PLAN.md`. I did **not** declare BRR Phase 1 "complete" anywhere (in README.md, DECISIONS.md, or project-state.json's `current_phase`) — that reads as an owner-facing next-step decision (whether/when to move into Phase 2) rather than something this task's scope covers or that a worker should decide unilaterally. Flagged explicitly below for the owner/advisor.
-
-No runtime scripts, schemas, or verification mechanics were touched. This is docs-only policy work extending `docs/BRR_POLICY.md`, per the directive's forbidden scope.
+No code, schema, or doc content was changed in this retry — the defect was purely in *when* I regenerated the handoff artifacts relative to the state transition, not in what was in them. Fix: this time, the final state transition happened first, and both artifacts were regenerated after it, immediately followed by a full `check-schemas.ps1` / `validate-cockpit-state.ps1` / `doctor.ps1` pass against that exact final state before writing this evidence.
 
 ### Files Changed
 
-* Updated: `docs/BRR_POLICY.md` — added the "Operating Definitions" section (six term definitions + "Reconciliation notes" + its own "Notes on scope"); updated the header note to say the doc now covers all four Phase 1 tasks and completes the policy foundation; updated three forward-reference notes (in the Owner Review Matrix, Task Safety Classification, and Stop-Instead-of-Guess sections) that previously pointed at `pcc-brr1-004` as "not yet written."
-* Updated: `docs/DECISIONS.md` (added `DECISION-027`)
-* Updated: `.cockpit/state/task-state.json` (`task_status`: `ready_for_worker` → `returned_for_verification`; `next_action` updated to hand off to the verifier; `updated_at` bumped)
-* Updated: `.cockpit/state/project-state.json` (`next_expected_action` updated to match; `updated_at` bumped)
+None beyond the state-transition sequencing itself:
+
+* `.cockpit/state/task-state.json` — transitioned `verified_fail` → `ready_for_worker` (retry) → `returned_for_verification` (final), clearing `current_blocker` and updating `next_action`/`updated_at` at each step.
+* `.cockpit/state/project-state.json` — mirrored the same `current_blocker`/`next_expected_action`/`updated_at` updates.
+* `.cockpit/handoff/worker-directive.md` and `.cockpit/handoff/advisor-restart-brief.md` — regenerated (not hand-edited) *after* the final `returned_for_verification` transition, so both now accurately reflect the actual state being handed back.
+
+All substantive changes from the original cycle (`schemas/task-state.schema.json`, `scripts/generate-worker-directive.ps1`, `scripts/generate-advisor-restart-brief.ps1`, `docs/STATE_MODEL.md`, `docs/HANDOFF_PACKET_SPEC.md`, `docs/REPO_GOVERNANCE.md`, `docs/DECISIONS.md`) are unchanged from the prior submission and were not touched again in this retry, per the verifier's own finding that they were already correct.
 
 ### Commands / Tests Run
 
-* `powershell -ExecutionPolicy Bypass -File .\scripts\validate-cockpit-state.ps1` — run twice: once before state-file edits (baseline OK), once after updating `task-state.json` and `project-state.json` (confirms no drift/inconsistency introduced).
-* No other scripts run; this task involves no code, schema, or runtime changes to test.
-* Grepped `docs/REPO_GOVERNANCE.md`, `docs/STATE_MODEL.md`, `README.md`, `docs/BRR_PLAN.md` for `pcc-brr1-004`/`Operating Definitions`/`Phase 1 is` and read each in full to check for staleness before deciding not to edit them.
+1. `pwsh -NoProfile -File scripts/generate-worker-directive.ps1` — regenerated *after* setting `task_status` to `returned_for_verification`.
+2. `pwsh -NoProfile -File scripts/generate-advisor-restart-brief.ps1` — regenerated at the same point, immediately after (1).
+3. `pwsh -NoProfile -File scripts/check-schemas.ps1` — run immediately after (1) and (2).
+4. `pwsh -NoProfile -File scripts/validate-cockpit-state.ps1` — run immediately after (3).
+5. `pwsh -NoProfile -File scripts/doctor.ps1` — run last, as the actual pre-hand-back check this cycle's failure was about.
 
 ### Results
 
-* Both `validate-cockpit-state.ps1` runs returned `PCC state validation OK`.
-* The grep found only generic, still-accurate mentions (`README.md` and `docs/BRR_PLAN.md` naming "BRR Operating Definitions" as a Phase 1 deliverable) — none made stale by this task.
-* `docs/BRR_POLICY.md` was read back in full after editing to manually cross-check each of the six definitions against its three prior sections: no term's new definition contradicts how it was already used in the Owner Review Matrix, Task Safety Classification, or Stop-Instead-of-Guess Policy tables.
+1. `Drafted worker directive for task 'pcc-brr2-001' at .cockpit/handoff/worker-directive.md`.
+2. `Drafted advisor restart brief for task 'pcc-brr2-001' at .cockpit/handoff/advisor-restart-brief.md`. Read back: `* Status: returned_for_verification` and `## What Happens Next` both now correctly describe the actual current state, not a stale prior one.
+3. All three files: `[PASS]`.
+4. `PCC state validation OK`.
+5. Full report: `[OK]` on all five findings, including `Restart safety (advisor + worker): Fresh advisor and worker sessions can both resume from canonical repo truth.` and `Active task: Task 'pcc-brr2-001' status is 'returned_for_verification' (verification_verdict: FAIL).` — `Overall: OK. No issues or warnings found.` This is the specific check that failed last cycle; it is now clean at the actual moment of hand-back.
 
 ### Evidence
 
-Mapping to the directive's completion criteria:
+This retry addresses the verifier's one specific finding directly: `doctor.ps1`'s restart-safety check, run against the repo in the exact state now being handed back for verification, reports `OK` (Result 5 above), where last cycle it would have reported stale content had it been re-run at that same hand-back moment. The verifier's other findings (Class B classification correct, fielding work sound, no forbidden scope touched) were not in question and are unchanged, since no substantive files were modified in this retry.
 
-* **Repo gains canonical policy text defining all six named terms** — `docs/BRR_POLICY.md`'s new "Operating Definitions" section, one definition per term (safe unattended, safe with review, owner decision, blocked, insufficient evidence, escalation).
-* **Each definition explicit enough to stabilize terminology already used, not merely repeating it loosely** — every definition names the exact class/row/trigger/verdict it corresponds to (e.g. "safe unattended" = exactly Task Safety Class A; "blocked" = exactly Class D + the `BLOCKED` verdict + matrix row 9 + triggers 2/6) rather than restating the term in different words.
-* **Reconciles with, does not contradict, the prior three sections** — the "Reconciliation notes" subsection states this directly and explains one subtlety worth surfacing: "owner decision" and "escalation" are related but distinct (condition vs. action) — a distinction not previously made explicit, but consistent with, not contradicting, existing usage.
-* **Stays practical and docs-only** — no escalation mechanism, no new state, no schema change. The section's own "Notes on scope" explicitly defers an actual escalation/owner-decision-tracking mechanism to Phase 2.
-* **Truth-surface propagation handled honestly** — `docs/DECISIONS.md` got `DECISION-027`. `docs/BRR_PLAN.md`, `docs/REPO_GOVERNANCE.md`, `docs/STATE_MODEL.md`, and `README.md` were checked and found not stale for this task's actual scope (defining terms) — but see the flag below about the *unstated but true* fact that Phase 1 is now content-complete.
+The prior cycle's full evidence mapping to the original six completion criteria (schema, classification, generator surfacing, doc propagation, code/script boundaries) still holds unmodified — the only criterion in question was "Local validation remains healthy... in the actual returned state," which is what this retry fixes and demonstrates.
 
 ### Known Risks
 
-* This task technically finishes all four Phase 1 deliverables named in `docs/BRR_PLAN.md`, which raises a real question this task's own scope does not cover: whether/when to declare BRR Phase 1 complete and move toward Phase 2. I deliberately did not make that call in README.md, `docs/DECISIONS.md`, or `project-state.json`'s `current_phase` — per the very Operating Definitions this task just wrote, an ambiguous next-step selection with more than one valid path (continue Phase 1 hardening vs. move to Phase 2 vs. something else) is an owner decision (Owner Review Matrix row 3), not a worker call. Surfacing this explicitly rather than silently deciding it either way.
-* Same standing risk as `pcc-brr1-001`–`003`: this is judgment-heavy policy content, not deterministically testable; `DECISION-022`'s recommendation for independent secondary review applies here too, arguably more so since this section is the reconciliation check against everything written before it.
-* "Escalation" is defined as an informal, already-happening behavior (writing a blocker into `worker-result.md`/`verification-result.json`) rather than a new mechanism — this is intentional (Phase 1 is policy-only) but means the definition describes current ad hoc practice more than a hardened process; that hardening is explicitly named as Phase 2's job.
+* This retry's fix is procedural (ordering), which means the actual risk is recurrence: any future task closing with "regenerate artifacts, then flip status" instead of "flip status, then regenerate artifacts" will reproduce the exact same class of staleness. Nothing in this cycle adds an automatic check that enforces the correct order — `doctor.ps1` remains advisory (by design, per `DECISION-020`/`docs/HANDOFF_PACKET_SPEC.md`) and only catches this if someone actually re-runs it at the hand-back moment, as the verifier did. This is a real, standing gap worth naming rather than treating as closed just because this one instance is fixed.
+* Same standing risk flagged in the original submission and echoed in the verifier's own `risks`: `scripts/advance-cockpit-state.ps1`'s round-trip handling of the new `task_safety_class` field has still only been reasoned about structurally, not exercised through an actual PASS close-out for this task. That will get real exercise once/if this retry receives a PASS and close-out runs.
 
 ### Unresolved Assumptions
 
-* Assumed defining "owner decision" and "escalation" as a condition/action pair (rather than treating them as synonyms, or not distinguishing them at all) was the right level of precision — the directive asks that terms be "explicit enough to stabilize the terminology," and these two terms were the ones most likely to be used interchangeably without a clear split. Flagging this as the main interpretive judgment call in this task.
-* Assumed it was correct to *not* declare Phase 1 complete anywhere, rather than treating "all four deliverables now exist" as self-evidently meaning the phase is done — see Known Risks above. Recommend the owner/advisor make this call explicitly as a separate, deliberate step rather than reading phase-completion into this task's evidence.
-* Assumed no update was needed to `docs/BRR_PLAN.md`, `docs/REPO_GOVERNANCE.md`, `docs/STATE_MODEL.md`, or `README.md` beyond what's already there — consistent with the same call made (and independently confirmed by Codex) in the prior three cycles.
-* Recommend independent (Codex) review specifically on: (a) whether the six definitions are precise enough to actually stabilize usage rather than just restating it, (b) whether the "Reconciliation notes" correctly found no contradiction against the prior three sections (worth a fresh read of all four sections together, not just this one), and (c) whether the "don't declare Phase 1 complete" call is the right one, versus this being the natural point for the owner to make that call.
+* Assumed the correct retry path was `verified_fail` → `ready_for_worker` → `returned_for_verification` (per `docs/STATE_MODEL.md`'s documented failure path: `returned_for_verification → verified_fail → drafted / ready_for_worker`), rather than jumping directly back to `returned_for_verification` without passing through `ready_for_worker` — since no substantive rework was actually needed, only the hand-back sequencing, the intermediate `ready_for_worker` state was momentary rather than a real re-execution window. Flagging this in case the verifier expects a more visible "worker re-executed" step for retries generally, even when the fix is this narrow.
+* Did not increment `task-state.json`'s `attempts` field — consistent with the fact that no `pcc-v1-0XX` or `pcc-brr1-0XX` task in this repo's history has ever incremented it either (checked: all show `"attempts": 0`), suggesting it isn't an actively maintained counter in current practice rather than something this retry should start doing unilaterally. Flagging this as a pre-existing, repo-wide gap rather than something specific to this task.
 
 ### Out-of-Scope Confirmation
 
-Confirmed: no forbidden-scope work was performed. No runtime enforcement, escalation mechanism, or Phase 2 fielding was implemented — the new section's own "Notes on scope" explicitly defers all of that. No files under `scripts/` or `schemas/` were touched. This task was not broadened beyond defining and reconciling the six named terms. No canonical project goals, role assignments, or previously recorded verification verdicts were changed (`DECISION-027` only adds a new decision). `current_phase` in `project-state.json` was left untouched at `brr-phase-1` — no phase transition was made or implied. The owner was not asked to restate anything already in canonical truth. No adjacent policy ambiguity was turned into a separate mini-project or blocker; the one genuine ambiguity found (whether Phase 1 is "done") was surfaced as a flag for the owner, not resolved unilaterally.
+Confirmed: no forbidden-scope work was performed, and no scope beyond fixing the hand-back sequencing was touched in this retry. No schema, script, or doc content was modified from the version the verifier already reviewed and found sound. No automatic stop triggers, owner-decision capture mechanics, acceptance-boundary enforcement, or autonomous task-selection behavior was introduced. The Class B classification was preserved unchanged, per the verifier's own recommendation.

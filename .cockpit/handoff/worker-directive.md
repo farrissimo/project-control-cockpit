@@ -16,6 +16,7 @@ Worker
 * Task ID: pcc-brr2-001
 * Task Title: BRR Execution: Task Classification Fielding
 * Task Status: ready_for_worker
+* Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Objective
 
@@ -35,7 +36,7 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-Field the BRR task safety class into PCC's live task flow in the lightest viable way. Add one explicit Class A/B/C/D field to canonical task state, validate it in schema, and surface it in the worker/advisor handoff artifacts so every active task can carry a visible safety classification. Keep this bounded to lightweight fielding only: make the class visible and durable in state plus handoff surfaces, but do not yet implement automatic stop triggers, owner-decision capture flow, acceptance-boundary enforcement, or autonomous next-task drafting.
+Field the BRR task safety class into PCC's live task flow in the lightest viable way. Add one explicit Class A/B/C/D field to canonical task state, validate it in schema, and surface it in the worker/advisor handoff artifacts so every active task can carry a visible safety classification. Keep this bounded to lightweight fielding only: make the class visible and durable in state plus handoff surfaces, but do not yet implement automatic stop triggers, owner-decision capture flow, acceptance-boundary enforcement, or autonomous next-task drafting. For this retry specifically, make sure the final health evidence reflects the repo's actual returned-for-verification state: after any state or status change that affects the live handoff summaries, regenerate the handoff artifacts again before the final doctor and validation pass you report as evidence.
 
 ## Allowed Scope
 
@@ -65,7 +66,7 @@ The task is complete only if:
 * The live task for pcc-brr2-001 is classified explicitly using that field, and the chosen class is justified by the existing BRR policy rather than invented ad hoc.
 * The generated worker directive and advisor restart brief both surface the active task's class clearly, so a fresh worker or advisor can see the safety classification without re-deriving it from policy prose.
 * docs/HANDOFF_PACKET_SPEC.md, docs/STATE_MODEL.md, docs/REPO_GOVERNANCE.md, README.md, and docs/DECISIONS.md are updated only where this new live task-class field makes them stale.
-* Local validation remains healthy: any touched generators, schemas, or state files work cleanly with scripts/check-schemas.ps1, scripts/validate-cockpit-state.ps1, and scripts/doctor.ps1.
+* Local validation remains healthy on the actual returned-for-verification repo state: any touched generators, schemas, or state files work cleanly with scripts/check-schemas.ps1, scripts/validate-cockpit-state.ps1, and scripts/doctor.ps1 after the final state and status changes for handoff are complete.
 * No automatic stop triggers, owner-decision capture flow, acceptance-boundary enforcement, or autonomous task-selection behavior is introduced.
 
 ## Required Evidence

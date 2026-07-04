@@ -183,11 +183,12 @@ Standard task workflow:
 2. Define a bounded objective.
 3. Define allowed scope and forbidden scope.
 4. Define required evidence.
-5. Define next action.
-6. Write the task into `.cockpit/state/task-state.json`.
-7. Generate the worker directive.
-8. Run the worker.
-9. Verify evidence before truth advances.
+5. Assign the task's BRR task safety class (`A`/`B`/`C`/`D`) per `docs/BRR_POLICY.md`'s "Task Safety Classification," justified by the Owner Review Matrix rather than invented ad hoc (`DECISION-028`).
+6. Define next action.
+7. Write the task into `.cockpit/state/task-state.json`, including the assigned `task_safety_class`.
+8. Generate the worker directive.
+9. Run the worker.
+10. Verify evidence before truth advances.
 
 If task execution changes the durable workflow, governance, or other canonical project behavior, update the affected docs before treating the task as fully complete.
 

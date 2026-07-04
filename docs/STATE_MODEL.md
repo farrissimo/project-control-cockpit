@@ -158,6 +158,7 @@ Required fields:
   "task_objective": null,
   "task_status": "none",
   "assigned_worker": null,
+  "task_safety_class": null,
   "completion_criteria": [],
   "boundaries": {
     "allowed": [],
@@ -174,6 +175,19 @@ Required fields:
   "updated_at": null
 }
 ```
+
+### task_safety_class
+
+The task's BRR Task Safety Class, per `docs/BRR_POLICY.md`'s "Task Safety
+Classification": one of `A`, `B`, `C`, or `D`, or `null` when no task is
+active. This field is a live-flow record of a classification already defined
+in policy (`DECISION-022`/`DECISION-025`) — it does not itself decide the
+class or change what any class means; the advisor/owner assigns it per the
+existing policy when drafting the task. Per `DECISION-028`/`pcc-brr2-001`,
+setting this field is lightweight fielding only: it makes the class visible
+and durable in state and generated handoff artifacts, and does not yet
+trigger any automatic stop, gate, or acceptance-boundary behavior — that
+remains later BRR Phase 2 work.
 
 ---
 

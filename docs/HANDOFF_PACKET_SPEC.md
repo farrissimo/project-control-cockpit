@@ -83,6 +83,7 @@ Worker
 - Task ID:
 - Task Title:
 - Task Status:
+- Task Safety Class:
 
 ## Objective
 
@@ -157,7 +158,7 @@ If blocked, do not improvise broad changes. Return:
 
 ## Directive Generation Is a Local Deterministic Step
 
-`scripts/generate-worker-directive.ps1` drafts `.cockpit/handoff/worker-directive.md` directly from `.cockpit/state/project-state.json` and `.cockpit/state/task-state.json`, following this template. Worker-facing standing truth should come from canonical state rather than hidden script-only facts. The generator refuses to draft a directive if the two state files disagree on the active task, or if the task's objective, allowed scope, forbidden scope, or completion criteria are missing.
+`scripts/generate-worker-directive.ps1` drafts `.cockpit/handoff/worker-directive.md` directly from `.cockpit/state/project-state.json` and `.cockpit/state/task-state.json`, following this template. Worker-facing standing truth should come from canonical state rather than hidden script-only facts. The generator refuses to draft a directive if the two state files disagree on the active task, or if the task's objective, allowed scope, forbidden scope, completion criteria, or BRR task safety class (`docs/BRR_POLICY.md`, `docs/STATE_MODEL.md`'s `task_safety_class`) are missing or not one of `A`/`B`/`C`/`D`.
 
 ---
 
@@ -258,7 +259,7 @@ When starting a fresh chat, include:
 * next expected action
 * files/paths to read first
 
-`scripts/generate-advisor-restart-brief.ps1` drafts this handoff for a fresh advisor/verifier session directly from `.cockpit/state/project-state.json`, `.cockpit/state/task-state.json`, and `.cockpit/result/verification-result.json`, writing to `.cockpit/handoff/advisor-restart-brief.md`. It refuses to draft a brief if project/task state disagree on the active task, or if project state and the live verification result disagree on the last verdict.
+`scripts/generate-advisor-restart-brief.ps1` drafts this handoff for a fresh advisor/verifier session directly from `.cockpit/state/project-state.json`, `.cockpit/state/task-state.json`, and `.cockpit/result/verification-result.json`, writing to `.cockpit/handoff/advisor-restart-brief.md`. It surfaces the active task's BRR task safety class alongside its status. It refuses to draft a brief if project/task state disagree on the active task, if project state and the live verification result disagree on the last verdict, or if the task safety class is missing or not one of `A`/`B`/`C`/`D`.
 
 `scripts/verify-dual-restart-safety.ps1` proves both restart paths at once: it checks the live advisor restart brief is complete and matches what `generate-advisor-restart-brief.ps1` would produce right now (ignoring only the brief's own generation timestamp), then runs `scripts/verify-worker-restart-safety.ps1` for the worker side. It passes only if a fresh advisor session and a fresh worker session could both resume from canonical repo truth today.
 

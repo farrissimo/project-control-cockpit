@@ -690,3 +690,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-021, DECISION-022, DECISION-027, docs/BRR_PLAN.md, docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md, .cockpit/state/project-state.json
+
+---
+
+## DECISION-029: BRR Task Safety Class Fielded Into Live Task Flow (pcc-brr2-001)
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+The first BRR Phase 2 deliverable, Task Classification Fielding, is complete: every active task in `.cockpit/state/task-state.json` now carries an explicit `task_safety_class` field (`A`/`B`/`C`/`D`), enforced by schema and surfaced in both generated handoff artifacts.
+
+Reason:
+
+`docs/BRR_PLAN.md` Phase 2 lists Task Classification Fielding first among its deliverables, and `DECISION-028` scoped `pcc-brr2-001` to the smallest honest version of it: make the already-defined Class A/B/C/D model (`DECISION-025`) visible and durable in live state and handoff surfaces, without yet building any automatic enforcement around it.
+
+Implications:
+
+`schemas/task-state.schema.json` now requires `task_safety_class` (`A`/`B`/`C`/`D`/`null`, `additionalProperties: false` unchanged); `.cockpit/state/task-state.json` carries it for the live task; `scripts/generate-worker-directive.ps1` and `scripts/generate-advisor-restart-brief.ps1` both refuse to generate their artifact if the field is missing or invalid, and both now print it. `docs/STATE_MODEL.md`, `docs/HANDOFF_PACKET_SPEC.md`, and `docs/REPO_GOVERNANCE.md` (Task Process, step 5) are updated to reflect the field and the requirement to assign it when a task is drafted. No automatic stop trigger, owner-decision capture mechanism, or acceptance-boundary enforcement was introduced — the field is read and displayed only; nothing yet acts on its value. `pcc-brr2-001` itself was classified Class B (safe to execute unattended, but not self-accepted) since it touches truth surfaces (`docs/STATE_MODEL.md`, `docs/REPO_GOVERNANCE.md`) and its correctness (whether the fielding is complete and non-contradictory) is judgment-heavy rather than mechanically checkable — consistent with `DECISION-023`'s standing requirement that Codex, not the worker, issues the verdict.
+
+Supersedes: None
+Related: DECISION-022, DECISION-025, DECISION-028, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, schemas/task-state.schema.json

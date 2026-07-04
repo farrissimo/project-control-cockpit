@@ -1,15 +1,16 @@
 {
   "task_id": "pcc-brr2-001",
   "task_title": "BRR Execution: Task Classification Fielding",
-  "task_objective": "Field the BRR task safety class into PCC's live task flow in the lightest viable way. Add one explicit Class A/B/C/D field to canonical task state, validate it in schema, and surface it in the worker/advisor handoff artifacts so every active task can carry a visible safety classification. Keep this bounded to lightweight fielding only: make the class visible and durable in state plus handoff surfaces, but do not yet implement automatic stop triggers, owner-decision capture flow, acceptance-boundary enforcement, or autonomous next-task drafting.",
+  "task_objective": "Field the BRR task safety class into PCC's live task flow in the lightest viable way. Add one explicit Class A/B/C/D field to canonical task state, validate it in schema, and surface it in the worker/advisor handoff artifacts so every active task can carry a visible safety classification. Keep this bounded to lightweight fielding only: make the class visible and durable in state plus handoff surfaces, but do not yet implement automatic stop triggers, owner-decision capture flow, acceptance-boundary enforcement, or autonomous next-task drafting. For this retry specifically, make sure the final health evidence reflects the repo's actual returned-for-verification state: after any state or status change that affects the live handoff summaries, regenerate the handoff artifacts again before the final doctor and validation pass you report as evidence.",
   "task_status": "ready_for_worker",
   "assigned_worker": "Claude Code",
+  "task_safety_class": "B",
   "completion_criteria": [
     "task-state schema and live task-state gain one explicit BRR task safety class field limited to the four canonical classes defined in docs/BRR_POLICY.md: A, B, C, and D.",
     "The live task for pcc-brr2-001 is classified explicitly using that field, and the chosen class is justified by the existing BRR policy rather than invented ad hoc.",
     "The generated worker directive and advisor restart brief both surface the active task's class clearly, so a fresh worker or advisor can see the safety classification without re-deriving it from policy prose.",
     "docs/HANDOFF_PACKET_SPEC.md, docs/STATE_MODEL.md, docs/REPO_GOVERNANCE.md, README.md, and docs/DECISIONS.md are updated only where this new live task-class field makes them stale.",
-    "Local validation remains healthy: any touched generators, schemas, or state files work cleanly with scripts/check-schemas.ps1, scripts/validate-cockpit-state.ps1, and scripts/doctor.ps1.",
+    "Local validation remains healthy on the actual returned-for-verification repo state: any touched generators, schemas, or state files work cleanly with scripts/check-schemas.ps1, scripts/validate-cockpit-state.ps1, and scripts/doctor.ps1 after the final state and status changes for handoff are complete.",
     "No automatic stop triggers, owner-decision capture flow, acceptance-boundary enforcement, or autonomous task-selection behavior is introduced."
   ],
   "boundaries": {
@@ -37,12 +38,12 @@
     "Unresolved assumptions.",
     "Confirmation that forbidden scope was not touched."
   ],
-  "attempts": 0,
+  "attempts": 1,
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
   "verification_verdict": null,
   "current_blocker": null,
-  "next_action": "Read .cockpit/handoff/worker-directive.md, implement pcc-brr2-001 within the bounded scope, and return evidence to .cockpit/result/worker-result.md.",
-  "updated_at": "2026-07-03T22:45:00-06:00"
+  "next_action": "Retry pcc-brr2-001 as a Class B task. Keep the existing fielding changes, but make the final reported health evidence come from the actual returned-for-verification repo state after regenerating the live handoff artifacts one last time.",
+  "updated_at": "2026-07-03T22:58:00-06:00"
 }

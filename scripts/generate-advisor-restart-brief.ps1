@@ -43,10 +43,13 @@ foreach ($field in @("project_name", "project_goal", "current_phase")) {
     Fail "project-state.json field '$field' is empty. Cannot draft a restart brief without it."
   }
 }
-foreach ($field in @("task_id", "task_title", "task_status")) {
+foreach ($field in @("task_id", "task_title", "task_status", "task_safety_class")) {
   if ([string]::IsNullOrWhiteSpace($taskState.$field)) {
     Fail "task-state.json field '$field' is empty. Cannot draft a restart brief without it."
   }
+}
+if ($taskState.task_safety_class -notin @("A", "B", "C", "D")) {
+  Fail "task-state.json field 'task_safety_class' must be one of A, B, C, D per docs/BRR_POLICY.md; found '$($taskState.task_safety_class)'."
 }
 
 if ($projectState.current_task_id -ne $taskState.task_id) {
@@ -107,6 +110,7 @@ Current phase: $($projectState.current_phase)
 * Task ID: $($taskState.task_id)
 * Title: $($taskState.task_title)
 * Status: $($taskState.task_status)
+* Safety Class: $($taskState.task_safety_class) (see docs/BRR_POLICY.md "Task Safety Classification")
 * Objective: $($taskState.task_objective)
 
 ## Last Verified
