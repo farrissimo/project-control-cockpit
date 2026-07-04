@@ -1488,3 +1488,25 @@ The review's "unsafe or immature" list is not softened: Class A self-accept has 
 
 Supersedes: None
 Related: DECISION-036, DECISION-044, DECISION-045, DECISION-050, DECISION-055, DECISION-059, DECISION-060, DECISION-061, docs/BRR_PLAN.md, docs/V1_Scope.md
+
+---
+
+## DECISION-063: BRR Readiness Review Reviewed And Approved (GPT); Closed Out; One Figure Corrected From Vague To Counted
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+GPT reviewed the held `pcc-brr5-001` readiness review and approved close-out: the content was judged honest and materially complete (the "unsafe or immature" list correctly names its major items without softening), and the recommendation ("keep both narrowly active") was judged sound — neither overclaiming BRR as proven nor freezing all work until every gap closes. GPT flagged one wording caution: the review's "roughly thirty cycles" figure was not verifiably counted. `pcc-brr5-001` is now closed out (`task_status: complete`, `verification_verdict: PASS`).
+
+Reason:
+
+A readiness review whose own stated purpose is honesty about evidence should not itself contain an uncounted, vague number when the actual count is trivially available from repo truth. GPT's caution, though explicitly framed as minor and non-blocking, was corrected before close-out rather than left as a known, easily-fixed imprecision — consistent with the review's own standard of citing specific evidence rather than asserting generically.
+
+Implications:
+
+`docs/BRR_PLAN.md`'s readiness review now states the actual counted figures: 26 completed BRR-phase cycles and 41 total including 15 V1 cycles that used the same core loop, both counted directly from `.cockpit/result/archive/` rather than estimated. `verification-result.json`'s summary was updated to record this correction and GPT's request for it before the task was closed out. No other content of the review was changed as a result of GPT's review — GPT found no major omitted risk and no other overstatement. `pcc-brr5-001` is archived and complete. The next-lane decision remains the owner's, per `DECISION-062`; this decision closes out the review task itself but does not make that choice.
+
+Supersedes: None
+Related: DECISION-036, DECISION-055, DECISION-059, DECISION-062, docs/BRR_PLAN.md
