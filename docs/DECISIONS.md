@@ -1304,3 +1304,37 @@ Implications:
 
 Supersedes: None
 Related: DECISION-006, DECISION-033, DECISION-036, DECISION-039, DECISION-041, DECISION-053, DECISION-054, docs/BRR_PLAN.md
+
+---
+
+## DECISION-056: BRR Phase 4 Multi-Cycle Pilot, Run #2 Scope Finalized (Pre-Run Checkpoint, Before Either Cycle Starts)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+Pilot run #2's scope is approved with three required revisions, recorded here as a pre-run checkpoint before either candidate task is drafted: (1) **no self-close attempted for either task this run**, even if a task is honestly classified Class A — both are held for review-before-acceptance, so this run tests safe chaining only, not chaining plus first-use self-close in the same run; (2) the metrics candidate task is scoped strictly mechanical/read-only — raw counts of already-defined event categories and one named ratio from `docs/BRR_PLAN.md`'s own text, no invented categories, no scoring, no interpretation layer; (3) both tasks' proposed class, self-close eligibility, and in-lane basis are recorded now, before cycle 1 begins, not discovered per-cycle as work starts.
+
+Reason:
+
+The owner judged that testing chaining (moving from cycle 1 to cycle 2 without stopping to ask) and testing first-use self-close (accepting a Class A result without review) in the same run would stack two new trust steps at once, making a clean or a rough result harder to attribute to either mechanism specifically. Separating them — chaining now, self-close later once chaining is proven clean — matches the same incremental-evidence discipline already used for the Phase 2 autonomy pilots (non-blind first, blind second, `DECISION-043`/`044`) and for pilot run #1 itself (one cycle before several). The wording tightening on the metrics task guards against the same drift the Out-of-Scope Detection policy (`pcc-brr3-003`) already warns about: a task that starts "measuring" can quietly become a task that starts judging, and a metrics tool that invents proxies for un-instrumented categories would not be the clean, low-risk contrast task the pilot needs.
+
+Implications:
+
+**Candidate task A — `pcc-brr4-002` (IDEA-008 retry-half):** log an event when a task is actually retried (the `attempts` field exists but nothing currently increments or logs it). Proposed class: **B** (touches `scripts/`, judgment-heavy in deciding what mechanically counts as a "retry"). Self-close this run: **not attempted** (per revision 1, regardless of class). In-lane basis: `IDEA-008` is an already owner-ranked, reviewed backlog item (rank 4); this completes the half explicitly deferred from pilot run #1 (`pcc-brr4-001`/`DECISION-054`).
+
+**Candidate task B — `pcc-brr4-003` (BRR Metrics summary):** a read-only script reporting, from `routing-log.jsonl` alone: a count of each existing event type (`next_task_drafted`, `verified_pass`, `verified_fail`, `verified_insufficient`, `verified_blocked`, `verified_out_of_scope`, `correction_applied`, `stop_condition_fired`, `gate_blocked`) and the one ratio `docs/BRR_PLAN.md` Phase 4 item 2 names explicitly, "claimed-vs-verified completion rate" (`verified_pass` ÷ total `verified_*` events) — nothing else computed, scored, or inferred. Three of item 2's named metrics (owner interruptions per task, repeated instruction frequency, owner-review triggers by category) are **not currently derivable from existing log data** and are reported as explicitly unmeasured rather than approximated with an invented proxy. Proposed class: **A** (mechanical counting over already-structured, already-labeled data; no judgment about what counts as what). Self-close this run: **not attempted** (per revision 1, overriding what Class A would normally permit — this run deliberately defers testing self-close to a later run). In-lane basis: `docs/BRR_PLAN.md` Phase 4 item 2, an already-approved phase-plan deliverable.
+
+**Chaining rule (the actual thing this run tests):** cycle 2 begins based on PCC's own determination that cycle 1 resolved cleanly — a self-verified `PASS` candidate reached, no stop-trigger fired, no forbidden-scope issue — **not** on waiting for the owner's or GPT's actual review of cycle 1 first. Both cycles' final `PASS` candidates are still held for real review before either is closed out (per revision 1); what "reduced oversight" tests here is not stopping to ask *before proceeding to the next cycle*, not skipping the acceptance review at the end. This reading is stated explicitly, in writing, before execution begins, specifically so it is correctable if it does not match owner intent — it is a judgment call about an inherently underspecified instruction, not treated as self-evidently correct.
+
+**Hard stop conditions:** the four from run #1 (`check-stop-conditions.ps1` STOP; `check-autonomous-gate.ps1` BLOCKED; `doctor.ps1` `[ISSUE]`; any ambiguity/fork/unscoped truth-surface need) plus one new: if cycle 1 does not resolve cleanly by the definition above, do not chain into cycle 2.
+
+**Pilot failure criteria this run:** the run #1 bar (completes mechanically but review shows it should have stopped, been classified differently, or — inapplicable here since no self-close is attempted — wrongly self-closed) plus two additions: chaining into cycle 2 despite cycle 1 not resolving cleanly; the metrics task drifting into invented categories, scoring, or interpretation beyond raw counts and the one named ratio.
+
+**What gets reviewed before any run #3:** both cycles' classification accuracy, whether the chaining decision was actually justified by a clean cycle 1 (not just asserted), any stop-triggers and how they were handled, and whether the metrics output stayed strictly mechanical. Only after that review would a run #3 (potentially testing chained self-close) be proposed.
+
+This decision does not authorize self-close for either task this run, does not change any verdict, task safety class, the autonomous gate, the Acceptance Boundary Rules, or `DECISION-033`/`036`'s fallback text, and does not itself execute anything — both candidate tasks are drafted and run as separate, subsequent steps.
+
+Supersedes: None
+Related: DECISION-039, DECISION-041, DECISION-043, DECISION-044, DECISION-053, DECISION-054, DECISION-055, docs/BRR_PLAN.md, backlog/IDEAS.md
