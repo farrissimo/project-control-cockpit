@@ -1,22 +1,23 @@
 {
-    "task_id": "pcc-v1-012",
-    "task_title": "Add safe-stop clean-rollover command",
-    "task_objective": "Create a local deterministic safe-stop command that confirms the repo is in a resumable state before ending a session: check state consistency and restart safety using existing checks, confirm canonical next_action is present and current, and print a short human-readable summary of what to read first and what to do next. It must not advance task status, write a verification verdict, or gate anything - it is a convenience wrap-up step, not enforcement.",
+    "task_id": "pcc-v1-013",
+    "task_title": "Honesty Checks: Activity Log",
+    "task_objective": "Add a local deterministic activity-log helper that appends factual, structured events to .cockpit/logs/routing-log.jsonl, so meaningful cycle events (task drafted, verified PASS/FAIL/etc., corrections applied) are recorded consistently instead of hand-typed free-form JSON prone to drift or omission (as happened this session, when several real entries were missed and had to be backfilled by hand). The helper must be strictly append-only, must validate event/result types against a small explicit set rather than accepting arbitrary free text there, and must be able to derive an entry directly from the current .cockpit/result/verification-result.json so the verifier does not have to hand-type JSON for the common case.",
     "task_status": "complete",
     "assigned_worker": "Claude Code",
     "completion_criteria": [
-        "A local deterministic safe-stop command exists that composes existing checks (state consistency and restart safety) into one readable 'safe to stop' summary.",
-        "The command surfaces the current canonical next_action from task-state.json/project-state.json without inventing new status or rewriting it.",
-        "The command does not advance task status, write verification verdicts, or gate/block anything; it is read-only aside from any explicitly-scoped derived refresh it performs.",
-        "The summary clearly tells a human what to read first and what the next action is, so a fresh session can resume cold.",
-        "The change stays within the approved V1 scope and preserves local deterministic behavior.",
+        "A local deterministic script exists that appends one well-formed JSON line per event to .cockpit/logs/routing-log.jsonl.",
+        "The script validates event/result type against a small explicit set (e.g. next_task_drafted, verified_pass, verified_fail, verified_insufficient, verified_blocked, verified_out_of_scope, correction_applied) rather than accepting arbitrary free text for that field.",
+        "The script is strictly append-only: it never rewrites, reorders, or removes any existing line in routing-log.jsonl.",
+        "The script can derive an entry directly from the current .cockpit/result/verification-result.json (task_id, verdict, summary) so a verifier does not have to hand-type the JSON for a verification event.",
+        "Recorded detail is factual (what happened) rather than open-ended narrative justification.",
+        "The change stays within the approved V1 scope, remains non-blocking, and does not gate or block any task cycle.",
         "Claude returns evidence in .cockpit/result/worker-result.md using the required format."
     ],
     "boundaries": {
         "allowed": [
-            "Update scripts/ to add the safe-stop command.",
-            "Update .cockpit runtime files only as needed for the command or its demonstration.",
-            "Update docs directly related to safe-stop, rollover, restart safety, or canonical state.",
+            "Update scripts/ to add the activity-log helper.",
+            "Update .cockpit runtime files (specifically .cockpit/logs/routing-log.jsonl) only as needed for the helper or its demonstration.",
+            "Update docs directly related to activity logging, routing-log.jsonl, or canonical state.",
             "Add or update a small demonstration step if needed."
         ],
         "forbidden": [
@@ -25,7 +26,8 @@
             "Do not introduce broad orchestration or automation.",
             "Do not change canonical project goals or verification verdicts.",
             "Do not require the owner to manually restate or carry the worker instructions.",
-            "Do not advance task_status or write a verification verdict from this command; that remains the verifier's exclusive action per DECISION-006."
+            "Do not rewrite, reorder, or delete any existing line already in routing-log.jsonl; append-only means append-only.",
+            "Do not gate, block, or fail any other script/cycle based on log contents; this is a recording tool, not an enforcement tool."
         ]
     },
     "required_evidence": [
@@ -43,6 +45,6 @@
     "verification_result_path": ".cockpit/result/verification-result.json",
     "verification_verdict": "PASS",
     "current_blocker": null,
-    "next_action": "pcc-v1-012 close-out is fully complete (state advanced, doctor/health check clean, advisor brief refreshed, cycle archived, work committed locally as 414205b and pushed). Repo is paused at a natural break. Next action: owner selects which backlog idea to promote next, then draft that task into task-state.json.",
-    "updated_at": "2026-07-03T20:00:00-06:00"
+    "next_action": "pcc-v1-013 close-out is fully complete (state advanced, doctor/health check clean, advisor brief refreshed, verification logged via log-event.ps1, cycle archived, work to be committed). Repo is paused at a natural break. Next action: owner selects which backlog idea to promote next, then draft that task into task-state.json.",
+    "updated_at": "2026-07-03T20:15:00-06:00"
 }
