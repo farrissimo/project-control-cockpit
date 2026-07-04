@@ -1578,3 +1578,25 @@ Going forward, Claude Code produces worker evidence and does not self-issue the 
 
 Supersedes: None (re-activates DECISION-012/DECISION-023's standing two-role split; ends DECISION-033's fallback per its own terms, not by amending it)
 Related: DECISION-004, DECISION-012, DECISION-018, DECISION-019, DECISION-023, DECISION-031, DECISION-032, DECISION-033, DECISION-036, DECISION-062, docs/VERIFICATION_RESULT_SPEC.md, docs/HANDOFF_PACKET_SPEC.md
+
+---
+
+## DECISION-067: Codex Verification Watcher Fielded (pcc-brr5-004); First Real Codex Invocation Since The Fallback Began
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`scripts/codex-verify-watcher.ps1` fields `DECISION-066`'s restored two-role split as a real, low-cost mechanism, per the owner's explicit constraint that Codex's weekly session budget must never be spent checking for work — only spent on real verification, at the same rate a manually-run Codex session already runs at (once per cycle). This task's own verification was performed via one real, deliberate `codex exec` invocation against the live repo — the first genuine Codex verification since the `DECISION-033` fallback began.
+
+Reason:
+
+The owner named the exact cost risk directly: naive polling that invokes Codex just to check for work would burn through a limited weekly budget fast. The design answers this structurally rather than by convention — the polling itself is a plain script reading two JSON files (free), and `codex exec` is invoked only when a lock-checked, genuinely-new verification need is detected. This task's own verification deliberately did not use the not-yet-proven watcher loop and could not use the ended `DECISION-033` self-verification fallback — a real, one-off `codex exec` call was the only correct option, which also served as the first true end-to-end proof the actual invocation (prompt, working directory, sandbox flag) works, distinct from the stub-based automated tests of the polling logic.
+
+Implications:
+
+`scripts/codex-verify-watcher.ps1` reads only `.cockpit/state/task-state.json` and `.cockpit/result/verification-result.json` on every poll (no AI call). It invokes `codex exec -C <repo> -s workspace-write <prompt>` — verified against the real, installed Codex CLI's own `--help` output, not guessed — only when `task_status` is `returned_for_verification` and the verification result's `task_id` does not yet match, and writes a lock file (`.cockpit/state/codex-watcher.lock`) before invoking, so a second poll landing before Codex responds never double-invokes it; the lock clears once the verdict lands. It supports `-Once` (single check-and-act, for testing or external scheduling) and an internal poll loop with a configurable interval. The prompt points Codex at the already-generated `advisor-restart-brief.md` for context and instructs it to independently re-run `scripts/verify-handback-guardrails.ps1` per `docs/REPO_GOVERNANCE.md` Task Process step 11, matching the existing verifier discipline exactly — no new verdict, evidence standard, or shortcut was introduced. All repeated/looped testing of the polling and lock logic used a stub `-CodexCommand` (a `.cmd`/`.ps1` pair mimicking Codex's response) so testing burned zero real Codex session usage; four scenarios were confirmed (no work → no invocation; new work → exactly one invocation; a second poll while awaiting a response → no re-invocation; the verdict landing → lock clears, no further invocation). The one real `codex exec` call — verifying this task itself — is the only real Codex usage this task consumed. `docs/REPO_GOVERNANCE.md` now names both the watcher and the restored normal-verifier expectation. The watcher is not started automatically by any other script; the owner runs or schedules it deliberately. No existing verdict, task safety class, the Acceptance Boundary Rules, or any existing script's behavior was changed.
+
+Supersedes: None
+Related: DECISION-004, DECISION-012, DECISION-018, DECISION-023, DECISION-031, DECISION-032, DECISION-033, DECISION-036, DECISION-066, docs/REPO_GOVERNANCE.md, docs/VERIFICATION_RESULT_SPEC.md, scripts/codex-verify-watcher.ps1

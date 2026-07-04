@@ -1,36 +1,37 @@
 {
-  "task_id": "pcc-brr5-003",
-  "task_title": "Safety Net: Automatic Push On Commit",
-  "task_objective": "Per explicit, direct owner instruction (not self-promoted), make push-to-remote automatic whenever a verified cycle is committed, removing the standing per-time push approval requirement (DECISION-020's push clause). Update scripts/close-out-verified-task.ps1, scripts/return-inadequate-work.ps1, and scripts/archive-held-cycle.ps1 so that, when -Commit is passed and the commit succeeds, the script also pushes the current branch to origin automatically. Record the policy change explicitly, since it supersedes a standing decision.",
+  "task_id": "pcc-brr5-004",
+  "task_title": "Fresh Start: Codex Verification Watcher",
+  "task_objective": "Field DECISION-066's restored two-role split (Claude Code worker, Codex advisor/verifier) as a real, low-cost mechanism instead of a manually-run, manually-relayed Codex session. Add scripts/codex-verify-watcher.ps1, a plain (non-AI) polling script that watches task-state.json's task_status and invokes 'codex exec' exactly once per task needing verification -- never polling Codex itself, never invoking it just to check for work, so idle time costs zero session usage and real invocations happen at the same rate as today's manual process (once per cycle), not more.",
   "task_status": "complete",
   "assigned_worker": "Claude Code",
   "task_safety_class": "B",
   "completion_criteria": [
-    "scripts/close-out-verified-task.ps1, scripts/return-inadequate-work.ps1, and scripts/archive-held-cycle.ps1 each push the current branch to origin automatically immediately after a successful -Commit, using the actual current branch name (not a hardcoded 'main'), rather than requiring a separate manual git push.",
-    "-Commit's existing behavior (git add -A; git commit) is unchanged; only a push step is appended after a successful commit.",
-    "If the push fails (e.g. network issue, remote rejects), the script reports this clearly but does not fail the whole run destructively -- the commit already succeeded locally and is not undone; the failure is surfaced so it can be retried manually.",
-    "Push is only ever attempted after -Commit is explicitly passed and the commit succeeds -- a script run without -Commit still never pushes (no auto-commit-and-push forced on a caller who only wanted to inspect/hold).",
-    "No push is ever attempted to any branch or remote other than the current branch and 'origin' -- no new remote, no force-push, no history rewriting.",
-    "A new decision is recorded in docs/DECISIONS.md explicitly superseding DECISION-020's per-time push approval clause with a standing, explicit owner authorization for automatic push on every -Commit-ed cycle, effective immediately (not time-boxed like DECISION-036's earlier exception) until the owner says otherwise.",
-    "Functionally tested (not read-through only): tested in the real repo's own git history is not required, but the push-triggering logic must be demonstrated correctly -- either via a safe scratch git repo with a real (test-only) remote, or by direct, careful reasoning plus a live dry run against the real repo's own already-pushed-and-clean state, documented honestly either way.",
-    "No change to any of the five verdicts, any Task Safety Class's meaning, the Acceptance Boundary Rules, the self-verification fallback, or any other existing script behavior beyond the push addition.",
-    "docs/HANDOFF_PACKET_SPEC.md and docs/REPO_GOVERNANCE.md's Task Process are updated to reflect that -Commit now also pushes automatically, so the workflow description stays accurate."
+    "scripts/codex-verify-watcher.ps1 exists. On each poll cycle it reads .cockpit/state/task-state.json and .cockpit/result/verification-result.json only (cheap file reads, no AI call) to decide whether there is new verification work.",
+    "The script invokes 'codex exec' (via a parameterized -CodexCommand, defaulting to the real 'codex' binary, so it can be pointed at a stub for testing) only when task_status is 'returned_for_verification' AND verification-result.json's task_id does not yet match the current task_id -- i.e., exactly once per task needing verification, never on a poll that finds no new work.",
+    "A lock file (e.g. .cockpit/state/codex-watcher.lock) records which task_id Codex has already been invoked for, preventing a second invocation for the same task while waiting for Codex's response, even if the poll interval is shorter than Codex's response time. The lock clears once verification-result.json's task_id matches again.",
+    "The script supports a configurable poll interval (e.g. -PollIntervalSeconds, a sane default) and a -Once switch that performs exactly one check-and-act cycle and exits, for testing and for use under an external scheduler instead of an internal loop.",
+    "The actual codex invocation points Codex at .cockpit/handoff/advisor-restart-brief.md for context (already generated with full current-task truth) and instructs it, per docs/VERIFICATION_RESULT_SPEC.md and docs/REPO_GOVERNANCE.md's Task Process step 11, to independently re-run scripts/verify-handback-guardrails.ps1, review the evidence, and write its verdict to .cockpit/result/verification-result.json in the required JSON shape -- and explicitly NOT to advance state or run any close-out script itself.",
+    "Functionally tested (not read-through only) in an isolated scratch copy using a stub -CodexCommand (a small script that mimics codex by writing a fixed verification-result.json) rather than the real Codex binary, so testing the polling/lock/detection logic burns zero real Codex session usage: confirmed the script does nothing when there is no new work; confirmed it invokes the stub exactly once when new work appears; confirmed it does NOT re-invoke on a second poll before the stub 'responds'; confirmed the lock clears once the verdict file updates.",
+    "Separately, this task's OWN verification is performed via one real, deliberate, manual 'codex exec' invocation against the live repo (not through the not-yet-proven watcher loop, and not self-verified, since DECISION-066 ended the self-verification fallback) -- this doubles as the first genuine end-to-end proof that the real invocation (prompt, working directory, sandbox flag) actually works, distinct from the stub-based automated tests above.",
+    "A new decision is recorded in docs/DECISIONS.md.",
+    "No change to any of the five verdicts, any Task Safety Class's meaning, the Acceptance Boundary Rules, or any existing script's behavior -- this is a new, additive script only."
   ],
   "boundaries": {
     "allowed": [
-      "Edit scripts/close-out-verified-task.ps1, scripts/return-inadequate-work.ps1, and scripts/archive-held-cycle.ps1 to add an automatic push step after a successful -Commit.",
+      "Create scripts/codex-verify-watcher.ps1.",
       "Edit docs/DECISIONS.md to record the new decision.",
-      "Edit docs/HANDOFF_PACKET_SPEC.md and docs/REPO_GOVERNANCE.md to reflect the new auto-push behavior.",
-      "Create and use a temporary, isolated scratch copy (including a scratch git repo with a local-only test remote if needed) to test the push logic without risking the real repo's remote."
+      "Edit docs/HANDOFF_PACKET_SPEC.md and/or docs/REPO_GOVERNANCE.md to describe the new watcher as an available mechanism for the Codex verification step.",
+      "Create and use a temporary, isolated scratch copy (including a stub 'codex' command) to test the watcher's polling/lock/detection logic without invoking the real Codex CLI or spending real session usage.",
+      "Run exactly one real, deliberate 'codex exec' invocation against the live repo to obtain this task's own verification verdict."
     ],
     "forbidden": [
-      "Do not modify any other script.",
+      "Do not modify any existing script.",
       "Do not modify any schema.",
-      "Do not add force-push, push to any branch other than the current one, or push to any remote other than 'origin'.",
-      "Do not make -Commit itself automatic/default in any script that doesn't already have it -- only change what happens after -Commit is explicitly passed and succeeds.",
-      "Do not touch the self-verification fallback (DECISION-033/036), the Acceptance Boundary Rules, or any Task Safety Class's core meaning.",
-      "Do not run any real push test against the live PCC repo's actual remote in a way that could push broken or unintended state -- if testing against the real repo, only do so at a point where the repo is already clean/pushed/complete, and document this honestly.",
-      "Do not self-close this task via scripts/close-out-verified-task.ps1 -- Class B, hold the self-verified result for owner/GPT review; the owner has already given direct approval for this change, but that approval covers the policy, not a self-issued final verdict on this specific implementation."
+      "Do not have the watcher invoke 'codex exec' more than once per task_id needing verification, or on any poll that finds no new work.",
+      "Do not run the watcher's automated tests against the real Codex CLI -- use a stub for all repeated/looped testing; the one real invocation permitted is the single, deliberate verification call for this task's own result.",
+      "Do not have this task self-verify under the old DECISION-033 fallback -- that fallback ended per DECISION-066; use the real Codex invocation described above instead.",
+      "Do not wire the watcher to be started automatically by any other script -- it remains something the owner starts (or schedules) deliberately.",
+      "Do not touch the Acceptance Boundary Rules, Task Safety Classification, or any existing verdict."
     ]
   },
   "required_evidence": [
@@ -50,6 +51,6 @@
   "current_blocker": null,
   "owner_decision_request": null,
   "promotion_basis": null,
-  "next_action": "Task 'pcc-brr5-003' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T12:42:22-06:00"
+  "next_action": "Task 'pcc-brr5-004' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-04T13:18:05-06:00"
 }
