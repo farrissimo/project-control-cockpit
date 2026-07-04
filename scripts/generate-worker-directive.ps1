@@ -110,6 +110,23 @@ $(Format-Bullets $odr.options)
 "@
 }
 
+# Safe Next-Task Drafting Rules (docs/BRR_POLICY.md, DECISION-038/pcc-brr2-008):
+# when a task was auto-promoted inside an approved lane, the falsifiable
+# in-lane justification travels with it and is surfaced for the reviewer.
+# Absent (null) when the owner drafted the task directly.
+$promotionBasisSection = ""
+if ($taskState.promotion_basis) {
+  $pb = $taskState.promotion_basis
+  $promotionBasisSection = @"
+
+## Auto-Promotion Basis
+
+* Approved lane: $($pb.lane)
+* Priority / plan reference: $($pb.priority_ref)
+* Justification (continuation, not a fork): $($pb.justification)
+"@
+}
+
 $directive = @"
 # Worker Directive
 
@@ -130,7 +147,7 @@ Worker
 * Task Title: $($taskState.task_title)
 * Task Status: $($taskState.task_status)
 * Task Safety Class: $($taskState.task_safety_class) (see docs/BRR_POLICY.md "Task Safety Classification")
-$ownerDecisionSection
+$ownerDecisionSection$promotionBasisSection
 ## Objective
 
 Read this directive from ``$directiveSelfPath``, complete the bounded task below, and return your result to ``$resultPath`` using the required evidence format.

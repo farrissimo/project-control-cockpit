@@ -92,6 +92,12 @@ Worker
 - Options:
 - Blocked until:
 
+## Auto-Promotion Basis (only present when PCC self-promoted the task)
+
+- Approved lane:
+- Priority / plan reference:
+- Justification (continuation, not a fork):
+
 ## Objective
 
 State the exact task objective in plain language.
@@ -165,7 +171,7 @@ If blocked, do not improvise broad changes. Return:
 
 ## Directive Generation Is a Local Deterministic Step
 
-`scripts/generate-worker-directive.ps1` drafts `.cockpit/handoff/worker-directive.md` directly from `.cockpit/state/project-state.json` and `.cockpit/state/task-state.json`, following this template. Worker-facing standing truth should come from canonical state rather than hidden script-only facts. The generator refuses to draft a directive if the two state files disagree on the active task, or if the task's objective, allowed scope, forbidden scope, completion criteria, or BRR task safety class (`docs/BRR_POLICY.md`, `docs/STATE_MODEL.md`'s `task_safety_class`) are missing or not one of `A`/`B`/`C`/`D`. When `task-state.json`'s `owner_decision_request` (`docs/STATE_MODEL.md`, `DECISION-037`) is populated, the generator renders an "Owner Decision Needed" section with the question, reason, options, and what stays blocked; the section is omitted entirely when no owner decision is pending.
+`scripts/generate-worker-directive.ps1` drafts `.cockpit/handoff/worker-directive.md` directly from `.cockpit/state/project-state.json` and `.cockpit/state/task-state.json`, following this template. Worker-facing standing truth should come from canonical state rather than hidden script-only facts. The generator refuses to draft a directive if the two state files disagree on the active task, or if the task's objective, allowed scope, forbidden scope, completion criteria, or BRR task safety class (`docs/BRR_POLICY.md`, `docs/STATE_MODEL.md`'s `task_safety_class`) are missing or not one of `A`/`B`/`C`/`D`. When `task-state.json`'s `owner_decision_request` (`docs/STATE_MODEL.md`, `DECISION-037`) is populated, the generator renders an "Owner Decision Needed" section with the question, reason, options, and what stays blocked; the section is omitted entirely when no owner decision is pending. Likewise, when `promotion_basis` (`DECISION-039`) is populated on a self-promoted task, the generator renders an "Auto-Promotion Basis" section (approved lane, priority/plan reference, in-lane justification); it is omitted for owner-drafted tasks.
 
 ---
 

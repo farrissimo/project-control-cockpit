@@ -1,31 +1,31 @@
 {
-  "task_id": "pcc-brr2-007",
-  "task_title": "BRR Execution: Owner-Decision Capture Flow",
-  "task_objective": "Field BRR Phase 2's second deliverable (docs/BRR_PLAN.md Phase 2, item 2: Owner-Decision Capture Flow) into live task state in the lightest viable way. When a task or cycle needs an owner decision (Class C per docs/BRR_POLICY.md, or an Owner Review Matrix row is hit), the repo should be able to record, structurally: what decision is needed, why it is needed, what options exist, and what remains blocked until the decision is made - instead of that living only as free-form prose in current_blocker or in chat. Keep this bounded to capturing and surfacing the request; do not build any automatic stop-trigger detection, owner-decision routing/notification, or acceptance-boundary enforcement - those remain separate, later Phase 2 deliverables (items 3-5).",
+  "task_id": "pcc-brr2-008",
+  "task_title": "BRR Execution: Safe Next-Task Drafting Rules",
+  "task_objective": "Implement BRR Phase 2's third deliverable (docs/BRR_PLAN.md Phase 2 item 3, Safe Next-Task Drafting Rules) as the canonical rule set that operationalizes DECISION-038's auto-promote-and-run target. Define, concretely and falsifiably: (1) what counts as an already-approved lane (owner-reviewed phase plan deliverables and/or owner-ranked backlog priority, not any unreviewed idea); (2) the all-must-be-true gate under which PCC may promote AND begin the next task without per-task owner approval; (3) the requirement that each auto-promotion record which approved lane, backlog priority, and phase-plan item justify it; (4) that any fork (more than one defensible next step, or any Owner Review Matrix case) is a hard trip to the Owner-Decision Capture Flow (DECISION-037), not a tie PCC breaks for itself. Bound this to the DRAFTING/PROMOTION rules only. Do NOT build automatic stop-trigger detection (item 4) or acceptance-boundary enforcement (item 5), and do NOT switch on unattended execution: those depend on items 4 and 5 existing first, per DECISION-038's safe-sequencing clause.",
   "task_status": "complete",
   "assigned_worker": "Claude Code",
   "task_safety_class": "B",
   "completion_criteria": [
-    "task-state.json (and schema) gain a structured way to record an owner-decision request: at minimum a needed/not-needed flag, the decision question, the reason it's needed, the options being weighed, and what stays blocked until the owner decides.",
-    "The structure is optional/nullable when no owner decision is pending, so ordinary tasks are unaffected.",
-    "The generated worker directive and advisor restart brief surface an active owner-decision request clearly when one is present, so a fresh worker or advisor session sees it without re-deriving it from prose.",
-    "The feature is demonstrated: an owner-decision request is populated for a real or realistic scenario (e.g. this BRR sub-thread's own next-step choice, or a synthetic example if no live one exists) and shown rendering correctly in both artifacts, then cleared/demonstrated absent for the normal case.",
-    "Truth-surface propagation is handled honestly across docs/DECISIONS.md, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, and README.md, updating only what this field actually makes stale.",
-    "No automatic stop-trigger detection, owner-decision routing/notification, or acceptance-boundary enforcement is introduced - this is capture and surfacing only.",
-    "Local validation remains healthy: touched generators, schema, and state files work cleanly with scripts/check-schemas.ps1, scripts/validate-cockpit-state.ps1, and scripts/doctor.ps1 on the actual returned-for-verification state."
+    "Canonical policy text (in docs/BRR_POLICY.md, the established home for BRR policy) defines 'approved lane' concretely enough that a reviewer can tell an auto-promotable lane from a not-yet-reviewed idea, grounded in existing repo truth (docs/BRR_PLAN.md phase deliverables and/or backlog/IDEAS.md owner-ranked priority) rather than invented anew.",
+    "The policy states the all-must-be-true gate for auto-promotion-and-start (current task complete/PASS; repo health/state clean; next task inside an approved lane; scope/purpose already sufficiently fleshed out; solves a real project problem aligned with the north star; bounded and classifiable; no new owner-level decision required; no change to project goal/architecture/authority/cost-model/safety-posture), tied explicitly to the Owner Review Matrix and Stop-Instead-of-Guess Policy rather than duplicating or contradicting them.",
+    "The policy requires every auto-promotion to record a falsifiable justification (which approved lane, which backlog priority / phase-plan item), and names where that justification is recorded, so a bad call is catchable after the fact rather than resting on PCC's word.",
+    "The policy states that any fork (more than one defensible next step, or any Owner Review Matrix case) trips the Owner-Decision Capture Flow (owner_decision_request, DECISION-037) instead of PCC choosing unilaterally.",
+    "The policy states plainly that these are drafting/promotion rules only, and that full unattended draft-and-run is not yet live because it also requires Phase 2 items 4 (Automatic Stop Triggers) and 5 (Acceptance Boundary Rules), per DECISION-038's safe-sequencing clause.",
+    "Truth-surface propagation is handled honestly across docs/DECISIONS.md, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/REPO_GOVERNANCE.md, and README.md, updating only what this rule set actually makes stale; any state/schema field added to record the auto-promotion justification is optional/nullable and leaves ordinary tasks unaffected.",
+    "Local validation remains healthy on the actual returned-for-verification state (scripts/check-schemas.ps1, scripts/validate-cockpit-state.ps1, scripts/doctor.ps1)."
   ],
   "boundaries": {
     "allowed": [
-      "Update schemas/task-state.schema.json and the live .cockpit/state/task-state.json to add and use one owner-decision-request structure.",
-      "Update scripts/generate-worker-directive.ps1 and scripts/generate-advisor-restart-brief.ps1 so an active owner-decision request appears clearly in generated handoff artifacts when present.",
-      "Update docs/DECISIONS.md, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, and README.md only as needed to propagate this cleanly.",
-      "Regenerate the live handoff artifacts and run the relevant local validation/health scripts to demonstrate the feature."
+      "Add the Safe Next-Task Drafting Rules to docs/BRR_POLICY.md and cross-reference them from docs/REPO_GOVERNANCE.md's Task Process.",
+      "Update docs/DECISIONS.md, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/REPO_GOVERNANCE.md, and README.md only as needed to propagate the rules cleanly.",
+      "If needed to make the auto-promotion justification falsifiable, add one optional/nullable structured field to schemas/task-state.schema.json and the generators, following the pattern of task_safety_class and owner_decision_request; keep it capture-only.",
+      "Regenerate the live handoff artifacts and run the relevant local validation/health scripts to demonstrate the change."
     ],
     "forbidden": [
-      "Do not implement automatic stop-trigger detection (docs/BRR_PLAN.md Phase 2 item 4) - that is a separate later task.",
-      "Do not implement safe next-task drafting rules or acceptance-boundary enforcement (Phase 2 items 3 and 5) - those are separate later tasks.",
-      "Do not add any notification, routing, or automated escalation mechanism beyond making the request structurally visible in state and handoff artifacts.",
-      "Do not change the five verification verdicts, task safety classes, or BRR Phase 1 policy content unless a direct contradiction is found.",
+      "Do not build automatic stop-trigger detection (Phase 2 item 4) or acceptance-boundary enforcement (Phase 2 item 5) - those are separate later tasks.",
+      "Do not switch on unattended execution or auto-run any task; this deliverable defines when promotion is allowed, it does not enable running-without-review yet (DECISION-038 safe-sequencing).",
+      "Do not change the five verification verdicts, task safety classes, or BRR Phase 1 policy meaning unless a direct contradiction is found (the Owner Review Matrix and Stop-Instead-of-Guess Policy are referenced, not rewritten).",
+      "Do not weaken any existing stop condition; auto-promotion is additive within already-approved lanes, it must not shrink what stops for the owner.",
       "Do not rewrite archived history or retrofit old archived tasks.",
       "Do not require the owner to manually restate BRR policy already recorded canonically."
     ]
@@ -46,6 +46,7 @@
   "verification_verdict": "PASS",
   "current_blocker": null,
   "owner_decision_request": null,
-  "next_action": "Task 'pcc-brr2-007' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T00:45:35-06:00"
+  "promotion_basis": null,
+  "next_action": "Task 'pcc-brr2-008' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-04T01:14:22-06:00"
 }

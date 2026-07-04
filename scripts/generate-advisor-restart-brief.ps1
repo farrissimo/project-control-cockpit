@@ -113,6 +113,22 @@ $(Format-Bullets $odr.options)
 "@
 }
 
+# Auto-promotion basis (docs/BRR_POLICY.md "Safe Next-Task Drafting Rules",
+# DECISION-038): surfaced so a fresh advisor/verifier can check the in-lane
+# justification for a self-promoted task. Null when owner-drafted.
+$promotionBasisSection = ""
+if ($taskState.promotion_basis) {
+  $pb = $taskState.promotion_basis
+  $promotionBasisSection = @"
+
+## Auto-Promotion Basis
+
+* Approved lane: $($pb.lane)
+* Priority / plan reference: $($pb.priority_ref)
+* Justification (continuation, not a fork): $($pb.justification)
+"@
+}
+
 $brief = @"
 # Advisor Restart Brief
 
@@ -131,7 +147,7 @@ Current phase: $($projectState.current_phase)
 * Status: $($taskState.task_status)
 * Safety Class: $($taskState.task_safety_class) (see docs/BRR_POLICY.md "Task Safety Classification")
 * Objective: $($taskState.task_objective)
-$ownerDecisionSection
+$ownerDecisionSection$promotionBasisSection
 ## Last Verified
 
 * Verdict: $($verification.verdict) for task '$($verification.task_id)', verified at $verifiedAt

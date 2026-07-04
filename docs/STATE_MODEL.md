@@ -172,10 +172,24 @@ Required fields:
   "verification_verdict": null,
   "current_blocker": null,
   "owner_decision_request": null,
+  "promotion_basis": null,
   "next_action": null,
   "updated_at": null
 }
 ```
+
+### promotion_basis
+
+The falsifiable record behind an auto-promoted task, per BRR Phase 2's "Safe
+Next-Task Drafting Rules" (`docs/BRR_POLICY.md`, `DECISION-038`/`DECISION-039`):
+`null` when the owner drafted the task directly, or an object with `lane`
+(which already-approved lane), `priority_ref` (which backlog priority or
+phase-plan item), and `justification` (a one-line statement that this is
+in-lane continuation, not a fork). When PCC self-promotes the next task inside
+an already-approved lane, it must populate this so the verifier can check the
+call after the fact rather than trusting PCC's word. It is capture/record only
+— it triggers no automatic behavior, and its presence does not by itself mean
+unattended execution is enabled (that also requires Phase 2 items 4 and 5).
 
 ### owner_decision_request
 

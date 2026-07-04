@@ -894,3 +894,53 @@ Implications:
 
 Supersedes: None
 Related: DECISION-025, DECISION-028, DECISION-033, DECISION-036, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, schemas/task-state.schema.json
+
+---
+
+## DECISION-038: Auto-Promote-And-Run Within Already-Approved Lanes Is The Target Operating Model
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+PCC's target operating model is draft-and-run within already-approved lanes. When the next task changes no project direction and sits inside a lane the owner has already reviewed and approved, PCC may promote it to an active task **and begin work on it** without a fresh per-task owner approval. Owner approval is required for direction changes, not for repetitive continuation inside an approved, bounded, repo-truth-aligned lane. Requiring per-task approval for obvious in-lane continuation would preserve exactly the babysitting bottleneck BRR exists to remove.
+
+Reason:
+
+The owner's position: ideas that reach an approved lane have already been thoroughly reviewed with the owner, and that review *is* the approval to auto-promote them to a task and begin work. Making the owner re-approve each mechanical next step keeps PCC dependent on the owner as scheduler/PM/traffic-cop, which is the repetitive burden PCC is meant to remove. Automation should be earned: PCC leans toward automation only when sufficient prior review already justifies it — a lane becomes auto-promotable because its scope and priority were reviewed, not by default.
+
+Implications:
+
+**What "approved lane" means.** A lane is auto-promotable only when its scope and priority were already reviewed with the owner — e.g. an owner-approved BRR phase plan and its listed deliverables (`docs/BRR_PLAN.md`), or an owner-ranked backlog priority (`backlog/IDEAS.md`). A brand-new, unreviewed idea is not an approved lane and is not auto-promotable until reviewed. The precise, checkable definition is `pcc-brr2-008`'s job to pin down.
+
+**What still stops for the owner (unchanged).** PCC must still stop — via the Owner-Decision Capture Flow (`DECISION-037`) — for every Owner Review Matrix case (`docs/BRR_POLICY.md`, `pcc-brr1-001`): project-goal or direction change, architecture/major-design change, a new capability not already approved, choosing among more than one defensible strategic path, truth-surface/verification-authority/governance changes, new paid APIs, destructive/irreversible actions, secrets/data-risk, remote pushes (except where separately authorized, e.g. `DECISION-036`), proceeding despite unresolved uncertainty, and continuing past failure/retry boundaries. "More than one defensible next step" is a hard trip to the capture flow, not a tie PCC breaks for itself. Every auto-promotion must record which approved lane, backlog priority, and phase-plan item justify it, so the call is falsifiable after the fact rather than a matter of PCC's word.
+
+**Safe sequencing — this sets the target, not an immediate switch.** The capability is delivered across the three remaining BRR Phase 2 deliverables in the plan's own order: item 3 Safe Next-Task Drafting Rules (`pcc-brr2-008`, when PCC may promote), item 4 Automatic Stop Triggers (when it must halt instead), item 5 Acceptance Boundary Rules (what it may self-accept vs. must leave for review). Full unattended draft-and-run becomes live only once all three are built and verified, because safe unattended running depends on the stop-trigger and acceptance-boundary guarantees existing, not just the drafting rules. This decision does not switch on unattended execution before that machinery exists.
+
+**Authority note.** Granting this autonomy is itself an owner-level, safety-posture/authority change — exactly an Owner Review Matrix "before execution" (Class C) case. It is made here by the owner directly. The tasks that implement it (`pcc-brr2-008` onward) are Class B: safe to execute unattended, but their results are reviewed before acceptance, per the current `DECISION-033`/`DECISION-036` fallback.
+
+Supersedes: None
+Related: DECISION-001, DECISION-021, DECISION-033, DECISION-036, DECISION-037, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/REPO_GOVERNANCE.md, backlog/IDEAS.md
+
+---
+
+## DECISION-039: Safe Next-Task Drafting Rules Recorded (pcc-brr2-008)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+BRR Phase 2's third deliverable (`docs/BRR_PLAN.md` Phase 2 item 3, "Safe Next-Task Drafting Rules") is recorded canonically in `docs/BRR_POLICY.md`, operationalizing `DECISION-038`'s auto-promote-and-run target. It defines what counts as an already-approved lane, the all-must-be-true gate under which PCC may draft and promote the next task without per-task owner approval, the requirement to record a falsifiable in-lane justification, and that any fork stops for the owner instead.
+
+Reason:
+
+`DECISION-038` set the direction (approval is for direction changes, not routine in-lane continuation) but deliberately left the concrete, checkable rules to a bounded implementing task. This is that task. Recording the rules in `docs/BRR_POLICY.md` keeps them with the rest of the BRR policy foundation rather than scattering governance across docs.
+
+Implications:
+
+`docs/BRR_POLICY.md` gains a "Safe Next-Task Drafting Rules" section with: a concrete "approved lane" definition grounded in existing repo truth (owner-approved phase-plan deliverables in `docs/BRR_PLAN.md`, owner-ranked backlog priority in `backlog/IDEAS.md`) and explicitly excluding unreviewed ideas; an eight-part all-must-be-true auto-promotion gate tied to the Owner Review Matrix and Stop-Instead-of-Guess Policy rather than duplicating them; a hard-stop rule that any fork (more than one defensible next step, or any Owner Review Matrix case) trips the Owner-Decision Capture Flow (`DECISION-037`); and an explicit statement that these are drafting/promotion rules only. `schemas/task-state.schema.json` gains an optional/nullable `promotion_basis` field (`lane`, `priority_ref`, `justification`), rendered in both generated handoff artifacts when populated, so every self-promotion carries a falsifiable in-lane justification the verifier can check; it is `null` for owner-drafted tasks (including this one). `docs/STATE_MODEL.md`, `docs/HANDOFF_PACKET_SPEC.md`, `docs/REPO_GOVERNANCE.md` (a new Task Process step 0 on who selects a task, plus step 7), and `README.md` are updated to match. No automatic stop-trigger detection (item 4), acceptance-boundary enforcement (item 5), or unattended execution was introduced; per `DECISION-038`'s safe-sequencing clause, full unattended draft-and-run switches on only once items 4 and 5 are also built and verified. No existing stop condition was weakened — auto-promotion is additive within already-approved lanes only.
+
+Supersedes: None
+Related: DECISION-038, DECISION-037, DECISION-028, DECISION-022, docs/BRR_POLICY.md, docs/BRR_PLAN.md, docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, schemas/task-state.schema.json, backlog/IDEAS.md

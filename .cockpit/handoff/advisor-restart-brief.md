@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-04T00:45:40-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T01:14:26-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,23 +10,23 @@ Current phase: brr-phase-2
 
 ## Active Task
 
-* Task ID: pcc-brr2-007
-* Title: BRR Execution: Owner-Decision Capture Flow
+* Task ID: pcc-brr2-008
+* Title: BRR Execution: Safe Next-Task Drafting Rules
 * Status: complete
 * Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Field BRR Phase 2's second deliverable (docs/BRR_PLAN.md Phase 2, item 2: Owner-Decision Capture Flow) into live task state in the lightest viable way. When a task or cycle needs an owner decision (Class C per docs/BRR_POLICY.md, or an Owner Review Matrix row is hit), the repo should be able to record, structurally: what decision is needed, why it is needed, what options exist, and what remains blocked until the decision is made - instead of that living only as free-form prose in current_blocker or in chat. Keep this bounded to capturing and surfacing the request; do not build any automatic stop-trigger detection, owner-decision routing/notification, or acceptance-boundary enforcement - those remain separate, later Phase 2 deliverables (items 3-5).
+* Objective: Implement BRR Phase 2's third deliverable (docs/BRR_PLAN.md Phase 2 item 3, Safe Next-Task Drafting Rules) as the canonical rule set that operationalizes DECISION-038's auto-promote-and-run target. Define, concretely and falsifiably: (1) what counts as an already-approved lane (owner-reviewed phase plan deliverables and/or owner-ranked backlog priority, not any unreviewed idea); (2) the all-must-be-true gate under which PCC may promote AND begin the next task without per-task owner approval; (3) the requirement that each auto-promotion record which approved lane, backlog priority, and phase-plan item justify it; (4) that any fork (more than one defensible next step, or any Owner Review Matrix case) is a hard trip to the Owner-Decision Capture Flow (DECISION-037), not a tie PCC breaks for itself. Bound this to the DRAFTING/PROMOTION rules only. Do NOT build automatic stop-trigger detection (item 4) or acceptance-boundary enforcement (item 5), and do NOT switch on unattended execution: those depend on items 4 and 5 existing first, per DECISION-038's safe-sequencing clause.
 
 ## Last Verified
 
-* Verdict: PASS for task 'pcc-brr2-007', verified at 2026-07-04T00:46:00-06:00
-* Summary: Independently re-ran scripts/verify-handback-guardrails.ps1 against the actual returned-for-verification state (clean; one expected, non-fatal WARN about the handoff gate referencing the prior task). Verified via git status that only the claimed files changed - no BRR_PLAN.md edit (correctly, matching established precedent that it carries no per-item completion annotations), no unrelated scripts or schemas touched. Independently reviewed the schema addition, both generator changes, and all five touched docs, confirming the owner_decision_request field's null/populated behavior, its distinction from current_blocker, and consistent propagation across all touched truth surfaces. All completion criteria met.
-* Last verified handoff: .cockpit/handoff/archive/pcc-brr2-007-worker-directive.md
+* Verdict: PASS for task 'pcc-brr2-008', verified at 2026-07-04T01:15:00-06:00
+* Summary: Reviewed the Safe Next-Task Drafting Rules against the task's completion criteria and DECISION-038's intent, reading the actual docs/BRR_POLICY.md and schema diffs rather than relying on the worker narrative. The rules define an approved lane concretely (grounded in BRR_PLAN deliverables and IDEAS.md priority, excluding unreviewed ideas), state the eight-part gate tied to (not duplicating) the Owner Review Matrix and Stop-Instead-of-Guess Policy, require a falsifiable promotion_basis (schema-enforced, verified to reject a missing nested field after a corrected test), route forks to the Owner-Decision Capture Flow, and explicitly gate unattended execution behind items 4-5. git diff confirms all 14 changed files are within allowed scope with no unexpected scripts and no weakened stop conditions. Independent guardrails (validate-cockpit-state, check-schemas, doctor) are clean on the returned state. All completion criteria met.
+* Last verified handoff: .cockpit/handoff/archive/pcc-brr2-008-worker-directive.md
 
 ## Open Issues
 
-* Risk from last verification of 'pcc-brr2-007': Self-verified under DECISION-033 degraded fallback (Codex unavailable). No independent second-party (Codex) review occurred. GPT secondary review: not performed this cycle (not yet pushed at time of verification).
-* Risk from last verification of 'pcc-brr2-007': The demonstration used a disposable scratch copy with a synthetic (though genuinely open) owner-decision example, not a live-populated one, since this task's own drafting had no ambiguity requiring a real owner-decision request. This is disclosed directly in the worker evidence rather than hidden.
-* Risk from last verification of 'pcc-brr2-007': owner_decision_request and current_blocker can be populated independently with no cross-validation between them; a future cycle could set them inconsistently without any check catching it.
+* Risk from last verification of 'pcc-brr2-008': Self-verified under DECISION-033 degraded fallback (Codex unavailable). No independent second-party (Codex) review occurred. GPT secondary review: not performed at time of verification (pushed immediately after for GPT's remote review). This cycle concentrates all three roles in Claude Code - it drafted the task (advisor), built it (worker), and verified it (verifier) - on the highest-stakes governance content in this phase (an authority/autonomy grant). GPT secondary review is more strongly warranted here than on a routine task; flagged explicitly.
+* Risk from last verification of 'pcc-brr2-008': The auto-promotion gate is a rule set, not yet mechanically enforced by any script - a bad self-promotion is caught by the verifier and the promotion_basis audit trail after the fact, not blocked automatically. This is intentional per DECISION-038's sequencing (enforcement is Phase 2 item 4), but means the safety currently rests on judgment + auditability, not a hard gate.
+* Risk from last verification of 'pcc-brr2-008': promotion_basis records a justification but nothing cross-checks its truth; the verifier must actually check the cited lane/priority is real, not just that the field is populated.
 
 ## Read First
 
@@ -40,5 +40,5 @@ Current phase: brr-phase-2
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-brr2-007' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-brr2-007' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Task-level: Task 'pcc-brr2-008' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Project-level: Task 'pcc-brr2-008' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.

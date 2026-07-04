@@ -21,6 +21,7 @@
     "verification_verdict",
     "current_blocker",
     "owner_decision_request",
+    "promotion_basis",
     "next_action",
     "updated_at"
   ],
@@ -136,6 +137,22 @@
           }
         },
         "blocked_until": {
+          "type": "string"
+        }
+      }
+    },
+    "promotion_basis": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["lane", "priority_ref", "justification"],
+      "properties": {
+        "lane": {
+          "type": "string"
+        },
+        "priority_ref": {
+          "type": "string"
+        },
+        "justification": {
           "type": "string"
         }
       }

@@ -237,9 +237,89 @@ here.
 ### Notes on scope
 
 * This section defines terms only. It does not implement an escalation
-  mechanism, a way to record or track owner decisions, or any Phase 2 fielding
-  — those remain future work per `docs/BRR_PLAN.md` Section 5, Phase 2
-  "Owner-Decision Capture Flow."
-* With this section, `docs/BRR_POLICY.md` now contains all four BRR Phase 1
-  policy deliverables named in `docs/BRR_PLAN.md`. Applying any of them in
-  live task flow is Phase 2, not yet started.
+  mechanism or Phase 1 fielding — the Owner-Decision Capture Flow that gives
+  "owner decision" a live home was fielded later in Phase 2 (`DECISION-037`).
+* With this section, `docs/BRR_POLICY.md` contains all four BRR Phase 1 policy
+  deliverables named in `docs/BRR_PLAN.md`. Phase 2 (applying them in live
+  task flow) is underway; its own additions to this document follow below.
+
+---
+
+## Safe Next-Task Drafting Rules
+
+This is BRR Phase 2's third deliverable (`docs/BRR_PLAN.md` Phase 2 item 3),
+implementing `DECISION-038`'s operating principle: **owner approval is for
+direction changes, not for routine continuation inside an already-approved
+lane.** These rules define *when PCC may draft and promote the next task on
+its own.* They do not, by themselves, switch on unattended execution — see
+"What these rules do not yet enable" below.
+
+### What counts as an already-approved lane
+
+A lane is a stretch of work whose *scope and priority the owner has already
+reviewed*. Auto-promotion is allowed only inside such a lane. Concretely, an
+approved lane is one of:
+
+* the deliverables of an owner-approved phase plan — e.g. the numbered
+  deliverables of a BRR phase in `docs/BRR_PLAN.md` (`DECISION-022`,
+  `DECISION-028`); or
+* an owner-ranked backlog priority in `backlog/IDEAS.md` (its "Priority
+  Ranking" reflects an explicit owner review).
+
+A brand-new idea that has *not* been through that review is **not** an approved
+lane and is not auto-promotable until the owner reviews it. Automation is
+earned by that prior review, not assumed (`DECISION-038`).
+
+### The auto-promotion gate (all must be true)
+
+PCC may draft and promote the next task without a fresh per-task owner
+approval only when **all** of the following hold:
+
+1. the current task is `complete` / verified `PASS`;
+2. repo health and state checks are clean (`scripts/doctor.ps1`,
+   `scripts/validate-cockpit-state.ps1`, `scripts/check-schemas.ps1`);
+3. the next task is inside an already-approved lane (above);
+4. its purpose and scope are already sufficiently fleshed out (bounded
+   objective, allowed/forbidden scope, completion criteria all derivable
+   without new owner intent);
+5. it solves a real project problem aligned with PCC's north star (reduce
+   owner babysitting);
+6. it is bounded and classifiable under Task Safety Classification;
+7. no new owner-level decision is required (no Owner Review Matrix "before
+   execution" case applies);
+8. it changes no project goal, architecture, authority model, cost model, or
+   safety posture.
+
+If any condition fails, PCC does not self-promote; it stops and surfaces the
+situation through the Owner-Decision Capture Flow (`owner_decision_request`,
+`DECISION-037`) instead.
+
+### Forks are a hard stop, not a tie PCC breaks
+
+"More than one defensible next step" is an Owner Review Matrix row 3 case
+(Class C) and trips the Owner-Decision Capture Flow — PCC must **not** pick
+among genuine strategic alternatives for itself. This rule is additive within
+already-approved lanes only; it does not weaken or shrink any existing stop
+condition in the Owner Review Matrix or Stop-Instead-of-Guess Policy.
+
+### Every auto-promotion must be falsifiable
+
+When PCC self-promotes a task, it must record *why the promotion was in-lane*,
+in the task's `promotion_basis` field (`docs/STATE_MODEL.md`): which approved
+lane, which backlog-priority or phase-plan item, and a one-line justification
+that it is continuation rather than a fork. This field travels with the task
+and is archived with it, so a wrong call is catchable after the fact by the
+verifier rather than resting on PCC's word. A task the owner drafted directly
+leaves `promotion_basis` null (no self-promotion to justify).
+
+### What these rules do not yet enable
+
+These are drafting/promotion rules only. Full unattended draft-and-run — where
+PCC promotes *and executes* the next task and walks a bounded sequence without
+the owner — is **not** live on these rules alone. It also requires Phase 2
+item 4 (Automatic Stop Triggers: making the halts here fire automatically) and
+item 5 (Acceptance Boundary Rules: what a class may self-accept vs. must leave
+for review). Per `DECISION-038`'s safe-sequencing clause, unattended execution
+switches on only once items 4 and 5 are also built and verified, because safe
+unattended running depends on those guarantees existing, not just on knowing
+when a promotion is allowed.

@@ -179,13 +179,14 @@ An idea does not become a task until it is promoted into live state.
 
 Standard task workflow:
 
+0. **Decide who selects this task.** For the owner-directed default, the owner (or advisor on the owner's behalf) selects it. PCC may *self-select and promote* the next task without a fresh per-task approval only when it is inside an already-approved lane and passes the full auto-promotion gate in `docs/BRR_POLICY.md`'s "Safe Next-Task Drafting Rules" (`DECISION-038`/`DECISION-039`); in that case the task must carry a populated `promotion_basis` (step 7). Any fork or Owner Review Matrix case stops for the owner via `owner_decision_request` instead. (Self-promotion is drafting-only for now; unattended execution awaits Phase 2 items 4-5.)
 1. Confirm the idea or request is worth execution.
 2. Define a bounded objective.
 3. Define allowed scope and forbidden scope.
 4. Define required evidence.
 5. Assign the task's BRR task safety class (`A`/`B`/`C`/`D`) per `docs/BRR_POLICY.md`'s "Task Safety Classification," justified by the Owner Review Matrix rather than invented ad hoc (`DECISION-028`).
 6. Define next action.
-7. Write the task into `.cockpit/state/task-state.json`, including the assigned `task_safety_class` and, if a Class C case or other owner-only decision applies, a populated `owner_decision_request` (`docs/STATE_MODEL.md`, `DECISION-037`) rather than leaving it as free-form `current_blocker` prose.
+7. Write the task into `.cockpit/state/task-state.json`, including the assigned `task_safety_class`; if a Class C case or other owner-only decision applies, a populated `owner_decision_request` (`docs/STATE_MODEL.md`, `DECISION-037`) rather than free-form `current_blocker` prose; and, if PCC self-promoted this task per step 0, a populated `promotion_basis` (`DECISION-039`) recording the in-lane justification.
 8. Generate the worker directive.
 9. Run the worker.
 10. Worker hands back evidence via `scripts/finalize-worker-handback.ps1` (`docs/HANDOFF_PACKET_SPEC.md`), which performs the returned-for-verification state update, artifact regeneration, and health checks in the correct fixed order.
