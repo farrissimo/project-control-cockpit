@@ -1422,3 +1422,25 @@ No verdict, task safety class, the autonomous gate, the Acceptance Boundary Rule
 
 Supersedes: None
 Related: DECISION-006, DECISION-033, DECISION-036, DECISION-039, DECISION-041, DECISION-054, DECISION-055, DECISION-056, DECISION-057, DECISION-058, docs/BRR_PLAN.md
+
+---
+
+## DECISION-060: Semi-Autonomy Ceiling Recorded (pcc-brr4-004)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+BRR Phase 4's fourth deliverable (`docs/BRR_PLAN.md` Phase 4 item 4, "Semi-Autonomy Ceiling") is recorded in `docs/BRR_POLICY.md`: an explicit, per-class statement of what PCC may do unattended, consolidating Task Safety Classification, the Acceptance Boundary Rules, and the Safe Next-Task Drafting Rules into one place, plus one new discipline closing the gap `DECISION-059` found during pilot run #2 (archive a cycle's evidence before chaining into the next one, rather than relying on git history being reconstructable after the fact). Owner-directed this cycle, following the owner's own prioritization of this item over completing the fuller BRR Metrics deliverable or building a formal Failure Review Loop, both left deferred.
+
+Reason:
+
+`docs/BRR_PLAN.md` Phase 4's own exit criteria require "the unattended ceiling is explicit and trusted" — that has existed only implicitly, through how the session actually behaved, not as a document a reader could check directly. Phase 5's own first deliverable ("list of what PCC can safely do unattended") depends on this ceiling existing first; recording it now is what makes that Phase 5 step possible rather than something to reconstruct from session history at that point.
+
+Implications:
+
+`docs/BRR_POLICY.md` gains a "Semi-Autonomy Ceiling" section: Class A may be drafted, executed, and self-accepted only when the stop-check is CLEAR and the autonomous gate's `self_accept` action reports `PROCEED` — stated honestly as policy-supported but **not yet exercised in practice**, since both pilot runs deliberately held Class A work for review rather than testing self-accept; Class B may execute unattended but must never be self-accepted (repeatedly demonstrated this session); Class C must never execute without prior explicit owner approval, no exceptions; Class D must never proceed. The new archive-before-chaining rule is recorded as policy only — no script was built or modified to enforce it, consistent with every other BRR policy section's precedent of definition before fielding. The chaining ceiling is stated as exactly what has been piloted (two cycles, `pcc-brr4-002` → `pcc-brr4-003`), explicitly not extrapolated higher. Self-promotion and remote-push rules are reaffirmed, not changed. This decision does not mark BRR Phase 4 complete; the fuller BRR Metrics deliverable (item 2, partially delivered by `pcc-brr4-003`) and the Failure Review Loop (item 3) remain open, deferred by explicit owner choice this session, not overlooked. No verdict, task safety class, the autonomous gate's own decision logic, or `DECISION-033`/`DECISION-036`'s fallback text was changed.
+
+Supersedes: None
+Related: DECISION-038, DECISION-039, DECISION-041, DECISION-042, DECISION-054, DECISION-055, DECISION-056, DECISION-059, docs/BRR_PLAN.md, docs/BRR_POLICY.md

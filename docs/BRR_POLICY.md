@@ -953,3 +953,99 @@ This restates, for visibility, the mapping the Stop-Instead-of-Guess Policy
   `docs/VERIFICATION_RESULT_SPEC.md`, the Stop-Instead-of-Guess Policy, the
   Acceptance Boundary Rules, and `DECISION-033`/`DECISION-036` while
   drafting — no contradiction was found.
+
+---
+
+## Semi-Autonomy Ceiling
+
+This is BRR Phase 4's fourth deliverable (`docs/BRR_PLAN.md` Phase 4 item 4,
+`pcc-brr4-004`). It grants **no new authority** and loosens **nothing** in
+Task Safety Classification, the Acceptance Boundary Rules, or the Safe
+Next-Task Drafting Rules above. It consolidates what those sections already
+established into one plain statement a reader can check without re-deriving
+it from four documents, and it adds exactly one new discipline: closing the
+gap `DECISION-059` found the first time it actually mattered.
+
+### What PCC may do unattended, per class
+
+* **Class A** — may be drafted, executed, and **self-accepted**, but only
+  when both `scripts/check-stop-conditions.ps1` reports CLEAR and
+  `scripts/check-autonomous-gate.ps1 -Action self_accept` reports `PROCEED`
+  (Acceptance Boundary Rules, above). This is what the policy already
+  supports — it has **not yet been exercised in practice**: both Multi-Cycle
+  Pilot runs (`pcc-brr4-001`, `pcc-brr4-002`/`pcc-brr4-003`) deliberately held
+  even honestly-classified Class A work for review rather than testing
+  self-accept, per the owner's own pilot-design revisions
+  (`DECISION-056`). Stating policy support without practice is not the same
+  as declaring it proven — the distinction is deliberate, not an oversight.
+* **Class B** — may be drafted and executed unattended, but must **never**
+  be self-accepted; it always requires independent review (owner or GPT) or
+  an explicit owner override before advancing to `complete`. This **has**
+  been repeatedly and successfully demonstrated this session — every BRR
+  Phase 3 policy task and every pilot cycle to date.
+* **Class C** — must **never** execute at all without prior explicit owner
+  approval (Owner Review Matrix rows 1–8). No exception exists on this
+  ceiling for any reason, including a clean stop-check or an approved lane.
+* **Class D** — must **never** proceed. Owner approval alone does not
+  unblock it; the task, its evidence, or its approach must change first
+  (Task Safety Classification, above).
+
+### The one new rule: archive before you chain
+
+`DECISION-059` found a real gap during pilot run #2: chaining from one
+unattended cycle into the next (permitted since `DECISION-038`'s
+auto-promote-and-run target) overwrote the first cycle's live task files
+before they were archived, because nothing required archiving a cycle's
+evidence *before* starting the next one — only committing state changes to
+git, which is not the same guarantee. Recovery was possible only because
+every intermediate commit happened to exist and had been pushed; that is
+a fact to be grateful for, not a property to rely on again.
+
+**New ceiling rule:** before drafting or executing a next unattended cycle,
+the current cycle's worker directive, worker result, and verification
+result must be archived first (`scripts/close-out-verified-task.ps1` for a
+`PASS` being accepted now, or `scripts/return-inadequate-work.ps1` for a
+non-`PASS`) — or, if the cycle is being held for later review rather than
+closed immediately (as both pilot runs did), the live files must be
+preserved by some other durable means before they are overwritten, not left
+to depend on git history being reconstructable after the fact. This is
+recorded as policy here; building a script that enforces it automatically is
+not required by this task and remains future fielding work, consistent with
+how every other BRR policy section in this document was defined before being
+fielded.
+
+### The chaining ceiling is exactly as high as what has been piloted
+
+Only **two** chained cycles have actually been run and reviewed (pilot run
+#2, `pcc-brr4-002` → `pcc-brr4-003`). This ceiling does not assume a longer
+unattended chain is safe by extrapolation — a chain longer than two cycles
+is new evidence to gather via a future pilot proposal (per the
+owner-confirmed pattern, `DECISION-055`), not something this policy
+pre-authorizes.
+
+### What this ceiling does not change
+
+* **Self-promotion** (choosing the next task without being told) remains
+  governed entirely by the Safe Next-Task Drafting Rules' existing
+  eight-part gate, above. This section does not redefine or shortcut it.
+* **Pushing to any remote** always requires a fresh, explicit owner
+  instruction, regardless of task safety class or pilot status
+  (`DECISION-020`). No class or pilot run on this ceiling authorizes an
+  automatic push; that has been true throughout this session and is
+  reaffirmed, not changed, here.
+* No existing verdict, the autonomous gate's own decision logic, or
+  `DECISION-033`/`DECISION-036`'s fallback text is altered by this section.
+
+### Notes on scope
+
+* This section is a consolidation plus one new discipline (archive before
+  chaining); it does not implement enforcement for that discipline, does not
+  change any script, and does not mark BRR Phase 4 complete.
+* This section does not build the Failure Review Loop (Phase 4 item 3) or
+  complete the full BRR Metrics deliverable (Phase 4 item 2, partially
+  delivered by `pcc-brr4-003`) — both remain separate, deferred items per the
+  owner's own prioritization this session.
+* No existing verdict, task safety class, Owner Review Matrix row, or stop
+  condition is redefined or weakened. Cross-checked against Task Safety
+  Classification, the Acceptance Boundary Rules, the Safe Next-Task Drafting
+  Rules, and `DECISION-059` while drafting — no contradiction was found.

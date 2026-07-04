@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-brr4-004
 * Task Title: BRR Policy: Semi-Autonomy Ceiling
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Objective
