@@ -13,8 +13,8 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-brr2-002
-* Task Title: BRR Execution: Deterministic Worker Handback
+* Task ID: pcc-brr2-003
+* Task Title: BRR Verification: Deterministic Verifier Guardrails
 * Task Status: ready_for_worker
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
@@ -36,37 +36,37 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-Reduce the sequencing gap surfaced during pcc-brr2-001 by giving the worker one deterministic local path for final handback ordering. Build the lightest viable worker-side helper or equivalent repo-native mechanism that performs the final returned-for-verification state update, regenerates the live handoff artifacts afterward, and runs the required local health checks last against that actual final state, so the worker is following a concrete repo workflow rather than relying on memory about what order to do those steps in.
+Operationalize verifier-side independent guardrails in the same concrete way pcc-brr2-002 operationalized worker handback. Build the lightest viable verifier-side helper or equivalent repo-native mechanism that runs the applicable independent local checks against the actual handed-back state before a verdict is issued, so verifier guardrails are a repeatable repo path rather than a memory-based checklist. Keep it bounded to normal verifier-side health checks and close review of applicability, without redesigning verdicts, worker flow, or broader BRR policy.
 
 ## Allowed Scope
 
 The worker may:
 
-* Add or update a narrowly scoped local script or equivalent repo-native helper for the worker's final handback sequence.
-* Update worker-facing docs or generator output only as needed to make the final handback sequence explicit and durable.
-* Adjust the live handoff artifacts, task state, and closely related docs/scripts needed to demonstrate the new handback path.
-* Run the relevant local validation and health scripts to prove the resulting sequence works on the active task flow.
+* Add or update a narrowly scoped local script or equivalent repo-native helper for verifier-side independent guardrails before verdict.
+* Update verifier-facing workflow docs or closely related repo-truth surfaces only as needed to make that verifier path explicit and durable.
+* Adjust live handoff or state artifacts only insofar as the active task flow needs to demonstrate the new verifier path honestly.
+* Run the relevant local checks to prove the verifier-side path works on the active task flow.
 
 ## Forbidden Scope
 
 The worker must not:
 
-* Do not redesign doctor.ps1 into a broad gate for unrelated workflows.
-* Do not change the five verification verdicts, task safety classes, or BRR Phase 1 policy content unless a direct contradiction is found.
-* Do not broaden into owner-decision capture flow, automatic stop-trigger detection, or autonomous next-task drafting.
+* Do not redesign doctor.ps1, check-schemas.ps1, or validate-cockpit-state.ps1 into broad gates for unrelated workflows.
+* Do not change the five verification verdicts, task safety classes, worker handback script behavior, or BRR Phase 1 policy content unless a direct contradiction is found.
+* Do not broaden into owner-decision capture flow, automatic stop-trigger detection, autonomous next-task drafting, or general worker automation.
 * Do not rewrite archived history or retrofit old archived tasks.
-* Do not require the owner to manually restate the handback sequence once the repo can express it directly.
+* Do not require the owner to manually arbitrate routine verifier-side guardrail choice when the repo can express the normal path directly.
 
 ## Completion Criteria
 
 The task is complete only if:
 
-* The repo gains one concrete worker-facing mechanism for final handback ordering that makes the correct sequence explicit and repeatable: set the final returned-for-verification state, regenerate live handoff artifacts after that state change, then run the required health checks last.
-* That mechanism is local-first and bounded: it does not invent new autonomy, change the verification verdict model, or broaden BRR scope beyond fixing the worker handback-ordering gap surfaced by pcc-brr2-001.
-* The worker directive and any touched docs tell the worker exactly what to run and when, so the final handback sequence is no longer dependent on memory or chat explanation.
-* The resulting final handback path is demonstrated for the active task flow and leaves the repo healthy under scripts/check-schemas.ps1, scripts/validate-cockpit-state.ps1, scripts/enforce-handoff-restart-safety.ps1, and scripts/doctor.ps1 as applicable to the task status being handed back.
-* Truth-surface propagation is handled honestly across any touched scripts, docs, live state, and handoff artifacts.
-* No automatic owner-decision capture flow, no new acceptance-boundary policy, and no unrelated workflow redesign is introduced.
+* The repo gains one concrete verifier-facing mechanism for independent guardrail review before a verdict is issued, making the usual verifier-side checks explicit and repeatable rather than memory-based.
+* That mechanism is local-first and bounded: it does not redesign the verification verdict model, re-run worker handback logic, or broaden BRR scope beyond operationalizing verifier-side guardrails.
+* The mechanism handles applicability honestly rather than blindly running every check in every state; status-specific checks such as scripts/enforce-handoff-restart-safety.ps1 are included only when they fit the state being reviewed, and skipped with explicit reasoning when they do not.
+* The verifier-facing docs and any touched workflow truth surfaces tell Codex exactly what to run and when, including repo-health and repo-sync duties already recorded in decisions.
+* The resulting verifier path is demonstrated against the active task flow and leaves the repo healthy under the applicable local checks.
+* No new autonomy, owner-decision capture flow, acceptance-boundary policy, or unrelated workflow redesign is introduced.
 
 ## Required Evidence
 

@@ -188,7 +188,8 @@ Standard task workflow:
 7. Write the task into `.cockpit/state/task-state.json`, including the assigned `task_safety_class`.
 8. Generate the worker directive.
 9. Run the worker.
-10. Verify evidence before truth advances.
+10. Worker hands back evidence via `scripts/finalize-worker-handback.ps1` (`docs/HANDOFF_PACKET_SPEC.md`), which performs the returned-for-verification state update, artifact regeneration, and health checks in the correct fixed order.
+11. Verify evidence before truth advances, including the verifier's own independent local guardrail pass where applicable (`DECISION-031`) rather than relying only on the worker's report of those checks.
 
 If task execution changes the durable workflow, governance, or other canonical project behavior, update the affected docs before treating the task as fully complete.
 

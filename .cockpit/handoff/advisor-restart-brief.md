@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-03T23:06:46-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-03T23:22:40-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,22 +10,22 @@ Current phase: brr-phase-2
 
 ## Active Task
 
-* Task ID: pcc-brr2-002
-* Title: BRR Execution: Deterministic Worker Handback
+* Task ID: pcc-brr2-003
+* Title: BRR Verification: Deterministic Verifier Guardrails
 * Status: ready_for_worker
 * Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Reduce the sequencing gap surfaced during pcc-brr2-001 by giving the worker one deterministic local path for final handback ordering. Build the lightest viable worker-side helper or equivalent repo-native mechanism that performs the final returned-for-verification state update, regenerates the live handoff artifacts afterward, and runs the required local health checks last against that actual final state, so the worker is following a concrete repo workflow rather than relying on memory about what order to do those steps in.
+* Objective: Operationalize verifier-side independent guardrails in the same concrete way pcc-brr2-002 operationalized worker handback. Build the lightest viable verifier-side helper or equivalent repo-native mechanism that runs the applicable independent local checks against the actual handed-back state before a verdict is issued, so verifier guardrails are a repeatable repo path rather than a memory-based checklist. Keep it bounded to normal verifier-side health checks and close review of applicability, without redesigning verdicts, worker flow, or broader BRR policy.
 
 ## Last Verified
 
-* Verdict: PASS for task 'pcc-brr2-001', verified at 2026-07-03T23:06:00-06:00
-* Summary: The original fielding work is complete, in scope, and now handed back cleanly. task_safety_class is added to schema and live state, surfaced in both generated handoff artifacts, the task's own Class B classification is justified correctly, and the final returned-for-verification repo state now passes check-schemas.ps1, validate-cockpit-state.ps1, and doctor.ps1 with no issues. The earlier failure was real, but it was a handback-ordering defect rather than a defect in the task's substantive output; that ordering defect is now corrected in the actual evidence being verified here.
-* Last verified handoff: .cockpit/handoff/archive/pcc-brr2-001-worker-directive.md
+* Verdict: PASS for task 'pcc-brr2-002', verified at 2026-07-03T23:21:00-06:00
+* Summary: pcc-brr2-002 satisfies its scope and closes the worker-side sequencing gap cleanly. The repo now has one deterministic worker handback path in scripts/finalize-worker-handback.ps1, the related docs and decision log are propagated, the active task was handed back using that path, and independent verifier-side check-schemas, validate-cockpit-state, and doctor runs all confirm the actual returned-for-verification repo state is healthy. The added verifier-duty clarification in DECISION-031 is also in scope because this task already touched the same verifier/handback truth surfaces and the owner explicitly requested that those official duties be recorded now.
+* Last verified handoff: .cockpit/handoff/archive/pcc-brr2-002-worker-directive.md
 
 ## Open Issues
 
-* Risk from last verification of 'pcc-brr2-001': The underlying sequencing gap is still structural: the worker can satisfy this task by discipline, but the repo does not yet force the correct final handback order automatically.
-* Risk from last verification of 'pcc-brr2-001': That sequencing gap should be treated as the next bounded hardening task rather than silently assumed solved just because this cycle now passes.
+* Risk from last verification of 'pcc-brr2-002': Worker handback ordering is now deterministic, but verifier-side independent guardrails are still recorded as duties and should be operationalized just as concretely to reduce future reliance on memory or judgment.
+* Risk from last verification of 'pcc-brr2-002': The new script intentionally excludes scripts/enforce-handoff-restart-safety.ps1 because that gate applies only to ready_for_worker fresh-session handoff, not returned_for_verification worker handback; future changes should preserve that distinction.
 
 ## Read First
 
@@ -39,5 +39,5 @@ Current phase: brr-phase-2
 
 ## What Happens Next
 
-* Task-level: Read .cockpit/handoff/worker-directive.md, implement pcc-brr2-002 within scope, and return evidence to .cockpit/result/worker-result.md.
-* Project-level: Run Claude Code against .cockpit/handoff/worker-directive.md for task 'pcc-brr2-002', focused on making final worker handback ordering deterministic so the last health pass always describes the actual returned state.
+* Task-level: Read .cockpit/handoff/worker-directive.md, implement pcc-brr2-003 within scope, and return evidence to .cockpit/result/worker-result.md.
+* Project-level: Run Claude Code against .cockpit/handoff/worker-directive.md for task 'pcc-brr2-003', focused on operationalizing verifier-side independent guardrails in one concrete, repeatable repo path.

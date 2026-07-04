@@ -712,3 +712,47 @@ Implications:
 
 Supersedes: None
 Related: DECISION-022, DECISION-025, DECISION-028, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/STATE_MODEL.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, schemas/task-state.schema.json
+
+---
+
+## DECISION-030: Deterministic Worker Handback Script Added (pcc-brr2-002)
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+`scripts/finalize-worker-handback.ps1` is added as the one required local path for a worker to hand a completed task back for verification, replacing reliance on the worker remembering the correct order of state update, artifact regeneration, and health checks.
+
+Reason:
+
+`pcc-brr2-001` surfaced a real defect: the worker regenerated `.cockpit/handoff/advisor-restart-brief.md` before moving `task-state.json` to `returned_for_verification`, so the artifact reviewed by the verifier was stale at the exact moment it mattered. The owner asked directly why PCC's existing guardrails (`doctor.ps1` etc.) hadn't prevented this; the honest answer was that the worker ran them at the wrong point in the sequence, not that the guardrails were missing or forgotten. The owner's standing expectation is that PCC's own tooling should make near-perfect handback achievable rather than dependent on worker discipline alone, so the correct fix is a repo-native mechanism that enforces the order structurally, not a reminder to be more careful.
+
+Implications:
+
+`scripts/finalize-worker-handback.ps1` performs, in one fixed sequence: (1) the `returned_for_verification` state update on both state files, refusing to run unless the task is currently `ready_for_worker` or `in_progress`; (2) `validate-cockpit-state.ps1` immediately after that write; (3) regeneration of both live handoff artifacts from the state just written; (4) `check-schemas.ps1` and `doctor.ps1`, failing if either reports a problem, run last against the exact state being handed back. `scripts/enforce-handoff-restart-safety.ps1` is intentionally excluded from this sequence — it gates the opposite direction (handing a fresh `ready_for_worker` task to a new worker session) and is not applicable once `task_status` has moved to `returned_for_verification`. `doctor.ps1` itself is unchanged and still always exits `0` for every other caller; this script only refuses to certify its own handback as clean if `doctor.ps1`'s report contains an `[ISSUE]`, by reading its output rather than modifying its behavior. `docs/HANDOFF_PACKET_SPEC.md` documents the new script, and `docs/REPO_GOVERNANCE.md`'s Task Process workflow now names it as the required handback step. This does not introduce any new autonomy, owner-decision capture flow, or acceptance-boundary policy — it only makes an already-correct sequence structurally enforced instead of memory-dependent.
+
+Supersedes: None
+Related: DECISION-023, DECISION-029, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, scripts/finalize-worker-handback.ps1
+
+---
+
+## DECISION-031: Verifier Independent Guardrails And Repo Sync Are Official Duties
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+Verifier-side repo health checks and repo sync are official advisor/verifier duties, not optional judgment calls. Codex must independently run the relevant local guardrail checks against the state actually being verified, and after a `PASS` must archive, log, and commit the verified cycle.
+
+Reason:
+
+The owner explicitly asked whether checks like `doctor.ps1` belong to the worker role or the verifier role. The right answer is both, for different reasons: the worker uses them to catch avoidable defects before handback; the verifier re-runs them independently because the verifier is certifying a different role boundary and may be reviewing a later repo state than the worker last checked. Duplicate verification is justified only when it reduces trust in worker claims rather than duplicating ceremony. Repo sync likewise must be part of the verifier's official duties in repo truth so verified work does not accumulate uncommitted again.
+
+Implications:
+
+`DECISION-020` already makes post-`PASS` repo sync official: after issuing `PASS`, the verifier archives the cycle artifacts, advances state, runs post-close-out health checks, logs the event, and commits the verified changes to git. This decision makes the **pre-verdict** side equally explicit: before issuing a verdict, the verifier should independently run the relevant local checks against the actual handed-back state, normally including `scripts/validate-cockpit-state.ps1`, `scripts/check-schemas.ps1`, and `scripts/doctor.ps1`, and read their outputs rather than trusting the worker's report about them. This does not make every check mandatory for every possible task regardless of fit; it means the verifier owns deciding and documenting the applicable guardrails, with duplication justified by role separation and state freshness, not habit. `scripts/enforce-handoff-restart-safety.ps1` remains status-specific rather than universal — it belongs when a task is being handed to a fresh worker session (`ready_for_worker`), not when a worker has already returned a task for verification (`returned_for_verification`).
+
+Supersedes: None
+Related: DECISION-020, DECISION-023, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, scripts/doctor.ps1, scripts/check-schemas.ps1, scripts/validate-cockpit-state.ps1

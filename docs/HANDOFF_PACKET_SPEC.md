@@ -237,6 +237,15 @@ When handing to an advisor/verifier, include:
 * verification question
 * required verdict
 
+Before issuing that verdict, the advisor/verifier independently re-runs the
+relevant local guardrails against the state actually being reviewed, rather
+than relying only on the worker's report about those checks. In the normal
+case this means `scripts/validate-cockpit-state.ps1`,
+`scripts/check-schemas.ps1`, and `scripts/doctor.ps1` against the live
+handback state (`DECISION-031`). This duplication is justified because it
+checks a different role boundary and sometimes a later repo state than the
+worker last saw; it is not process theater for its own sake.
+
 ### Worker Handoff
 
 When handing to a worker, include:
@@ -261,6 +270,23 @@ When starting a fresh chat, include:
 
 `scripts/generate-advisor-restart-brief.ps1` drafts this handoff for a fresh advisor/verifier session directly from `.cockpit/state/project-state.json`, `.cockpit/state/task-state.json`, and `.cockpit/result/verification-result.json`, writing to `.cockpit/handoff/advisor-restart-brief.md`. It surfaces the active task's BRR task safety class alongside its status. It refuses to draft a brief if project/task state disagree on the active task, if project state and the live verification result disagree on the last verdict, or if the task safety class is missing or not one of `A`/`B`/`C`/`D`.
 
+---
+
+## Worker Handback Is a Local Deterministic Step
+
+`scripts/finalize-worker-handback.ps1` gives the worker one command for the final worker-to-verifier handback, instead of relying on memory for the correct order of state update, artifact regeneration, and health checks. This exists because that exact ordering, done by hand, produced a real defect during `pcc-brr2-001`: the worker regenerated `.cockpit/handoff/advisor-restart-brief.md` before moving `task-state.json` to `returned_for_verification`, so the artifact handed back for review was stale at the moment it mattered (`DECISION-030`).
+
+Calling `scripts/finalize-worker-handback.ps1` performs, in this fixed order, and stops at the first failure rather than continuing past it:
+
+1. Sets `task-state.json`'s `task_status` to `returned_for_verification`, clears `current_blocker` on both state files, and sets `next_action`/`next_expected_action` (optionally overridden via `-NextAction`) — refusing to run at all if the task is not currently `ready_for_worker` or `in_progress`, so it cannot be called twice by accident against an already-returned task.
+2. Runs `scripts/validate-cockpit-state.ps1` immediately against that just-written state.
+3. Regenerates `.cockpit/handoff/worker-directive.md` and `.cockpit/handoff/advisor-restart-brief.md` from the state written in step 1 — this is what guarantees the artifacts describe the actual returned state rather than whatever state existed when they were last generated.
+4. Runs `scripts/check-schemas.ps1` and `scripts/doctor.ps1` last, against the exact state now being handed back, and fails if `check-schemas.ps1` reports a violation or `doctor.ps1`'s report contains any `[ISSUE]` line.
+
+`scripts/enforce-handoff-restart-safety.ps1` is deliberately not part of this sequence: it gates the opposite direction (a fresh `ready_for_worker` task being handed to a new worker session) and would fail by design the moment `task_status` moves to `returned_for_verification`. It remains the correct gate for its own purpose; it is simply not applicable to this handback path.
+
+This script does not change `doctor.ps1`'s own behavior — `doctor.ps1` still always exits `0` and never gates anything for any other caller (`DECISION-020`). `finalize-worker-handback.ps1` only refuses to certify *its own* handback as clean if `doctor.ps1`'s report contains an `[ISSUE]`; it does this by inspecting the report's text after calling `doctor.ps1` normally, not by modifying `doctor.ps1` itself.
+
 `scripts/verify-dual-restart-safety.ps1` proves both restart paths at once: it checks the live advisor restart brief is complete and matches what `generate-advisor-restart-brief.ps1` would produce right now (ignoring only the brief's own generation timestamp), then runs `scripts/verify-worker-restart-safety.ps1` for the worker side. It passes only if a fresh advisor session and a fresh worker session could both resume from canonical repo truth today.
 
 `scripts/enforce-handoff-restart-safety.ps1` is the enforcement gate: it must be run, and must pass, before the live handoff artifacts (`.cockpit/handoff/worker-directive.md` and `.cockpit/handoff/advisor-restart-brief.md`) are treated as ready to hand to a fresh session. It fails immediately if `.cockpit/state/task-state.json`'s `task_status` is anything other than `ready_for_worker` — this catches the case where a handoff packet is content-valid but describes a task that is already `complete` or otherwise not actually ready to hand off, which the content-only dual-restart proof cannot catch on its own. It then delegates to `scripts/verify-dual-restart-safety.ps1` for the content checks. Either way, it records its verdict to `.cockpit/state/handoff-gate.json` (`gate_result`: `PASS` or `FAIL`, with `reason`, `checked_at`, and the `task_id` it checked), so the gate's outcome is itself canonical repo truth rather than a claim that only existed in a terminal.
@@ -274,6 +300,12 @@ When starting a fresh chat, include:
 `scripts/log-event.ps1` appends one structured, factual line to `.cockpit/logs/routing-log.jsonl` per meaningful cycle event, instead of relying on hand-typed free-form JSON (which drifted and had to be manually backfilled during the `pcc-v1-013` cycle itself). It validates `event_type` against a small explicit set (`next_task_drafted`, `verified_pass`, `verified_fail`, `verified_insufficient`, `verified_blocked`, `verified_out_of_scope`, `correction_applied`) rather than accepting arbitrary text there, and with `-FromVerificationResult` it derives `task_id`, `event_type`, and `detail` directly from `.cockpit/result/verification-result.json` so a verifier does not have to hand-write JSON for the common case. It is strictly append-only — it only ever calls `Add-Content`, which cannot read or rewrite prior lines — and it never gates or blocks anything; it is a recording tool, not an enforcement tool. Log lines written before this script existed keep their original `route`/`reason`/`result` shape; this is a prospective format improvement, not a rewrite of history (consistent with the plain-language naming convention above: identifiers and past records are not retroactively changed).
 
 ### Recommended Close-Out Order
+
+Before the `PASS` / `FAIL` / `INSUFFICIENT` / `BLOCKED` / `OUT_OF_SCOPE`
+verdict is written at all, the verifier should independently run the relevant
+local guardrails against the handed-back state they are about to judge
+(`DECISION-031`) rather than relying only on the worker's claim that those
+checks were clean.
 
 Once a `PASS` verdict is written to `.cockpit/result/verification-result.json`, close out the cycle in this order:
 
