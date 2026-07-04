@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-brr2-012
 * Task Title: BRR Execution: Supervised Autonomous Pilot
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Objective

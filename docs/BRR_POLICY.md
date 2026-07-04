@@ -468,6 +468,24 @@ runs and is reviewed, no task runs unattended. `PROCEED` also remains a floor,
 not a guarantee — see "CLEAR is necessary, not sufficient" above; judgment
 conditions still govern regardless of the gate.
 
+### Standing checks for future autonomy tasks (secondary review, `pcc-brr2-011`)
+
+Two properties of this gate are safe *now* but are not structurally
+guaranteed, so every future autonomy task must re-check them rather than
+assume them:
+
+* **Narrow-by-call-site is not structural.** The gate is safe against gating
+  owner work only because no owner-directed script currently invokes it — not
+  because the repo prevents that. Every future autonomy task must re-verify
+  that no owner-path script calls `check-autonomous-gate.ps1`.
+* **`self_promote` covers mechanical stops only.** `self_promote` gating
+  leans entirely on `check-stop-conditions.ps1`, which detects mechanical
+  stops. Judgment-heavy promotion mistakes — a fork, a direction choice, or a
+  new-owner-decision case disguised as continuation — are **not** automatically
+  caught and remain the judgment layer's responsibility (`DECISION-008`). A
+  `GATE: PROCEED` on `self_promote` never licenses proceeding through a
+  genuine fork.
+
 ### CLEAR is necessary, not sufficient
 
 Even where self-acceptance is permitted (Class A) and the stop-check is CLEAR,

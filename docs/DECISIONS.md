@@ -1010,3 +1010,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-038, DECISION-039, DECISION-040, DECISION-041, docs/BRR_POLICY.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, scripts/check-autonomous-gate.ps1, scripts/check-stop-conditions.ps1
+
+---
+
+## DECISION-043: First Supervised Pilot Passed (Non-Blind); Owner Requires A Blind Pilot Before Declaring Walk-Away Proven (pcc-brr2-012)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+The first supervised autonomous pilot (`pcc-brr2-012`) ran two real candidate next-steps through the self-gate: one clean continuation (proceeded autonomously and executed a real in-lane change) and one judgment-trap (the gate reported PROCEED, but judgment correctly identified a direction fork and stopped, surfacing it via `owner_decision_request`). This is the GPT-requested false-PROCEED test, and it passed. The owner, answering the surfaced fork, chose to run more pilot evidence — specifically a BLIND cycle — before declaring the BRR walk-away model proven, rather than marking Phase 2 complete or advancing to Phase 3 now.
+
+Reason:
+
+The first pilot demonstrated the mechanism and the judgment reasoning, but it was not blind: the same party (Claude Code, under the fallback) designed, ran, and assessed it, and knew in advance which candidate was the trap. That proves the machinery works when watched-for, not that the judgment layer catches a disguised fork it was not warned about. A blind test — candidates fed by an independent party (owner or GPT) without telling PCC which, if any, is a fork — is the stronger evidence, and directly addresses the self-refereeing limitation the pilot disclosed.
+
+Implications:
+
+The pilot also recorded real findings: (1) the mechanical gate alone would have let the direction fork through — only judgment stopped it, confirming GPT's warning that `self_promote` gating is too weak for direction judgment; (2) fail-closed behaved correctly but is fussy — it blocked mid-run on a mundane stale-artifact inconsistency, so autonomous stepping depends on keeping the repo consistent (via `refresh-live-handoff-artifacts.ps1`) between steps; (3) babysitting dropped in the right shape — zero owner input on routine work, input preserved for the genuine decision. The next task (`pcc-brr2-013`) is a blind pilot cycle: the owner or GPT supplies a small set of candidate next-steps without disclosing which is a fork, and PCC evaluates each with gate + judgment before the trap is revealed. Phase 2 is NOT marked complete and no lane change is made until the blind pilot is run and reviewed. During pilot run 1, one real in-lane change was made autonomously: GPT's two standing caveats (narrow-by-call-site must be re-verified each future autonomy task; `self_promote` covers mechanical stops only) were recorded in `docs/BRR_POLICY.md`.
+
+Supersedes: None
+Related: DECISION-038, DECISION-040, DECISION-041, DECISION-042, docs/BRR_POLICY.md, docs/BRR_PLAN.md

@@ -3,7 +3,7 @@
   "project_name": "Project Control Cockpit",
   "project_goal": "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
   "current_phase": "brr-phase-2",
-  "current_task_id": "pcc-brr2-011",
+  "current_task_id": "pcc-brr2-012",
   "active_repo_path": "C:\\ProjectControlCockpit",
   "active_branch": "main",
   "owner_decisions": [
@@ -141,8 +141,8 @@
     "PCC owns the worker handoff contract through repo files; the owner should not need to restate the instructions manually."
   ],
   "current_blocker": null,
-  "last_verified_handoff": ".cockpit/handoff/archive/pcc-brr2-011-worker-directive.md",
+  "last_verified_handoff": ".cockpit/handoff/archive/pcc-brr2-012-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Task 'pcc-brr2-011' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T01:59:22-06:00"
+  "next_expected_action": "Task 'pcc-brr2-012' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-04T08:40:03-06:00"
 }
