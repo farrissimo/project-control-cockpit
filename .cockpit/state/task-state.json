@@ -1,35 +1,34 @@
 {
-  "task_id": "pcc-brr4-004",
-  "task_title": "BRR Policy: Semi-Autonomy Ceiling",
-  "task_objective": "Deliver docs/BRR_PLAN.md Phase 4 item 4 ('Semi-Autonomy Ceiling'): record, in docs/BRR_POLICY.md, an explicit, plain statement of what PCC may do unattended in this phase, per Task Safety Class, consolidating what has already been established (Task Safety Classification, Acceptance Boundary Rules, Safe Next-Task Drafting Rules) into one place a reader can check without re-deriving it from four documents. Also close the one concrete gap DECISION-059 found during pilot run #2: nothing currently requires archiving a cycle's evidence before chaining into the next one. Add that as an explicit ceiling rule.",
-  "task_status": "complete",
+  "task_id": "pcc-brr5-001",
+  "task_title": "BRR Readiness Review",
+  "task_objective": "Deliver docs/BRR_PLAN.md Phase 5's sole deliverable: an honest BRR Readiness Review, added as a new section to docs/BRR_PLAN.md (mirroring how docs/V1_Scope.md's 'V1 Closure' section handled V1's own honest close-out). Must list, plainly: what PCC can safely do unattended today (with evidence); what still requires owner review; what remains unsafe or immature (explicitly including the gaps named in DECISION-060/061 -- Class A self-accept never exercised, archive-before-chaining policy-only, fuller Metrics and Failure Review Loop undelivered, and the standing single-party self-verification risk); and a recommendation for the next lane (continue BRR hardening / begin post-V1 expansion / keep both narrowly active), stated as a recommendation for the owner to decide, not a self-executed choice.",
+  "task_status": "returned_for_verification",
   "assigned_worker": "Claude Code",
   "task_safety_class": "B",
   "completion_criteria": [
-    "docs/BRR_POLICY.md gains a 'Semi-Autonomy Ceiling' section stating, per Task Safety Class, exactly what PCC may do unattended: Class A may be drafted, executed, and self-accepted only when check-stop-conditions.ps1 is CLEAR and check-autonomous-gate.ps1 -Action self_accept reports PROCEED; Class B may be drafted and executed unattended but must never be self-accepted; Class C must never execute without prior explicit owner approval; Class D must never proceed.",
-    "The section honestly distinguishes supported-by-policy from actually-demonstrated: Class B unattended execution + held-for-review has been repeatedly demonstrated this session; Class A self-accept is policy-supported but has not yet been exercised in any real pilot cycle (both pilot runs deliberately held even Class A work for review).",
-    "The section adds one new rule closing DECISION-059's gap: before chaining into a next unattended cycle, the current cycle's evidence (worker directive, worker result, verification result) must be archived first -- not merely committed to git -- so recovery-from-git-history is never the only way to find a prior cycle's record.",
-    "The section states the current chaining ceiling honestly: only 2 chained cycles have actually been piloted (pilot run #2); chaining beyond what has been piloted is not yet trusted and should be treated as new evidence to gather, not assumed safe by extrapolation.",
-    "The section reaffirms, rather than changes, that pushing to any remote always requires a fresh explicit owner instruction regardless of class, and that self-promotion (picking the next task) remains governed entirely by the existing Safe Next-Task Drafting Rules gate -- this section does not redefine either.",
-    "The section explicitly states it grants no new authority and loosens nothing in Task Safety Classification, the Acceptance Boundary Rules, or the Safe Next-Task Drafting Rules -- it consolidates them into one ceiling statement and adds exactly one new discipline (the archive-before-chaining rule).",
-    "A new decision is recorded in docs/DECISIONS.md.",
-    "No change to any of the five verdicts, the autonomous gate's own decision logic, or DECISION-033/036's fallback text.",
-    "No runtime script or schema change is introduced -- the archive-before-chaining rule is recorded as policy; actually enforcing it in a script is not required by this task."
+    "docs/BRR_PLAN.md gains a 'Phase 5: BRR Readiness Review (Completed)' section (or equivalent heading) containing the four required lists/statements below.",
+    "List 1, 'What PCC can safely do unattended': each claim backed by a specific citation to actual session history (a task ID, DECISION number, or pilot run), not asserted generically.",
+    "List 2, 'What still requires owner review': stated per Task Safety Class and per the Owner Review Matrix's 'before execution' rows, consistent with the Semi-Autonomy Ceiling (docs/BRR_POLICY.md).",
+    "List 3, 'What remains unsafe or immature': must explicitly include, at minimum: Class A self-accept is policy-supported but has never been exercised in a real cycle; the archive-before-chaining rule (DECISION-060) is policy-only, not enforced by any script (GPT's explicit caveat, DECISION-061); chaining beyond 2 cycles is untested; the fuller BRR Metrics deliverable and a formalized Failure Review Loop remain undelivered; and the standing risk that every verification this entire BRR program (Phases 2 through 5) has been self-verified by the same party who did the work, with Codex unavailable throughout and GPT's review being additive/remote-only, not independent local guardrail re-execution.",
+    "A recommendation for the next lane (continue BRR hardening; begin post-V1 expansion; keep both narrowly active) is given with explicit reasoning, framed as a recommendation for the owner's decision -- the task does not choose the lane or take any action implementing a lane choice.",
+    "The review does not overstate: no claim is made that BRR is 'proven' or the walk-away model is settled beyond what DECISION-045 and DECISION-055 already established (meaningful evidence, not absolute proof).",
+    "A new decision is recorded in docs/DECISIONS.md summarizing the review and explicitly deferring the actual next-lane choice to the owner.",
+    "No change to any of the five verdicts, any Task Safety Class's meaning, the Acceptance Boundary Rules, the self-verification fallback, or any existing script/schema.",
+    "This task does not itself advance current_phase past brr-phase-5 or begin any next-lane work -- it only produces the review and the recommendation."
   ],
   "boundaries": {
     "allowed": [
-      "Edit docs/BRR_POLICY.md to add the new 'Semi-Autonomy Ceiling' section.",
+      "Add a new section to docs/BRR_PLAN.md containing the readiness review.",
       "Edit docs/DECISIONS.md to record the new decision.",
-      "Cross-reference docs/BRR_PLAN.md Phase 4 item 4, Task Safety Classification, Acceptance Boundary Rules, Safe Next-Task Drafting Rules, and DECISION-059 without altering their existing content."
+      "Read (not modify) any canonical doc, decision, or archived task record needed to cite evidence accurately (docs/DECISIONS.md, docs/BRR_POLICY.md, docs/BRR_PLAN.md, .cockpit/result/archive/*, .cockpit/handoff/archive/*)."
     ],
     "forbidden": [
       "Do not modify any existing script or schema.",
-      "Do not redefine Task Safety Classification, the Acceptance Boundary Rules, or the Safe Next-Task Drafting Rules -- consolidate and cross-reference them, do not restate them with different meaning.",
-      "Do not change any existing verdict or the autonomous gate's own decision logic.",
-      "Do not claim Class A self-accept has been demonstrated in practice -- it has not; state this honestly.",
-      "Do not set a chaining ceiling higher than what has actually been piloted (2 cycles) without disclosing that higher numbers are unproven.",
-      "Do not mark BRR Phase 4 complete or advance current_phase.",
-      "Do not build or modify a script enforcing the archive-before-chaining rule -- record it as policy only, consistent with how other BRR policy sections were defined before being fielded."
+      "Do not modify any existing section of docs/BRR_PLAN.md, docs/BRR_POLICY.md, or any other canonical doc -- this task only adds the new readiness-review section and the new decision.",
+      "Do not choose or execute a next-lane decision (do not advance current_phase, do not begin post-V1 expansion work, do not start a new BRR hardening task) -- recommend only.",
+      "Do not overstate confidence in the walk-away model beyond DECISION-045/DECISION-055's own 'meaningful evidence, not absolute proof' framing.",
+      "Do not omit or soften any of the specific immature/unsafe items named in this task's own completion criteria.",
+      "Do not self-close this task via scripts/close-out-verified-task.ps1 -- Class B, hold the self-verified result for owner/GPT review."
     ]
   },
   "required_evidence": [
@@ -45,10 +44,10 @@
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
-  "verification_verdict": "PASS",
+  "verification_verdict": null,
   "current_blocker": null,
   "owner_decision_request": null,
   "promotion_basis": null,
-  "next_action": "Task 'pcc-brr4-004' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T11:49:10-06:00"
+  "next_action": "Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.",
+  "updated_at": "2026-07-04T12:01:59-06:00"
 }

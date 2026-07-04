@@ -1466,3 +1466,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-021, DECISION-028, DECISION-045, DECISION-050, DECISION-053, DECISION-059, DECISION-060, docs/BRR_PLAN.md, schemas/project-state.schema.json, .cockpit/state/project-state.json
+
+---
+
+## DECISION-062: BRR Readiness Review Delivered (pcc-brr5-001)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`docs/BRR_PLAN.md` Phase 5's sole deliverable, the BRR Readiness Review, is recorded as a new section in `docs/BRR_PLAN.md` itself (mirroring `docs/V1_Scope.md`'s "V1 Closure" pattern rather than a new canonical doc). It lists, with citations to specific tasks and decisions rather than generic claims: what PCC can safely do unattended today; what still requires owner review; what remains unsafe or immature; and a recommendation for the next lane. The next-lane choice itself is explicitly left to the owner, per Phase 5's own exit criteria ("the next roadmap lane is chosen deliberately").
+
+Reason:
+
+Phase 5 exists specifically to state honestly what BRR has and has not actually proven, rather than let the project drift into new work on an assumed-safe basis (`docs/BRR_PLAN.md`'s own "Why this matters" for Phase 5). Per `DECISION-061`, this review does not treat Phase 4's deferred items as things to hide — it names them directly, alongside the single largest standing risk this entire BRR program has carried since Phase 2 began: every verification has been performed by the same party that did the work, because Codex has been unavailable throughout, and GPT's remote review — while genuinely valuable — is additive per `DECISION-036`'s own terms, not independent local re-verification.
+
+Implications:
+
+The review's "unsafe or immature" list is not softened: Class A self-accept has never been exercised despite being policy-supported; the archive-before-chaining rule (`DECISION-060`) is policy-only per GPT's own caveat (`DECISION-061`); chaining beyond two cycles is untested; the fuller BRR Metrics and Failure Review Loop deliverables remain undelivered; and the self-verification independence gap is named as the single largest risk, not buried among smaller items. The recommendation — "keep both narrowly active," continuing bounded Class A/B-disciplined work alongside a short, explicit, non-blocking hardening priority list (restore/replace independent verification when possible; field the archive-before-chaining rule; consider a genuinely adversarial blind pilot) — deliberately avoids both extremes `docs/BRR_PLAN.md` Section 6.C warns against: declaring BRR fully proven (ruled out by the self-verification gap alone) and blocking all other work until every gap closes (already rejected as a pattern for Phase 3's own follow-ons, `DECISION-050`). This decision does not itself choose the next lane, advance `current_phase` past `brr-phase-5`, or start any next-lane work; that remains the owner's explicit, separate decision. No verdict, task safety class, the autonomous gate, the Acceptance Boundary Rules, or `DECISION-033`/`DECISION-036`'s fallback text was changed.
+
+Supersedes: None
+Related: DECISION-036, DECISION-044, DECISION-045, DECISION-050, DECISION-055, DECISION-059, DECISION-060, DECISION-061, docs/BRR_PLAN.md, docs/V1_Scope.md

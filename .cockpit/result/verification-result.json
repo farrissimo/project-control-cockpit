@@ -1,38 +1,37 @@
 {
-  "task_id": "pcc-brr4-004",
+  "task_id": "pcc-brr5-001",
   "verdict": "PASS",
-  "verified_at": "2026-07-04T11:49:00-06:00",
+  "verified_at": "2026-07-04T12:05:00-06:00",
   "completion_criteria_checked": [
-    "Per-class ceiling stated explicitly (A/B/C/D). -- MET: read the full new section directly; all four classes covered with the exact conditions specified (Class A requires both CLEAR stop-check and self_accept PROCEED).",
-    "Honestly distinguishes demonstrated (Class B) from policy-supported-but-untested (Class A self-accept). -- MET: the Class A bullet explicitly states it has not been exercised in practice and names both pilot runs as evidence of that; this matches actual session history -- cross-checked against DECISION-054 through 059, no pilot cycle actually tested self-accept.",
-    "New archive-before-chaining rule added, naming DECISION-059 as origin. -- MET: read directly; explicitly ties to DECISION-059 and states the rule concretely (archive worker directive/result/verification before drafting/executing the next cycle).",
-    "Chaining ceiling stated as exactly what has been piloted (2 cycles), not extrapolated. -- MET: read directly; explicit 'exactly two' framing with no higher number implied as safe.",
-    "Self-promotion and remote-push rules reaffirmed, not changed. -- MET: read directly; both stated as reaffirmations with explicit citations (Safe Next-Task Drafting Rules, DECISION-020), no new conditions added to either.",
-    "Explicitly states no new authority granted, nothing loosened. -- MET: stated in the section's opening paragraph and restated in Notes on scope.",
-    "A new decision recorded. -- MET: DECISION-060 present, accurately reflects the section's content.",
-    "No change to verdicts, autonomous gate decision logic, or DECISION-033/036 fallback text. -- MET: git diff confirms scripts/check-autonomous-gate.ps1, scripts/check-stop-conditions.ps1, and docs/VERIFICATION_RESULT_SPEC.md are all absent from the changed-file list.",
-    "No script or schema change. -- MET: git status confirms only docs/BRR_POLICY.md and docs/DECISIONS.md changed among non-state files."
+    "New readiness-review section added to docs/BRR_PLAN.md. -- MET: read the full new section directly.",
+    "List 1 (safe unattended) cited to specific evidence. -- MET: each bullet names a real task ID and/or DECISION number; spot-checked DECISION-044 and DECISION-036 citations directly against docs/DECISIONS.md, both accurate.",
+    "List 2 (still requires owner review) stated per class and Owner Review Matrix. -- MET: reads consistently with the Semi-Autonomy Ceiling (pcc-brr4-004) without contradicting it.",
+    "List 3 (unsafe/immature) includes all six required items verbatim in substance. -- MET: read directly; untested Class A self-accept, policy-only archive-before-chaining (with GPT's 'not the final trusted form' quoted), untested chaining beyond 2 cycles, undelivered Metrics/Failure-Review-Loop, and the single-party self-verification risk are all present and none softened.",
+    "Recommendation given with reasoning, framed as a recommendation not a self-executed choice. -- MET: read the closing paragraph directly; explicitly defers the lane choice to the owner and does not touch current_phase beyond brr-phase-5.",
+    "No overstatement beyond DECISION-045/055's 'meaningful evidence, not absolute proof.' -- MET: the review does not use words like 'proven' or 'trusted' about the walk-away model as a whole; it cites DECISION-045/055 rather than restating them more strongly.",
+    "New decision recorded, next-lane choice deferred. -- MET: DECISION-062 present, explicitly states it does not choose the next lane.",
+    "No change to verdicts/classes/Acceptance Boundary Rules/fallback/scripts/schemas. -- MET: git diff --stat confirms only docs/BRR_PLAN.md and docs/DECISIONS.md changed among non-state files; git diff on docs/BRR_PLAN.md shows zero removed lines (purely additive).",
+    "current_phase not advanced past brr-phase-5; no next-lane work started. -- MET: project-state.json's current_phase is unchanged at brr-phase-5 in this diff; only current_task_id/next_expected_action changed, both expected."
   ],
   "evidence_reviewed": [
     ".cockpit/result/worker-result.md",
-    "docs/BRR_POLICY.md (full text of the new 'Semi-Autonomy Ceiling' section, read directly)",
-    "docs/BRR_POLICY.md (re-read of Task Safety Classification, Acceptance Boundary Rules, and Safe Next-Task Drafting Rules for the required strict-depth cross-check against the new consolidation)",
-    "docs/DECISIONS.md (DECISION-060, and re-read of DECISION-054 through DECISION-059 to confirm the 'Class A self-accept untested' and 'two cycles piloted' claims are accurate against actual session history, not just plausible-sounding)",
-    "docs/BRR_PLAN.md Phase 4 item 4 (source deliverable text) and Phase 5's own first listed deliverable (confirming this ceiling is in fact a precondition for it)",
-    "git status --short and git diff --stat/--HEAD (confirms additive-only changes, no scripts/schemas touched, zero lines removed from docs/BRR_POLICY.md)",
+    "docs/BRR_PLAN.md (full text of the new readiness-review section, read directly)",
+    "docs/BRR_POLICY.md (re-read of the Semi-Autonomy Ceiling and Acceptance Boundary Rules for consistency with List 2/3)",
+    "docs/DECISIONS.md (DECISION-062, and direct spot-check of DECISION-044 and DECISION-036's actual text against the review's citations of them)",
+    "git status --short and git diff --stat/--HEAD on docs/BRR_PLAN.md specifically (confirms zero lines removed, purely additive)",
     "pwsh -File scripts/validate-cockpit-state.ps1, scripts/check-schemas.ps1, scripts/verify-handback-guardrails.ps1 output (this cycle, run independently as verifier)"
   ],
   "missing_evidence": [],
   "out_of_scope_findings": [
-    "None found. git status --short confirms only docs/BRR_POLICY.md, docs/DECISIONS.md, and the expected live state/handoff/result files changed. No scripts/ or schemas/ file touched."
+    "None found. git diff --stat confirms only docs/BRR_PLAN.md (additive-only) and docs/DECISIONS.md changed among non-state files, plus the expected live state/handoff/result files."
   ],
   "risks": [
-    "Self-verified under DECISION-033 degraded fallback. No independent second-party (Codex) review has occurred. GPT secondary review not yet performed on this specific cycle.",
-    "Verification Depth Policy row applied: Class B, truth-surface-affecting -> strict. Applied via full re-read of the new section, cross-check against the three sections it consolidates, and re-verification of its factual claims (Class A untested, two cycles piloted) against actual decision history rather than accepted as asserted.",
-    "The consolidation restates existing rules from three other sections; while cross-checked directly against all three during this review and no contradiction was found, a restatement always carries some residual risk of subtle drift that a second independent reviewer is better positioned to catch than the same party who wrote both the original and the restatement.",
-    "The archive-before-chaining rule is policy-only, not enforced by any script; its practical effect depends entirely on being read and followed by whoever runs the next multi-cycle pilot."
+    "Self-verified under DECISION-033 degraded fallback. No independent second-party (Codex) review has occurred. GPT secondary review not yet performed on this specific cycle -- notably, this cycle's own content names that exact gap as the single largest standing risk, which is itself worth the reader noticing: the review disclosing this limitation is being verified under the very limitation it discloses.",
+    "Verification Depth Policy row applied: Class B, truth-surface-affecting -> strict. Applied via full re-read of the new section, cross-check against the Semi-Autonomy Ceiling, and direct spot-check of two citations against the underlying decision text rather than trusting the drafting pass alone.",
+    "A synthesis document spanning roughly thirty prior cycles was only spot-checked at two citation points, not all of them; a reviewer with more time budget could reasonably re-verify a larger sample.",
+    "The recommendation ('keep both narrowly active') is a judgment call, explicitly reasoned but not mechanically derivable; the owner and GPT may reasonably weigh the same facts differently."
   ],
-  "summary": "Verified pcc-brr4-004 (Semi-Autonomy Ceiling) at 'strict' depth. Read the full new section directly, cross-checked it against Task Safety Classification, Acceptance Boundary Rules, and the Safe Next-Task Drafting Rules (no contradiction found), and independently re-verified its two most load-bearing factual claims -- that Class A self-accept has never actually been exercised, and that exactly two cycles have been piloted -- against the actual decision history (DECISION-054 through 059) rather than accepting them as asserted. All nine completion criteria are met with direct evidence. Independent local guardrails clean. This delivers Phase 4 item 4 and is a stated precondition for Phase 5's own first deliverable.",
-  "next_action": "Task 'pcc-brr4-004' is complete and verified PASS. Close out and commit locally per the standing DECISION-020 default. Do not push without a fresh, explicit owner instruction. With items 1 and 4 of BRR Phase 4 delivered (Multi-Cycle Pilot; Semi-Autonomy Ceiling) and items 2/3 (fuller Metrics; Failure Review Loop) deliberately deferred by owner choice, the next decision is whether to declare Phase 4 complete on this basis (mirroring DECISION-050's precedent for Phase 3) or address the deferred items first.",
+  "summary": "Verified pcc-brr5-001 (BRR Readiness Review) at 'strict' depth. Read the full new section directly, confirmed it is purely additive to docs/BRR_PLAN.md via diff, and spot-checked two of its evidentiary citations directly against docs/DECISIONS.md's actual text. All nine completion criteria are met, including the specific requirement that none of the six named unsafe/immature items be softened -- they are not. The review explicitly names its own most important limitation (single-party self-verification throughout BRR Phases 2-5) as the largest risk rather than minimizing it, and this very verification is itself an instance of that limitation, which is disclosed rather than hidden. The recommendation is framed correctly as a recommendation, deferring the actual next-lane choice to the owner.",
+  "next_action": "This is a HELD result, not a close-out (Class B). Do not run scripts/close-out-verified-task.ps1 until reviewed. Await owner/GPT review of the readiness review's content and recommendation before closing this task out and before the owner makes the actual next-lane decision.",
   "state_update_allowed": true
 }

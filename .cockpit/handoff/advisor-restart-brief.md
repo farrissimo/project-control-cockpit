@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-04T11:57:26-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T12:02:11-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,11 +10,11 @@ Current phase: brr-phase-5
 
 ## Active Task
 
-* Task ID: pcc-brr4-004
-* Title: BRR Policy: Semi-Autonomy Ceiling
-* Status: complete
+* Task ID: pcc-brr5-001
+* Title: BRR Readiness Review
+* Status: returned_for_verification
 * Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Deliver docs/BRR_PLAN.md Phase 4 item 4 ('Semi-Autonomy Ceiling'): record, in docs/BRR_POLICY.md, an explicit, plain statement of what PCC may do unattended in this phase, per Task Safety Class, consolidating what has already been established (Task Safety Classification, Acceptance Boundary Rules, Safe Next-Task Drafting Rules) into one place a reader can check without re-deriving it from four documents. Also close the one concrete gap DECISION-059 found during pilot run #2: nothing currently requires archiving a cycle's evidence before chaining into the next one. Add that as an explicit ceiling rule.
+* Objective: Deliver docs/BRR_PLAN.md Phase 5's sole deliverable: an honest BRR Readiness Review, added as a new section to docs/BRR_PLAN.md (mirroring how docs/V1_Scope.md's 'V1 Closure' section handled V1's own honest close-out). Must list, plainly: what PCC can safely do unattended today (with evidence); what still requires owner review; what remains unsafe or immature (explicitly including the gaps named in DECISION-060/061 -- Class A self-accept never exercised, archive-before-chaining policy-only, fuller Metrics and Failure Review Loop undelivered, and the standing single-party self-verification risk); and a recommendation for the next lane (continue BRR hardening / begin post-V1 expansion / keep both narrowly active), stated as a recommendation for the owner to decide, not a self-executed choice.
 
 ## Last Verified
 
@@ -41,5 +41,5 @@ Current phase: brr-phase-5
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-brr4-004' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: BRR Phase 5 (BRR Readiness Review) has begun (DECISION-061), per GPT's and the owner's review that Phase 4's deferred items (fuller Metrics, Failure Review Loop) are exactly what the readiness review should surface honestly, not hidden prerequisites. First Phase 5 task: pcc-brr5-001, the readiness review itself.
+* Task-level: Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.
+* Project-level: Worker evidence for task 'pcc-brr5-001' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict.

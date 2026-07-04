@@ -486,6 +486,130 @@ Without this review, the project will likely drift into feature-building before 
 
 ---
 
+## Phase 5 Readiness Review (Completed, 2026-07-04, `pcc-brr5-001`)
+
+This is Phase 5's sole deliverable, added here rather than as a new
+canonical doc, mirroring how `docs/V1_Scope.md`'s "V1 Closure" section
+handled V1's own honest close-out. It does not choose the next lane — the
+recommendation below is exactly that, a recommendation, per this phase's own
+exit criteria ("the next roadmap lane is chosen deliberately" by the owner).
+
+### What PCC can safely do unattended today
+
+* **Draft, execute, and self-verify a Class B task end-to-end without
+  owner check-in during execution, holding the result for review before
+  acceptance.** Demonstrated repeatedly: `pcc-brr3-001` through
+  `pcc-brr3-005` (`DECISION-046`–`052`), `pcc-brr4-001` through `pcc-brr4-004`
+  (`DECISION-054`, `057`, `058`, `060`).
+* **Self-promote the next task inside an already-approved lane, checked
+  against the actual 8-part gate rather than accepted on anyone's say-so.**
+  Demonstrated: `pcc-brr3-002` (`DECISION-047`, a GPT suggestion independently
+  re-verified against the gate rather than accepted on GPT's authority);
+  `pcc-brr3-003`/`004` (`DECISION-048`/`049`, owner-pre-authorized);
+  `pcc-brr4-002`/`003` (`DECISION-057`/`058`, chained inside `DECISION-056`'s
+  pre-approved scope).
+* **Chain exactly two unattended cycles in sequence without stopping to ask
+  between them, when the first resolves cleanly.** Demonstrated once: pilot
+  run #2 (`pcc-brr4-002` → `pcc-brr4-003`), reviewed and approved
+  (`DECISION-059`).
+* **Catch a disguised authority/direction-change fork by judgment, even when
+  the mechanical gate alone would wave it through.** Demonstrated: the blind
+  pilot (`pcc-brr2-013`, `DECISION-044`), 5/5 correct including two disguised
+  forks.
+* **Functionally test new script behavior in an isolated scratch copy before
+  trusting it, including catching and fixing real defects without
+  corrupting live state.** Demonstrated: a stale-handoff-artifact bug
+  (`pcc-brr4-001`, `DECISION-054`) and a legacy-log-format crash
+  (`pcc-brr4-003`, `DECISION-058`), both caught by testing and fixed
+  honestly rather than papered over.
+* **Commit locally after a genuine `PASS` or a deliberately-held review
+  checkpoint.** Demonstrated routinely throughout.
+
+### What still requires owner review
+
+* **Every Class B result, before it is marked complete** — never
+  self-accepted without independent review or explicit owner override
+  (Acceptance Boundary Rules). In practice this session, "independent
+  review" has meant GPT's remote read plus the owner's own explicit sign-off,
+  since Codex has been unavailable throughout.
+* **Any Owner Review Matrix "before execution" case (Class C):**
+  project-goal changes, architecture/major design changes, ambiguous
+  next-step selection, new external dependencies, destructive/irreversible
+  actions, security/secrets/data-risk changes, truth-surface/verification-
+  model/governance-authority changes, high-risk scope changes. Never
+  attempted unattended — every phase transition and every authority-level
+  policy change this session was made by direct owner decision, not
+  self-promoted.
+* **Every remote push** — always required a fresh, explicit owner
+  instruction each time, with no exception, including immediately after
+  `DECISION-036`'s time-boxed authorization lapsed at the Phase 2→3
+  boundary.
+* **Genuine forks or ambiguous next steps discovered mid-task** — routed to
+  a stop, never resolved by guessing (Stop-Instead-of-Guess Policy).
+
+### What remains unsafe or immature
+
+* **Class A self-accept has never been exercised in a real cycle.** It is
+  policy-supported (Acceptance Boundary Rules, Semi-Autonomy Ceiling) but
+  both pilot runs deliberately held even honestly-classified Class A work
+  (`pcc-brr4-003`) for review rather than testing it (`DECISION-056`,
+  `DECISION-060`).
+* **The archive-before-chaining rule (`DECISION-060`) is policy-only.** No
+  script enforces it. GPT's own review (`DECISION-061`) named this
+  explicitly as "not the final trusted form" and recommended future fielding
+  before the unattended model is called mature.
+* **Chaining beyond two cycles is untested.** The two-cycle result should
+  not be extrapolated to justify a longer unattended chain.
+* **The fuller BRR Metrics deliverable is undelivered.** Owner interruptions
+  per task, repeated instruction frequency, and owner-review triggers by
+  category are not instrumented at all; only raw event-type counts and one
+  named ratio exist (`pcc-brr4-003`).
+* **A formalized Failure Review Loop does not exist.** Real failures this
+  session were reviewed diligently, but ad hoc and by narrative each time,
+  not against a standing, repeatable checklist a future session would
+  automatically follow.
+* **The single largest standing risk: every verification across BRR Phases
+  2 through 5 has been performed by the same party that did the work.**
+  Codex has been unavailable for the entire recorded history of this phase
+  of the project, so every cycle ran under the `DECISION-033` self-
+  verification fallback. GPT's remote review has been a genuine, valuable
+  second opinion, but `DECISION-036` itself states plainly that GPT cannot
+  locally re-run guardrails and is additive, not a substitute for
+  independent verification. No fully independent, locally-executing second
+  party has verified any BRR Phase 2–5 work to date.
+* **Judgment-based fork detection has a real but small evidence base.** One
+  blind pilot cycle, five candidates, two traps, both owner-authored rather
+  than constructed by an independent, adversarial third party (`DECISION-044`'s
+  own disclosed limits).
+
+### Recommendation for next lane
+
+The core draft → execute → self-verify → hold-or-close → review loop has
+been exercised successfully across roughly thirty cycles, with every real
+defect caught before being accepted and no known false `PASS`. Against that,
+the verification-independence gap (no working Codex for the entire program)
+has persisted throughout, and two named Phase 4 items remain undelivered.
+
+**Recommendation: keep both narrowly active**, per Phase 5's own exit
+criteria that the lane be chosen deliberately by the owner, not
+self-selected here. Concretely: allow bounded, Class A/B-disciplined work
+(new features or further BRR hardening alike) to continue using the exact
+machinery already proven, while treating a short, explicit, non-blocking
+list as ongoing priority: (1) restore or replace independent local
+verification when possible (Codex's return, or an equivalent locally-
+executing second reviewer); (2) field the archive-before-chaining rule into
+an actual script; (3) if stronger confidence in the walk-away model is
+wanted, run a genuinely adversarial (not owner-authored) blind pilot.
+
+This recommendation deliberately avoids both extremes named in this plan's
+own Section 6.C ("scope creep via safety"): it does not declare BRR fully
+proven and stop hardening it — the self-verification gap alone rules that
+out — and it does not block all other work until every BRR gap is closed,
+which `DECISION-050` already rejected as a pattern for Phase 3's own
+follow-on items.
+
+---
+
 # 6. Areas Requiring Special Caution
 
 ## A. Self-verification
