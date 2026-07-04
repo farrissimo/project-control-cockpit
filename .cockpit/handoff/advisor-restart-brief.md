@@ -1,12 +1,12 @@
 # Advisor Restart Brief
 
-Generated 2026-07-04T11:49:15-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T11:57:26-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
 Project Control Cockpit: Build a lean, local-first AI project control cockpit that reduces owner babysitting.
 
-Current phase: brr-phase-4
+Current phase: brr-phase-5
 
 ## Active Task
 
@@ -42,4 +42,4 @@ Current phase: brr-phase-4
 ## What Happens Next
 
 * Task-level: Task 'pcc-brr4-004' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-brr4-004' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Project-level: BRR Phase 5 (BRR Readiness Review) has begun (DECISION-061), per GPT's and the owner's review that Phase 4's deferred items (fuller Metrics, Failure Review Loop) are exactly what the readiness review should surface honestly, not hidden prerequisites. First Phase 5 task: pcc-brr5-001, the readiness review itself.

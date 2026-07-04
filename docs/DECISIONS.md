@@ -1444,3 +1444,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-038, DECISION-039, DECISION-041, DECISION-042, DECISION-054, DECISION-055, DECISION-056, DECISION-059, docs/BRR_PLAN.md, docs/BRR_POLICY.md
+
+---
+
+## DECISION-061: BRR Phase 5 Begins (BRR Readiness Review); Phase 4's Deferred Items Are Not Blocking Prerequisites
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`project-state.json`'s `current_phase` advances from `brr-phase-4` to `brr-phase-5` (BRR Readiness Review, `docs/BRR_PLAN.md`). GPT, reviewing `pcc-brr4-004` and the state of Phase 4 overall, recommended moving to Phase 5 now rather than requiring Phase 4's deferred items (fuller BRR Metrics, a formalized Failure Review Loop) to be finished first, on the reasoning that Phase 5 is itself a readiness review, not proof every gap is closed — its job is to surface those exact gaps honestly, not treat them as hidden prerequisites blocking entry. The owner agreed.
+
+Reason:
+
+`docs/BRR_PLAN.md` Phase 5's own deliverables are a list of what PCC can safely do unattended, what still needs owner review, what remains unsafe or immature, and a recommendation for the next lane — a phase built specifically to name gaps honestly, including gaps in the phase that preceded it. Requiring Phase 4 to be airtight before Phase 5 could even begin would invert that purpose: it would force pretending Phase 4 is more finished than it is, exactly to avoid discussing the finish state Phase 5 exists to discuss. GPT's specific caution — that the Semi-Autonomy Ceiling's policy-only "archive before chaining" rule (`DECISION-060`) is acceptable for now but "not the final trusted form," and should become future fielding work before the unattended model is called mature — is exactly the kind of finding Phase 5's readiness review should state plainly, not something to quietly resolve before Phase 5 is allowed to start.
+
+Implications:
+
+`schemas/project-state.schema.json`'s `current_phase` enum gains `"brr-phase-5"`. `project-state.json`'s `current_phase` is `brr-phase-5`; `current_task_id` remains `pcc-brr4-004` (the last completed task) until the readiness review task itself is drafted. The first Phase 5 task, `pcc-brr5-001`, is the readiness review itself, and must state plainly, per GPT's explicit framing: the Semi-Autonomy Ceiling is explicit but only partly enforced (the archive-before-chaining rule is policy-only, not yet fielded in a script); Class A self-accept is policy-supported but has never actually been exercised in a real cycle; the fuller BRR Metrics deliverable and a formalized Failure Review Loop remain open hardening work, not completed. This decision does not itself write the readiness review or make its recommendation — that is `pcc-brr5-001`'s own bounded task. No verdict, task safety class, the autonomous gate, the Acceptance Boundary Rules, or `DECISION-033`/`DECISION-036`'s fallback text was changed.
+
+Supersedes: None
+Related: DECISION-021, DECISION-028, DECISION-045, DECISION-050, DECISION-053, DECISION-059, DECISION-060, docs/BRR_PLAN.md, schemas/project-state.schema.json, .cockpit/state/project-state.json

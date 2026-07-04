@@ -2,7 +2,7 @@
   "project_id": "project-control-cockpit",
   "project_name": "Project Control Cockpit",
   "project_goal": "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
-  "current_phase": "brr-phase-4",
+  "current_phase": "brr-phase-5",
   "current_task_id": "pcc-brr4-004",
   "active_repo_path": "C:\\ProjectControlCockpit",
   "active_branch": "main",
@@ -143,6 +143,6 @@
   "current_blocker": null,
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-brr4-004-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Task 'pcc-brr4-004' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T11:49:10-06:00"
+  "next_expected_action": "BRR Phase 5 (BRR Readiness Review) has begun (DECISION-061), per GPT's and the owner's review that Phase 4's deferred items (fuller Metrics, Failure Review Loop) are exactly what the readiness review should surface honestly, not hidden prerequisites. First Phase 5 task: pcc-brr5-001, the readiness review itself.",
+  "updated_at": "2026-07-04T12:00:00-06:00"
 }
