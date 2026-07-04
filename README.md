@@ -146,4 +146,38 @@ state → directive → worker → evidence → verification → state update or
 
 Active next step:
 
-* Natural break reached after the dual-restart proof. Review the restart-safe foundation, then choose enforcement follow-ons or broader PCC work.
+* `pcc-v1-012` ("Safety Net: Clean Stop") is complete and verified PASS. Repo is paused at a natural break; next step is picking the next backlog idea to promote into a task.
+
+## Plain-Language Task Names
+
+Task IDs (`pcc-v1-0XX`) and idea IDs (`IDEA-0XX`) are the permanent record, but they don't say what the work actually was. This table is a plain-English memory aid, grouped by theme - it does not rename or replace the IDs used in state files, archives, or git history.
+
+**Foundation** - the earliest setup work:
+
+* `pcc-v1-001` - First Runbook
+* `pcc-v1-002` - First Live Test
+* `pcc-v1-003` - Auto State Update
+* `pcc-v1-004` - Auto-Generated Directions
+* `pcc-v1-005` - Single Source of Truth
+
+**Fresh Start** - lets a brand-new chat (advisor or worker) pick up work cold, without you re-explaining anything:
+
+* `pcc-v1-006` - Advisor Notes
+* `pcc-v1-007` - Worker Ready Check
+* `pcc-v1-008` - Fresh-Start Test
+* `pcc-v1-009` - Ready Lock (the one check allowed to block a handoff)
+
+**Safety Net** - protects work and lets a session end or recover cleanly:
+
+* `pcc-v1-010` - Backup & Restore
+* `pcc-v1-011` - Health Check
+* `pcc-v1-012` - Clean Stop
+
+**Honesty Checks** - keeps the system from quietly drifting or claiming false progress (not yet built; see `backlog/IDEAS.md`):
+
+* `IDEA-008` - Activity Log
+* `IDEA-003` - Format Check
+* `IDEA-001` - Automatic Checks (deferred)
+* `IDEA-009` - Retry Limit (deferred)
+
+Going forward, new task titles in `task-state.json` lead with `Category: Plain Name` (e.g. `Honesty Checks: Activity Log`) so this grouping stays visible in the canonical state itself, not just in this table.

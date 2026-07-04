@@ -193,6 +193,12 @@ When state, verdict, or handoff files change, run the local validation step befo
 
 Active tasks live in `.cockpit/state/task-state.json`, not in idea docs.
 
+### Plain-Language Naming
+
+`task_id` (`pcc-v1-0XX`) and idea IDs (`IDEA-0XX`) remain the permanent, unchanging identifiers - do not rename them once assigned, since archives, git history, and cross-references in `docs/DECISIONS.md` depend on them staying stable.
+
+Starting with tasks drafted after `pcc-v1-012`, `task_title` should lead with a short, non-technical `Category: Plain Name` prefix (e.g. `Safety Net: Clean Stop`, `Honesty Checks: Activity Log`) so the owner can tell what a task is at a glance without decoding jargon or memorizing numbers. Current categories in use: **Foundation** (early setup), **Fresh Start** (restart-safety), **Safety Net** (backup/recovery/session-end tools), **Honesty Checks** (anti-drift/anti-fake-completion tooling). New categories may be added as new themes of work emerge; keep the plain-language name short (2-4 words) and free of technical terms. See `README.md`'s "Plain-Language Task Names" table for the full mapping of completed work.
+
 ---
 
 ## Stray Or Stale Doc Process
