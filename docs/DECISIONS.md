@@ -668,3 +668,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-022, DECISION-024, DECISION-025, DECISION-026, docs/BRR_PLAN.md, docs/BRR_POLICY.md
+
+---
+
+## DECISION-028: BRR Phase 1 Policy Scope Is Closed; BRR Phase 2 Begins With Task Classification Fielding
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+BRR Phase 1's policy-only scope is now treated as complete, and PCC moves into BRR Phase 2. The first bounded Phase 2 task is `pcc-brr2-001`: lightweight Task Classification Fielding.
+
+Reason:
+
+`DECISION-027` completed the fourth and final Phase 1 policy deliverable, and the owner then explicitly chose to keep going rather than hold at the boundary. `docs/BRR_PLAN.md` defines Phase 2 as the execution-control layer that makes the Phase 1 policy real in live task flow, with "Task Classification Fielding" listed first among its deliverables. The smallest honest next step is therefore to field the Class A/B/C/D model into live task state and handoff surfaces without yet broadening into automatic stop triggers, owner-decision capture mechanics, or acceptance-boundary enforcement.
+
+Implications:
+
+`project-state.json`'s `current_phase` advances from `brr-phase-1` to `brr-phase-2`, and Phase 2 task IDs use the format `pcc-brr2-0XX`, resetting the sequence count at the new phase boundary just as `DECISION-021` did for BRR Phase 1. The first active Phase 2 task (`pcc-brr2-001`) is intentionally narrow: it should add the chosen safety class into live task flow in a lightweight way (state, schema, and handoff visibility), but it must not yet implement automatic blocking, owner-decision capture, next-task drafting autonomy, or acceptance-boundary enforcement. Those remain separate bounded Phase 2 tasks if and when drafted.
+
+Supersedes: None
+Related: DECISION-021, DECISION-022, DECISION-027, docs/BRR_PLAN.md, docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md, .cockpit/state/project-state.json

@@ -13,9 +13,9 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-brr1-004
-* Task Title: BRR Policy: Operating Definitions
-* Task Status: complete
+* Task ID: pcc-brr2-001
+* Task Title: BRR Execution: Task Classification Fielding
+* Task Status: ready_for_worker
 
 ## Objective
 
@@ -35,38 +35,38 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 
 ## Exact Next Action
 
-Define the BRR Phase 1 Operating Definitions in canonical repo truth, extending docs/BRR_POLICY.md so the key terms already used across the prior three BRR policy tasks are explicit, stable, and non-contradictory. At minimum define safe unattended, safe with review, owner decision, blocked, insufficient evidence, and escalation, reconciling them with the Owner Review Matrix, Task Safety Classification, and Stop-Instead-of-Guess Policy already recorded, without introducing runtime enforcement, new statuses, or Phase 2 fielding mechanics.
+Field the BRR task safety class into PCC's live task flow in the lightest viable way. Add one explicit Class A/B/C/D field to canonical task state, validate it in schema, and surface it in the worker/advisor handoff artifacts so every active task can carry a visible safety classification. Keep this bounded to lightweight fielding only: make the class visible and durable in state plus handoff surfaces, but do not yet implement automatic stop triggers, owner-decision capture flow, acceptance-boundary enforcement, or autonomous next-task drafting.
 
 ## Allowed Scope
 
 The worker may:
 
-* Create or update narrowly relevant canonical docs for BRR Phase 1 policy, primarily docs/BRR_POLICY.md and closely related cross-references.
-* Update docs/DECISIONS.md, docs/BRR_PLAN.md, docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md, and README.md only as needed to propagate the new operating definitions cleanly.
-* Adjust .cockpit state or handoff artifacts only insofar as the active task and next action need to stay accurate.
-* Add brief examples, tables, or definitions directly supporting the operating definitions if they stay inside this task's bounded policy scope.
+* Update schemas/task-state.schema.json and the live .cockpit/state/task-state.json to add and use one BRR task safety class field.
+* Update scripts/generate-worker-directive.ps1 and scripts/generate-advisor-restart-brief.ps1 so the active task's class appears in the generated handoff artifacts.
+* Update docs/HANDOFF_PACKET_SPEC.md, docs/STATE_MODEL.md, docs/REPO_GOVERNANCE.md, README.md, and docs/DECISIONS.md only as needed to propagate this lightweight fielding cleanly.
+* Regenerate the live handoff artifacts and run the relevant local validation/health scripts.
 
 ## Forbidden Scope
 
 The worker must not:
 
-* Do not implement Phase 2 behavior, runtime enforcement, automatic gating, or task-class execution logic yet.
-* Do not edit scripts/, schemas/, or verification mechanics except for unavoidable truth-surface references that stay docs-only.
-* Do not broaden the task beyond defining and reconciling the BRR operating terms this phase already named.
-* Do not change canonical project goals, role assignments, or previously recorded verification verdicts.
-* Do not require the owner to restate policy already present in canonical repo truth.
-* Do not turn adjacent policy ambiguities into separate mini-projects or blockers for completing the operating definitions.
+* Do not implement automatic stop triggers, automatic blocking, or owner-decision capture mechanics yet.
+* Do not add acceptance-boundary enforcement beyond surfacing the class in state and handoff artifacts.
+* Do not redesign the BRR classes or reopen Phase 1 policy content unless a direct contradiction is found.
+* Do not retrofit archived historical tasks with the new field; this task is about live flow going forward.
+* Do not broaden into autonomous next-task drafting or any other Phase 2 deliverable beyond task classification fielding.
+* Do not require the owner to restate BRR policy already recorded canonically.
 
 ## Completion Criteria
 
 The task is complete only if:
 
-* The repo gains canonical policy text defining the BRR Operating Definitions named in docs/BRR_PLAN.md Phase 1: safe unattended, safe with review, owner decision, blocked, insufficient evidence, and escalation.
-* Each definition is explicit enough to stabilize the terminology already used in the Owner Review Matrix, Task Safety Classification, and Stop-Instead-of-Guess Policy, rather than merely repeating those terms loosely.
-* The definitions reconcile with, and do not contradict, the prior three BRR Phase 1 policy sections already recorded in docs/BRR_POLICY.md.
-* The policy stays practical and docs-only: concise definitions plus brief notes/examples where needed, no runtime enforcement, no automatic gating logic, and no premature implementation of Phase 2 flow.
-* Truth-surface propagation is handled honestly across docs/DECISIONS.md, docs/BRR_PLAN.md, docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md, README.md, and docs/BRR_POLICY.md, updating only what the new operating definitions actually make stale.
-* Claude returns evidence in .cockpit/result/worker-result.md using the required format and calls out any places where independent secondary review is still recommended.
+* task-state schema and live task-state gain one explicit BRR task safety class field limited to the four canonical classes defined in docs/BRR_POLICY.md: A, B, C, and D.
+* The live task for pcc-brr2-001 is classified explicitly using that field, and the chosen class is justified by the existing BRR policy rather than invented ad hoc.
+* The generated worker directive and advisor restart brief both surface the active task's class clearly, so a fresh worker or advisor can see the safety classification without re-deriving it from policy prose.
+* docs/HANDOFF_PACKET_SPEC.md, docs/STATE_MODEL.md, docs/REPO_GOVERNANCE.md, README.md, and docs/DECISIONS.md are updated only where this new live task-class field makes them stale.
+* Local validation remains healthy: any touched generators, schemas, or state files work cleanly with scripts/check-schemas.ps1, scripts/validate-cockpit-state.ps1, and scripts/doctor.ps1.
+* No automatic stop triggers, owner-decision capture flow, acceptance-boundary enforcement, or autonomous task-selection behavior is introduced.
 
 ## Required Evidence
 

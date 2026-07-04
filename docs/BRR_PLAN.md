@@ -4,8 +4,9 @@
 > Role (BRR) program, the active phase after V1 (see `DECISION-021`,
 > `DECISION-022`). It is the BRR-phase analogue of `docs/V1_Scope.md`: it
 > defines what the phase is trying to achieve and its non-negotiables, but it
-> is not itself a task list. Concrete work is delivered as bounded `pcc-brr1-0XX`
-> tasks per this plan's own "Recommended Task Breakdown Strategy" (Section 7).
+> is not itself a task list. Concrete work is delivered as bounded `pcc-brrX-0XX`
+> tasks per this plan's own "Recommended Task Breakdown Strategy" (Section 7),
+> with the active phase determining the `brrX` segment.
 > This document was authored by the owner and recorded verbatim into canonical
 > repo truth so BRR work does not depend on chat history (`STATE_MODEL.md` truth
 > priority; `DECISION-018` restart safety).

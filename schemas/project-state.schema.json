@@ -42,7 +42,8 @@
         "implementation",
         "verification",
         "paused",
-        "brr-phase-1"
+        "brr-phase-1",
+        "brr-phase-2"
       ]
     },
     "current_task_id": {

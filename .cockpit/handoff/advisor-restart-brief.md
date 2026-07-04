@@ -1,19 +1,19 @@
 # Advisor Restart Brief
 
-Generated 2026-07-03T22:22:26-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-03T22:31:02-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
 Project Control Cockpit: Build a lean, local-first AI project control cockpit that reduces owner babysitting.
 
-Current phase: brr-phase-1
+Current phase: brr-phase-2
 
 ## Active Task
 
-* Task ID: pcc-brr1-004
-* Title: BRR Policy: Operating Definitions
-* Status: complete
-* Objective: Define the BRR Phase 1 Operating Definitions in canonical repo truth, extending docs/BRR_POLICY.md so the key terms already used across the prior three BRR policy tasks are explicit, stable, and non-contradictory. At minimum define safe unattended, safe with review, owner decision, blocked, insufficient evidence, and escalation, reconciling them with the Owner Review Matrix, Task Safety Classification, and Stop-Instead-of-Guess Policy already recorded, without introducing runtime enforcement, new statuses, or Phase 2 fielding mechanics.
+* Task ID: pcc-brr2-001
+* Title: BRR Execution: Task Classification Fielding
+* Status: ready_for_worker
+* Objective: Field the BRR task safety class into PCC's live task flow in the lightest viable way. Add one explicit Class A/B/C/D field to canonical task state, validate it in schema, and surface it in the worker/advisor handoff artifacts so every active task can carry a visible safety classification. Keep this bounded to lightweight fielding only: make the class visible and durable in state plus handoff surfaces, but do not yet implement automatic stop triggers, owner-decision capture flow, acceptance-boundary enforcement, or autonomous next-task drafting.
 
 ## Last Verified
 
@@ -39,5 +39,5 @@ Current phase: brr-phase-1
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-brr1-004' is complete and verified PASS. BRR Phase 1 policy scope is complete; owner/advisor explicitly decides whether to declare the phase complete and continue hardening, transition to Phase 2, or choose another next lane.
-* Project-level: Task 'pcc-brr1-004' is complete and verified PASS. BRR Phase 1 policy scope is complete; owner/advisor explicitly decides whether to declare the phase complete and continue hardening, transition to Phase 2, or choose another next lane.
+* Task-level: Read .cockpit/handoff/worker-directive.md, implement pcc-brr2-001 within the bounded scope, and return evidence to .cockpit/result/worker-result.md.
+* Project-level: Run Claude Code against .cockpit/handoff/worker-directive.md for task 'pcc-brr2-001', then verify whether the BRR task class is now fielded cleanly into live state and handoff surfaces without introducing premature gating.

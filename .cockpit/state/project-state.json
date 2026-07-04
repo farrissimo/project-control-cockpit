@@ -2,8 +2,8 @@
   "project_id": "project-control-cockpit",
   "project_name": "Project Control Cockpit",
   "project_goal": "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
-  "current_phase": "brr-phase-1",
-  "current_task_id": "pcc-brr1-004",
+  "current_phase": "brr-phase-2",
+  "current_task_id": "pcc-brr2-001",
   "active_repo_path": "C:\\ProjectControlCockpit",
   "active_branch": "main",
   "owner_decisions": [
@@ -120,6 +120,12 @@
       "decision": "PCC returns to the canonical two-role split of DECISION-012: Claude Code is worker, Codex is advisor/verifier. The temporary dual-role trial (DECISION-019) ends and is superseded.",
       "date": "2026-07-03",
       "status": "active"
+    },
+    {
+      "id": "DECISION-028",
+      "decision": "BRR Phase 1 policy scope is complete; PCC moves into BRR Phase 2, beginning with lightweight Task Classification Fielding as pcc-brr2-001.",
+      "date": "2026-07-03",
+      "status": "active"
     }
   ],
   "active_constraints": [
@@ -137,6 +143,6 @@
   "current_blocker": null,
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-brr1-004-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Task 'pcc-brr1-004' is complete and verified PASS. BRR Phase 1 policy scope is complete; owner/advisor explicitly decides whether to declare the phase complete and continue hardening, transition to Phase 2, or choose another next lane.",
-  "updated_at": "2026-07-03T22:22:04-06:00"
+  "next_expected_action": "Run Claude Code against .cockpit/handoff/worker-directive.md for task 'pcc-brr2-001', then verify whether the BRR task class is now fielded cleanly into live state and handoff surfaces without introducing premature gating.",
+  "updated_at": "2026-07-03T22:45:00-06:00"
 }
