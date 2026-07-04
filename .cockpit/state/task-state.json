@@ -1,33 +1,37 @@
 {
-  "task_id": "pcc-brr5-001",
-  "task_title": "BRR Readiness Review",
-  "task_objective": "Deliver docs/BRR_PLAN.md Phase 5's sole deliverable: an honest BRR Readiness Review, added as a new section to docs/BRR_PLAN.md (mirroring how docs/V1_Scope.md's 'V1 Closure' section handled V1's own honest close-out). Must list, plainly: what PCC can safely do unattended today (with evidence); what still requires owner review; what remains unsafe or immature (explicitly including the gaps named in DECISION-060/061 -- Class A self-accept never exercised, archive-before-chaining policy-only, fuller Metrics and Failure Review Loop undelivered, and the standing single-party self-verification risk); and a recommendation for the next lane (continue BRR hardening / begin post-V1 expansion / keep both narrowly active), stated as a recommendation for the owner to decide, not a self-executed choice.",
+  "task_id": "pcc-brr5-002",
+  "task_title": "Safety Net: Archive Before Chaining",
+  "task_objective": "Field the Semi-Autonomy Ceiling's policy-only 'archive before you chain' rule (docs/BRR_POLICY.md, DECISION-060/061) as an actual script, closing the gap DECISION-059 found: chaining into a next unattended cycle currently overwrites the prior cycle's live evidence (worker directive, worker result, verification result) before it is archived, with git history as the only fallback. Add scripts/archive-held-cycle.ps1 that preserves a held (self-verified but not yet accepted/closed) cycle's evidence into the same archive/ locations close-out-verified-task.ps1 uses, without advancing task_status or otherwise treating the cycle as accepted.",
   "task_status": "complete",
   "assigned_worker": "Claude Code",
   "task_safety_class": "B",
   "completion_criteria": [
-    "docs/BRR_PLAN.md gains a 'Phase 5: BRR Readiness Review (Completed)' section (or equivalent heading) containing the four required lists/statements below.",
-    "List 1, 'What PCC can safely do unattended': each claim backed by a specific citation to actual session history (a task ID, DECISION number, or pilot run), not asserted generically.",
-    "List 2, 'What still requires owner review': stated per Task Safety Class and per the Owner Review Matrix's 'before execution' rows, consistent with the Semi-Autonomy Ceiling (docs/BRR_POLICY.md).",
-    "List 3, 'What remains unsafe or immature': must explicitly include, at minimum: Class A self-accept is policy-supported but has never been exercised in a real cycle; the archive-before-chaining rule (DECISION-060) is policy-only, not enforced by any script (GPT's explicit caveat, DECISION-061); chaining beyond 2 cycles is untested; the fuller BRR Metrics deliverable and a formalized Failure Review Loop remain undelivered; and the standing risk that every verification this entire BRR program (Phases 2 through 5) has been self-verified by the same party who did the work, with Codex unavailable throughout and GPT's review being additive/remote-only, not independent local guardrail re-execution.",
-    "A recommendation for the next lane (continue BRR hardening; begin post-V1 expansion; keep both narrowly active) is given with explicit reasoning, framed as a recommendation for the owner's decision -- the task does not choose the lane or take any action implementing a lane choice.",
-    "The review does not overstate: no claim is made that BRR is 'proven' or the walk-away model is settled beyond what DECISION-045 and DECISION-055 already established (meaningful evidence, not absolute proof).",
-    "A new decision is recorded in docs/DECISIONS.md summarizing the review and explicitly deferring the actual next-lane choice to the owner.",
-    "No change to any of the five verdicts, any Task Safety Class's meaning, the Acceptance Boundary Rules, the self-verification fallback, or any existing script/schema.",
-    "This task does not itself advance current_phase past brr-phase-5 or begin any next-lane work -- it only produces the review and the recommendation."
+    "scripts/archive-held-cycle.ps1 exists. It copies the live .cockpit/handoff/worker-directive.md, .cockpit/result/worker-result.md, and .cockpit/result/verification-result.json to their archive/ counterparts (<task_id>-worker-directive.md, etc.), using the exact same paths/naming convention as scripts/close-out-verified-task.ps1.",
+    "The script does NOT advance task_status, does NOT call scripts/advance-cockpit-state.ps1, and does NOT change verification_verdict or any other task-state.json/project-state.json field -- it is a pure evidence-preservation step for a cycle still being held pending review, not a close-out or acceptance action.",
+    "The script refuses to run if any of the three archive paths already exists (never overwrites archived history) or if verification-result.json's task_id does not match task-state.json's task_id -- matching close-out-verified-task.ps1's existing safety properties.",
+    "The script works regardless of the verdict in verification-result.json (PASS or non-PASS) -- a held cycle's evidence should be preservable no matter what verdict it carries, since the point is preventing loss before a decision is made, not judging the decision itself.",
+    "An optional -Commit switch stages and commits the newly-archived files (git add -A; git commit), mirroring close-out-verified-task.ps1's -Commit exactly, and never pushes.",
+    "Functionally tested (not read-through only) in an isolated scratch copy: archiving a held cycle succeeds and task_status/verification_verdict remain unchanged in the live task-state.json; re-running against the same cycle refuses (archive path already exists); a task_id mismatch refuses.",
+    "docs/BRR_POLICY.md's Semi-Autonomy Ceiling section is updated with a narrow, disclosed pointer (per DECISION-051's Post-Close Canonical Amendment Rule, since pcc-brr4-004 is already closed) naming this new script as the fielded version of the archive-before-chaining rule, without rewriting pcc-brr4-004's original 'policy only... future fielding work' claim, which was accurate when made.",
+    "docs/HANDOFF_PACKET_SPEC.md is updated to name the new script alongside close-out-verified-task.ps1 and return-inadequate-work.ps1 as part of the recognized close-out/preservation family.",
+    "A new decision is recorded in docs/DECISIONS.md.",
+    "No change to any of the five verdicts, any Task Safety Class's meaning, the Acceptance Boundary Rules, the self-verification fallback, or any other existing script's behavior."
   ],
   "boundaries": {
     "allowed": [
-      "Add a new section to docs/BRR_PLAN.md containing the readiness review.",
+      "Create scripts/archive-held-cycle.ps1.",
+      "Edit docs/BRR_POLICY.md to add the narrow pointer update to the existing Semi-Autonomy Ceiling section.",
+      "Edit docs/HANDOFF_PACKET_SPEC.md to name the new script.",
       "Edit docs/DECISIONS.md to record the new decision.",
-      "Read (not modify) any canonical doc, decision, or archived task record needed to cite evidence accurately (docs/DECISIONS.md, docs/BRR_POLICY.md, docs/BRR_PLAN.md, .cockpit/result/archive/*, .cockpit/handoff/archive/*)."
+      "Create and use a temporary, isolated scratch copy of relevant repo files (outside the live .cockpit/ state) to functionally test the change without touching real task/project state; delete the scratch copy when done."
     ],
     "forbidden": [
-      "Do not modify any existing script or schema.",
-      "Do not modify any existing section of docs/BRR_PLAN.md, docs/BRR_POLICY.md, or any other canonical doc -- this task only adds the new readiness-review section and the new decision.",
-      "Do not choose or execute a next-lane decision (do not advance current_phase, do not begin post-V1 expansion work, do not start a new BRR hardening task) -- recommend only.",
-      "Do not overstate confidence in the walk-away model beyond DECISION-045/DECISION-055's own 'meaningful evidence, not absolute proof' framing.",
-      "Do not omit or soften any of the specific immature/unsafe items named in this task's own completion criteria.",
+      "Do not modify any existing script (close-out-verified-task.ps1, return-inadequate-work.ps1, advance-cockpit-state.ps1, finalize-worker-handback.ps1, log-event.ps1, doctor.ps1, check-stop-conditions.ps1, check-autonomous-gate.ps1).",
+      "Do not modify any schema.",
+      "Do not have the new script advance task_status, call advance-cockpit-state.ps1, or otherwise treat a held cycle as accepted/closed.",
+      "Do not rewrite or delete pcc-brr4-004's original claim in docs/BRR_POLICY.md that fielding was 'not required by this task' / policy-only at the time -- only add a clearly-marked pointer noting later fielding.",
+      "Do not touch the self-verification fallback (DECISION-033/036), the Acceptance Boundary Rules, or any Task Safety Class's core meaning.",
+      "Do not run any test of the new script against the live .cockpit/state/task-state.json, .cockpit/state/project-state.json, or .cockpit/result/verification-result.json -- all functional testing happens in an isolated scratch copy only.",
       "Do not self-close this task via scripts/close-out-verified-task.ps1 -- Class B, hold the self-verified result for owner/GPT review."
     ]
   },
@@ -48,6 +52,6 @@
   "current_blocker": null,
   "owner_decision_request": null,
   "promotion_basis": null,
-  "next_action": "Task 'pcc-brr5-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T12:08:31-06:00"
+  "next_action": "Task 'pcc-brr5-002' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-04T12:21:45-06:00"
 }

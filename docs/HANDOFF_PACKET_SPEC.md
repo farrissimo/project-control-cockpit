@@ -350,6 +350,8 @@ Archiving before advancing (rather than after, as earlier cycles did) is what ma
 
 When the verdict is `FAIL` / `INSUFFICIENT` / `BLOCKED` / `OUT_OF_SCOPE` instead, `scripts/return-inadequate-work.ps1` (`pcc-brr3-005`, `docs/BRR_POLICY.md`'s "Inadequate-Work Return Path") performs the equivalent close-out in the same four-step order: archive, advance state via `scripts/advance-cockpit-state.ps1`, run `doctor.ps1`, log the event via `scripts/log-event.ps1 -FromVerificationResult` — with the same refusal properties (refuses on a `PASS` verdict, a `task_id` mismatch, or an existing archive path) and the same optional `-Commit` that never pushes. This exists so a non-`PASS` cycle gets exactly the same one-command, fully-recorded close-out a `PASS` cycle already had, rather than requiring the verifier to remember the individual steps by hand.
 
+A third case exists alongside these two: when a self-verified cycle is being **held** for owner/GPT review rather than closed out immediately (any verdict), `scripts/archive-held-cycle.ps1` (`pcc-brr5-002`, `docs/BRR_POLICY.md`'s Semi-Autonomy Ceiling) preserves the same three files into the same archive locations, but does **not** advance `task_status`, call `advance-cockpit-state.ps1`, or otherwise treat the cycle as accepted — it is a pure evidence-preservation step, with the same refusal properties (task_id mismatch, existing archive path) and the same optional `-Commit` that never pushes. This closes the gap `DECISION-059` found: chaining into a next unattended cycle previously overwrote a held cycle's live evidence before it was archived, with git history as the only fallback.
+
 ---
 
 ## V1 Discipline

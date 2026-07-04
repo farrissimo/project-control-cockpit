@@ -1510,3 +1510,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-036, DECISION-055, DECISION-059, DECISION-062, docs/BRR_PLAN.md
+
+---
+
+## DECISION-064: Archive-Before-Chaining Fielded As A Script (pcc-brr5-002)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`scripts/archive-held-cycle.ps1` fields the Semi-Autonomy Ceiling's "archive before you chain" rule (`docs/BRR_POLICY.md`, `DECISION-060`) as an actual script, closing the gap `DECISION-059` found in practice: chaining into a next unattended cycle previously overwrote the prior cycle's live evidence before it was archived, with git history as the only fallback recovery path. Owner-directed as the concrete next step after the BRR Readiness Review, chosen specifically as a tangible babysitting reducer over further abstract policy work.
+
+Reason:
+
+`DECISION-061` recorded GPT's own caveat that the policy-only rule was "not the final trusted form" and should become future fielding work before the unattended model is called mature. The owner's own reasoning for choosing this task next (over restoring independent verification, which needs an owner-level architecture decision first, or automating push approval, which is a deliberate policy the owner wants kept as-is) was that it closes a real, already-proven gap, is bounded, and required no new authority or architecture decision — a genuine babysitting reduction rather than more BRR prose.
+
+Implications:
+
+`scripts/archive-held-cycle.ps1` copies the live worker directive, worker result, and verification result to the same archive locations `close-out-verified-task.ps1` uses, but does **not** advance `task_status`, call `advance-cockpit-state.ps1`, or otherwise treat the held cycle as accepted — it is a pure preservation step, distinct from both `close-out-verified-task.ps1` (PASS acceptance) and `scripts/return-inadequate-work.ps1` (non-PASS acceptance). It works for any verdict, refuses on an existing archive path or a `task_id` mismatch (matching its siblings' safety properties), and offers the same optional `-Commit` that never pushes. Functionally tested in an isolated scratch copy across four scenarios: archiving a held `PASS` cycle (task_status confirmed unchanged before/after); refusing a re-run against an already-archived cycle; refusing on a `task_id` mismatch; and archiving a held non-`PASS` (`INSUFFICIENT`) cycle to confirm verdict-agnostic behavior. `docs/HANDOFF_PACKET_SPEC.md` now names this script as the third member of the close-out/preservation family alongside `close-out-verified-task.ps1` and `return-inadequate-work.ps1`. Per `DECISION-051`'s Post-Close Canonical Amendment Rule, `docs/BRR_POLICY.md`'s Semi-Autonomy Ceiling section gained a "Later update" pointer naming this script, without rewriting `pcc-brr4-004`'s original "policy only... future fielding work" claim, which was accurate when made. No existing script was modified. No verdict, task safety class, the autonomous gate's own decision logic, the Acceptance Boundary Rules, or `DECISION-033`/`DECISION-036`'s fallback text was changed.
+
+Supersedes: None
+Related: DECISION-041, DECISION-051, DECISION-059, DECISION-060, DECISION-061, docs/BRR_POLICY.md, docs/HANDOFF_PACKET_SPEC.md, scripts/archive-held-cycle.ps1

@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-04T12:08:36-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T12:21:49-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,24 +10,24 @@ Current phase: brr-phase-5
 
 ## Active Task
 
-* Task ID: pcc-brr5-001
-* Title: BRR Readiness Review
+* Task ID: pcc-brr5-002
+* Title: Safety Net: Archive Before Chaining
 * Status: complete
 * Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Deliver docs/BRR_PLAN.md Phase 5's sole deliverable: an honest BRR Readiness Review, added as a new section to docs/BRR_PLAN.md (mirroring how docs/V1_Scope.md's 'V1 Closure' section handled V1's own honest close-out). Must list, plainly: what PCC can safely do unattended today (with evidence); what still requires owner review; what remains unsafe or immature (explicitly including the gaps named in DECISION-060/061 -- Class A self-accept never exercised, archive-before-chaining policy-only, fuller Metrics and Failure Review Loop undelivered, and the standing single-party self-verification risk); and a recommendation for the next lane (continue BRR hardening / begin post-V1 expansion / keep both narrowly active), stated as a recommendation for the owner to decide, not a self-executed choice.
+* Objective: Field the Semi-Autonomy Ceiling's policy-only 'archive before you chain' rule (docs/BRR_POLICY.md, DECISION-060/061) as an actual script, closing the gap DECISION-059 found: chaining into a next unattended cycle currently overwrites the prior cycle's live evidence (worker directive, worker result, verification result) before it is archived, with git history as the only fallback. Add scripts/archive-held-cycle.ps1 that preserves a held (self-verified but not yet accepted/closed) cycle's evidence into the same archive/ locations close-out-verified-task.ps1 uses, without advancing task_status or otherwise treating the cycle as accepted.
 
 ## Last Verified
 
-* Verdict: PASS for task 'pcc-brr5-001', verified at 2026-07-04T12:05:00-06:00
-* Summary: Verified pcc-brr5-001 (BRR Readiness Review) at 'strict' depth. Read the full new section directly, confirmed it is purely additive to docs/BRR_PLAN.md via diff, and spot-checked two of its evidentiary citations directly against docs/DECISIONS.md's actual text. All nine completion criteria are met, including the specific requirement that none of the six named unsafe/immature items be softened -- they are not. The review explicitly names its own most important limitation (single-party self-verification throughout BRR Phases 2-5) as the largest risk rather than minimizing it, and this very verification is itself an instance of that limitation, which is disclosed rather than hidden. The recommendation is framed correctly as a recommendation, deferring the actual next-lane choice to the owner. GPT (secondary reviewer) approved close-out and flagged one wording caution -- the original 'roughly thirty cycles' phrasing was unverified; corrected to the actual counted figures (26 completed BRR-phase cycles, 41 total including 15 V1 cycles, per .cockpit/result/archive/) before close-out, per GPT's specific request.
-* Last verified handoff: .cockpit/handoff/archive/pcc-brr5-001-worker-directive.md
+* Verdict: PASS for task 'pcc-brr5-002', verified at 2026-07-04T12:23:00-06:00
+* Summary: Verified pcc-brr5-002 (Safety Net: Archive Before Chaining) at 'strict' depth. Read the new script's full text directly and confirmed via git diff that no existing script, schema, or prior doc content was touched -- only additive changes. Independently re-tested the script myself in a fresh scratch copy, using a verdict (BLOCKED) neither the worker nor any real prior cycle had exercised, confirming both the happy path (task_status genuinely unchanged) and the re-run refusal. All ten completion criteria are met with direct, independently-reproduced evidence. This closes the concrete gap DECISION-059 found and GPT flagged as 'not the final trusted form' in DECISION-061 -- the archive-before-chaining rule now has an actual enforcement tool, not policy text alone.
+* Last verified handoff: .cockpit/handoff/archive/pcc-brr5-002-worker-directive.md
 
 ## Open Issues
 
-* Risk from last verification of 'pcc-brr5-001': Self-verified under DECISION-033 degraded fallback. No independent second-party (Codex) review has occurred. GPT secondary review not yet performed on this specific cycle -- notably, this cycle's own content names that exact gap as the single largest standing risk, which is itself worth the reader noticing: the review disclosing this limitation is being verified under the very limitation it discloses.
-* Risk from last verification of 'pcc-brr5-001': Verification Depth Policy row applied: Class B, truth-surface-affecting -> strict. Applied via full re-read of the new section, cross-check against the Semi-Autonomy Ceiling, and direct spot-check of two citations against the underlying decision text rather than trusting the drafting pass alone.
-* Risk from last verification of 'pcc-brr5-001': A synthesis document spanning ~26-41 prior cycles was only spot-checked at two citation points, not all of them; a reviewer with more time budget could reasonably re-verify a larger sample.
-* Risk from last verification of 'pcc-brr5-001': The recommendation ('keep both narrowly active') is a judgment call, explicitly reasoned but not mechanically derivable; the owner and GPT may reasonably weigh the same facts differently.
+* Risk from last verification of 'pcc-brr5-002': Self-verified under DECISION-033 degraded fallback. No independent second-party (Codex) review has occurred. GPT secondary review not yet performed on this specific cycle.
+* Risk from last verification of 'pcc-brr5-002': Verification Depth Policy row applied: Class B, truth-surface-affecting -> strict. Applied via full re-read of the new script and doc changes, plus an independent re-test in a fresh scratch copy with a verdict not previously exercised, rather than trusting the worker's own test transcript alone.
+* Risk from last verification of 'pcc-brr5-002': The new script remains a manually-invoked convenience tool, same as its two siblings -- nothing forces a verifier to actually run it before chaining into a next held cycle. The discipline still depends on a human or PCC-as-verifier reading and applying the Semi-Autonomy Ceiling; this task closes the 'no tool exists' gap, not the 'tool isn't always used' gap.
+* Risk from last verification of 'pcc-brr5-002': Only three of the five verdicts have now been exercised against this script across worker and verifier testing combined (PASS, INSUFFICIENT, BLOCKED); FAIL and OUT_OF_SCOPE were not separately tested, though the code contains no verdict-conditional branching that would make this a meaningful gap.
 
 ## Read First
 
@@ -41,5 +41,5 @@ Current phase: brr-phase-5
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-brr5-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-brr5-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Task-level: Task 'pcc-brr5-002' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Project-level: Task 'pcc-brr5-002' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.

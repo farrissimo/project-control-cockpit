@@ -1014,6 +1014,15 @@ not required by this task and remains future fielding work, consistent with
 how every other BRR policy section in this document was defined before being
 fielded.
 
+> **Later update (`pcc-brr5-002`, `DECISION-064`):** the "held for later
+> review" case now has a script. `scripts/archive-held-cycle.ps1` preserves
+> a held cycle's evidence into the same archive locations
+> `close-out-verified-task.ps1` uses, without advancing `task_status` or
+> otherwise treating the cycle as accepted. This note is a pointer added
+> after `pcc-brr4-004` closed, per `docs/REPO_GOVERNANCE.md`'s Post-Close
+> Canonical Amendment Rule (`DECISION-051`) — it does not rewrite the claim
+> above, which was accurate when `pcc-brr4-004` was verified.
+
 ### The chaining ceiling is exactly as high as what has been piloted
 
 Only **two** chained cycles have actually been run and reviewed (pilot run
