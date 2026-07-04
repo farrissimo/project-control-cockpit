@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-03T19:25:34-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-03T19:44:16-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,23 +10,23 @@ Current phase: implementation
 
 ## Active Task
 
-* Task ID: pcc-v1-011
-* Title: Add advisory doctor health-check command
+* Task ID: pcc-v1-012
+* Title: Add safe-stop clean-rollover command
 * Status: complete
-* Objective: Create a local deterministic doctor command that composes the existing PCC checks and answers whether the repo is safe to trust and hand off right now. Keep it read-only, advisory, and non-gating. It may surface schema/state warnings, restart-safety status, handoff freshness, and similar structural signals, but it must not block or replace the separate enforce-handoff gate.
+* Objective: Create a local deterministic safe-stop command that confirms the repo is in a resumable state before ending a session: check state consistency and restart safety using existing checks, confirm canonical next_action is present and current, and print a short human-readable summary of what to read first and what to do next. It must not advance task status, write a verification verdict, or gate anything - it is a convenience wrap-up step, not enforcement.
 
 ## Last Verified
 
-* Verdict: PASS for task 'pcc-v1-011', verified at 2026-07-03T19:25:00-06:00
-* Summary: Independently re-ran the worker's claimed tests (live doctor.ps1 report, live validate-cockpit-state.ps1, and a fresh scratch-copy reproduction of the drifted-state ISSUE scenario under the same PowerShell 5.1 runtime) and confirmed all completion criteria are met: doctor.ps1 composes existing checks, reports OK/WARN/ISSUE clearly, always exits 0, and is not wired as a precondition anywhere in the repo. Confirmed via git diff that only docs/HANDOFF_PACKET_SPEC.md was touched by this task among canonical docs, with a clean 4-line addition. No out-of-scope changes found.
+* Verdict: PASS for task 'pcc-v1-012', verified at 2026-07-03T19:45:00-06:00
+* Summary: Independently re-ran safe-stop.ps1 against the live repo and against a fresh scratch copy with a different field blanked than the worker tested (project-state.json's next_expected_action rather than task-state.json's next_action), confirming the same cascading ISSUE behavior and, critically, confirming via before/after checksums that the script wrote nothing to any of the four key files - the read-only guarantee holds. Found and fixed a garbled sentence in the worker's docs/HANDOFF_PACKET_SPEC.md addition before accepting the result. All completion criteria met; no out-of-scope changes found.
 * Last verified handoff: .cockpit/handoff/worker-directive.md
 
 ## Open Issues
 
-* Risk from last verification of 'pcc-v1-011': doctor.ps1 shells out to pwsh for two of its four checks; if pwsh is not installed on a given machine, those checks degrade to a generic ISSUE rather than their real status (inherited dependency from the scripts it composes, not new).
-* Risk from last verification of 'pcc-v1-011': The ANSI-stripping regex targets the current Write-Error SGR color-code shape; a future PowerShell rendering change could cause raw codes to reappear (a readability regression, not a correctness one).
-* Risk from last verification of 'pcc-v1-011': The 'last known handoff gate' check is purely informational and does not indicate how stale a PASS/FAIL verdict actually is, only whether it matches the current task_id.
-* Risk from last verification of 'pcc-v1-011': Self-verification note: this verification was performed by the same model/session that acted as worker for this task, per the owner's explicit 2026-07-03 decision to operate in a dual worker/advisor role going forward. Independence that would normally catch self-serving evidence review is reduced; mitigated here by independently re-running the worker's claimed commands from scratch (not just reading the narrative) and reproducing the two bug fixes in a fresh scratch copy before accepting them.
+* Risk from last verification of 'pcc-v1-012': safe-stop.ps1 shells out to pwsh for its two composed checks, inheriting the same environment dependency already accepted for doctor.ps1 and the restart-safety scripts.
+* Risk from last verification of 'pcc-v1-012': The 'resume by reading' list is a fixed, hand-authored path list rather than dynamically derived the same way generate-advisor-restart-brief.ps1 builds its Read First list; a future canonical read-first file would need a matching manual update here.
+* Risk from last verification of 'pcc-v1-012': The ANSI-stripping helper is duplicated between doctor.ps1 and safe-stop.ps1 rather than shared, a minor maintenance duplication accepted to keep each script self-contained.
+* Risk from last verification of 'pcc-v1-012': Self-verification note (DECISION-019): this verification, and the task drafting that preceded it, were both performed by the same session acting as advisor and worker. Mitigated by independently re-running the checks from a fresh scratch copy (a different field than the worker tested) rather than only reading the worker's narrative, and by finding and fixing a real doc wording defect the worker introduced before accepting the result.
 
 ## Read First
 
@@ -40,5 +40,5 @@ Current phase: implementation
 
 ## What Happens Next
 
-* Task-level: Advance task-state.json to complete via scripts/advance-cockpit-state.ps1, archive this cycle's directive/result/verification artifacts, then draft the next bounded task.
-* Project-level: Advance task-state.json to complete via scripts/advance-cockpit-state.ps1, archive this cycle's directive/result/verification artifacts, then draft the next bounded task.
+* Task-level: Advance task-state.json to complete via scripts/advance-cockpit-state.ps1, run doctor.ps1 to confirm repo health, refresh the advisor brief if stale, archive this cycle's artifacts, and commit the verified work locally (push requires separate explicit owner approval per DECISION-020).
+* Project-level: Advance task-state.json to complete via scripts/advance-cockpit-state.ps1, run doctor.ps1 to confirm repo health, refresh the advisor brief if stale, archive this cycle's artifacts, and commit the verified work locally (push requires separate explicit owner approval per DECISION-020).

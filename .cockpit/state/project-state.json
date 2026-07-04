@@ -3,7 +3,7 @@
     "project_name":  "Project Control Cockpit",
     "project_goal":  "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
     "current_phase":  "implementation",
-    "current_task_id":  "pcc-v1-011",
+    "current_task_id":  "pcc-v1-012",
     "active_repo_path":  "C:\\ProjectControlCockpit",
     "active_branch":  "main",
     "owner_decisions":  [
@@ -90,6 +90,18 @@
                                 "decision":  "Fresh advisor and worker sessions must be restart-safe from canonical repo truth so chats are disposable rather than critical state containers.",
                                 "date":  "2026-07-03",
                                 "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-019",
+                                "decision":  "Claude Code may temporarily hold both the worker and advisor/verifier roles, as an explicit, disclosed, owner-approved exception to DECISION-012, with independent re-checking and honest FAIL/INSUFFICIENT willingness required.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-020",
+                                "decision":  "Verifier close-out includes running doctor/validate-cockpit-state, refreshing the advisor brief if stale, archiving cycle artifacts, and committing verified work to git. Pushing to any remote requires separate explicit owner approval each time.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
                             }
                         ],
     "active_constraints":  [
@@ -107,6 +119,6 @@
     "current_blocker":  null,
     "last_verified_handoff":  ".cockpit/handoff/worker-directive.md",
     "last_verification_verdict":  "PASS",
-    "next_expected_action":  "Advance task-state.json to complete via scripts/advance-cockpit-state.ps1, archive this cycle\u0027s directive/result/verification artifacts, then draft the next bounded task.",
-    "updated_at":  "2026-07-03T19:25:02-06:00"
+    "next_expected_action":  "Advance task-state.json to complete via scripts/advance-cockpit-state.ps1, run doctor.ps1 to confirm repo health, refresh the advisor brief if stale, archive this cycle\u0027s artifacts, and commit the verified work locally (push requires separate explicit owner approval per DECISION-020).",
+    "updated_at":  "2026-07-03T19:43:57-06:00"
 }

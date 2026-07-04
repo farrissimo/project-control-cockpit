@@ -266,6 +266,8 @@ When starting a fresh chat, include:
 
 `scripts/doctor.ps1` is the advisory counterpart to the gate: a read-only report that composes `validate-cockpit-state.ps1`, `verify-dual-restart-safety.ps1`, the last recorded `.cockpit/state/handoff-gate.json` verdict, and the active task's status into one "is this repo safe to trust right now?" summary. Each finding is labeled `OK`, `WARN`, or `ISSUE`; the script always exits `0` and never halts or blocks anything — it exists so the owner/advisor does not have to remember which of the individual checks to run and in what order. It is deliberately not wired as a precondition for any other step; `scripts/enforce-handoff-restart-safety.ps1` remains the only script allowed to gate a handoff.
 
+`scripts/safe-stop.ps1` is the session-end counterpart to `doctor.ps1`: where `doctor` answers "is this repo safe to trust right now," `safe-stop` answers "am I safe to end this session and let a fresh one pick it up cold?" It runs `validate-cockpit-state.ps1` and `verify-dual-restart-safety.ps1`, confirms `task-state.json`'s `next_action` and `project-state.json`'s `next_expected_action` are present (without rewriting either), and prints what a fresh session should read first plus a plain "Safe to stop: YES / NOT CLEANLY" line. Like `doctor.ps1`, it always exits `0`, never advances `task_status`, never writes a verification verdict (DECISION-006 reserves that for the verifier), and never gates anything — it exists to kill "where were we?" overhead at session end, not to enforce it.
+
 ---
 
 ## V1 Discipline
