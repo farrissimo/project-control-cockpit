@@ -270,6 +270,18 @@ When starting a fresh chat, include:
 
 `scripts/log-event.ps1` appends one structured, factual line to `.cockpit/logs/routing-log.jsonl` per meaningful cycle event, instead of relying on hand-typed free-form JSON (which drifted and had to be manually backfilled during the `pcc-v1-013` cycle itself). It validates `event_type` against a small explicit set (`next_task_drafted`, `verified_pass`, `verified_fail`, `verified_insufficient`, `verified_blocked`, `verified_out_of_scope`, `correction_applied`) rather than accepting arbitrary text there, and with `-FromVerificationResult` it derives `task_id`, `event_type`, and `detail` directly from `.cockpit/result/verification-result.json` so a verifier does not have to hand-write JSON for the common case. It is strictly append-only — it only ever calls `Add-Content`, which cannot read or rewrite prior lines — and it never gates or blocks anything; it is a recording tool, not an enforcement tool. Log lines written before this script existed keep their original `route`/`reason`/`result` shape; this is a prospective format improvement, not a rewrite of history (consistent with the plain-language naming convention above: identifiers and past records are not retroactively changed).
 
+### Recommended Close-Out Order
+
+Once a `PASS` verdict is written to `.cockpit/result/verification-result.json`, close out the cycle in this order:
+
+1. **Archive first** — copy the live `worker-directive.md`, `worker-result.md`, and `verification-result.json` to their `archive/` counterparts (e.g. `pcc-v1-0XX-worker-directive.md`) *before* advancing state. Archiving does not depend on `advance-cockpit-state.ps1` having run.
+2. **Advance state**, passing the archive path from step 1: `scripts/advance-cockpit-state.ps1 -ArchivedDirectivePath ".cockpit/handoff/archive/pcc-v1-0XX-worker-directive.md"`. This is what lets `last_verified_handoff` point at the immutable archived copy instead of the live path the next task's directive will overwrite (see `docs/STATE_MODEL.md`).
+3. **Run `doctor.ps1`** to confirm the repo is still healthy, and regenerate `advisor-restart-brief.md` if it reports the advisor side stale.
+4. **Log the event** with `scripts/log-event.ps1 -FromVerificationResult`.
+5. **Commit** the verified work (push requires separate explicit owner approval per `DECISION-020`).
+
+Archiving before advancing (rather than after, as earlier cycles did) is what makes step 2's `-ArchivedDirectivePath` argument available in the first place.
+
 ---
 
 ## V1 Discipline

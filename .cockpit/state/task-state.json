@@ -1,50 +1,48 @@
 {
-    "task_id": "pcc-v1-013",
-    "task_title": "Honesty Checks: Activity Log",
-    "task_objective": "Add a local deterministic activity-log helper that appends factual, structured events to .cockpit/logs/routing-log.jsonl, so meaningful cycle events (task drafted, verified PASS/FAIL/etc., corrections applied) are recorded consistently instead of hand-typed free-form JSON prone to drift or omission (as happened this session, when several real entries were missed and had to be backfilled by hand). The helper must be strictly append-only, must validate event/result types against a small explicit set rather than accepting arbitrary free text there, and must be able to derive an entry directly from the current .cockpit/result/verification-result.json so the verifier does not have to hand-type JSON for the common case.",
-    "task_status": "complete",
-    "assigned_worker": "Claude Code",
-    "completion_criteria": [
-        "A local deterministic script exists that appends one well-formed JSON line per event to .cockpit/logs/routing-log.jsonl.",
-        "The script validates event/result type against a small explicit set (e.g. next_task_drafted, verified_pass, verified_fail, verified_insufficient, verified_blocked, verified_out_of_scope, correction_applied) rather than accepting arbitrary free text for that field.",
-        "The script is strictly append-only: it never rewrites, reorders, or removes any existing line in routing-log.jsonl.",
-        "The script can derive an entry directly from the current .cockpit/result/verification-result.json (task_id, verdict, summary) so a verifier does not have to hand-type the JSON for a verification event.",
-        "Recorded detail is factual (what happened) rather than open-ended narrative justification.",
-        "The change stays within the approved V1 scope, remains non-blocking, and does not gate or block any task cycle.",
-        "Claude returns evidence in .cockpit/result/worker-result.md using the required format."
-    ],
-    "boundaries": {
-        "allowed": [
-            "Update scripts/ to add the activity-log helper.",
-            "Update .cockpit runtime files (specifically .cockpit/logs/routing-log.jsonl) only as needed for the helper or its demonstration.",
-            "Update docs directly related to activity logging, routing-log.jsonl, or canonical state.",
-            "Add or update a small demonstration step if needed."
-        ],
-        "forbidden": [
-            "Do not build UI or broader application code yet.",
-            "Do not add paid API dependencies.",
-            "Do not introduce broad orchestration or automation.",
-            "Do not change canonical project goals or verification verdicts.",
-            "Do not require the owner to manually restate or carry the worker instructions.",
-            "Do not rewrite, reorder, or delete any existing line already in routing-log.jsonl; append-only means append-only.",
-            "Do not gate, block, or fail any other script/cycle based on log contents; this is a recording tool, not an enforcement tool."
-        ]
-    },
-    "required_evidence": [
-        "Files created or changed.",
-        "Summary of changes.",
-        "Commands run, if any.",
-        "Command/test results, if any.",
-        "Known risks.",
-        "Unresolved assumptions.",
-        "Confirmation that forbidden scope was not touched."
-    ],
-    "attempts": 0,
-    "current_directive_path": ".cockpit/handoff/worker-directive.md",
-    "worker_result_path": ".cockpit/result/worker-result.md",
-    "verification_result_path": ".cockpit/result/verification-result.json",
-    "verification_verdict": "PASS",
-    "current_blocker": null,
-    "next_action": "pcc-v1-013 close-out is fully complete (state advanced, doctor/health check clean, advisor brief refreshed, verification logged via log-event.ps1, cycle archived, work to be committed). Repo is paused at a natural break. Next action: owner selects which backlog idea to promote next, then draft that task into task-state.json.",
-    "updated_at": "2026-07-03T20:15:00-06:00"
+    "task_id":  "pcc-v1-014",
+    "task_title":  "Safety Net: Wrap-Up Fix",
+    "task_objective":  "Fix scripts/advance-cockpit-state.ps1 so canonical next_action/next_expected_action and last_verified_handoff stay accurate after a verified PASS closes out a cycle, without needing manual correction each time (this has now happened twice: pcc-v1-011 and pcc-v1-012). Two confirmed root causes to fix: (1) advance-cockpit-state.ps1 copies verification.next_action verbatim, but that text is the verifier\u0027s own pre-close-out checklist (advance/doctor/archive/commit), so it describes already-completed steps as pending the moment they finish; (2) last_verified_handoff is set to task-state.json\u0027s current_directive_path (the live, soon-to-be-overwritten worker-directive.md), never the archived immutable copy created during close-out.",
+    "task_status":  "complete",
+    "assigned_worker":  "Claude Code",
+    "completion_criteria":  [
+                                "scripts/advance-cockpit-state.ps1 accepts an explicit archived-directive-path input (e.g. a parameter) and, when supplied, sets last_verified_handoff to that archived path rather than the live current_directive_path; when not supplied, existing behavior is preserved so nothing already depending on this script breaks.",
+                                "docs/VERIFICATION_RESULT_SPEC.md\u0027s next_action field definition is updated to state that for a PASS verdict, next_action must describe the durable state after the cycle closes (e.g. \u0027task complete; owner selects the next backlog item\u0027) rather than the verifier\u0027s own remaining close-out checklist, so it cannot describe already-completed steps as pending.",
+                                "The documented close-out order (docs/HANDOFF_PACKET_SPEC.md and/or DECISION-020\u0027s description) is updated to archive the cycle\u0027s directive/result/verification files before running advance-cockpit-state.ps1, passing the resulting archive path in.",
+                                "A demonstration shows a full cycle (draft -\u003e verify PASS -\u003e archive -\u003e advance) leaves last_verified_handoff pointing at the archived copy and next_action describing the true post-close-out state, with no manual correction step needed afterward.",
+                                "The change stays within the approved V1 scope, remains local deterministic, and does not introduce broad orchestration or automation.",
+                                "Claude returns evidence in .cockpit/result/worker-result.md using the required format."
+                            ],
+    "boundaries":  {
+                       "allowed":  [
+                                       "Update scripts/advance-cockpit-state.ps1.",
+                                       "Update .cockpit runtime files only as needed for the fix or its demonstration.",
+                                       "Update docs directly related to close-out order, next_action semantics, or verification-result next_action (docs/VERIFICATION_RESULT_SPEC.md, docs/HANDOFF_PACKET_SPEC.md, docs/STATE_MODEL.md).",
+                                       "Add or update a small demonstration step if needed."
+                                   ],
+                       "forbidden":  [
+                                         "Do not build UI or broader application code yet.",
+                                         "Do not add paid API dependencies.",
+                                         "Do not introduce broad orchestration or automation.",
+                                         "Do not change canonical project goals or verification verdicts (PASS/FAIL/INSUFFICIENT/BLOCKED/OUT_OF_SCOPE must remain exactly these five values).",
+                                         "Do not require the owner to manually restate or carry the worker instructions.",
+                                         "Do not rewrite, reorder, or delete any existing archived file or routing-log.jsonl line; this task changes behavior going forward only."
+                                     ]
+                   },
+    "required_evidence":  [
+                              "Files created or changed.",
+                              "Summary of changes.",
+                              "Commands run, if any.",
+                              "Command/test results, if any.",
+                              "Known risks.",
+                              "Unresolved assumptions.",
+                              "Confirmation that forbidden scope was not touched."
+                          ],
+    "attempts":  0,
+    "current_directive_path":  ".cockpit/handoff/worker-directive.md",
+    "worker_result_path":  ".cockpit/result/worker-result.md",
+    "verification_result_path":  ".cockpit/result/verification-result.json",
+    "verification_verdict":  "PASS",
+    "current_blocker":  null,
+    "next_action":  "Task \u0027pcc-v1-014\u0027 is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+    "updated_at":  "2026-07-03T20:24:21-06:00"
 }

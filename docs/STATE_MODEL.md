@@ -226,6 +226,8 @@ The owner can explicitly override a verifier verdict. Overrides must be recorded
 
 `scripts/advance-cockpit-state.ps1` reads `.cockpit/result/verification-result.json` and applies this section's rules to `project-state.json` and `task-state.json` directly, instead of relying on manual reconciliation. A verified `PASS` maps directly to task status `complete`. The helper refuses to act if the verification result's `task_id` does not match the active `task-state.json` task, and it runs `scripts/validate-cockpit-state.ps1` after writing to confirm no drift was introduced.
 
+For a `PASS` verdict, the script does not copy `verification-result.json`'s `next_action` verbatim (that text is the verifier's own pre-close-out checklist and would describe already-finished work as pending the moment close-out completes). Instead it defaults `next_action`/`next_expected_action` to a durable statement ("Task '&lt;id&gt;' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task."), overridable via `-FinalNextAction` if a specific PASS cycle needs different wording recorded. It also accepts `-ArchivedDirectivePath`; when the cycle's directive has already been archived and that path is passed in, `last_verified_handoff` points at the immutable archive copy instead of the live, soon-to-be-overwritten `worker-directive.md`. Both parameters are optional and fall back to the prior behavior when omitted, so existing callers are unaffected. See "Recommended Close-Out Order" in `docs/HANDOFF_PACKET_SPEC.md` for the full sequence (archive, then advance, then health check, then log, then commit).
+
 ---
 
 ## State Transition Sketch

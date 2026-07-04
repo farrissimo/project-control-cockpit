@@ -148,9 +148,13 @@ Plain-English summary of the verification result.
 
 The exact next action after the verdict.
 
+For a **PASS** verdict specifically: `next_action` must describe the durable state a reader will find *after* the cycle fully closes out (e.g. "Task complete; owner/advisor selects the next backlog item"), not the verifier's own remaining close-out checklist (advance state, run health checks, archive, commit). A checklist description goes stale the moment those steps are actually performed - it would describe already-completed work as still pending. `scripts/advance-cockpit-state.ps1` defaults to this kind of durable statement automatically for PASS and does not require the verifier to get the wording right by hand; pass `-FinalNextAction` to that script only if a PASS cycle genuinely needs a non-default next step recorded (e.g. a caveat for the next task to consider).
+
+For **FAIL / INSUFFICIENT / BLOCKED / OUT_OF_SCOPE**, `next_action` should describe the corrective action that genuinely still needs to happen - this is not affected by the staleness problem above, since state does not advance and those actions remain outstanding until someone does them.
+
 Examples:
 
-* mark task complete
+* mark task complete (PASS - durable, not a checklist)
 * request missing evidence
 * retry with tighter directive
 * decompose task

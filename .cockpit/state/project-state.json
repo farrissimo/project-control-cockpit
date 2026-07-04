@@ -1,124 +1,124 @@
 {
-    "project_id": "project-control-cockpit",
-    "project_name": "Project Control Cockpit",
-    "project_goal": "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
-    "current_phase": "implementation",
-    "current_task_id": "pcc-v1-013",
-    "active_repo_path": "C:\\ProjectControlCockpit",
-    "active_branch": "main",
-    "owner_decisions": [
-        {
-            "id": "DECISION-001",
-            "decision": "Reducing owner babysitting is the primary rule.",
-            "date": "2026-07-03",
-            "status": "active"
-        },
-        {
-            "id": "DECISION-002",
-            "decision": "Project Control Cockpit is local-first by default.",
-            "date": "2026-07-03",
-            "status": "active"
-        },
-        {
-            "id": "DECISION-003",
-            "decision": "Project Control Cockpit V1 should not depend on direct paid API calls.",
-            "date": "2026-07-03",
-            "status": "active"
-        },
-        {
-            "id": "DECISION-004",
-            "decision": "Claude Code is the initial worker layer for V1.",
-            "date": "2026-07-03",
-            "status": "active"
-        },
-        {
-            "id": "DECISION-005",
-            "decision": "Advisor / verifier is a first-class role.",
-            "date": "2026-07-03",
-            "status": "active"
-        },
-        {
-            "id": "DECISION-006",
-            "decision": "Worker claims are evidence, not truth.",
-            "date": "2026-07-03",
-            "status": "active"
-        },
-        {
-            "id": "DECISION-011",
-            "decision": "The canonical project name is Project Control Cockpit. PCC is the approved short form.",
-            "date": "2026-07-03",
-            "status": "active"
-        },
-        {
-            "id": "DECISION-012",
-            "decision": "Claude Code is the primary worker execution layer for PCC V1. Codex serves as the advisor/verifier and source-of-truth guard.",
-            "date": "2026-07-03",
-            "status": "active"
-        },
-        {
-            "id": "DECISION-013",
-            "decision": "PCC must use explicit repo governance for canonical docs, idea intake, task promotion, and stale-doc handling. Ideas remain separate from active tasks.",
-            "date": "2026-07-03",
-            "status": "active"
-        },
-        {
-            "id": "DECISION-014",
-            "decision": "Every meaningful change must trigger review and update of the relevant truth surfaces.",
-            "date": "2026-07-03",
-            "status": "active"
-        },
-        {
-            "id": "DECISION-015",
-            "decision": "State consistency must be checked with a local deterministic validator before state updates are treated as complete.",
-            "date": "2026-07-03",
-            "status": "active"
-        },
-        {
-            "id": "DECISION-016",
-            "decision": "A verified PASS advances the active task directly to complete rather than to an intermediate verified_pass state.",
-            "date": "2026-07-03",
-            "status": "active"
-        },
-        {
-            "id": "DECISION-017",
-            "decision": "Worker-facing standing truth used by directive generation must live in canonical repo state rather than as hidden hardcoded script facts.",
-            "date": "2026-07-03",
-            "status": "active"
-        },
-        {
-            "id": "DECISION-018",
-            "decision": "Fresh advisor and worker sessions must be restart-safe from canonical repo truth so chats are disposable rather than critical state containers.",
-            "date": "2026-07-03",
-            "status": "active"
-        },
-        {
-            "id": "DECISION-019",
-            "decision": "Claude Code may temporarily hold both the worker and advisor/verifier roles, as an explicit, disclosed, owner-approved exception to DECISION-012, with independent re-checking and honest FAIL/INSUFFICIENT willingness required.",
-            "date": "2026-07-03",
-            "status": "active"
-        },
-        {
-            "id": "DECISION-020",
-            "decision": "Verifier close-out includes running doctor/validate-cockpit-state, refreshing the advisor brief if stale, archiving cycle artifacts, and committing verified work to git. Pushing to any remote requires separate explicit owner approval each time.",
-            "date": "2026-07-03",
-            "status": "active"
-        }
-    ],
-    "active_constraints": [
-        "Reduce owner babysitting.",
-        "Keep V1 lean.",
-        "State updates require verifier PASS or explicit owner override.",
-        "Prefer local deterministic tools before model usage.",
-        "Avoid fake intelligence scoring and fake truth detection."
-    ],
-    "worker_context_facts": [
-        "Worker claims are evidence, not truth.",
-        "Claude Code is ready and pointed at this repository workspace.",
-        "PCC owns the worker handoff contract through repo files; the owner should not need to restate the instructions manually."
-    ],
-    "current_blocker": null,
-    "last_verified_handoff": ".cockpit/handoff/archive/pcc-v1-013-worker-directive.md",
-    "last_verification_verdict": "PASS",
-    "next_expected_action": "pcc-v1-013 close-out is fully complete (state advanced, doctor/health check clean, advisor brief refreshed, verification logged via log-event.ps1, cycle archived, work to be committed). Repo is paused at a natural break. Next action: owner selects which backlog idea to promote next, then draft that task into task-state.json.",
-    "updated_at": "2026-07-03T20:15:00-06:00"
+    "project_id":  "project-control-cockpit",
+    "project_name":  "Project Control Cockpit",
+    "project_goal":  "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
+    "current_phase":  "implementation",
+    "current_task_id":  "pcc-v1-014",
+    "active_repo_path":  "C:\\ProjectControlCockpit",
+    "active_branch":  "main",
+    "owner_decisions":  [
+                            {
+                                "id":  "DECISION-001",
+                                "decision":  "Reducing owner babysitting is the primary rule.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-002",
+                                "decision":  "Project Control Cockpit is local-first by default.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-003",
+                                "decision":  "Project Control Cockpit V1 should not depend on direct paid API calls.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-004",
+                                "decision":  "Claude Code is the initial worker layer for V1.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-005",
+                                "decision":  "Advisor / verifier is a first-class role.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-006",
+                                "decision":  "Worker claims are evidence, not truth.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-011",
+                                "decision":  "The canonical project name is Project Control Cockpit. PCC is the approved short form.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-012",
+                                "decision":  "Claude Code is the primary worker execution layer for PCC V1. Codex serves as the advisor/verifier and source-of-truth guard.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-013",
+                                "decision":  "PCC must use explicit repo governance for canonical docs, idea intake, task promotion, and stale-doc handling. Ideas remain separate from active tasks.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-014",
+                                "decision":  "Every meaningful change must trigger review and update of the relevant truth surfaces.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-015",
+                                "decision":  "State consistency must be checked with a local deterministic validator before state updates are treated as complete.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-016",
+                                "decision":  "A verified PASS advances the active task directly to complete rather than to an intermediate verified_pass state.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-017",
+                                "decision":  "Worker-facing standing truth used by directive generation must live in canonical repo state rather than as hidden hardcoded script facts.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-018",
+                                "decision":  "Fresh advisor and worker sessions must be restart-safe from canonical repo truth so chats are disposable rather than critical state containers.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-019",
+                                "decision":  "Claude Code may temporarily hold both the worker and advisor/verifier roles, as an explicit, disclosed, owner-approved exception to DECISION-012, with independent re-checking and honest FAIL/INSUFFICIENT willingness required.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            },
+                            {
+                                "id":  "DECISION-020",
+                                "decision":  "Verifier close-out includes running doctor/validate-cockpit-state, refreshing the advisor brief if stale, archiving cycle artifacts, and committing verified work to git. Pushing to any remote requires separate explicit owner approval each time.",
+                                "date":  "2026-07-03",
+                                "status":  "active"
+                            }
+                        ],
+    "active_constraints":  [
+                               "Reduce owner babysitting.",
+                               "Keep V1 lean.",
+                               "State updates require verifier PASS or explicit owner override.",
+                               "Prefer local deterministic tools before model usage.",
+                               "Avoid fake intelligence scoring and fake truth detection."
+                           ],
+    "worker_context_facts":  [
+                                 "Worker claims are evidence, not truth.",
+                                 "Claude Code is ready and pointed at this repository workspace.",
+                                 "PCC owns the worker handoff contract through repo files; the owner should not need to restate the instructions manually."
+                             ],
+    "current_blocker":  null,
+    "last_verified_handoff":  ".cockpit/handoff/archive/pcc-v1-014-worker-directive.md",
+    "last_verification_verdict":  "PASS",
+    "next_expected_action":  "Task \u0027pcc-v1-014\u0027 is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+    "updated_at":  "2026-07-03T20:24:21-06:00"
 }

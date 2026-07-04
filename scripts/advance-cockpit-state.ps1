@@ -1,4 +1,7 @@
-param()
+param(
+  [string]$ArchivedDirectivePath = $null,
+  [string]$FinalNextAction = $null
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -51,18 +54,43 @@ if (($verification.verdict -eq "PASS") -ne [bool]$verification.state_update_allo
 
 $timestamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:sszzz")
 
+# A PASS verdict's verification.next_action is the verifier's own pre-close-out
+# checklist (advance state, run doctor, archive, commit). That text describes
+# steps which this very script run is in the middle of executing, so copying
+# it verbatim goes stale the instant close-out finishes - the text ends up
+# describing already-completed work as still pending (this happened for real
+# in pcc-v1-011 and pcc-v1-012 and had to be corrected by hand both times).
+# For PASS, default instead to a generic statement that stays true regardless
+# of which close-out steps have run yet, unless the caller explicitly
+# overrides it via -FinalNextAction. Non-PASS verdicts are not affected by
+# this problem - FAIL/INSUFFICIENT/BLOCKED/OUT_OF_SCOPE's next_action
+# describes corrective work that genuinely still needs to happen, so it is
+# left as verification.next_action, same as before.
+if ($verification.verdict -eq "PASS") {
+  $resolvedNextAction = if ($FinalNextAction) { $FinalNextAction } else {
+    "Task '$($taskState.task_id)' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task."
+  }
+} else {
+  $resolvedNextAction = $verification.next_action
+}
+
 $taskState.verification_verdict = $verification.verdict
 $taskState.task_status = $verdictToTaskStatus[$verification.verdict]
 $taskState.current_blocker = if ($verification.verdict -eq "PASS") { $null } else { $verification.summary }
-$taskState.next_action = $verification.next_action
+$taskState.next_action = $resolvedNextAction
 $taskState.updated_at = $timestamp
 
 $projectState.last_verification_verdict = $verification.verdict
 $projectState.current_blocker = if ($verification.verdict -eq "PASS") { $null } else { $verification.summary }
-$projectState.next_expected_action = $verification.next_action
+$projectState.next_expected_action = $resolvedNextAction
 $projectState.updated_at = $timestamp
 if ($verification.verdict -eq "PASS") {
-  $projectState.last_verified_handoff = $taskState.current_directive_path
+  # last_verified_handoff should point at the immutable archived copy of the
+  # verified directive, not the live path, which the next drafted task will
+  # overwrite. If the caller has not archived yet (or chooses not to pass the
+  # path), fall back to the previous behavior rather than failing, so callers
+  # that have not adopted the new archive-then-advance order still work.
+  $projectState.last_verified_handoff = if ($ArchivedDirectivePath) { $ArchivedDirectivePath } else { $taskState.current_directive_path }
 }
 
 $taskState | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $taskStatePath

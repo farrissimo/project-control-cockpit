@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-03T20:12:38-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-03T20:24:39-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,23 +10,23 @@ Current phase: implementation
 
 ## Active Task
 
-* Task ID: pcc-v1-013
-* Title: Honesty Checks: Activity Log
+* Task ID: pcc-v1-014
+* Title: Safety Net: Wrap-Up Fix
 * Status: complete
-* Objective: Add a local deterministic activity-log helper that appends factual, structured events to .cockpit/logs/routing-log.jsonl, so meaningful cycle events (task drafted, verified PASS/FAIL/etc., corrections applied) are recorded consistently instead of hand-typed free-form JSON prone to drift or omission (as happened this session, when several real entries were missed and had to be backfilled by hand). The helper must be strictly append-only, must validate event/result types against a small explicit set rather than accepting arbitrary free text there, and must be able to derive an entry directly from the current .cockpit/result/verification-result.json so the verifier does not have to hand-type JSON for the common case.
+* Objective: Fix scripts/advance-cockpit-state.ps1 so canonical next_action/next_expected_action and last_verified_handoff stay accurate after a verified PASS closes out a cycle, without needing manual correction each time (this has now happened twice: pcc-v1-011 and pcc-v1-012). Two confirmed root causes to fix: (1) advance-cockpit-state.ps1 copies verification.next_action verbatim, but that text is the verifier's own pre-close-out checklist (advance/doctor/archive/commit), so it describes already-completed steps as pending the moment they finish; (2) last_verified_handoff is set to task-state.json's current_directive_path (the live, soon-to-be-overwritten worker-directive.md), never the archived immutable copy created during close-out.
 
 ## Last Verified
 
-* Verdict: PASS for task 'pcc-v1-013', verified at 2026-07-03T20:20:00-06:00
-* Summary: Independently re-ran log-event.ps1's key claims from a fresh scratch copy: confirmed only Add-Content is used to write (structural append-only guarantee), re-tested the invalid-EventType guard with a correctly-checked exit code (the worker's own first test attempt had a shell-pipe masking issue, which they caught themselves), tested derived mode against a different archived verification result than the worker used and confirmed correct task_id/event_type/detail derivation, and independently confirmed via diff that prior log lines were untouched. All completion criteria met; no out-of-scope changes found.
-* Last verified handoff: .cockpit/handoff/archive/pcc-v1-013-worker-directive.md
+* Verdict: PASS for task 'pcc-v1-014', verified at 2026-07-03T20:45:00-06:00
+* Summary: Independently reproduced the core fix from a fresh scratch copy using a different synthetic task_id and a different deliberately-planted stale-checklist next_action string, confirming it does not leak through for a PASS verdict and that the archived path is used correctly. Also independently tested the BLOCKED verdict path (not covered by the worker's own tests) and confirmed non-PASS behavior is unaffected. Confirmed via diff that docs/DECISIONS.md was correctly left untouched, matching allowed scope. All completion criteria met; no out-of-scope changes found.
+* Last verified handoff: .cockpit/handoff/archive/pcc-v1-014-worker-directive.md
 
 ## Open Issues
 
-* Risk from last verification of 'pcc-v1-013': This tool only fixes hand-typing drift; it does not fix the deeper 'someone has to remember to run it' problem, which is explicitly out of scope here (that's IDEA-001, currently deferred).
-* Risk from last verification of 'pcc-v1-013': routing-log.jsonl now permanently contains two structurally different line shapes (old route/reason/result vs new event_type/detail); any future reader of this file needs to handle both.
-* Risk from last verification of 'pcc-v1-013': -FromVerificationResult has no built-in staleness check; running it against an already-superseded verification-result.json would log a correct-but-late entry with nothing flagging the delay.
-* Risk from last verification of 'pcc-v1-013': Self-verification note (DECISION-019): this verification was performed by the same session that acted as worker. Mitigated by independently re-running the guard-condition and derived-mode tests from a fresh scratch copy using different source data (a different archived verification result) than the worker used, and by independently confirming the append-only guarantee via a fresh diff rather than trusting the worker's reported result.
+* Risk from last verification of 'pcc-v1-014': The fallback to old live-path behavior when -ArchivedDirectivePath is omitted means a verifier who forgets to archive-then-advance in the new order gets silently the old, still-slightly-wrong behavior rather than a warning.
+* Risk from last verification of 'pcc-v1-014': The new default PASS next_action is a fixed generic template; richer per-cycle context requires remembering to pass -FinalNextAction explicitly.
+* Risk from last verification of 'pcc-v1-014': The new close-out order is prose guidance only, not enforced by any script.
+* Risk from last verification of 'pcc-v1-014': Self-verification note (DECISION-019): mitigated by independently reproducing the fix from a fresh scratch copy with different synthetic data (a different task_id, a different deliberately-planted stale string) than the worker used, and by independently testing a verdict path (BLOCKED) the worker's own testing did not cover.
 
 ## Read First
 
@@ -40,5 +40,5 @@ Current phase: implementation
 
 ## What Happens Next
 
-* Task-level: pcc-v1-013 close-out is fully complete (state advanced, doctor/health check clean, advisor brief refreshed, verification logged via log-event.ps1, cycle archived, work to be committed). Repo is paused at a natural break. Next action: owner selects which backlog idea to promote next, then draft that task into task-state.json.
-* Project-level: pcc-v1-013 close-out is fully complete (state advanced, doctor/health check clean, advisor brief refreshed, verification logged via log-event.ps1, cycle archived, work to be committed). Repo is paused at a natural break. Next action: owner selects which backlog idea to promote next, then draft that task into task-state.json.
+* Task-level: Task 'pcc-v1-014' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Project-level: Task 'pcc-v1-014' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
