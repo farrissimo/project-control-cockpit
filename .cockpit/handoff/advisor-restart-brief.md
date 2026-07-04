@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-04T12:42:28-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T12:59:29-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -42,4 +42,4 @@ Current phase: brr-phase-5
 ## What Happens Next
 
 * Task-level: Task 'pcc-brr5-003' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-brr5-003' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Project-level: Codex is available again (DECISION-066); the DECISION-033 fallback ends and the two-role split is restored. Next: scope and build a file-based polling bridge between Claude Code and Codex so verification handoff does not require the owner to manually run and relay between two separate sessions.

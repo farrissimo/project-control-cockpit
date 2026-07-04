@@ -126,6 +126,12 @@
       "decision": "BRR Phase 1 policy scope is complete; PCC moves into BRR Phase 2, beginning with lightweight Task Classification Fielding as pcc-brr2-001.",
       "date": "2026-07-03",
       "status": "active"
+    },
+    {
+      "id": "DECISION-066",
+      "decision": "Codex is available again. The DECISION-033 degraded self-verification fallback ends per its own terms; PCC returns to the canonical two-role split of DECISION-012/DECISION-023 (Claude Code worker, Codex advisor/verifier). A file-based polling bridge between the two is being scoped as a separate task.",
+      "date": "2026-07-04",
+      "status": "active"
     }
   ],
   "active_constraints": [
@@ -143,6 +149,6 @@
   "current_blocker": null,
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-brr5-003-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Task 'pcc-brr5-003' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T12:42:22-06:00"
+  "next_expected_action": "Codex is available again (DECISION-066); the DECISION-033 fallback ends and the two-role split is restored. Next: scope and build a file-based polling bridge between Claude Code and Codex so verification handoff does not require the owner to manually run and relay between two separate sessions.",
+  "updated_at": "2026-07-04T12:50:00-06:00"
 }

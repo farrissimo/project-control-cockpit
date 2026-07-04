@@ -1556,3 +1556,25 @@ All three scripts detect the current branch dynamically via `git rev-parse --abb
 
 Supersedes: DECISION-020 (push-approval clause only; its close-out-routine provisions are unaffected)
 Related: DECISION-020, DECISION-036, DECISION-051, DECISION-064, scripts/close-out-verified-task.ps1, scripts/return-inadequate-work.ps1, scripts/archive-held-cycle.ps1
+
+---
+
+## DECISION-066: Codex Available Again; DECISION-033 Degraded Fallback Ends; Two-Role Split Restored
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+The owner has confirmed Codex is available again. Per the standing terms of `DECISION-033` itself ("when Codex is unavailable... Claude Code may temporarily perform both roles"), the fallback's own triggering condition no longer holds. PCC returns to the canonical two-role split of `DECISION-012`/`DECISION-023`: Claude Code is worker, Codex is advisor/verifier. This mirrors exactly how `DECISION-023` ended the earlier `DECISION-019` dual-role trial when Codex first became available.
+
+Reason:
+
+The entire recorded history of BRR Phases 2 through 5 (`pcc-brr2-001` onward) ran under the `DECISION-033` self-verification fallback because Codex was unavailable, and the Phase 5 Readiness Review (`pcc-brr5-001`, `DECISION-062`) named this — every verification performed by the same party who did the work — as the single largest standing risk to the walk-away model. That risk's root cause (no working Codex) is now resolved. Continuing to self-verify when an independent verifier is actually available would contradict `DECISION-033`'s own stated scope and `DECISION-023`'s reasoning for why independent verification is the stronger, preferred mode.
+
+Implications:
+
+Going forward, Claude Code produces worker evidence and does not self-issue the verification verdict; Codex reviews evidence and issues the verdict per `docs/VERIFICATION_RESULT_SPEC.md`, exactly as `DECISION-023` originally specified. This does not retroactively reclassify any of the self-verified BRR Phase 2–5 work as invalid — that work stands as recorded, with its self-verification disclosed honestly in each verification result, the same treatment `DECISION-023` gave to the V1 work self-verified under the earlier trial. The immediate practical question this raises — how Claude Code and Codex actually exchange work without the owner manually running two separate sessions and relaying between them — is being scoped as its own task (a file-based polling bridge, using PCC's existing worker-directive/worker-result/verification-result contract, which was already designed with this handoff in mind per `DECISION-004`/`DECISION-018`). That mechanism is not yet built as of this decision; this decision only restores the role split and the standing expectation that applies once the mechanism exists. Until that bridge is working, Codex verification may continue via whatever manual means are practical (a separately-run Codex session reading the same repo), same as the original V1-era workflow.
+
+Supersedes: None (re-activates DECISION-012/DECISION-023's standing two-role split; ends DECISION-033's fallback per its own terms, not by amending it)
+Related: DECISION-004, DECISION-012, DECISION-018, DECISION-019, DECISION-023, DECISION-031, DECISION-032, DECISION-033, DECISION-036, DECISION-062, docs/VERIFICATION_RESULT_SPEC.md, docs/HANDOFF_PACKET_SPEC.md
