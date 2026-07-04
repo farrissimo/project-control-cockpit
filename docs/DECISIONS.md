@@ -1282,3 +1282,25 @@ This decision does not close `pcc-brr4-001` as `complete`; `task_status` remains
 
 Supersedes: None
 Related: DECISION-006, DECISION-008, DECISION-033, DECISION-036, DECISION-040, DECISION-041, DECISION-042, DECISION-053, docs/BRR_PLAN.md, backlog/IDEAS.md, scripts/check-stop-conditions.ps1, scripts/check-autonomous-gate.ps1, scripts/log-event.ps1
+
+---
+
+## DECISION-055: Pilot Run #1 Reviewed And Approved (GPT); Closed Out; Pilot-Proposal Pattern Confirmed For Future Runs
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+GPT, reviewing `pcc-brr4-001`'s held `PASS` candidate (`DECISION-054`) in its secondary-reviewer role, approved close-out: classification was made correctly and up front, the review-before-acceptance boundary was actually honored (not merely disclosed as skipped), scope stayed inside what was authorized, the mid-cycle defect was handled openly rather than glossed over, and the change was genuinely functionally tested. GPT found no evidence the run should have stopped, been classified differently, or wrongly self-closed — the owner's pilot failure criterion is not triggered. `pcc-brr4-001` is closed out (`task_status: complete`, `verification_verdict: PASS`).
+
+Reason:
+
+This is the first time this session a Class B result was held for actual second-party review rather than self-verified-and-closed under the `DECISION-033` fallback disclosure alone, and the review found the held-for-review mechanism itself worked as designed: the task was inspectable, the claims were checkable against the real diff and test transcript, and an independent party reached its own judgment rather than rubber-stamping the self-assessment in `worker-result.md`. Separately, GPT reaffirmed the pattern already used for `pcc-brr3-003` onward for any future higher-stakes step: PCC drafts a proposed scope, the owner approves or revises it, rather than either blind owner approval or PCC self-authorizing execution.
+
+Implications:
+
+`pcc-brr4-001` is closed out via `scripts/close-out-verified-task.ps1`: archived, `task_status` advanced to `complete`, post-close-out health check clean, event logged, committed locally. GPT's caveat is recorded honestly rather than dropped: this remains self-verified under the `DECISION-033` fallback (GPT's review is additive per `DECISION-036`, not a substitute for independent local guardrail re-execution), and not every individual STOP/BLOCKED code path was separately exercised — GPT judged this a real but non-blocking limitation, not a reason to withhold approval. For any future higher-stakes step (a Multi-Cycle Pilot run #2, or similar), the confirmed pattern is: PCC drafts a proposed scope naming candidate cycles, what reduced oversight means, hard stop conditions, what counts as failure, and what gets reviewed before a further run — then the owner approves or revises that proposal before anything executes. This is not a new rule superseding anything; it is the same practice already used for `pcc-brr3-003` and this pilot itself, now explicitly confirmed as the standing approach rather than a one-off. No verdict, task safety class, the autonomous gate, the Acceptance Boundary Rules, or `DECISION-033`/`036`'s fallback text was changed by this decision.
+
+Supersedes: None
+Related: DECISION-006, DECISION-033, DECISION-036, DECISION-039, DECISION-041, DECISION-053, DECISION-054, docs/BRR_PLAN.md
