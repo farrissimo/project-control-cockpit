@@ -57,6 +57,20 @@ $directiveArchivePath = ".cockpit/handoff/archive/$taskId-worker-directive.md"
 $resultArchivePath = ".cockpit/result/archive/$taskId-worker-result.md"
 $verificationArchivePath = ".cockpit/result/archive/$taskId-verification-result.json"
 
+# Bug fix (found during pcc-postbrr-001's real resubmission, 2026-07-04):
+# these paths were keyed on task_id alone, so a task_id returned more than
+# once (e.g. FAIL then INSUFFICIENT on separate attempts) would collide
+# with its own prior archive. If any plain path already exists, suffix with
+# the current attempt number so each returned cycle's history is preserved
+# distinctly. A normal first-return cycle is unaffected and keeps the
+# existing plain naming.
+if ((Test-Path -LiteralPath $directiveArchivePath) -or (Test-Path -LiteralPath $resultArchivePath) -or (Test-Path -LiteralPath $verificationArchivePath)) {
+  $attemptSuffix = [int]$taskState.attempts
+  $directiveArchivePath = ".cockpit/handoff/archive/$taskId-attempt$attemptSuffix-worker-directive.md"
+  $resultArchivePath = ".cockpit/result/archive/$taskId-attempt$attemptSuffix-worker-result.md"
+  $verificationArchivePath = ".cockpit/result/archive/$taskId-attempt$attemptSuffix-verification-result.json"
+}
+
 foreach ($archivePath in @($directiveArchivePath, $resultArchivePath, $verificationArchivePath)) {
   if (Test-Path -LiteralPath $archivePath) {
     Fail "Refusing to return this cycle: archive path '$archivePath' already exists. This script never overwrites archived history; if this cycle was already returned, there is nothing more to do."

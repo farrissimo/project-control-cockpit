@@ -1688,3 +1688,25 @@ Implications:
 
 Supersedes: None (corrects a defect in DECISION-067's delivered mechanism; does not change its design intent or cost-safety property)
 Related: DECISION-067, DECISION-070, pcc-postbrr-001, pcc-brr5-004, scripts/codex-verify-watcher.ps1
+
+---
+
+## DECISION-072: Close-Out Archive Path Collision Fix — Same-`task_id` Retry (pcc-postbrr-001)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`scripts/close-out-verified-task.ps1` and `scripts/return-inadequate-work.ps1` both keyed their archive filenames on `task_id` alone (`$taskId-worker-directive.md`, etc.). When `pcc-postbrr-001`'s corrected resubmission reached a real `PASS`, closing it out failed: attempt 1's `OUT_OF_SCOPE` return had already archived files at those exact paths, and both scripts refuse to overwrite archived history by design. Fixed: if a plain archive path already exists, both scripts now fall back to an attempt-numbered path (`$taskId-attempt$attempts-...`) so each cycle's history is preserved distinctly. A normal single-attempt task is unaffected and keeps the existing plain naming.
+
+Reason:
+
+This is the third real gap surfaced today by the same root cause: `pcc-postbrr-001` is the first task in this project's history to be resubmitted under the same `task_id` after a non-`PASS` verdict (following `DECISION-070`'s `OUT_OF_SCOPE` correction and `DECISION-071`'s watcher fix), and every piece of infrastructure that implicitly assumed "one `task_id` closes out exactly once" is being exercised for the first time. Both close-out scripts' own "never overwrite archived history" safeguard did exactly its job here — it refused to silently clobber attempt 1's `OUT_OF_SCOPE` record rather than losing it, which is the correct failure mode; it just needed a path forward for the legitimate case of two distinct real cycles under one `task_id`.
+
+Implications:
+
+Both scripts now check whether any of their three archive paths already exist before writing; if so, they use `$taskId-attempt$attempts-worker-directive.md` / `-worker-result.md` / `-verification-result.json` instead, where `$attempts` is the task's current attempt count at close-out time. This was functionally tested (not read-through only) in an isolated scratch copy reproducing the exact collision -- pre-seeded plain-named archive files simulating attempt 1's `OUT_OF_SCOPE` return, then a real close-out for the corrected `PASS` state -- confirming the fix creates `pcc-postbrr-001-attempt2-*` files, leaves the pre-existing attempt-1 files byte-for-byte untouched, and completes close-out successfully instead of refusing. `pcc-postbrr-001`'s real, live close-out is the direct beneficiary: attempt 1's `OUT_OF_SCOPE` archive (from `9da1b47`) remains exactly as recorded; attempt 2's `PASS` archive is written alongside it under the `-attempt2-` suffix. No verdict, schema, or other script behavior changed.
+
+Supersedes: None
+Related: DECISION-070, DECISION-071, pcc-postbrr-001, scripts/close-out-verified-task.ps1, scripts/return-inadequate-work.ps1
