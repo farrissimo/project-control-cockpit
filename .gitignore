@@ -1,3 +1,7 @@
 # Non-canonical local restore points created by scripts/backup-protected-files.ps1.
 # These are disposable snapshots, not project truth - see docs/STATE_MODEL.md.
 .cockpit/backups/
+
+# Ephemeral runtime lock for scripts/codex-verify-watcher.ps1 (pcc-brr5-004).
+# Not project truth; recreated/cleared automatically each cycle.
+.cockpit/state/codex-watcher.lock
