@@ -646,3 +646,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-022, DECISION-024, DECISION-025, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/VERIFICATION_RESULT_SPEC.md
+
+---
+
+## DECISION-027: BRR Operating Definitions Recorded (pcc-brr1-004)
+
+Date: 2026-07-03
+Status: Active
+
+Owner Decision:
+
+The fourth and final BRR Phase 1 policy deliverable, the Operating Definitions glossary, is recorded canonically in `docs/BRR_POLICY.md`, extending it directly rather than creating a new doc, per `DECISION-022`'s task breakdown.
+
+Reason:
+
+`docs/BRR_PLAN.md` Phase 1 requires explicit definitions for six terms already in informal use across the prior three BRR policy sections. `docs/BRR_POLICY.md` already held all three prior sections it needed to reconcile with, so extending it kept the full Phase 1 policy foundation in one place per `docs/REPO_GOVERNANCE.md`'s New Canonical Doc Process (an existing canonical doc already covers this).
+
+Implications:
+
+`docs/BRR_POLICY.md` now defines all six named terms (safe unattended, safe with review, owner decision, blocked, insufficient evidence, escalation), each tied explicitly to the corresponding Task Safety Class, Owner Review Matrix row, Stop-Instead-of-Guess trigger, and/or existing verification verdict, with a "Reconciliation notes" subsection confirming no contradiction was found against the prior three sections. With this decision, `docs/BRR_POLICY.md` now contains all four BRR Phase 1 policy deliverables named in `docs/BRR_PLAN.md`, completing the phase's policy-only scope. This decision does not itself declare BRR Phase 1 complete, mark the transition into Phase 2, or implement any escalation mechanism, runtime enforcement, or fielding — those remain a separate, explicit owner/advisor decision and separate future work (`docs/BRR_PLAN.md` Section 5). No runtime scripts, schemas, or verification mechanics were changed.
+
+Supersedes: None
+Related: DECISION-022, DECISION-024, DECISION-025, DECISION-026, docs/BRR_PLAN.md, docs/BRR_POLICY.md

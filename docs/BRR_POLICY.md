@@ -4,11 +4,11 @@
 > narrow in purpose: it defines the permission model for unattended progress
 > per `docs/BRR_PLAN.md` Phase 1 and `DECISION-022`. It does not implement any
 > runtime enforcement, task-class execution logic, or automatic gating — that
-> is explicitly Phase 2 (`docs/BRR_PLAN.md` Section 5). This doc will grow
-> across BRR Phase 1's four bounded tasks (`pcc-brr1-001` through
-> `pcc-brr1-004`); it now covers the Owner Review Matrix (`pcc-brr1-001`),
-> Task Safety Classification (`pcc-brr1-002`), and the Stop-Instead-of-Guess
-> Policy (`pcc-brr1-003`).
+> is explicitly Phase 2 (`docs/BRR_PLAN.md` Section 5). This doc covers all
+> four of BRR Phase 1's bounded tasks: the Owner Review Matrix
+> (`pcc-brr1-001`), Task Safety Classification (`pcc-brr1-002`), the
+> Stop-Instead-of-Guess Policy (`pcc-brr1-003`), and the Operating Definitions
+> (`pcc-brr1-004`) — completing BRR Phase 1's policy foundation.
 
 ## Purpose
 
@@ -47,7 +47,7 @@ and do not self-accept; surface the situation and the choice to the owner.
 * This matrix names *when* to stop. It does not define *how* PCC halts, *how* it records an owner-decision request, or *how* execution resumes after the owner responds — that operational mechanics is Phase 2 (`docs/BRR_PLAN.md` Section 5, Phase 2 "Owner-Decision Capture Flow").
 * This matrix does not define task safety classes (Class A/B/C/D) directly — see "Task Safety Classification" below (`pcc-brr1-002`).
 * This matrix does not define the Stop-Instead-of-Guess trigger list (ambiguous scope, conflicting truth surfaces, weak evidence, etc.) as its own policy — see "Stop-Instead-of-Guess Policy" below (`pcc-brr1-003`). Rows 9 and 10 above overlap with that policy by necessity, since both are named explicitly in `docs/BRR_PLAN.md` Phase 1's own deliverable list; the Stop-Instead-of-Guess Policy cross-references this matrix rather than redefining these two cases.
-* This matrix does not define the operating-definition glossary (e.g. what exactly "safe unattended" or "escalation" mean) — that is `pcc-brr1-004`.
+* This matrix does not define the operating-definition glossary (e.g. what exactly "safe unattended" or "escalation" mean) — see "Operating Definitions" below (`pcc-brr1-004`).
 
 ---
 
@@ -101,10 +101,10 @@ could drift apart.
   (`docs/BRR_PLAN.md` Section 5, Phase 2 "Task Classification Fielding").
 * This section does not redefine or duplicate the Stop-Instead-of-Guess
   trigger list (see "Stop-Instead-of-Guess Policy" below, `pcc-brr1-003`) or
-  the operating-definitions glossary (`pcc-brr1-004`); it uses plain-language
-  descriptions of "safe unattended," "review before acceptance," etc. here
-  only so the classes are legible on their own, and expects `pcc-brr1-004` to
-  formalize those terms without contradicting the usage here.
+  the operating-definitions glossary (see "Operating Definitions" below,
+  `pcc-brr1-004`); it uses plain-language descriptions of "safe unattended,"
+  "review before acceptance," etc. here only so the classes are legible on
+  their own, formalized without contradiction in "Operating Definitions."
 
 ---
 
@@ -147,5 +147,93 @@ three separate rule sets that happen to agree today.
   any other script behaves, and does not gate anything — applying these
   triggers in live task flow remains Phase 2 (`docs/BRR_PLAN.md` Section 5).
 * This policy does not define the operating-definitions glossary (e.g. the
-  precise meaning of "escalation") — that is `pcc-brr1-004`, which should use
-  the verdict mapping here as-is rather than redefine it.
+  precise meaning of "escalation") — see "Operating Definitions" below
+  (`pcc-brr1-004`), which uses the verdict mapping here as-is rather than
+  redefining it.
+
+---
+
+## Operating Definitions
+
+These are the standing definitions for terms already used, informally, across
+the three sections above. They do not change how any of those sections
+behave; they make the vocabulary explicit and stable so future BRR work (and
+Phase 2 fielding) can rely on one meaning per term rather than re-deriving it
+from context each time.
+
+**Safe unattended** — a task may be executed and its result accepted without
+any owner or independent review. This is exactly Task Safety Class A. A task
+is safe unattended only if it matches no Owner Review Matrix row and nothing
+about it makes self-acceptance unsafe (see Class A's "When it applies").
+
+**Safe with review** — a task may be executed without owner review, but its
+result must not be self-accepted; it requires independent verifier review (or
+explicit owner override) before advancing to `complete`. This is exactly Task
+Safety Class B. "Review" here means the acceptance-time check described in
+`DECISION-006`/`DECISION-016` and `docs/VERIFICATION_RESULT_SPEC.md` — the
+same review Codex already performs as advisor/verifier under `DECISION-023`,
+not a new or heavier review step.
+
+**Owner decision** — a point where continuing requires the owner's judgment,
+not the worker's or verifier's, because the choice is the owner's to make
+(goal, direction, risk tolerance, tradeoff). An owner decision is *needed*
+whenever a task matches one of the Owner Review Matrix's "before execution"
+rows (rows 1–8, Task Safety Class C) or when a Stop-Instead-of-Guess trigger
+surfaces a tradeoff only the owner can weigh (trigger 7). Needing an owner
+decision does not by itself mean the task is unsafe or broken — it means the
+next step is the owner's to take, not PCC's to guess.
+
+**Blocked** — a task must not proceed at all right now, and owner approval
+alone does not resolve it; the task, its evidence, or its approach must
+change first. This is exactly Task Safety Class D and the `BLOCKED`
+verification verdict (`docs/VERIFICATION_RESULT_SPEC.md`), and covers
+Owner Review Matrix row 9 (repeated failure after bounded retries) and
+Stop-Instead-of-Guess triggers 2 and 6 (conflicting truth surfaces; no
+trusted way to verify a risky task). Blocked is distinct from an owner
+decision: an owner decision is unblocked by the owner simply choosing;
+blocked is only unblocked once something about the task itself changes.
+
+**Insufficient evidence** — a completion claim exists but is not adequately
+supported: thin, partial, ambiguous, or missing the proof the completion
+criteria require. This is exactly the `INSUFFICIENT` verification verdict
+(`docs/VERIFICATION_RESULT_SPEC.md`), Owner Review Matrix row 10, and
+Stop-Instead-of-Guess trigger 3. Insufficient evidence is an acceptance-time
+finding (the work may have happened; the proof of it did not clear the bar) —
+distinct from `blocked`, which stops execution or further progress itself.
+
+**Escalation** — the act of surfacing a stop (an owner decision, a blocked
+state, insufficient evidence, or any other Stop-Instead-of-Guess trigger) to
+the owner instead of resolving it unattended. Escalation is not itself a
+class, verdict, or status; it is what happens when one of those conditions is
+reported rather than acted on — the concrete behavior of "stop instead of
+guess." Escalation happens today by the worker or verifier writing the
+blocker into `.cockpit/result/worker-result.md` / `verification-result.json`
+and stating it plainly to the owner; a more formal escalation *mechanism*
+(where a request is recorded, tracked, and resolved) is explicitly Phase 2's
+"Owner-Decision Capture Flow" (`docs/BRR_PLAN.md` Section 5), not defined
+here.
+
+### Reconciliation notes
+
+* These six terms were already in informal use across `pcc-brr1-001` through
+  `pcc-brr1-003`; this section does not change any prior usage, only makes it
+  explicit. Cross-checked against all three prior sections while drafting —
+  no contradiction was found between this glossary and the Owner Review
+  Matrix, Task Safety Classification, or Stop-Instead-of-Guess Policy.
+* "Owner decision" and "escalation" are related but distinct: an owner
+  decision is the *condition* (a choice only the owner can make exists);
+  escalation is the *action* (surfacing that condition instead of guessing).
+  A single stop event has both — e.g. Class C triggers an owner decision, and
+  escalation is how PCC actually stops and reports it.
+* No new verdict, status, or state is introduced by this section, consistent
+  with every prior BRR Phase 1 policy task.
+
+### Notes on scope
+
+* This section defines terms only. It does not implement an escalation
+  mechanism, a way to record or track owner decisions, or any Phase 2 fielding
+  — those remain future work per `docs/BRR_PLAN.md` Section 5, Phase 2
+  "Owner-Decision Capture Flow."
+* With this section, `docs/BRR_POLICY.md` now contains all four BRR Phase 1
+  policy deliverables named in `docs/BRR_PLAN.md`. Applying any of them in
+  live task flow is Phase 2, not yet started.

@@ -2,7 +2,7 @@
   "task_id": "pcc-brr1-004",
   "task_title": "BRR Policy: Operating Definitions",
   "task_objective": "Define the BRR Phase 1 Operating Definitions in canonical repo truth, extending docs/BRR_POLICY.md so the key terms already used across the prior three BRR policy tasks are explicit, stable, and non-contradictory. At minimum define safe unattended, safe with review, owner decision, blocked, insufficient evidence, and escalation, reconciling them with the Owner Review Matrix, Task Safety Classification, and Stop-Instead-of-Guess Policy already recorded, without introducing runtime enforcement, new statuses, or Phase 2 fielding mechanics.",
-  "task_status": "ready_for_worker",
+  "task_status": "complete",
   "assigned_worker": "Claude Code",
   "completion_criteria": [
     "The repo gains canonical policy text defining the BRR Operating Definitions named in docs/BRR_PLAN.md Phase 1: safe unattended, safe with review, owner decision, blocked, insufficient evidence, and escalation.",
@@ -41,8 +41,8 @@
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
-  "verification_verdict": null,
+  "verification_verdict": "PASS",
   "current_blocker": null,
-  "next_action": "Claude Code executes task 'pcc-brr1-004' from the generated directive and returns evidence for Codex to verify.",
-  "updated_at": "2026-07-03T23:55:00-06:00"
+  "next_action": "Task 'pcc-brr1-004' is complete and verified PASS. BRR Phase 1 policy scope is complete; owner/advisor explicitly decides whether to declare the phase complete and continue hardening, transition to Phase 2, or choose another next lane.",
+  "updated_at": "2026-07-03T22:22:04-06:00"
 }
