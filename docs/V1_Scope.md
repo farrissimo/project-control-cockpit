@@ -266,3 +266,34 @@ V1 is done when the system can complete at least one real task cycle and produce
 * next action
 
 The owner should be able to see exactly what happened, what was verified, and what should happen next.
+
+---
+
+## V1 Closure (2026-07-03)
+
+V1 is closed as of `pcc-v1-015`. See `DECISION-021`. This is the honest accounting of what was and was not demonstrated, per BRR Phase 0's requirement to state both explicitly rather than assume V1 proved more than it did.
+
+### What V1 proved
+
+* The core loop (state → directive → worker → evidence → verification → state update → next action) worked reliably across 15 real bounded cycles (`pcc-v1-001` through `pcc-v1-015`), not just in specification.
+* Canonical project/task state stayed coherent and machine-readable throughout, and worker directives were generated deterministically from state rather than hand-written each time.
+* Evidence-based verification, including independent re-testing rather than trusting narrative, reliably caught real bugs before acceptance - concrete examples: a miscounted-findings bug and a PowerShell-version-specific ANSI bug in `doctor.ps1` (`pcc-v1-011`), a stale-wording bug in close-out state caught twice (`pcc-v1-012`, and independently by a second reviewer), and a garbled doc sentence (`pcc-v1-012`).
+* Fresh-session restart safety is real and testable, for both advisor and worker roles, not just documented (`pcc-v1-006` through `pcc-v1-009`, proven again on every later cycle).
+* Local deterministic tooling replaced real manual reconciliation work without needing model calls for it (state validation, state advancement, directive/brief generation, health checks, backup/restore, activity logging, schema checks).
+* Repo governance (idea intake, decision logging, plain-language naming, close-out discipline) held up across the whole phase without drifting into ceremony.
+* The "only a PASS verdict advances state" rule was real in every actual cycle, not merely specified.
+
+### What V1 did not prove
+
+* **`FAIL`, `INSUFFICIENT`, `BLOCKED`, and `OUT_OF_SCOPE` have never occurred on a real task.** Their handling is implemented and exercised only via synthetic scratch-copy tests (see `pcc-v1-014`'s verification). PCC has never actually had to say no to itself for real.
+* **Independent (non-self) verification has no real track record in this repo.** Every real verification since the dual-role trial began (`DECISION-019`, after `pcc-v1-011`) has been self-verification by the same session that acted as worker. The mitigations used (independent re-testing from fresh scratch copies, mandatory disclosure) are real, but they are not a substitute for a genuinely separate reviewer, and none has been exercised end-to-end in this project.
+* **No task has ever required real owner intervention mid-cycle.** Every real cycle proceeded cleanly to PASS with no genuine blocker or owner-decision point encountered.
+* **No task has ever been retried, decomposed, or escalated after a real failure.** The failure-handling policy exists in the docs and has been synthetically tested, but has no real-world track record.
+* **BRR-specific capabilities do not exist yet at all.** V1 never attempted to define when PCC may proceed without owner review versus when it must stop - every V1 cycle was owner-initiated and owner-reviewed end to end.
+
+### Deferred items remain deferred
+
+This closure does not re-open or change either deferred backlog item:
+
+* `IDEA-001` (Automatic Checks / CI enforcement) remains deferred per its original reasoning (highest bloat + completion-blocking risk).
+* `IDEA-009` (Retry Limit / circuit breaker) remains deferred per its original reasoning (no ROI until PCC runs semi-autonomously - BRR Phase 4 may be the point this needs revisiting, but it is not implicitly un-deferred by this closure).
