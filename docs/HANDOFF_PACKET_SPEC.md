@@ -348,6 +348,8 @@ After these four steps, the repo is in a clean, commit-ready state. Committing i
 
 Archiving before advancing (rather than after, as earlier cycles did) is what makes step 2's archive-path argument available in the first place.
 
+When the verdict is `FAIL` / `INSUFFICIENT` / `BLOCKED` / `OUT_OF_SCOPE` instead, `scripts/return-inadequate-work.ps1` (`pcc-brr3-005`, `docs/BRR_POLICY.md`'s "Inadequate-Work Return Path") performs the equivalent close-out in the same four-step order: archive, advance state via `scripts/advance-cockpit-state.ps1`, run `doctor.ps1`, log the event via `scripts/log-event.ps1 -FromVerificationResult` — with the same refusal properties (refuses on a `PASS` verdict, a `task_id` mismatch, or an existing archive path) and the same optional `-Commit` that never pushes. This exists so a non-`PASS` cycle gets exactly the same one-command, fully-recorded close-out a `PASS` cycle already had, rather than requiring the verifier to remember the individual steps by hand.
+
 ---
 
 ## V1 Discipline

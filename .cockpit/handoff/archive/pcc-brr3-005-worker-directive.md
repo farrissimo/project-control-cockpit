@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-brr3-005
 * Task Title: Safety Net: Non-PASS Close-Out Script
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Objective

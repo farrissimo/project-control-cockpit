@@ -1208,3 +1208,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-006, DECISION-014, DECISION-048, DECISION-049, docs/REPO_GOVERNANCE.md, docs/STATE_MODEL.md, docs/VERIFICATION_RESULT_SPEC.md
+
+---
+
+## DECISION-052: Non-PASS Close-Out Script Fielded (pcc-brr3-005)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`scripts/return-inadequate-work.ps1` is added as the non-`PASS` mirror of `scripts/close-out-verified-task.ps1`, fielding the asymmetry `pcc-brr3-004`/`DECISION-049` named as recommended future work: a `FAIL`/`INSUFFICIENT`/`BLOCKED`/`OUT_OF_SCOPE` cycle now gets the same one-command archive/advance/health-check/log close-out a `PASS` cycle already had. This task and the separate BRR Phase 4 transition work (handled directly, not as a numbered task, consistent with how `DECISION-021`/`DECISION-028`/`DECISION-045` each handled a prior phase transition) were both pre-approved together by the owner in one instruction ("if both are eventually needed and there's no reason to delay then both are approved").
+
+Reason:
+
+The owner approved building both recommended follow-on items rather than treating them as optional deferred work, judging that delaying either had no real benefit. This task specifically closes the friction gap `DECISION-049` disclosed honestly: without it, a verifier closing out non-`PASS` work had to remember three separate manual steps where a `PASS` cycle only needed one command, which could unintentionally bias behavior toward `PASS` simply because it was easier to execute correctly — directly contrary to `docs/BRR_PLAN.md` Phase 3's own goal of making the non-`PASS` path routine.
+
+Implications:
+
+`scripts/return-inadequate-work.ps1` performs, in the same fixed order as `close-out-verified-task.ps1`: (1) archive the live directive/result/verification to their `archive/` counterparts, refusing if any archive path already exists or if the live verdict is `PASS` (which routes to `close-out-verified-task.ps1` instead) or the `task_id` does not match; (2) advance state via the existing, unmodified `scripts/advance-cockpit-state.ps1` (no new verdict-mapping logic — it calls the same shared path `PASS` already uses); (3) run `doctor.ps1`, failing on any `[ISSUE]`; (4) log the event via `scripts/log-event.ps1 -FromVerificationResult` (no new event type — the four non-`PASS` event types already existed). An optional `-Commit` mirrors `close-out-verified-task.ps1` exactly and never pushes. The script was functionally tested — not merely read through — against a synthetic `FAIL` cycle in an isolated scratch copy of the repo (never against live state): the happy path (archive, advance, health-check, log all correct) and three refusal paths (re-run against an existing archive, a `PASS` verdict, a mismatched `task_id`) were all exercised and behaved as designed before the scratch copy was deleted. `docs/HANDOFF_PACKET_SPEC.md`'s "Recommended Close-Out Order" and `docs/REPO_GOVERNANCE.md`'s Task Process (step 12) now name the new script. Per `DECISION-051`'s Post-Close Canonical Amendment Rule (applied here for the first time since being written), `docs/BRR_POLICY.md`'s "Inadequate-Work Return Path" section (`pcc-brr3-004`) gained a clearly-marked "Later update" pointer noting the script now exists, without rewriting `pcc-brr3-004`'s original "not built in this task" claim, which was accurate when made. The new script is not wired to be called automatically by any other script — it remains, like its `PASS`-side counterpart, a manually-invoked convenience tool; no automatic stop trigger, gate, or acceptance-boundary behavior was changed. This task was owner-directed (both follow-on items pre-approved directly), so `promotion_basis` is `null`.
+
+Supersedes: None
+Related: DECISION-005, DECISION-006, DECISION-020, DECISION-034, DECISION-049, DECISION-051, docs/BRR_PLAN.md, docs/BRR_POLICY.md, docs/HANDOFF_PACKET_SPEC.md, docs/REPO_GOVERNANCE.md, scripts/return-inadequate-work.ps1

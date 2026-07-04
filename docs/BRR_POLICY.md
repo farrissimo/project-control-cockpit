@@ -898,6 +898,14 @@ named here as **recommended future work**, not built in this task, consistent
 with how every other Phase 3 policy section in this document deferred its own
 fielding.
 
+> **Later update (`pcc-brr3-005`, `DECISION-052`):** this script now exists.
+> This note is a pointer added after `pcc-brr3-004` closed, per
+> `docs/REPO_GOVERNANCE.md`'s Post-Close Canonical Amendment Rule
+> (`DECISION-051`) — it does not rewrite the claim above, which was accurate
+> when `pcc-brr3-004` was verified. See `scripts/return-inadequate-work.ps1`
+> and `docs/HANDOFF_PACKET_SPEC.md`'s "Recommended Close-Out Order" for the
+> fielded version.
+
 ### What happens after each verdict
 
 This restates, for visibility, the mapping the Stop-Instead-of-Guess Policy
