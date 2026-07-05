@@ -1,0 +1,42 @@
+{
+  "task_id": "pcc-pathC-001",
+  "verdict": "FAIL",
+  "verified_at": "2026-07-04T19:24:44.0390593-06:00",
+  "completion_criteria_checked": [
+    "scripts/doctor.ps1 adds advisory-only Working tree, Branch hygiene, and File structure checks.",
+    "doctor.ps1 remains read-only and preserves its always-exit-0 advisory contract.",
+    "Functional evidence includes a real baseline run plus at least one deliberately induced case per new check, with the repo restored afterward.",
+    "docs/DECISIONS.md records the delivery decision and backlog/IDEAS.md records IDEA-012 delivery.",
+    "Allowed scope is respected in the current task cycle."
+  ],
+  "evidence_reviewed": [
+    ".cockpit/handoff/advisor-restart-brief.md",
+    "docs/VERIFICATION_RESULT_SPEC.md",
+    "docs/REPO_GOVERNANCE.md",
+    ".cockpit/state/project-state.json",
+    ".cockpit/state/task-state.json",
+    ".cockpit/handoff/worker-directive.md",
+    ".cockpit/result/worker-result.md",
+    "git status --short",
+    "git --no-pager diff --name-only -- scripts/doctor.ps1 docs/DECISIONS.md backlog/IDEAS.md docs/PROJECT_CHARTER.md README.md",
+    "git --no-pager diff --unified=80 -- scripts/doctor.ps1",
+    "git --no-pager diff --unified=40 -- docs/DECISIONS.md",
+    "git --no-pager diff --unified=40 -- backlog/IDEAS.md",
+    "pwsh -NoProfile -File scripts/validate-cockpit-state.ps1",
+    "pwsh -NoProfile -File scripts/check-schemas.ps1",
+    "pwsh -NoProfile -File scripts/doctor.ps1",
+    "pwsh -NoProfile -File scripts/verify-handback-guardrails.ps1"
+  ],
+  "missing_evidence": [
+    "A doctor.ps1 run against the real repo in a clean state.",
+    "A deliberately induced Working tree test case distinct from the task's own in-progress edits."
+  ],
+  "out_of_scope_findings": [],
+  "risks": [
+    "The implementation itself appears aligned with the requested read-only checks, and the independent guardrail re-run is clean, but accepting the task without the required functional test coverage would weaken the completion contract.",
+    "The worker result explicitly says the Working tree WARN path was exercised only by the real task's own in-progress edits rather than by a separate induced case, so this is a known unmet criterion rather than a verifier inference."
+  ],
+  "summary": "Independent verification confirmed the current cycle stays within allowed scope, the new doctor.ps1 checks are present, and scripts/verify-handback-guardrails.ps1 re-ran cleanly. The task still fails verification because the required functional testing evidence is incomplete: the record does not show a clean-state baseline run, and the Working tree check was not exercised with a deliberately induced case separate from the task's own edits.",
+  "next_action": "Add the missing functional test coverage for the Working tree check and a clean-state baseline run, update the worker evidence, and resubmit for verification.",
+  "state_update_allowed": false
+}

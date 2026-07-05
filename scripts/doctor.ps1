@@ -88,8 +88,10 @@ try {
 # --- Check 4: last known handoff-gate verdict (informational only - does not re-run the gate) ---
 $gatePath = ".cockpit/state/handoff-gate.json"
 $taskStatePath = ".cockpit/state/task-state.json"
+$projectStatePath = ".cockpit/state/project-state.json"
 $gate = Read-JsonSafe $gatePath
 $taskState = Read-JsonSafe $taskStatePath
+$projectState = Read-JsonSafe $projectStatePath
 
 if ($null -eq $gate) {
   Add-Finding -Check "Handoff gate (last known)" -Status "WARN" -Detail "No $gatePath found yet. The enforcement gate (scripts/enforce-handoff-restart-safety.ps1) has not been run this cycle."
@@ -106,6 +108,91 @@ if ($null -eq $taskState) {
   Add-Finding -Check "Active task" -Status "WARN" -Detail "$taskStatePath is missing or unreadable."
 } else {
   Add-Finding -Check "Active task" -Status "OK" -Detail "Task '$($taskState.task_id)' status is '$($taskState.task_status)' (verification_verdict: $($taskState.verification_verdict))."
+}
+
+# --- Check 6: working tree (uncommitted changes are normal mid-cycle, never an ISSUE) ---
+try {
+  $gitStatus = & git status --porcelain 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    Add-Finding -Check "Working tree" -Status "WARN" -Detail "Could not read git status (not a git repo, or git unavailable): $(Strip-AnsiAndLastLine $gitStatus)"
+  } elseif ([string]::IsNullOrWhiteSpace(($gitStatus -join "`n"))) {
+    Add-Finding -Check "Working tree" -Status "OK" -Detail "No uncommitted changes."
+  } else {
+    $changedCount = @($gitStatus | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
+    Add-Finding -Check "Working tree" -Status "WARN" -Detail "$changedCount uncommitted change(s) present. Normal mid-cycle; review before handoff/close-out."
+  }
+} catch {
+  Add-Finding -Check "Working tree" -Status "WARN" -Detail "Could not run 'git status --porcelain': $($_.Exception.Message)"
+}
+
+# --- Check 7: branch hygiene (current branch vs. project-state.json's active_branch) ---
+try {
+  $currentBranch = (& git rev-parse --abbrev-ref HEAD 2>&1)
+  if ($LASTEXITCODE -ne 0) {
+    Add-Finding -Check "Branch hygiene" -Status "WARN" -Detail "Could not determine current branch (not a git repo, or git unavailable): $(Strip-AnsiAndLastLine $currentBranch)"
+  } else {
+    $currentBranch = "$currentBranch".Trim()
+    $expectedBranch = if ($null -ne $projectState -and $projectState.PSObject.Properties.Name -contains "active_branch") { $projectState.active_branch } else { $null }
+
+    $aheadBehindNote = ""
+    $upstream = (& git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>&1)
+    if ($LASTEXITCODE -eq 0) {
+      $counts = (& git rev-list --left-right --count "HEAD...@{u}" 2>&1)
+      if ($LASTEXITCODE -eq 0) {
+        $parts = "$counts".Trim() -split "\s+"
+        if ($parts.Count -eq 2) {
+          $aheadBehindNote = " Upstream '$("$upstream".Trim())': $($parts[0]) ahead, $($parts[1]) behind."
+        }
+      }
+    } else {
+      $aheadBehindNote = " No upstream configured for this branch."
+    }
+
+    if ($null -eq $expectedBranch) {
+      Add-Finding -Check "Branch hygiene" -Status "WARN" -Detail "On branch '$currentBranch'. $projectStatePath has no active_branch to compare against.$aheadBehindNote"
+    } elseif ($currentBranch -eq $expectedBranch) {
+      Add-Finding -Check "Branch hygiene" -Status "OK" -Detail "On expected branch '$currentBranch'.$aheadBehindNote"
+    } else {
+      Add-Finding -Check "Branch hygiene" -Status "WARN" -Detail "On branch '$currentBranch', but project-state.json's active_branch is '$expectedBranch'.$aheadBehindNote"
+    }
+  }
+} catch {
+  Add-Finding -Check "Branch hygiene" -Status "WARN" -Detail "Could not check branch hygiene: $($_.Exception.Message)"
+}
+
+# --- Check 8: file structure (canonical .cockpit/ subdirectories and state files present, nothing stray at the top level) ---
+try {
+  $expectedSubdirs = @("backups", "handoff", "logs", "result", "state")
+  $expectedStateFiles = @(
+    ".cockpit/state/project-state.json",
+    ".cockpit/state/task-state.json",
+    ".cockpit/state/handoff-gate.json"
+  )
+
+  $missing = New-Object System.Collections.Generic.List[string]
+  foreach ($d in $expectedSubdirs) {
+    if (-not (Test-Path -LiteralPath ".cockpit/$d" -PathType Container)) { $missing.Add(".cockpit/$d") }
+  }
+  foreach ($f in $expectedStateFiles) {
+    if (-not (Test-Path -LiteralPath $f -PathType Leaf)) { $missing.Add($f) }
+  }
+
+  $unexpected = New-Object System.Collections.Generic.List[string]
+  if (Test-Path -LiteralPath ".cockpit" -PathType Container) {
+    Get-ChildItem -LiteralPath ".cockpit" -Force | ForEach-Object {
+      if ($_.Name -notin $expectedSubdirs) { $unexpected.Add($_.Name) }
+    }
+  }
+
+  if ($missing.Count -gt 0) {
+    Add-Finding -Check "File structure" -Status "ISSUE" -Detail "Missing expected .cockpit/ path(s): $($missing -join ', ')"
+  } elseif ($unexpected.Count -gt 0) {
+    Add-Finding -Check "File structure" -Status "WARN" -Detail "Unexpected top-level .cockpit/ entr(ies) found (not necessarily a problem, just unusual): $($unexpected -join ', ')"
+  } else {
+    Add-Finding -Check "File structure" -Status "OK" -Detail "All canonical .cockpit/ subdirectories and state files are present; no unexpected top-level entries."
+  }
+} catch {
+  Add-Finding -Check "File structure" -Status "WARN" -Detail "Could not check file structure: $($_.Exception.Message)"
 }
 
 # --- Report ---

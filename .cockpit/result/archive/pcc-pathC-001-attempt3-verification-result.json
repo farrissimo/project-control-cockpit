@@ -1,0 +1,47 @@
+{
+  "task_id": "pcc-pathC-001",
+  "verdict": "FAIL",
+  "verified_at": "2026-07-04T20:16:17.5603511-06:00",
+  "completion_criteria_checked": [
+    "scripts/doctor.ps1 adds advisory-only Working tree, Branch hygiene, and File structure checks.",
+    "doctor.ps1 remains read-only and preserves its always-exit-0 advisory contract.",
+    "Functional evidence includes a run against the real repo in a clean state plus at least one deliberately induced case per new check, with the repo restored afterward.",
+    "docs/DECISIONS.md records the delivery decision and backlog/IDEAS.md records IDEA-012 delivery.",
+    "Allowed scope is respected in the current task cycle."
+  ],
+  "evidence_reviewed": [
+    ".cockpit/handoff/advisor-restart-brief.md",
+    "docs/VERIFICATION_RESULT_SPEC.md",
+    "docs/REPO_GOVERNANCE.md",
+    ".cockpit/state/project-state.json",
+    ".cockpit/state/task-state.json",
+    ".cockpit/handoff/worker-directive.md",
+    ".cockpit/result/worker-result.md",
+    "docs/DECISIONS.md",
+    "backlog/IDEAS.md",
+    "docs/STATE_MODEL.md",
+    "scripts/doctor.ps1",
+    "scripts/verify-handback-guardrails.ps1",
+    "git status --short",
+    "git --no-pager diff --name-only -- scripts/doctor.ps1 docs/DECISIONS.md backlog/IDEAS.md docs/PROJECT_CHARTER.md README.md",
+    "git --no-pager diff --unified=60 -- docs/DECISIONS.md",
+    "git --no-pager diff --unified=60 -- backlog/IDEAS.md",
+    "pwsh -NoProfile -File scripts/validate-cockpit-state.ps1",
+    "pwsh -NoProfile -File scripts/check-schemas.ps1",
+    "pwsh -NoProfile -File scripts/doctor.ps1",
+    "Attempted independent re-run of pwsh -NoProfile -File scripts/verify-handback-guardrails.ps1 (partial output captured before tool timeout; script body independently reviewed)."
+  ],
+  "missing_evidence": [
+    "A doctor.ps1 run against the real repo in a clean state.",
+    "Evidence that DECISION-078's functional-testing description matches what was actually tested."
+  ],
+  "out_of_scope_findings": [],
+  "risks": [
+    "The implementation in scripts/doctor.ps1 appears aligned with the requested read-only checks, and the independently re-run guardrail components were clean (validate-cockpit-state, check-schemas, doctor), but the task's testing contract is still not met as written.",
+    "The worker result now relies on a disposable clone for the clean-baseline and induced Working-tree case, while task-state.json explicitly requires a run against the real repo in a clean state.",
+    "DECISION-078 currently overclaims the testing: it says the real repo was tested in its current clean state and that the real working tree's own task edits exercised the Working-tree WARN path, which conflicts with the worker-result evidence for this cycle."
+  ],
+  "summary": "Independent review confirms the new doctor.ps1 checks are present and the repo-health guardrail components are clean on the returned-for-verification state, but the task still fails verification. The completion contract explicitly requires functional testing against the real repo in a clean state; the submitted evidence substitutes a disposable clone instead, and DECISION-078 describes testing more strongly than the evidence supports.",
+  "next_action": "Correct the functional-test contract gap and the overclaimed documentation, update the worker evidence, and resubmit for verification.",
+  "state_update_allowed": false
+}

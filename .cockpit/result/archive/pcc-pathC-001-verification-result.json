@@ -1,0 +1,38 @@
+{
+  "task_id": "pcc-pathC-001",
+  "verdict": "OUT_OF_SCOPE",
+  "verified_at": "2026-07-04T18:55:39.8346143-06:00",
+  "completion_criteria_checked": [
+    "scripts/doctor.ps1 adds advisory-only Working tree, Branch hygiene, and File structure checks.",
+    "doctor.ps1 remains read-only and preserves its always-exit-0 advisory contract.",
+    "Functional evidence exists for baseline and induced-case testing.",
+    "docs/DECISIONS.md records the delivery decision and backlog/IDEAS.md records IDEA-012 delivery.",
+    "Allowed scope is respected: no script other than scripts/doctor.ps1 is modified, and no other truth surfaces are changed outside the directive."
+  ],
+  "evidence_reviewed": [
+    ".cockpit/handoff/advisor-restart-brief.md",
+    "docs/VERIFICATION_RESULT_SPEC.md",
+    "docs/REPO_GOVERNANCE.md",
+    ".cockpit/state/project-state.json",
+    ".cockpit/state/task-state.json",
+    ".cockpit/handoff/worker-directive.md",
+    ".cockpit/result/worker-result.md",
+    "git status --short",
+    "git diff -- scripts/doctor.ps1 docs/DECISIONS.md docs/PROJECT_CHARTER.md backlog/IDEAS.md",
+    "pwsh -NoProfile -File scripts/verify-handback-guardrails.ps1",
+    "pwsh -NoProfile -File scripts/doctor.ps1",
+    "schemas/verification-result.schema.json"
+  ],
+  "missing_evidence": [],
+  "out_of_scope_findings": [
+    "docs/PROJECT_CHARTER.md was modified during this task cycle even though the directive's Allowed Scope only permitted edits to scripts/doctor.ps1, docs/DECISIONS.md, backlog/IDEAS.md, and README.md if needed.",
+    "The worker result explicitly disclosed the docs/PROJECT_CHARTER.md edit as part of the same session, so this cycle mixed an additional canonical-doc change into a task that did not authorize that file."
+  ],
+  "risks": [
+    "The core doctor.ps1 implementation appears to satisfy the bounded technical objective, and the independent guardrail re-run was clean, but accepting the task as-is would normalize scope drift on canonical docs.",
+    "docs/PROJECT_CHARTER.md is a truth-surface document; allowing unscoped edits there under this task would weaken the repo-governance boundary the verifier is required to protect."
+  ],
+  "summary": "Independent verification confirmed the new doctor.ps1 checks are present, doctor.ps1 still exits 0, and scripts/verify-handback-guardrails.ps1 re-ran cleanly. However, this task cycle also includes a disclosed modification to docs/PROJECT_CHARTER.md, which was outside the directive's allowed file scope, so the result cannot be accepted as a PASS.",
+  "next_action": "Inspect the out-of-scope docs/PROJECT_CHARTER.md change and either revert it from this task cycle or promote/approve it under a separately scoped task before updating task state.",
+  "state_update_allowed": false
+}

@@ -1,46 +1,45 @@
 {
-  "task_id": "pcc-pathB-001",
-  "task_title": "Behavior Controls: Communication Preferences Stored And Surfaced In Worker Directive",
-  "task_objective": "Deliver the original project scope's Tone / Chattiness / Language Controls (archive/PCC Original Project Scope.md §7.16; DECISION-009) as fielded state rather than an unenforced principle: add a communication_prefs object to .cockpit/state/project-state.json (and its schema) holding the owner's standing communication defaults, and edit scripts/generate-worker-directive.ps1 to render a 'Communication Defaults' section from it, so a fresh worker session auto-applies the owner's tone/language/behavior preferences without the owner restating them each session. This is a direct babysitting reduction (DECISION-001): repeated owner corrections about communication style are exactly what §7.16 exists to prevent. It is the sole honestly-buildable pre-checkpoint task in Category B; §7.19 (suggested tools) is declined for now as low-value and overlapping with scripts/classify-routing.ps1 / DECISION-002. This is Task Safety Class C because it edits a schema (a truth surface, Owner Review Matrix row 7); the owner approved it before execution.",
+  "task_id": "pcc-pathC-001",
+  "task_title": "Metrics & Evidence: Extend doctor.ps1 With Dirty-Tree, Branch-Hygiene, And File-Structure Checks",
+  "task_objective": "Deliver the original project scope's Stronger Repo Health Diagnostics (archive/PCC Original Project Scope.md §12.7) by extending scripts/doctor.ps1 with three additional read-only, advisory checks it does not currently perform: (1) dirty working tree (uncommitted changes present via 'git status --porcelain'), (2) branch hygiene (current branch matches project-state.json's active_branch, and whether the branch is ahead/behind its upstream if one is configured), and (3) file-structure check (the expected .cockpit/ subdirectories and canonical state files from docs/STATE_MODEL.md are present, and no unexpected top-level .cockpit/ entries exist). This is the first Category C (Metrics & Evidence Depth) task per DECISION-074's roadmap. Scoped and justified against the three-filter test recorded in backlog/IDEAS.md IDEA-012 and docs/PROJECT_CHARTER.md's Core Design Rule (Modularity/Extractability, DECISION-077): purely additive to an already-existing advisory-only script, reduces owner babysitting (these are currently only caught by the owner noticing manually), and introduces no new shared state (reads git plumbing and the filesystem directly, prints report lines, exactly the same shape as doctor.ps1's four existing composed checks). Task Safety Class A: bounded, low-risk, mechanically checkable by running doctor.ps1 and inspecting its output; touches no schema, no state file, no verdict, and no Owner Review Matrix truth surface.",
   "task_status": "complete",
   "assigned_worker": "Claude Code",
-  "task_safety_class": "C",
+  "task_safety_class": "A",
   "completion_criteria": [
-    "schemas/project-state.schema.json gains a communication_prefs object property with additionalProperties:false and its own required fields: tone (enum: direct, balanced, chatty), language_level (enum: plain, mixed, technical), chattiness (enum: concise, balanced, verbose), and four boolean toggles (no_cheerleading, concise_by_default, explicit_uncertainty, separate_facts_from_inference). communication_prefs is added to the top-level required list so it is always present going forward.",
-    ".cockpit/state/project-state.json gains a communication_prefs object matching the schema, seeded with the owner's documented defaults: tone=direct, language_level=mixed, chattiness=concise, no_cheerleading=true, concise_by_default=true, explicit_uncertainty=true, separate_facts_from_inference=true.",
-    "scripts/generate-worker-directive.ps1 renders a 'Communication Defaults' section from project-state.json's communication_prefs (guarded so it is simply omitted if the field is absent, rather than erroring), listing each preference so a fresh worker applies them without being asked, and tying the section to DECISION-009.",
-    "Functionally tested (not read-through only): scripts/check-schemas.ps1 passes against the updated project-state.json and schema; scripts/generate-worker-directive.ps1 runs and the generated .cockpit/handoff/worker-directive.md contains the Communication Defaults section with the seeded values; scripts/validate-cockpit-state.ps1 passes.",
-    "A new decision is recorded in docs/DECISIONS.md, and README.md is updated only as needed to note the capability. DECISION-009's status/relationship is referenced (it is now fielded, not just recorded).",
-    "No verdict, task status, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, Acceptance Boundary Rule, or any other truth surface beyond project-state.schema.json's additive communication_prefs field is changed. No new log event type is added."
+    "scripts/doctor.ps1 gains a new 'Working tree' check: runs 'git status --porcelain' against the repo root; OK if empty output, WARN if uncommitted changes exist (never ISSUE -- an in-progress working tree is normal, not unsafe). Must not fail doctor.ps1 itself if git is unavailable or the directory is not a repo -- report WARN with a clear detail message in that case instead.",
+    "scripts/doctor.ps1 gains a new 'Branch hygiene' check: compares the current git branch (via 'git rev-parse --abbrev-ref HEAD') against project-state.json's active_branch field; OK if they match, WARN if they differ (naming both). If an upstream is configured, additionally reports ahead/behind counts as informational detail on the same finding; if no upstream is configured, states that plainly rather than treating it as a problem.",
+    "scripts/doctor.ps1 gains a new 'File structure' check: confirms the canonical .cockpit/ subdirectories (backups, handoff, logs, result, state) and canonical state files (.cockpit/state/project-state.json, .cockpit/state/task-state.json, .cockpit/state/handoff-gate.json) exist; OK if all present, ISSUE naming exactly which are missing if not. Additionally flags any top-level entry directly under .cockpit/ that is not one of the five expected subdirectories as a WARN (unexpected file/dir), without treating it as fatal.",
+    "All three new checks are read-only: they must not create, delete, or modify any file, must not call any other script, and must not change doctor.ps1's existing 'always exits 0, advisory-only' contract.",
+    "Functionally tested (not read-through only): Branch-hygiene and file-structure checks tested directly against the real repo (a scratch branch-name value swap and a scratch .cockpit/ subdirectory rename, each reverted immediately) to confirm WARN/ISSUE behavior and that doctor.ps1 still exits 0 throughout. AMENDED 2026-07-04 (owner + Codex advisor agreed, after verification cycle 3, that the real repo cannot simultaneously be genuinely clean and carry this task's own in-progress edits): the Working-tree check's clean-state baseline and its induced dirty-tree case are accepted as satisfied via a disposable local git clone of this repo (git clone --local at current HEAD, with only the new scripts/doctor.ps1 copied in and committed inside that throwaway clone, never touching the real repo's history or any remote, deleted immediately after use) instead of literally against the real repo. This is the disclosed, owner-approved equivalent for this one structurally-conflicting criterion only; it does not relax functional-testing rigor elsewhere in this task or set a standing precedent for other tasks without their own separate owner review.",
+    "A new decision is recorded in docs/DECISIONS.md documenting the delivered checks and the three-filter scoping rationale from IDEA-012. backlog/IDEAS.md's IDEA-012 entry is updated to note delivery.",
+    "No verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, Acceptance Boundary Rule, schema, or any other truth surface is changed. No new log event type is added. No script other than scripts/doctor.ps1 is modified (docs/DECISIONS.md and backlog/IDEAS.md edits are documentation, not code)."
   ],
   "boundaries": {
     "allowed": [
-      "Edit schemas/project-state.schema.json to add the communication_prefs object property (additive only).",
-      "Edit .cockpit/state/project-state.json to add the communication_prefs values.",
-      "Edit scripts/generate-worker-directive.ps1 to render the Communication Defaults section from communication_prefs.",
+      "Edit scripts/doctor.ps1 to add the three new checks (Working tree, Branch hygiene, File structure).",
       "Edit docs/DECISIONS.md to record the new decision.",
-      "Edit README.md only if needed to note the capability.",
-      "Edit backlog/IDEAS.md only if an existing IDEA entry needs a delivered-status note (check first; do not edit if none applies)."
+      "Edit backlog/IDEAS.md to update IDEA-012's status/notes to reflect delivery.",
+      "Edit README.md only if needed to note the capability."
     ],
     "forbidden": [
-      "Do not change any schema other than the additive communication_prefs addition to project-state.schema.json.",
-      "Do not modify any script other than scripts/generate-worker-directive.ps1.",
+      "Do not modify any script other than scripts/doctor.ps1.",
+      "Do not change doctor.ps1's always-exit-0 advisory-only contract, or make any new check a blocking/gating condition.",
       "Do not add any new log event type or write to routing-log.jsonl.",
-      "Do not make communication_prefs gate, block, or halt anything — it is worker-facing guidance rendered into the directive, not an enforcement mechanism.",
-      "Do not change any verdict, task status enum, Task Safety Class definition, the Owner Review Matrix, Stop-Instead-of-Guess triggers, or any Acceptance Boundary Rule.",
-      "Do not manually invoke 'codex exec' for this task's own verification — let the live PCC-CodexVerifyWatcher scheduled task handle it."
+      "Do not change any schema, verdict, task status enum, Task Safety Class definition, the Owner Review Matrix, Stop-Instead-of-Guess triggers, or any Acceptance Boundary Rule.",
+      "Do not commit or leave behind any scratch artifacts used to induce test cases (uncommitted changes, renamed directories, scratch branches) -- the real repo must be restored to its clean pre-task state before completion evidence is written.",
+      "Do not manually invoke 'codex exec' for this task's own verification -- let the live PCC-CodexVerifyWatcher scheduled task handle it."
     ]
   },
   "required_evidence": [
     "Files created or changed.",
     "Summary of changes.",
     "Commands run, if any.",
-    "Command/test results, if any.",
+    "Command/test results, if any (including the induced-failure test cases and confirmation the repo was restored afterward).",
     "Known risks.",
     "Unresolved assumptions.",
     "Confirmation that forbidden scope was not touched."
   ],
-  "attempts": 1,
+  "attempts": 4,
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
@@ -48,6 +47,6 @@
   "current_blocker": null,
   "owner_decision_request": null,
   "promotion_basis": null,
-  "next_action": "Task 'pcc-pathB-001' is complete and verified PASS. NEXT LANE per DECISION-074 roadmap: Category C - Metrics & Evidence Depth (docs/CCB_PCC_RELATIONSHIP.md section 7; original scope sections 7.23, 12.7, 12.8). Owner/advisor scopes the first Category C task. Maturity Checkpoint follows once Categories A-C are proven and the extractability audit passes.",
-  "updated_at": "2026-07-04T18:37:30-06:00"
+  "next_action": "Task 'pcc-pathC-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-04T20:45:14-06:00"
 }

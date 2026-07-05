@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-pathC-001
 * Task Title: Metrics & Evidence: Extend doctor.ps1 With Dirty-Tree, Branch-Hygiene, And File-Structure Checks
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Objective

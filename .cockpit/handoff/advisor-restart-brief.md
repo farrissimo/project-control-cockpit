@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-04T18:39:11-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T20:45:16-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,21 +10,21 @@ Current phase: post-brr
 
 ## Active Task
 
-* Task ID: pcc-pathB-001
-* Title: Behavior Controls: Communication Preferences Stored And Surfaced In Worker Directive
+* Task ID: pcc-pathC-001
+* Title: Metrics & Evidence: Extend doctor.ps1 With Dirty-Tree, Branch-Hygiene, And File-Structure Checks
 * Status: complete
-* Safety Class: C (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Deliver the original project scope's Tone / Chattiness / Language Controls (archive/PCC Original Project Scope.md §7.16; DECISION-009) as fielded state rather than an unenforced principle: add a communication_prefs object to .cockpit/state/project-state.json (and its schema) holding the owner's standing communication defaults, and edit scripts/generate-worker-directive.ps1 to render a 'Communication Defaults' section from it, so a fresh worker session auto-applies the owner's tone/language/behavior preferences without the owner restating them each session. This is a direct babysitting reduction (DECISION-001): repeated owner corrections about communication style are exactly what §7.16 exists to prevent. It is the sole honestly-buildable pre-checkpoint task in Category B; §7.19 (suggested tools) is declined for now as low-value and overlapping with scripts/classify-routing.ps1 / DECISION-002. This is Task Safety Class C because it edits a schema (a truth surface, Owner Review Matrix row 7); the owner approved it before execution.
+* Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
+* Objective: Deliver the original project scope's Stronger Repo Health Diagnostics (archive/PCC Original Project Scope.md §12.7) by extending scripts/doctor.ps1 with three additional read-only, advisory checks it does not currently perform: (1) dirty working tree (uncommitted changes present via 'git status --porcelain'), (2) branch hygiene (current branch matches project-state.json's active_branch, and whether the branch is ahead/behind its upstream if one is configured), and (3) file-structure check (the expected .cockpit/ subdirectories and canonical state files from docs/STATE_MODEL.md are present, and no unexpected top-level .cockpit/ entries exist). This is the first Category C (Metrics & Evidence Depth) task per DECISION-074's roadmap. Scoped and justified against the three-filter test recorded in backlog/IDEAS.md IDEA-012 and docs/PROJECT_CHARTER.md's Core Design Rule (Modularity/Extractability, DECISION-077): purely additive to an already-existing advisory-only script, reduces owner babysitting (these are currently only caught by the owner noticing manually), and introduces no new shared state (reads git plumbing and the filesystem directly, prints report lines, exactly the same shape as doctor.ps1's four existing composed checks). Task Safety Class A: bounded, low-risk, mechanically checkable by running doctor.ps1 and inspecting its output; touches no schema, no state file, no verdict, and no Owner Review Matrix truth surface.
 
 ## Last Verified
 
-* Verdict: PASS for task 'pcc-pathB-001', verified at 2026-07-04T18:35:04-06:00
-* Summary: Independent verification found pcc-pathB-001 complete within its bounded scope. The project state and schema now carry the seeded communication defaults, the directive generator surfaces them for fresh worker sessions, the missing-field guard omits the section cleanly instead of erroring, the required docs updates are present, and the verifier's independent guardrail re-run completed cleanly.
-* Last verified handoff: .cockpit/handoff/archive/pcc-pathB-001-worker-directive.md
+* Verdict: PASS for task 'pcc-pathC-001', verified at 2026-07-04T20:42:30-06:00
+* Summary: Independent verification passes. The verifier re-ran scripts/verify-handback-guardrails.ps1 successfully, confirmed doctor.ps1 now contains the required read-only Working tree, Branch hygiene, and File structure checks while preserving exit-0 advisory behavior, and found the current evidence package consistent with the amended completion contract. The prior failure mode is closed: DECISION-078 and task-state.json now accurately disclose the disposable-clone method used for the Working-tree clean/dirty proof, while the branch-hygiene and file-structure induced cases remain tested directly against the real repo and restored afterward.
+* Last verified handoff: .cockpit/handoff/archive/pcc-pathC-001-attempt4-worker-directive.md
 
 ## Open Issues
 
-* Risk from last verification of 'pcc-pathB-001': communication_prefs is advisory-only worker guidance rendered into the directive; it does not enforce behavior. That is intentional and consistent with the task boundary.
+* Risk from last verification of 'pcc-pathC-001': The Working-tree clean/dirty proof relies on a one-off owner-approved completion-criterion amendment for this task's structural conflict; that exception should not be generalized to other tasks without separate review.
 
 ## Read First
 
@@ -38,5 +38,5 @@ Current phase: post-brr
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-pathB-001' is complete and verified PASS. NEXT LANE per DECISION-074 roadmap: Category C - Metrics & Evidence Depth (docs/CCB_PCC_RELATIONSHIP.md section 7; original scope sections 7.23, 12.7, 12.8). Owner/advisor scopes the first Category C task. Maturity Checkpoint follows once Categories A-C are proven and the extractability audit passes.
-* Project-level: Post-BRR Path-A roadmap (DECISION-074): Category A (pcc-pathA-001, local-first routing) and Category B (pcc-pathB-001, communication preferences) are complete and verified PASS. NEXT LANE: Category C - Metrics & Evidence Depth (see docs/CCB_PCC_RELATIONSHIP.md section 7 roadmap table; original scope archive/PCC Original Project Scope.md sections 7.23, 12.7, 12.8). Owner/advisor scopes the first Category C task, applying the same discipline used for A/B (check what exists first, keep it lean, honor DECISION-074's extractability rule). Per DECISION-074, the Maturity Checkpoint follows once Categories A-C are proven across real cycles and the extractability audit passes.
+* Task-level: Task 'pcc-pathC-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Project-level: Task 'pcc-pathC-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.

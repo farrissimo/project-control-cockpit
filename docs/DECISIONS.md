@@ -1833,3 +1833,51 @@ Implications:
 
 Supersedes: None
 Related: DECISION-074, docs/PROJECT_CHARTER.md, docs/CCB_PCC_RELATIONSHIP.md
+
+---
+
+## DECISION-078: Repo Health Diagnostics Extended With Working-Tree, Branch-Hygiene, And File-Structure Checks (pcc-pathC-001)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+The original project scope's Stronger Repo Health Diagnostics (`archive/PCC Original Project Scope.md` §12.7) are delivered as three new advisory checks added to `scripts/doctor.ps1`: working tree (uncommitted changes via `git status --porcelain`), branch hygiene (current branch vs. `project-state.json`'s `active_branch`, plus ahead/behind against any configured upstream), and file structure (canonical `.cockpit/` subdirectories and state files present, no unexpected top-level entries). This is the first Category C (Metrics & Evidence Depth) task per `DECISION-074`'s roadmap.
+
+Reason:
+
+`doctor.ps1` previously reported only state consistency, restart safety, schema format, last gate result, and active task status — a dirty tree, a wrong branch, or a missing/stray `.cockpit/` entry was only caught if the owner noticed it manually, which is exactly the babysitting §12.7 exists to remove. The task was scoped and recorded in `backlog/IDEAS.md` (IDEA-012) against the three-filter test now standing in `docs/PROJECT_CHARTER.md`'s Core Design Rule (`DECISION-077`): additive-only to an already-existing advisory script (no bloat), a net babysitting reduction (doctor now reports what the owner previously had to notice), and no new shared state introduced (the new checks read git plumbing and the filesystem directly and print report lines, the same shape as `doctor.ps1`'s four existing composed checks, keeping `DECISION-074`'s extractability rule intact). Task Safety Class A: bounded, mechanically checkable, touches no schema or truth surface.
+
+Implications:
+
+All three checks are read-only and never gate: `doctor.ps1` still always exits 0. Working-tree changes and branch mismatches report `WARN` (normal mid-cycle conditions, not failures); missing canonical `.cockpit/` paths report `ISSUE` (named explicitly); an unexpected top-level `.cockpit/` entry reports `WARN`. A real bug was found and fixed during implementation: `doctor.ps1` never actually loaded `project-state.json` (only `task-state.json` and `handoff-gate.json` were read), so the new branch-hygiene check's comparison against `active_branch` would have silently always fallen through to its no-data branch; `$projectState` loading was added alongside the existing `Read-JsonSafe` calls to fix this. Branch-hygiene and file-structure induced cases (a temporary `active_branch` value swap, a temporary rename of `.cockpit/logs`) were exercised directly against the real repo and reverted immediately after confirming `WARN`/`ISSUE` behavior.
+
+**Correction (2026-07-04, after this task's verification cycle 3):** the paragraph above previously stated that Working-tree testing was done "against the real repo in its current clean state" and that the real working tree's own in-progress edits "exercised the working-tree check's `WARN` path naturally, without needing a separate induced case." That was accurate only for cycles 1-2's evidence and was never updated when the testing method changed for cycle 3. What was actually done, and is the current, accurate record: the real repo cannot simultaneously be genuinely clean and carry this task's own in-progress edits, so the clean-state baseline and an induced Working-tree case isolated from this task's own edits were instead produced using a disposable local git clone (`git clone --local` of this repo at HEAD, with only the new `scripts/doctor.ps1` copied in and committed inside that throwaway clone, never touching the real repo's history or any remote, deleted immediately after use). This substitution was reviewed and accepted by the owner and the Codex advisor as the disclosed equivalent for this specific structural conflict (see `task-state.json`'s completion criteria, amended accordingly, and the Codex advisory consultations recorded around this task's later attempts). No schema, verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, Acceptance Boundary Rule, or log event type was changed; no script other than `scripts/doctor.ps1` was modified.
+
+Supersedes: None
+Related: DECISION-074, DECISION-077, docs/PROJECT_CHARTER.md, backlog/IDEAS.md, archive/PCC Original Project Scope.md, scripts/doctor.ps1
+
+---
+
+## DECISION-079: Owner-Approved Retry Past The Repeated-Failure Circuit Breaker (pcc-pathC-001, attempt 3)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+After pcc-pathC-001 failed verification twice (cycle 1: `OUT_OF_SCOPE`; cycle 2: `FAIL`), `scripts/finalize-worker-handback.ps1`'s repeated-failure circuit breaker (`docs/BRR_POLICY.md` trigger 4 / Owner Review Matrix row 9) correctly stopped unattended progress and raised an `owner_decision_request` with three options (retry differently, re-scope, abandon). The Codex advisor was consulted directly (a one-off advisory `codex exec` call, distinct from — and not a substitute for — this task's own independent verification) and recommended option 1, retry, since both prior failures were procedural (scope hygiene, then thin test evidence) rather than implementation defects, and new evidence had been produced closing the specific gaps cycle 2 named. The owner approved option 1. The retry was executed via `scripts/finalize-worker-handback.ps1 -MaxAttemptsBeforeBlock 3`, an explicit, one-time, disclosed exception to the script's default 2-attempt threshold for this specific owner-approved retry only.
+
+Reason:
+
+The circuit breaker's own design intent (per its code comments and `docs/BRR_POLICY.md`) is to stop *unattended* retries, not to forbid an owner-approved one — "further unattended retries stop" is the exact wording. Once the owner attended to the failure history, weighed the advisor's recommendation, and explicitly chose to retry, continuing was no longer an unattended action; it was the approved outcome of the exact stop-and-ask mechanism the breaker exists to trigger. Raising `-MaxAttemptsBeforeBlock` for this one call is the script's own built-in, least-invasive mechanism for exactly this case, rather than manually editing `attempts` or bypassing the check by other means.
+
+Implications:
+
+This is a one-time exception scoped to this single retry call; the script's default threshold (2) is unchanged for all other tasks and all future cycles of this task. If pcc-pathC-001 fails a third time, the circuit breaker will correctly fire again at the next threshold and require a fresh owner decision — this decision does not grant a standing or repeated exception. No schema, verdict, Task Safety Class, Owner Review Matrix row, or Stop-Instead-of-Guess trigger was changed; `finalize-worker-handback.ps1` itself was not modified. Consulting Codex in an advisory capacity for an owner-decision recommendation (as opposed to using it for this task's own verification) is recorded here as a legitimate use of the two-role split (`DECISION-012`/`DECISION-023`): the advisor role is not limited to yes/no verification verdicts, and asking it to weigh in on a genuine judgment call is consistent with its standing role.
+
+**Update (2026-07-04, attempt 4):** exactly as anticipated above, cycle 3 failed too (verdict `FAIL`), and the circuit breaker correctly fired again at attempt 3. The Codex advisor was consulted a second time and, given the repeated-failure pattern, reframed its own advice: this was no longer a simple "retry with better evidence" situation but a genuine task-definition conflict — `DECISION-078`'s text overclaimed what cycle 3 actually tested, and `task-state.json`'s completion criteria literally required "real repo" clean-state testing that the disposable-clone method (adopted for the reasons recorded above) did not satisfy as written. Codex's recommendation: correct `DECISION-078`'s text, explicitly amend the completion criterion to name the clone method as the disclosed equivalent, and only then retry once more. The owner approved deferring to this Claude/Codex-aligned recommendation. `DECISION-078` was corrected in place with a dated correction note (not silently rewritten), `task-state.json`'s Working-tree completion criterion was amended accordingly, and the retry was executed via a second explicit, disclosed exception: `scripts/finalize-worker-handback.ps1 -MaxAttemptsBeforeBlock 4`, for this one call only. The same non-standing-exception terms apply: if this attempt also fails, the breaker fires again at the next threshold and requires a fresh owner decision, not an automatic third override.
+
+Supersedes: None
+Related: DECISION-012, DECISION-023, docs/BRR_POLICY.md, scripts/finalize-worker-handback.ps1
