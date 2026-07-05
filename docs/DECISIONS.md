@@ -2091,3 +2091,33 @@ Neither path changes any script, schema, verdict, task status enum, Task Safety 
 
 Supersedes: None
 Related: DECISION-012, DECISION-019, DECISION-023, DECISION-033, DECISION-066, DECISION-067
+
+---
+
+## DECISION-087: Path A Plan Of Record Canonicalized; Finished UI Is A Local-First File-Bridge Dashboard; Category D Broken Down
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+Path A (`DECISION-074`) is confirmed as PCC's post-checkpoint direction: PCC continues as a lean, separate, single-repo project control center on its own terms. The CCB-v2 seed option (Path B, `docs/CCB_PCC_RELATIONSHIP.md` §8 option 1) remains deferred, not chosen. The Path A plan of record is now canonical at `docs/PATH_A_PLAN.md` — the Path-A analogue of `docs/BRR_PLAN.md`/`docs/V1_Scope.md` — recording what is already built (Categories A–C, checkpoint reached) and breaking the remaining work (Category D, the owner-facing product surface) into phases → tasks → subtasks, with Categories E and F held as deferred placeholders.
+
+The finished-state UI is decided: a **local-first web dashboard that is a pure consumer of the `.cockpit/` file bridge**. It reads the same `.cockpit/` state/result/log files the scripts already use, renders them as owner-facing panels (per original scope §11), and only in its final phase writes *request files* that existing scripts act on. It never reaches into script internals, never runs shell work itself, and never mutates authoritative state directly. It is built progressively: read-only status board first (`pcc-pathD-001`, Phase D1), then the full panel set (Phase D2), then a thin request-file write-path for the first controls (Phase D3).
+
+Reason:
+
+The UI form was chosen from PCC's own principles rather than from the original scope's default. The extractability rule (`DECISION-074`/`077`) actively prefers a pure-consumer web view: a page that only reads `.cockpit/` files (and later drops request files) carries zero hidden shared state with the engine — the cleanest embodiment of "the UI is a consumer of the file contract" (`§8`). A bundled desktop app (Tauri/Electron) tempts pulling engine logic into the app process, the shared-state monolith failure CCB's own postmortem blames and PCC exists to avoid. Local-first (`DECISION-002`) and no-paid-API (`DECISION-003`) are satisfied by local serving. Leanness (original scope §9, "don't become harder to manage than the projects it controls") argues against a native app shell + build pipeline + packaging for what is fundamentally a local status board.
+
+This is a **disclosed departure from original scope §10**, which preferred a desktop app first and rejected a web UI *only* because "this product needs local project and shell access." Under PCC's evolved architecture the scripts own shell access, not the UI — the UI reads files and (last) drops request files — so that premise no longer holds and the desktop-first preference is superseded for Path A. The departure is recorded rather than buried, per PCC's stale-doc/contradiction handling.
+
+The breakdown is deliberately progressive: Phase D1 is specified to task/subtask depth because it is the next real work; Phases D2/D3 are outlined; Categories E/F are placeholders only. Fully speccing speculative far-future work would be the governance bloat the charter's three-filter test exists to filter out (`docs/PROJECT_CHARTER.md`).
+
+Implications:
+
+The next buildable task is `pcc-pathD-001` (Phase D1 read-only Owner Control Board dashboard), promotable directly from `docs/PATH_A_PLAN.md` §6 with no further planning. Phases D1–D2 are read-only consumers of the file bridge. Phase D3 introduces new UI authority (a UI that can trigger actions by dropping request files) and is therefore **gated on its own future owner decision** (`pcc-pathD-007`), not auto-promoted from this plan. This decision changes no script, schema, verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule — it canonicalizes a plan and records a direction and a design choice; the Category D capabilities themselves are built and verified later as their own bounded tasks.
+
+Process disclosure: this plan and decision were authored with Codex unavailable (`DECISION-086`), under direct owner direction for the planning work. It is documentation/planning recorded in repo truth, self-checked with PCC's local guardrails (`doctor.ps1`, `validate-cockpit-state.ps1`, `check-schemas.ps1`); it is not a substitute for the independent per-task verification each `pcc-pathD` task will still require when actually built.
+
+Supersedes: None
+Related: DECISION-002, DECISION-003, DECISION-008, DECISION-074, DECISION-075, DECISION-076, DECISION-081, DECISION-084, DECISION-086, docs/PATH_A_PLAN.md, docs/CCB_PCC_RELATIONSHIP.md, archive/PCC Original Project Scope.md

@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-05T15:54:01-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-05T16:49:25-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -40,4 +40,4 @@ Current phase: post-brr
 ## What Happens Next
 
 * Task-level: Task 'pcc-pathC-004' is complete and verified PASS. That verified cycle is the basis for the checkpoint: the next optional step is to freeze and back up this kernel baseline.
-* Project-level: Maturity Checkpoint is now properly reached on verified PASS of pcc-pathC-004. The next optional step is to freeze and back up this kernel baseline, then choose the post-checkpoint direction from evidence.
+* Project-level: Path A is confirmed as the post-checkpoint direction and its plan of record is canonical at docs/PATH_A_PLAN.md (DECISION-087). The next buildable Path A task is pcc-pathD-001 (Category D, Phase D1: read-only Owner Control Board dashboard), promotable directly from docs/PATH_A_PLAN.md section 6 through the normal worker/verifier cycle. No further planning is required to begin Category D.

@@ -185,6 +185,6 @@
   "current_blocker": null,
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-pathC-004-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Maturity Checkpoint is now properly reached on verified PASS of pcc-pathC-004. The next optional step is to freeze and back up this kernel baseline, then choose the post-checkpoint direction from evidence.",
-  "updated_at": "2026-07-05T16:02:00-06:00"
+  "next_expected_action": "Path A is confirmed as the post-checkpoint direction and its plan of record is canonical at docs/PATH_A_PLAN.md (DECISION-087). The next buildable Path A task is pcc-pathD-001 (Category D, Phase D1: read-only Owner Control Board dashboard), promotable directly from docs/PATH_A_PLAN.md section 6 through the normal worker/verifier cycle. No further planning is required to begin Category D.",
+  "updated_at": "2026-07-05T17:30:00-06:00"
 }
