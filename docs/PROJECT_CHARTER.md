@@ -20,6 +20,12 @@ Reduce owner babysitting while keeping project work honest, stateful, verifiable
 
 If the system becomes another thing the owner has to babysit, it is failing.
 
+## Core Design Rule: Modularity / Extractability (added post-V1, `DECISION-074`, 2026-07-04)
+
+Every PCC capability must be a script (or other clearly bounded unit) with a documented input/output contract over the `.cockpit/` file bridge, with no shared hidden state with any other script — such that it could, in principle, be run against a different repo given only its documented inputs. A capability that instead reaches into another script's internal state, or only works because of an undocumented shared assumption, is rejected or redesigned on sight, regardless of how useful it is.
+
+This rule was added later than the rest of this charter (PCC's first weeks were spent proving the babysitting-reduction loop, not auditing modularity), but it is not a lesser or optional rule for that reason — it is promoted here to sit beside the Non-Negotiable Rule above as core project philosophy, not left as a footnote in `docs/CCB_PCC_RELATIONSHIP.md`. It exists because a sibling project (CCB) claimed the same modularity at the documentation level while defeating it at the state level (satellite modules bolted onto a shared monolith that could not later be cleanly pulled apart), and PCC's discrete-scripts-over-a-file-bridge design was found to already avoid that trap by construction — the job now is to *not lose* that property as PCC grows, not to retrofit it later at cost. Any task drafted from this point forward is checked against this rule before it is checked against anything else.
+
 ## V1 Mission
 
 Build a first working version that can manage one bounded project task from task definition through worker directive, Claude Code execution handoff, evidence return, verification verdict, and state update.

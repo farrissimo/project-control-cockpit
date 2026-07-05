@@ -1811,3 +1811,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-009, DECISION-017, DECISION-018, DECISION-074, archive/PCC Original Project Scope.md, schemas/project-state.schema.json, scripts/generate-worker-directive.ps1
+
+---
+
+## DECISION-077: Modularity / Extractability Promoted To Core Project Charter
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+The `DECISION-074` extractability rule (every PCC capability is a script or clearly bounded unit with a documented `.cockpit/` file-bridge input/output contract, no shared hidden state with other scripts) is promoted from `docs/CCB_PCC_RELATIONSHIP.md` into `docs/PROJECT_CHARTER.md` itself, as a second core, permanent design rule sitting beside the charter's original Non-Negotiable Rule (babysitting reduction). This is a documentation-only change: no script, schema, verdict, or Task Safety Class is altered, and the rule's content and meaning are unchanged from `DECISION-074` — only its standing in repo truth is elevated.
+
+Reason:
+
+The owner observed that modularity is a relatively new addition to PCC's stated philosophy (surfaced during the CCB audit, `DECISION-074`, rather than present from V1) but functions, going forward, as core philosophy on par with babysitting reduction and staying lean — not a footnote. Leaving it recorded only inside a cross-project relationship document (`CCB_PCC_RELATIONSHIP.md`) risked it being read as incidental to that audit rather than as a standing rule every future task must be checked against, alongside the charter's existing non-negotiables. This came up directly while scoping the first Category C tasks (repo health diagnostics, richer evidence review): both were evaluated against bloat, babysitting, and modularity as a matched set of filters, which only works cleanly if all three live in the same tier of repo truth.
+
+Implications:
+
+`docs/PROJECT_CHARTER.md` gains a new "Core Design Rule: Modularity / Extractability" section, dated as a post-V1 addition and citing `DECISION-074` by name, placed immediately after the original Non-Negotiable Rule. `docs/CCB_PCC_RELATIONSHIP.md` and `DECISION-074` remain the canonical source of the rule's full reasoning and audit evidence; this decision does not supersede or duplicate that content, it elevates where the rule is *stated as standing charter*. Future task scoping should cite the charter section directly rather than only `DECISION-074`, since the charter is the document a fresh session reads first for core project philosophy.
+
+Supersedes: None
+Related: DECISION-074, docs/PROJECT_CHARTER.md, docs/CCB_PCC_RELATIONSHIP.md
