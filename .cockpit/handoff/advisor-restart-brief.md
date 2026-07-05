@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-05T15:29:27-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-05T15:43:27-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,11 +10,11 @@ Current phase: post-brr
 
 ## Active Task
 
-* Task ID: pcc-pathC-003
-* Title: Checkpoint Truth: Record Category C Accounting Decision
-* Status: complete
-* Safety Class: C (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Record an explicit pre-checkpoint Category C accounting decision in canonical repo truth. Working only from the repo's own evidence, state whether Category C (Metrics & Evidence Depth) is now substantially complete for checkpoint purposes, and explain why IDEA-013 remains deferred absent a concrete evidence-review failure, OR conclude that Category C is not yet substantially complete and identify the one concrete additional Category C task that is still required before the checkpoint. This is the owner-approved pre-checkpoint Task 2, after the state-drift repair and before the final extractability audit gate.
+* Task ID: pcc-pathC-004
+* Title: Checkpoint Gate: Bounded Extractability Audit (Verified Cycle)
+* Status: returned_for_verification
+* Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
+* Objective: Run the bounded extractability audit as a real two-role PCC cycle to satisfy Maturity Checkpoint criterion 2 (docs/CCB_PCC_RELATIONSHIP.md §8), replacing the self-declared DECISION-083 with a properly worker-produced, independently Codex-verified audit. DECISION-083 recorded 'extractability audit passes / checkpoint reached' directly in the decision log without a bounded task or independent verification; this task supplies the missing verified proof. Working only from repo truth, audit whether the extractability rule (DECISION-074/077: every capability is a discrete unit with an explicit .cockpit/ file-bridge contract, no hidden shared state, no undocumented cross-script assumptions) actually holds across the scripts changed since DECISION-074 plus the direct bridge/support scripts they rely on. Produce the audit and its evidence in .cockpit/result/worker-result.md, sorted strictly into real blockers / maintainability smells / optional polish. This task does NOT record checkpoint-reached and does NOT edit DECISION-083 or any doc/script/schema; recording checkpoint-reached is a separate step that happens only after Codex issues PASS.
 
 ## Last Verified
 
@@ -39,5 +39,5 @@ Current phase: post-brr
 
 ## What Happens Next
 
-* Task-level: Maturity Checkpoint reached. No further pre-checkpoint task is required; owner may freeze and back up the kernel, then choose post-checkpoint direction.
-* Project-level: Maturity Checkpoint reached. Owner may freeze and back up this kernel, then decide post-checkpoint direction from evidence rather than guesswork.
+* Task-level: Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.
+* Project-level: Worker evidence for task 'pcc-pathC-004' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict.

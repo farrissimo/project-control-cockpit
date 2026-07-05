@@ -3,7 +3,7 @@
   "project_name": "Project Control Cockpit",
   "project_goal": "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
   "current_phase": "post-brr",
-  "current_task_id": "pcc-pathC-003",
+  "current_task_id": "pcc-pathC-004",
   "active_repo_path": "C:\\ProjectControlCockpit",
   "active_branch": "main",
   "owner_decisions": [
@@ -178,6 +178,6 @@
   "current_blocker": null,
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-pathC-003-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Maturity Checkpoint reached. Owner may freeze and back up this kernel, then decide post-checkpoint direction from evidence rather than guesswork.",
-  "updated_at": "2026-07-05T15:31:00-06:00"
+  "next_expected_action": "Worker evidence for task 'pcc-pathC-004' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict.",
+  "updated_at": "2026-07-05T15:43:25-06:00"
 }

@@ -1,16 +1,15 @@
 {
-  "task_id": "pcc-pathC-003",
+  "task_id": "pcc-pathC-004",
   "verdict": "PASS",
-  "verified_at": "2026-07-05T15:16:00-06:00",
+  "verified_at": "2026-07-05T15:49:00-06:00",
   "completion_criteria_checked": [
-    "docs/DECISIONS.md gains one new decision that explicitly records the Category C checkpoint-accounting judgment in repo truth.",
-    "The decision plainly states one of two outcomes only: either Category C is substantially complete for checkpoint purposes and IDEA-013 stays deferred for the stated repo-grounded reason, or Category C is not yet substantially complete and exactly one concrete additional Category C task is named as still required.",
-    "The decision's reasoning is grounded in existing repo truth about Category C deliverables and deferments, including IDEA-012, IDEA-013, and the checkpoint criteria in docs/CCB_PCC_RELATIONSHIP.md / DECISION-074.",
-    "No new product behavior, script logic, schema, verdict definition, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule is changed.",
-    "scripts/validate-cockpit-state.ps1 passes after the task's state/doc updates.",
-    "scripts/check-schemas.ps1 passes after the task's state/doc updates.",
-    "scripts/doctor.ps1 runs successfully after the task's state/doc updates; WARN output is disclosed honestly in the worker result rather than hidden.",
-    "The task is handed back through the normal worker path for independent Codex verification; it is not self-closed."
+    "The audit covers exactly the scripts already identified for the checkpoint extractability check (per DECISION-083 and IDEA-014), and no broader: the changed-since-DECISION-074 set (scripts/classify-routing.ps1, scripts/generate-worker-directive.ps1, scripts/doctor.ps1, scripts/enforce-handoff-restart-safety.ps1, scripts/backup-protected-files.ps1) plus the direct support/bridge scripts they rely on (scripts/validate-cockpit-state.ps1, scripts/verify-dual-restart-safety.ps1, scripts/verify-worker-restart-safety.ps1, scripts/generate-advisor-restart-brief.ps1, scripts/refresh-live-handoff-artifacts.ps1, scripts/check-schemas.ps1).",
+    "For each audited script, the worker states from the actual file whether it communicates only through explicit .cockpit/ files and/or stdout/exit codes, whether it introduces any hidden shared runtime state, and whether it makes any undocumented cross-script assumption. Claims are grounded in the file contents, not asserted.",
+    "Findings are sorted into exactly three buckets: real blockers (would make the kernel unsound or untrustworthy to freeze), maintainability smells (non-blocking), and optional polish. If a bucket is empty, that is stated plainly.",
+    "The audit ends with an explicit yes/no judgment on whether the extractability rule holds in the real kernel, and whether the conclusion matches, overstates, or contradicts DECISION-083 -- reached from the evidence, not chosen to agree with DECISION-083.",
+    "No script, no doc (including docs/DECISIONS.md and DECISION-083), and no schema is edited by this task. Checkpoint-reached is NOT recorded by this task.",
+    "scripts/validate-cockpit-state.ps1, scripts/check-schemas.ps1, and scripts/doctor.ps1 pass/run cleanly after the task's normal state bookkeeping; any WARN is disclosed honestly in the worker result.",
+    "The task is handed back through the normal worker path for independent Codex verification; it is not self-closed and no verification verdict is written by the worker."
   ],
   "evidence_reviewed": [
     ".cockpit/result/worker-result.md",
@@ -19,24 +18,32 @@
     ".cockpit/state/handoff-gate.json",
     ".cockpit/handoff/worker-directive.md",
     ".cockpit/handoff/advisor-restart-brief.md",
-    "docs/DECISIONS.md",
-    "backlog/IDEAS.md",
-    "docs/CCB_PCC_RELATIONSHIP.md",
     "docs/VERIFICATION_RESULT_SPEC.md",
-    "scripts/verify-handback-guardrails.ps1",
+    "scripts/verify-handback-guardrails.ps1 output",
     "git status --short",
-    "git --no-pager diff -- docs/DECISIONS.md .cockpit/state/task-state.json .cockpit/state/project-state.json .cockpit/result/worker-result.md .cockpit/handoff/worker-directive.md .cockpit/handoff/advisor-restart-brief.md .cockpit/state/handoff-gate.json",
+    "git --no-pager diff -- .cockpit/state/task-state.json .cockpit/state/project-state.json .cockpit/result/worker-result.md .cockpit/handoff/worker-directive.md .cockpit/handoff/advisor-restart-brief.md .cockpit/state/handoff-gate.json",
+    "scripts/classify-routing.ps1",
+    "scripts/generate-worker-directive.ps1",
+    "scripts/doctor.ps1",
+    "scripts/enforce-handoff-restart-safety.ps1",
+    "scripts/backup-protected-files.ps1",
     "scripts/validate-cockpit-state.ps1",
+    "scripts/verify-dual-restart-safety.ps1",
+    "scripts/verify-worker-restart-safety.ps1",
+    "scripts/generate-advisor-restart-brief.ps1",
+    "scripts/refresh-live-handoff-artifacts.ps1",
     "scripts/check-schemas.ps1",
-    "scripts/doctor.ps1"
+    "backlog/IDEAS.md (IDEA-014)",
+    "docs/CCB_PCC_RELATIONSHIP.md §8",
+    "docs/DECISIONS.md (DECISION-074, DECISION-077, DECISION-083)"
   ],
   "missing_evidence": [],
   "out_of_scope_findings": [],
   "risks": [
-    "This is a judgment-record task rather than a purely mechanical one. The PASS verdict rests on the repo's own stated checkpoint bar and the cited backlog and decision records, not on a script-checkable proof.",
-    "DECISION-081 keeps IDEA-013 deferred based on its current incident-gated rationale. If a concrete evidence-review failure appears later, that idea should still be promoted then."
+    "DECISION-083 remains in repo truth ahead of the formal post-PASS cleanup. Its substantive conclusion is now supported by this verified audit, but the repo still needs a final follow-through step to record checkpoint-reached on the back of this PASS rather than leaving the earlier premature wording standing alone.",
+    "The audit is intentionally bounded to the named script set and direct support scripts. That matches the task contract and the checkpoint framing used for this cycle."
   ],
-  "summary": "Independent verification passes. DECISION-081 records the required Category C checkpoint-accounting call in bounds, chooses one allowed outcome clearly, grounds that judgment in existing repo truth about IDEA-012, IDEA-013, and DECISION-074, and leaves the final bounded extractability audit as the only remaining pre-checkpoint gate.",
-  "next_action": "Task 'pcc-pathC-003' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "summary": "Independent verification passes. The worker completed the bounded extractability audit in scope, grounded its per-script findings in the audited files, found no real blocker to extractability, and correctly identified DECISION-083's issue as a process-timing problem rather than a substantive contradiction. This supplies the missing two-role proof for checkpoint criterion 2.",
+  "next_action": "Task 'pcc-pathC-004' is verified PASS. Close out this cycle, then record checkpoint-reached in repo truth on the back of this verified audit before freeze/back-up.",
   "state_update_allowed": true
 }
