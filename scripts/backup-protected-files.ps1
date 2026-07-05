@@ -16,12 +16,11 @@ function Fail {
   exit 1
 }
 
-# The protected set is deliberately small and explicit: the two canonical
-# state files, the live handoff artifacts a fresh session depends on, the
-# latest evidence/verification pair, and the scripts/ directory itself
-# (PCC edits its own control scripts on nearly every cycle). This is not
-# meant to snapshot the whole repo - just the files whose damage would be
-# hardest to recover from without a clean prior git commit.
+# The protected set is deliberately explicit: canonical state, live handoff
+# artifacts, the latest evidence/verification pair, core scripts, schemas,
+# and canonical docs. This is not meant to snapshot the whole repo - just the
+# files whose damage would be hardest to recover from without a clean prior
+# git commit.
 $ProtectedFiles = @(
   ".cockpit/state/project-state.json",
   ".cockpit/state/task-state.json",
@@ -35,6 +34,20 @@ if (Test-Path -LiteralPath "scripts" -PathType Container) {
   $scriptFiles = Get-ChildItem -LiteralPath "scripts" -Filter "*.ps1" -File
   foreach ($f in $scriptFiles) {
     $ProtectedFiles += "scripts/$($f.Name)"
+  }
+}
+
+if (Test-Path -LiteralPath "schemas" -PathType Container) {
+  $schemaFiles = Get-ChildItem -LiteralPath "schemas" -Filter "*.json" -File
+  foreach ($f in $schemaFiles) {
+    $ProtectedFiles += "schemas/$($f.Name)"
+  }
+}
+
+if (Test-Path -LiteralPath "docs" -PathType Container) {
+  $docFiles = Get-ChildItem -LiteralPath "docs" -Filter "*.md" -File
+  foreach ($f in $docFiles) {
+    $ProtectedFiles += "docs/$($f.Name)"
   }
 }
 

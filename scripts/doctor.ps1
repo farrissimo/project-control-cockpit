@@ -47,6 +47,32 @@ function Strip-AnsiAndLastLine {
   return $joined.Trim()
 }
 
+function Invoke-ProcessCapture {
+  param(
+    [string]$FileName,
+    [string[]]$Arguments
+  )
+  $psi = [System.Diagnostics.ProcessStartInfo]::new()
+  $psi.FileName = $FileName
+  foreach ($arg in $Arguments) {
+    [void]$psi.ArgumentList.Add($arg)
+  }
+  $psi.RedirectStandardOutput = $true
+  $psi.RedirectStandardError = $true
+  $psi.UseShellExecute = $false
+
+  $process = [System.Diagnostics.Process]::Start($psi)
+  $stdout = $process.StandardOutput.ReadToEnd()
+  $stderr = $process.StandardError.ReadToEnd()
+  $process.WaitForExit()
+
+  return [ordered]@{
+    ExitCode = $process.ExitCode
+    Stdout   = $stdout
+    Stderr   = $stderr
+  }
+}
+
 # --- Check 1: state consistency (schema/state alignment) ---
 try {
   $output = & pwsh -NoProfile -File "scripts/validate-cockpit-state.ps1" 2>&1
@@ -112,14 +138,17 @@ if ($null -eq $taskState) {
 
 # --- Check 6: working tree (uncommitted changes are normal mid-cycle, never an ISSUE) ---
 try {
-  $gitStatus = & git status --porcelain 2>&1
-  if ($LASTEXITCODE -ne 0) {
-    Add-Finding -Check "Working tree" -Status "WARN" -Detail "Could not read git status (not a git repo, or git unavailable): $(Strip-AnsiAndLastLine $gitStatus)"
-  } elseif ([string]::IsNullOrWhiteSpace(($gitStatus -join "`n"))) {
+  $gitStatus = Invoke-ProcessCapture -FileName "git" -Arguments @("status", "--porcelain")
+  if ($gitStatus.ExitCode -ne 0) {
+    Add-Finding -Check "Working tree" -Status "WARN" -Detail "Could not read git status (not a git repo, or git unavailable): $(Strip-AnsiAndLastLine @($gitStatus.Stdout, $gitStatus.Stderr))"
+  } elseif ([string]::IsNullOrWhiteSpace($gitStatus.Stdout)) {
     Add-Finding -Check "Working tree" -Status "OK" -Detail "No uncommitted changes."
   } else {
-    $changedCount = @($gitStatus | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
+    $changedCount = @(($gitStatus.Stdout -split "\r?\n") | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
     Add-Finding -Check "Working tree" -Status "WARN" -Detail "$changedCount uncommitted change(s) present. Normal mid-cycle; review before handoff/close-out."
+  }
+  if (-not [string]::IsNullOrWhiteSpace($gitStatus.Stderr)) {
+    Add-Finding -Check "Git status warnings" -Status "WARN" -Detail (Strip-AnsiAndLastLine @($gitStatus.Stderr))
   }
 } catch {
   Add-Finding -Check "Working tree" -Status "WARN" -Detail "Could not run 'git status --porcelain': $($_.Exception.Message)"
@@ -127,21 +156,21 @@ try {
 
 # --- Check 7: branch hygiene (current branch vs. project-state.json's active_branch) ---
 try {
-  $currentBranch = (& git rev-parse --abbrev-ref HEAD 2>&1)
-  if ($LASTEXITCODE -ne 0) {
-    Add-Finding -Check "Branch hygiene" -Status "WARN" -Detail "Could not determine current branch (not a git repo, or git unavailable): $(Strip-AnsiAndLastLine $currentBranch)"
+  $currentBranchResult = Invoke-ProcessCapture -FileName "git" -Arguments @("rev-parse", "--abbrev-ref", "HEAD")
+  if ($currentBranchResult.ExitCode -ne 0) {
+    Add-Finding -Check "Branch hygiene" -Status "WARN" -Detail "Could not determine current branch (not a git repo, or git unavailable): $(Strip-AnsiAndLastLine @($currentBranchResult.Stdout, $currentBranchResult.Stderr))"
   } else {
-    $currentBranch = "$currentBranch".Trim()
+    $currentBranch = "$($currentBranchResult.Stdout)".Trim()
     $expectedBranch = if ($null -ne $projectState -and $projectState.PSObject.Properties.Name -contains "active_branch") { $projectState.active_branch } else { $null }
 
     $aheadBehindNote = ""
-    $upstream = (& git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>&1)
-    if ($LASTEXITCODE -eq 0) {
-      $counts = (& git rev-list --left-right --count "HEAD...@{u}" 2>&1)
-      if ($LASTEXITCODE -eq 0) {
-        $parts = "$counts".Trim() -split "\s+"
+    $upstreamResult = Invoke-ProcessCapture -FileName "git" -Arguments @("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+    if ($upstreamResult.ExitCode -eq 0) {
+      $countsResult = Invoke-ProcessCapture -FileName "git" -Arguments @("rev-list", "--left-right", "--count", "HEAD...@{u}")
+      if ($countsResult.ExitCode -eq 0) {
+        $parts = "$($countsResult.Stdout)".Trim() -split "\s+"
         if ($parts.Count -eq 2) {
-          $aheadBehindNote = " Upstream '$("$upstream".Trim())': $($parts[0]) ahead, $($parts[1]) behind."
+          $aheadBehindNote = " Upstream '$("$($upstreamResult.Stdout)".Trim())': $($parts[0]) ahead, $($parts[1]) behind."
         }
       }
     } else {

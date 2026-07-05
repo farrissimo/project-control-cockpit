@@ -56,12 +56,40 @@ if ($taskState.task_status -ne "ready_for_worker") {
   Fail "Handoff gate FAILED: task-state.json task_status is '$($taskState.task_status)', not 'ready_for_worker'. Fresh-session handoff artifacts for task '$taskId' must not be treated as ready to hand off while the active task is in this status." $taskId
 }
 
-# --- Automatic pre-task backup for risky (Class B/C) tasks. Not a check that
-# can fail the gate -- an action. If no restore point already exists for this
-# exact task_id, one is created here, automatically, before the task is
-# handed off. Class A tasks are untouched (bounded/mechanical, no truth
-# surface), so routine low-risk work never pays this cost. ---
-if ($taskState.task_safety_class -in @("B", "C")) {
+# --- Automatic pre-task backup for risky tasks or core-file work. Not just a
+# class check: Class B/C captures judgment-heavy/risky work, while the scope
+# scan catches bounded Class A tasks that still touch PCC's control machinery
+# (scripts, schemas, canonical docs, or live .cockpit files). ---
+$scopeTextParts = New-Object System.Collections.Generic.List[string]
+if ($taskState.task_objective) { $scopeTextParts.Add("$($taskState.task_objective)") }
+foreach ($item in $taskState.completion_criteria) { $scopeTextParts.Add("$item") }
+foreach ($item in $taskState.boundaries.allowed) { $scopeTextParts.Add("$item") }
+$scopeText = ($scopeTextParts -join "`n")
+
+$coreScopePatterns = @(
+  "scripts/",
+  "scripts\",
+  "schemas/",
+  "schemas\",
+  ".cockpit/state/",
+  ".cockpit\state\",
+  ".cockpit/handoff/",
+  ".cockpit\handoff\",
+  ".cockpit/result/",
+  ".cockpit\result\",
+  "docs/"
+)
+
+$touchesCoreScope = $false
+foreach ($pattern in $coreScopePatterns) {
+  if ($scopeText.IndexOf($pattern, [System.StringComparison]::OrdinalIgnoreCase) -ge 0) {
+    $touchesCoreScope = $true
+    break
+  }
+}
+
+$requiresBackup = ($taskState.task_safety_class -in @("B", "C")) -or $touchesCoreScope
+if ($requiresBackup) {
   $alreadyBackedUp = $false
   if (Test-Path -LiteralPath ".cockpit/backups" -PathType Container) {
     foreach ($manifestPath in (Get-ChildItem -LiteralPath ".cockpit/backups" -Filter "manifest.json" -Recurse -File -ErrorAction SilentlyContinue)) {
@@ -74,7 +102,7 @@ if ($taskState.task_safety_class -in @("B", "C")) {
   if (-not $alreadyBackedUp) {
     & pwsh -NoProfile -File "scripts/backup-protected-files.ps1" -Action Backup
     if ($LASTEXITCODE -ne 0) {
-      Fail "Handoff gate FAILED: task '$taskId' is Class $($taskState.task_safety_class) and requires a pre-task backup, but scripts/backup-protected-files.ps1 -Action Backup failed." $taskId
+      Fail "Handoff gate FAILED: task '$taskId' requires a pre-task backup (Class $($taskState.task_safety_class), touches_core_scope: $touchesCoreScope), but scripts/backup-protected-files.ps1 -Action Backup failed." $taskId
     }
   }
 }
