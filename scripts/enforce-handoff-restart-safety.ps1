@@ -56,6 +56,29 @@ if ($taskState.task_status -ne "ready_for_worker") {
   Fail "Handoff gate FAILED: task-state.json task_status is '$($taskState.task_status)', not 'ready_for_worker'. Fresh-session handoff artifacts for task '$taskId' must not be treated as ready to hand off while the active task is in this status." $taskId
 }
 
+# --- Automatic pre-task backup for risky (Class B/C) tasks. Not a check that
+# can fail the gate -- an action. If no restore point already exists for this
+# exact task_id, one is created here, automatically, before the task is
+# handed off. Class A tasks are untouched (bounded/mechanical, no truth
+# surface), so routine low-risk work never pays this cost. ---
+if ($taskState.task_safety_class -in @("B", "C")) {
+  $alreadyBackedUp = $false
+  if (Test-Path -LiteralPath ".cockpit/backups" -PathType Container) {
+    foreach ($manifestPath in (Get-ChildItem -LiteralPath ".cockpit/backups" -Filter "manifest.json" -Recurse -File -ErrorAction SilentlyContinue)) {
+      try {
+        $m = Get-Content -Raw -LiteralPath $manifestPath.FullName | ConvertFrom-Json
+        if ($m.task_id -eq $taskId) { $alreadyBackedUp = $true; break }
+      } catch { }
+    }
+  }
+  if (-not $alreadyBackedUp) {
+    & pwsh -NoProfile -File "scripts/backup-protected-files.ps1" -Action Backup
+    if ($LASTEXITCODE -ne 0) {
+      Fail "Handoff gate FAILED: task '$taskId' is Class $($taskState.task_safety_class) and requires a pre-task backup, but scripts/backup-protected-files.ps1 -Action Backup failed." $taskId
+    }
+  }
+}
+
 # --- Gate 2: restart-safety content checks must pass. ---
 # Reuses the existing dual-restart proof rather than duplicating its logic;
 # that proof already confirms the live advisor brief and worker directive are

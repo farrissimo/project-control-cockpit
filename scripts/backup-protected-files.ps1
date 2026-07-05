@@ -67,9 +67,19 @@ function Do-Backup {
     }
   }
 
+  $activeTaskId = $null
+  if (Test-Path -LiteralPath ".cockpit/state/task-state.json" -PathType Leaf) {
+    try {
+      $activeTaskId = (Get-Content -Raw -LiteralPath ".cockpit/state/task-state.json" | ConvertFrom-Json).task_id
+    } catch {
+      $activeTaskId = $null
+    }
+  }
+
   $manifest = [ordered]@{
     created_at      = (Get-Date).ToString("yyyy-MM-ddTHH:mm:sszzz")
     restore_point    = $timestamp
+    task_id         = $activeTaskId
     backed_up_files = $backedUp
     skipped_files   = $skipped
     note            = "Non-canonical PCC pre-task restore point. Not project truth. See docs/STATE_MODEL.md."
