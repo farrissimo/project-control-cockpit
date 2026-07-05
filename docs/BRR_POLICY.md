@@ -253,10 +253,6 @@ Two distinct things both involve asking Codex a question, and they must not be c
 
 The dividing line is not urgency or how long the watcher would take — it is **whether Codex's answer is being treated as a binding verdict on submitted evidence (verification, never bypassed) or as input to a decision someone else still makes (advisory, always available on demand).**
 
-**Do not manually touch the watcher's own mechanics.** The advisor/worker must never delete or edit `.cockpit/state/codex-watcher.lock`, nor manually re-invoke `scripts/codex-verify-watcher.ps1` while a verification is in flight, based on an external signal like a Task Scheduler exit code — that signal reflects the wrapper process, not whether `codex exec` itself succeeded, and acting on it risks racing an in-flight verification and producing a false verdict. If a verification appears stuck, check whether `.cockpit/result/verification-result.json`'s `verified_at` has already advanced past the lock's `invoked_at` before assuming it failed. This is not a new script or gate; it is a plain, binding instruction to whoever is operating PCC, independent of who or which model that is.
-
-**Escalate the moment a resolvable stop is known, not when asked.** Per the Stop-Instead-of-Guess Policy's own definition of escalation above, an owner decision or a known blocker must be surfaced immediately once identified, in the same turn — not held back, restated, or left implicit across further exchanges while waiting to be asked directly.
-
 ---
 
 ## Governing Principles (BRR Autonomous Operation)
