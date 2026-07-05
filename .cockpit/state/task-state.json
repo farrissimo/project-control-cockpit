@@ -1,35 +1,32 @@
 {
-  "task_id": "pcc-postbrr-002",
-  "task_title": "Fuller BRR Metrics: Review-Trigger Categorization And Per-Task Breakdown",
-  "task_objective": "Extend scripts/summarize-routing-log.ps1 (read-only, no state mutation, unchanged principle from pcc-brr4-003) to close two of the three gaps docs/BRR_PLAN.md's Phase 4 item 2 and its own Phase 5 Readiness Review explicitly name as undelivered: 'owner-review triggers by category' and a per-task view enabling 'owner interruptions per task'. The third named gap, 'repeated instruction frequency', has no existing log signal at all (no event captures raw owner chat interjections) and inventing one would mean parsing conversational content into routing-log.jsonl -- a new, invasive instrumentation change far beyond read-only reporting on already-logged data, and exactly the kind of invented interpretation DECISION-008 forbids. This task explicitly declines to attempt it and documents why, rather than fabricating a proxy.",
+  "task_id": "pcc-pathA-001",
+  "task_title": "Local-First Routing: Advisory Task Routing Classifier",
+  "task_objective": "Deliver the original project scope's Local-First Routing capability (archive/PCC Original Project Scope.md §7.12) as a lean, read-only, self-contained advisory: a new script scripts/classify-routing.ps1 that reads the active task from .cockpit/state/task-state.json and mechanically classifies its routing-suitability (local_deterministic / model_judgment / mixed / unknown) using only fixed, observable signals already present in task state (task_safety_class and literal keyword matches against the task title/objective), then prints an advisory, explicitly non-authoritative recommendation to prefer local deterministic tools for the local-suitable portions (DECISION-002). It surfaces the local-first principle as a checkable per-task signal instead of an unmeasured convention. It is advisory only: it never gates, never redirects or executes work, never mutates state, and calls no other script. This is the first Path-A (post-BRR original-scope) task per DECISION-074's roadmap re-cut; §7.17 (session/usage pressure) is deferred and §7.18 (premium escalation) is already covered by the existing Owner Review Matrix, so this task is the entirety of Category A's honestly-buildable pre-checkpoint scope.",
   "task_status": "complete",
   "assigned_worker": "Claude Code",
   "task_safety_class": "A",
   "completion_criteria": [
-    "scripts/summarize-routing-log.ps1 gains a category breakdown of owner-review-triggering log events, using ONLY mappings that are mechanically exact (the event type or a fixed-format detail string this codebase itself writes, never free-text interpretation of arbitrary content): (a) 'repeated_failure_blocked' events map exactly to Stop-Instead-of-Guess trigger 4 / Owner Review Matrix row 9 (docs/BRR_POLICY.md) -- this event type is only ever logged by that exact branch; (b) 'verified_insufficient' events map exactly to trigger 3 (INSUFFICIENT is that trigger's unique verdict); (c) 'verified_out_of_scope' events map exactly to trigger 5 (OUT_OF_SCOPE is that trigger's unique verdict); (d) 'gate_blocked' events are reported as their own distinct category (BRR Phase 2 autonomous-gate mechanism, not itself one of the 7 numbered triggers); (e) 'stop_condition_fired' events are broken down further into the 4 known deterministic sub-reasons scripts/check-stop-conditions.ps1 itself writes as fixed-prefix sentences (owner decision pending / attention-needed status / repo health ISSUE / unrecognized self-promotion lane), matched by literal string prefix against that script's own known output format, not guessed from arbitrary text; (f) 'verified_blocked' and 'verified_fail' events are reported in their own honest category explicitly labeled as NOT uniquely attributable to one trigger from the event type alone (BLOCKED can result from triggers 1, 2, 6, or 7; a bare FAIL is not necessarily a REPEATED failure) -- disclosing this real limit rather than guessing further; (g) 'correction_applied' remains its own category, not force-mapped into the 7-trigger taxonomy since it is a distinct signal (a correction already applied, not itself a stop trigger).",
-    "scripts/summarize-routing-log.ps1 gains a per-task_id breakdown (grouping the existing known event-type counts, plus the new category breakdown above, by task_id) so a per-task view of review-touchpoint density is possible -- this directly enables an honest, disclosed proxy for 'owner interruptions per task': the count of owner-review-triggering events (the union of stop_condition_fired, gate_blocked, verified_blocked, verified_out_of_scope, verified_insufficient, repeated_failure_blocked, correction_applied) per task_id. This MUST be labeled in the script's own output as a proxy for 'system-detected review/stop points', explicitly NOT a claim to measure actual owner chat interjections -- overclaiming this distinction would misrepresent what is actually measured.",
-    "The script's output explicitly states that 'repeated instruction frequency' remains undelivered and names why (no log signal exists at the chat-instruction level; fabricating one would require capturing conversational content, which this task deliberately does not do), mirroring how pcc-brr4-003 already discloses its own gaps rather than silently dropping them.",
-    "No new log event type is added. No existing script other than scripts/summarize-routing-log.ps1 is modified. This remains strictly read-only: no file is written, no state mutated, no other script called.",
-    "Functionally tested (not read-through only) against the real .cockpit/logs/routing-log.jsonl (70+ real entries spanning legacy and current formats) to confirm the new category and per-task breakdowns produce sane, correct-looking output and do not crash on the known legacy pre-event_type format (pcc-brr4-003's existing handling for that format must remain intact and unchanged).",
-    "A new decision is recorded in docs/DECISIONS.md.",
-    "docs/BRR_PLAN.md's Phase 5 Readiness Review 'what remains unsafe or immature' bullet on the fuller BRR Metrics gap, and DECISION-069's carried-forward backlog note, are both updated with a 'Later update' pointer (per DECISION-051's Post-Close Canonical Amendment Rule) noting two of the three named items are now delivered and the third is explicitly and permanently declined with reasoning, not silently dropped.",
-    "No existing verdict, task safety class, Acceptance Boundary Rule, or schema is changed. This task's own verification is performed by the live 'PCC-CodexVerifyWatcher' scheduled task (no manual codex exec by the worker)."
+    "A new script scripts/classify-routing.ps1 exists and is strictly read-only: it reads .cockpit/state/task-state.json (path overridable by a parameter), writes/mutates no file or state, and invokes no other script. It exits 0 on a well-formed task-state and prints a clear error and non-zero exit only if the task-state file is missing or malformed JSON.",
+    "The classifier assigns exactly one routing class from a fixed closed set {local_deterministic, model_judgment, mixed, unknown} using only mechanical signals: (a) the task's task_safety_class, and (b) literal, case-insensitive keyword matches against task_title and task_objective from two fixed keyword lists (a deterministic/local-suitable list e.g. rename, move, list, search, grep, diff, count, validate, schema, json, path, whitespace; and a judgment/model-suitable list e.g. policy, decide, design, review, wording, prose, document, decision, tradeoff, architecture). No free-text interpretation beyond fixed keyword membership is performed, consistent with DECISION-008 (no fake intelligence): the output is explicitly labeled a mechanical keyword heuristic and an advisory hint, never a claim to know the task's true nature.",
+    "The script prints, in plain readable output: the detected routing class, which signals fired (the matched keywords and the safety class used), and an advisory recommendation tied to DECISION-002 (prefer local deterministic tools for local-suitable work; use the model for judgment-heavy work). The output explicitly states it is advisory and non-gating and does not redirect or execute any work.",
+    "Functionally tested (not read-through only): run against the real .cockpit/state/task-state.json and against at least two synthetic task shapes (one clearly deterministic, one clearly judgment-heavy) in an isolated scratch copy, confirming sane, correct-looking classifications and that malformed/missing input fails cleanly with a non-zero exit and no state mutation.",
+    "A new decision is recorded in docs/DECISIONS.md, and README.md's doc/status text is updated only as needed to note the first Path-A task is delivered.",
+    "No existing script, schema, verdict, task status, Owner Review Matrix row, Task Safety Class, or any other truth surface is modified. No new log event type is added. The routing classifier does not call scripts/log-event.ps1 or any other script."
   ],
   "boundaries": {
     "allowed": [
-      "Edit scripts/summarize-routing-log.ps1 to add the category breakdown and per-task grouping described above.",
+      "Create scripts/classify-routing.ps1 as a new, self-contained, read-only advisory script over the .cockpit/ file-bridge contract (DECISION-074 extractability rule).",
       "Edit docs/DECISIONS.md to record the new decision.",
-      "Edit docs/BRR_PLAN.md to add the 'Later update' pointer described above.",
-      "Edit backlog/IDEAS.md ONLY if a corresponding IDEA entry needs a delivered-status update for this exact change (check first; do not edit if none applies)."
+      "Edit README.md only if needed to note this first Path-A deliverable in the doc index or status section.",
+      "Edit backlog/IDEAS.md only if an existing IDEA entry needs a delivered-status note for this exact change (check first; do not edit if none applies)."
     ],
     "forbidden": [
-      "Do not modify any script other than scripts/summarize-routing-log.ps1 (and backlog/IDEAS.md/docs only as scoped above).",
-      "Do not add any new log event type to scripts/log-event.ps1's ValidateSet.",
+      "Do not modify any existing script (including scripts/log-event.ps1, scripts/summarize-routing-log.ps1, scripts/check-stop-conditions.ps1, scripts/doctor.ps1, and every other script).",
+      "Do not add any new log event type or write to routing-log.jsonl.",
+      "Do not make the classifier gate, block, redirect, or execute any work — it is advisory-only. A router that autonomously redirects work is new authority requiring its own owner decision and is explicitly out of scope.",
       "Do not modify any schema.",
-      "Do not attempt to instrument or approximate 'repeated instruction frequency' by any means, including parsing chat content, conversation logs, or inventing a new signal -- explicitly decline it with documented reasoning instead.",
-      "Do not change the meaning of any existing verdict, task status, or Task Safety Class.",
-      "Do not manually invoke 'codex exec' for this task's own verification -- let the live scheduled watcher handle it.",
-      "Do not touch the Acceptance Boundary Rules or the Owner Review Matrix."
+      "Do not change any verdict, task status, Task Safety Class, the Owner Review Matrix, Stop-Instead-of-Guess triggers, or any Acceptance Boundary Rule.",
+      "Do not manually invoke 'codex exec' for this task's own verification — let the live PCC-CodexVerifyWatcher scheduled task handle it."
     ]
   },
   "required_evidence": [
@@ -48,11 +45,7 @@
   "verification_verdict": "PASS",
   "current_blocker": null,
   "owner_decision_request": null,
-  "promotion_basis": {
-    "lane": "BRR_PLAN",
-    "priority_ref": "DECISION-069 carried-forward backlog item 3 (fuller BRR Metrics)",
-    "justification": "Second of a two-task, owner-approved post-BRR bundle testing the independent-verification pipeline across consecutive cycles. Scoped after reading docs/BRR_PLAN.md's exact gap list and scripts/summarize-routing-log.ps1's existing coverage, and docs/BRR_POLICY.md's Stop-Instead-of-Guess trigger table, to avoid guessing at what is honestly measurable."
-  },
-  "next_action": "Task 'pcc-postbrr-002' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T15:05:20-06:00"
+  "promotion_basis": null,
+  "next_action": "Task 'pcc-pathA-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-04T18:24:53-06:00"
 }

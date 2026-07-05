@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-pathA-001
 * Task Title: Local-First Routing: Advisory Task Routing Classifier
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Objective

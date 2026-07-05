@@ -1732,3 +1732,60 @@ The script's categorization is mechanically exact wherever a mapping exists: `re
 
 Supersedes: None
 Related: DECISION-008, DECISION-058, DECISION-069, DECISION-070, docs/BRR_PLAN.md, docs/BRR_POLICY.md, backlog/IDEAS.md (IDEA-008), scripts/summarize-routing-log.ps1
+
+---
+
+## DECISION-074: CCB/PCC Relationship — Separate Products, Path A Now, Path B Deferred Behind a Maturity Gate
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+PCC and CCB (`C:\CommandCenterCCB`, a separate, older repo) remain two separate codebases and two separate products. Neither imports the other; neither becomes the other's execution engine. PCC pursues **Path A** now: staying a lean, separate, single-repo governance tool, complete on its own terms, not built as a stepping stone to anything else. **Path B** — PCC's BRR/earned-trust kernel eventually becoming the foundation a rebuilt CCB is built around, pulling in CCB's mature engine machinery (isolation, spawn, wizard) as patterns on top of it — remains a live possibility but not a commitment, to be revisited only once Path A is judged sufficiently built and mature, a judgment to be made and recorded explicitly in repo truth at that time rather than assumed now. The full audit, evidence, and reasoning are recorded in `docs/CCB_PCC_RELATIONSHIP.md`.
+
+Reason:
+
+The owner asked for an audit of an actual external repo (CCB) to determine whether it and PCC are naturally linked, should stay separate, or both, and gave explicit permission for inference beyond directly observable evidence. Reading CCB's actual code and governance docs (not a verbal description) overturned an earlier verbal-description-only hypothesis that CCB would spawn projects that PCC's engine would run: CCB already has its own execution engine (`vision-gate.mjs`, `isolation.mjs`, `packet-generator.mjs`, `worker-bee.mjs`, `execution-guard.mjs`) more mature than PCC's, so PCC-as-CCB's-engine would install a second, competing governance runtime -- the "parallel governance maze" both projects' own principles forbid. CCB's own documents (`GOVERNANCE_FRICTION_PATTERNS.md`, `FAILURE_CLASS_MATRIX.md` Class 5 and Class 7) independently confirm CCB suffers from exactly the over-governance and task-count-theater failure modes PCC's BRR program exists to prevent -- meaning the two projects' real relationship is conceptual (PCC's honest-accounting/earned-autonomy philosophy is a cure for problems CCB has already diagnosed in itself), not architectural. The owner separately confirmed a long-standing modularity instinct carried over from CCB (where pulling pieces out proved hard in practice); this audit identified that CCB's modularity is claimed at the documentation level but defeated at the state level (satellite modules reaching into a 16,000+ line monolith's shared state), while PCC already avoids this by construction (discrete PowerShell scripts over the `.cockpit/` file-bridge contract, no shared in-process state) -- and that keeping this property as PCC grows is the same requirement as keeping Path B open, at zero added cost today.
+
+Implications:
+
+`docs/CCB_PCC_RELATIONSHIP.md` is now canonical and covers: the audit evidence, the falsified initial hypothesis, the determination that CCB and PCC stay separate with cross-pollination only as reviewed patterns (never live dependencies or bulk copies, always through PCC's normal governed intake), and a standing design rule binding all future PCC work: every new PCC capability must be a script or clearly bounded unit with a documented input/output contract over the `.cockpit/` bridge and no shared hidden state with other scripts, such that it could in principle run against a different repo given only its documented inputs. This rule is now the standard future PCC task drafting should be checked against. No existing PCC mechanism, schema, verdict, or Task Safety Class changes as a result of this decision. No code in CCB was modified; the audit was read-only.
+
+Maturity Checkpoint (the current milestone — added 2026-07-04):
+
+The owner named the next major milestone as a deliberate stop-and-assess checkpoint (not a finish line): the point at which PCC is modular and mature enough to pause and evaluate, with real evidence in hand, both live options together — (1) whether PCC is a fit to seed a CCB v2 foundation, and/or (2) whether it should continue maturing into the standalone single-repo / single-project control center envisioned in the original scope. Both options remain on the table at the checkpoint; the checkpoint's purpose is to make that choice an informed one rather than a blind one made now. Reaching the checkpoint does NOT decide between the options — it only earns the right to decide.
+
+"Modular and mature enough" is defined by exactly two pass criteria, both of which must be demonstrated (not merely specified), consistent with the V1/BRR standard that capability is proven by real cycles rather than claimed:
+
+1. Categories A–C of the post-BRR roadmap (Routing & Model Governance; Behavior & Tooling Controls; Metrics & Evidence Depth) are substantially complete and exercised across real task cycles.
+2. The DECISION-074 extractability rule actually holds in practice — verified by a bounded audit task that confirms every script built since DECISION-074 communicates only through the `.cockpit/` file-bridge contract, with no hidden shared state or undocumented cross-script assumptions.
+
+Category D (the owner-facing UI / product surface) is explicitly placed AFTER this checkpoint, not part of it. Rationale (owner-confirmed): the checkpoint's job is partly to prove the `.cockpit/` file contract is clean and stable; a UI is a consumer that plugs into that proven contract (by reading/writing the same bridge files, never by reaching into script internals), so it is downstream of the checkpoint by nature. Building it before the contract is proven would build on an unstable seam. Categories E (Multi-Model/Multi-Agent Expansion) and F (Knowledge & Memory) remain deferred as recorded, and E in particular is now treated as Path-B/CCB-domain scope rather than Path-A work.
+
+The checkpoint criteria above are the owner's trusted-technical-judgment portion of this decision (per the owner's stated role as visionary/owner, not coder): the owner approved the milestone's intent and direction; the specific pass criteria and how they are verified are entrusted to the worker/verifier discipline rather than personally audited by the owner.
+
+Supersedes: None
+Related: docs/CCB_PCC_RELATIONSHIP.md, docs/PROJECT_CHARTER.md, archive/PCC Original Project Scope.md, docs/BRR_PLAN.md
+
+---
+
+## DECISION-075: Local-First Routing Delivered As A Read-Only Advisory Classifier (pcc-pathA-001)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+The original project scope's Local-First Routing capability (`archive/PCC Original Project Scope.md` §7.12) is delivered as `scripts/classify-routing.ps1`: a lean, read-only, self-contained advisory that reads the active task from `.cockpit/state/task-state.json` and mechanically classifies its routing-suitability (`local_deterministic` / `model_judgment` / `mixed` / `unknown`) from signals already in task state (the task's `task_safety_class` plus literal keyword matches against the task title/objective), then prints an advisory, explicitly non-authoritative recommendation to prefer local deterministic tools for local-suitable work (`DECISION-002`). This is the first Path-A (post-BRR original-scope) task under `DECISION-074`.
+
+Reason:
+
+Category A of the post-BRR roadmap was scoped by reading `docs/BRR_POLICY.md` and the existing scripts first (not assumed), which showed Category A is thinner than the roadmap implied: §7.18 (premium escalation permission) is already covered by the existing Owner Review Matrix row 7 / Stop-Instead-of-Guess trigger 7 plus `DECISION-003` (no paid API), so building a separate escalation gate would duplicate existing machinery; §7.17 (session/usage pressure) cannot be honestly built pre-checkpoint because PCC cannot measure real provider usage (`DECISION-008` forbids a fabricated number), has no turn counter, and it is fundamentally a UI concern (Category D, post-checkpoint) — a CCB audit confirmed CCB's own exact usage tracking is likewise unbuilt/deferred and its one identified method (`claude --print` metadata parsing) depends on CCB's subprocess architecture, which PCC does not share. That left §7.12 as the entirety of Category A's honestly-buildable pre-checkpoint scope. It was kept deliberately minimal (a single read-only advisory that logs nothing and touches no other script) to avoid the over-governance CCB documents in itself and to satisfy `DECISION-074`'s extractability rule (one `.cockpit/` file-bridge input, stdout output, no shared state). Its honest value is measurable local-first discipline (`DECISION-002`) surfaced as a per-task signal, not a large babysitting reduction; a router that autonomously redirects work would be new authority and was explicitly excluded as out of scope.
+
+Implications:
+
+`scripts/classify-routing.ps1` is advisory-only: it never gates, redirects, or executes work, never mutates state, and calls no other script; it exits 0 on well-formed input and fails cleanly (non-zero, no mutation) on missing/malformed task-state. The classification is explicitly labeled a mechanical keyword heuristic and a hint, not a determination (`DECISION-008`). Functionally tested (not read-through only) against the real `task-state.json` (classified `mixed`, correctly — this task has both deterministic and judgment parts) and against synthetic deterministic (`local_deterministic`), judgment-heavy (`model_judgment`), and no-signal (`unknown`) task shapes in a scratch copy, plus malformed-JSON and missing-file cases (both exit non-zero cleanly). No existing script, schema, verdict, task status, Owner Review Matrix row, Stop-Instead-of-Guess trigger, Task Safety Class, or Acceptance Boundary Rule was modified, and no new log event type was added. Per `DECISION-074`'s Maturity Checkpoint, this is one of the Category A deliverables that must be demonstrated across real cycles before the checkpoint; §7.17 and §7.18 are recorded here as deferred/already-covered respectively rather than left as silent gaps.
+
+Supersedes: None
+Related: DECISION-002, DECISION-008, DECISION-074, archive/PCC Original Project Scope.md, scripts/classify-routing.ps1

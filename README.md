@@ -65,6 +65,8 @@ Examples:
 * JSON/YAML validators
 * local scripts
 
+`scripts/classify-routing.ps1` (`DECISION-075`, first Path-A task per `DECISION-074`) makes this principle a checkable per-task signal: a read-only, advisory, non-gating classifier that flags whether the active task looks local-tool-suitable. It never redirects or executes work.
+
 ## Initial Worker Layer
 
 Claude Code is the initial worker execution layer.
@@ -125,6 +127,7 @@ Key docs:
 * `docs/REPO_GOVERNANCE.md`
 * `docs/BRR_PLAN.md` (current BRR program plan)
 * `docs/BRR_POLICY.md` (BRR Phase 1 policy content: Owner Review Matrix and successors)
+* `docs/CCB_PCC_RELATIONSHIP.md` (audit determination: PCC and CCB are separate products, Path A now / Path B deferred — see `DECISION-074`)
 
 Working intake:
 
