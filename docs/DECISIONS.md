@@ -2064,3 +2064,30 @@ This is preservation of an already-reached checkpoint, not a new gate: it does n
 
 Supersedes: None
 Related: DECISION-084, DECISION-074
+
+---
+
+## DECISION-086: Temporary Manual-Bridge Advisor (ChatGPT, No Local Access) While Codex Is Unavailable; DECISION-033's Dual-Role Flexibility Stays Fully Available Alongside It
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+Codex is unavailable for approximately the next couple of days. For this window, ChatGPT may serve as a temporary advisor/verifier, in addition to — not instead of — Claude Code's existing standing ability to self-verify under `DECISION-033`. ChatGPT has no local filesystem access to this repository, so it cannot be plugged into the `.cockpit/` file-bridge the way Codex is (`DECISION-066`/`DECISION-067`). Any use of ChatGPT in this window happens through manual bridging: relevant file contents or evidence are copy/pasted to it, and its response is copy/pasted back. This is explicitly named degraded/manual mode, not equivalent to the independent file-based verification cycle.
+
+Reason:
+
+`DECISION-033` already establishes, as standing repo truth requiring no fresh owner approval, that Claude Code may temporarily hold both worker and advisor/verifier roles whenever Codex is genuinely unavailable — `DECISION-066` only paused that fallback's trigger condition when Codex returned in July 2026, ending it "per its own terms, not by amending it," so it is still in force and self-reactivates now that Codex is unavailable again. This decision does not need to re-grant that flexibility; it already exists. What is new here is a different, third shape of stand-in that `DECISION-033` does not cover: an external party with no local access to the repo at all. Recording it separately keeps the two fallback shapes distinct rather than silently blending a no-file-access external opinion into the same category as Claude's own in-repo self-verification.
+
+Implications:
+
+Both fallback paths are available during this window, and the worker (Claude Code) uses judgment about which fits a given task, disclosing whichever is used:
+
+* **Self-verification (`DECISION-033`, unchanged, standing):** Claude may self-verify, honestly disclosing that no independent second party reviewed the work, re-running the relevant local guardrails and evidence review itself, and remaining willing to issue `FAIL`/`INSUFFICIENT`/`BLOCKED`/`OUT_OF_SCOPE` against its own work.
+* **Manual-bridge ChatGPT consultation/verification (new, this decision, temporary):** any judgment call or verification obtained by manually relaying repo content to ChatGPT and back must be disclosed as manually bridged and lacking direct local access — it is a further-degraded mode, since ChatGPT never independently reads the actual live files itself, only what is relayed to it. It must not be represented as equivalent to `DECISION-066`/`DECISION-067`'s file-bridge Codex cycle.
+
+Neither path changes any script, schema, verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule. This arrangement is temporary and tied to Codex's stated unavailability; it lapses the same way `DECISION-033`'s fallback already lapsed once before (`DECISION-066`) when Codex is confirmed available again, at which point Codex resumes as the sole advisor/verifier per `DECISION-012`/`DECISION-023`.
+
+Supersedes: None
+Related: DECISION-012, DECISION-019, DECISION-023, DECISION-033, DECISION-066, DECISION-067
