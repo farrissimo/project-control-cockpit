@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-05T15:23:51-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-05T15:29:27-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -39,5 +39,5 @@ Current phase: post-brr
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-pathC-003' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-pathC-003' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Task-level: Maturity Checkpoint reached. No further pre-checkpoint task is required; owner may freeze and back up the kernel, then choose post-checkpoint direction.
+* Project-level: Maturity Checkpoint reached. Owner may freeze and back up this kernel, then decide post-checkpoint direction from evidence rather than guesswork.

@@ -144,6 +144,12 @@
       "decision": "Plain language is the standing default for user-facing explanations. Repo/process terms must be translated immediately rather than left as internal jargon.",
       "date": "2026-07-05",
       "status": "active"
+    },
+    {
+      "id": "DECISION-083",
+      "decision": "The bounded extractability audit passes. PCC has reached the Maturity Checkpoint and is sound enough to freeze, back up, and branch from.",
+      "date": "2026-07-05",
+      "status": "active"
     }
   ],
   "active_constraints": [
@@ -172,6 +178,6 @@
   "current_blocker": null,
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-pathC-003-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Task 'pcc-pathC-003' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-05T15:24:00-06:00"
+  "next_expected_action": "Maturity Checkpoint reached. Owner may freeze and back up this kernel, then decide post-checkpoint direction from evidence rather than guesswork.",
+  "updated_at": "2026-07-05T15:31:00-06:00"
 }

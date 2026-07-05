@@ -1952,3 +1952,50 @@ Implications:
 
 Supersedes: None
 Related: DECISION-001, DECISION-009, DECISION-017, DECISION-018, DECISION-076, .cockpit/state/project-state.json
+
+---
+
+## DECISION-083: Bounded Extractability Audit Passes; PCC Has Reached The Maturity Checkpoint
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+The final pre-checkpoint extractability audit passes. PCC has reached the Maturity Checkpoint and is sound enough to freeze, back up, and branch from with confidence.
+
+Reason:
+
+The checkpoint's remaining requirement after `DECISION-081` was criterion 2 from `docs/CCB_PCC_RELATIONSHIP.md` §8: prove that the extractability rule actually holds in practice, not just on paper. The bounded audit was run against the actual scripts changed since `DECISION-074` plus the small bridge helpers they directly rely on:
+
+* Changed-since-`DECISION-074` script set: `scripts/classify-routing.ps1`, `scripts/generate-worker-directive.ps1`, `scripts/doctor.ps1`, `scripts/enforce-handoff-restart-safety.ps1`, `scripts/backup-protected-files.ps1`.
+* Direct support scripts read to judge the real contract boundaries and restart-safety path: `scripts/validate-cockpit-state.ps1`, `scripts/verify-dual-restart-safety.ps1`, `scripts/verify-worker-restart-safety.ps1`, `scripts/generate-advisor-restart-brief.ps1`, `scripts/refresh-live-handoff-artifacts.ps1`, `scripts/check-schemas.ps1`.
+
+Against the repo's own audit standard (`IDEA-014` detail: correctness, verification-friendliness, leanness, modularity/extractability, maintainability, failure clarity), the result is:
+
+* **Real risks:** none found that would make this kernel unsound or untrustworthy to freeze.
+* **Maintainability smells:** only minor local duplication of tiny helpers such as `Fail` / `Read-Json` shapes across several scripts. That is a future cleanup option, not a hidden-state problem, not an undocumented cross-script dependency, and not a checkpoint blocker.
+* **Optional polish:** none worth promoting before freeze.
+
+Why the audit passes:
+
+* `scripts/classify-routing.ps1` is read-only and self-contained: it reads `task-state.json`, prints an advisory, calls no other script, mutates nothing, and explicitly labels itself a mechanical hint rather than fake intelligence.
+* `scripts/generate-worker-directive.ps1` reads canonical state and renders one worker-facing file from it; standing worker truth comes from state (`active_constraints`, `worker_context_facts`, `communication_prefs`), not hidden script-only facts.
+* `scripts/doctor.ps1` remains an advisory report, not a hidden gate: it reads state, shells out explicitly to named checks, reads git/filesystem facts directly, and always exits 0 after reporting.
+* `scripts/enforce-handoff-restart-safety.ps1` uses visible file/state contracts only: it reads `task-state.json`, writes `handoff-gate.json`, and explicitly invokes named helper scripts for backup and restart-safety proof rather than sharing in-process state.
+* `scripts/backup-protected-files.ps1` snapshots and restores an explicit protected set into `.cockpit/backups/` with a visible `manifest.json`; it is a plain filesystem helper, not a hidden dependency channel.
+* The support scripts it relies on (`validate-cockpit-state`, restart-safety checks, advisor-brief generation, schema checking, live-handoff refresh) likewise operate through explicit `.cockpit/` files or direct stdout/exit behavior, with no hidden shared runtime state.
+
+The audit therefore confirms the rule stated in `DECISION-074` / `DECISION-077` still holds in the real kernel: PCC's current control scripts remain discrete units with explicit file contracts, and the recent work has not quietly reintroduced the kind of shared-state tangle PCC exists to avoid.
+
+Implications:
+
+Both checkpoint pass criteria are now satisfied in repo truth:
+
+1. Categories A-C were already recorded as substantially complete across real cycles (`DECISION-081`).
+2. The extractability rule has now been audited and confirmed holding in practice.
+
+No further pre-checkpoint task is required. The next real action is the stop-and-assess action the checkpoint was for: the owner may now freeze and back up this kernel as the preserved baseline, then decide from evidence whether to branch toward a CCB-v2 seed, continue PCC as a standalone control center, or both later. Category D (UI) remains post-checkpoint exactly as already recorded.
+
+Supersedes: None
+Related: DECISION-074, DECISION-077, DECISION-078, DECISION-081, IDEA-014, docs/CCB_PCC_RELATIONSHIP.md, docs/PROJECT_CHARTER.md
