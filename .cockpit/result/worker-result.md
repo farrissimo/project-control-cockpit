@@ -1,59 +1,92 @@
-# Worker Result — pcc-checkpoint-001
+# Worker Result — pcc-pathC-001
 
-**Task:** Pre-Checkpoint Kernel Quality Audit (bundled with DECISION-074's extractability audit)
+**Task:** Metrics & Evidence: Extend doctor.ps1 With Dirty-Tree, Branch-Hygiene, And File-Structure Checks
 **Worker:** Claude Code
-**Task Safety Class:** B (judgment-heavy findings; must not be self-accepted, independent verifier review required)
+**Task Safety Class:** A (bounded, low-risk, mechanically checkable; no truth surface touched)
 
-## Resubmission note (attempt 3)
+## Resubmission note (attempt 4)
 
-**Cycle 1: `FAIL`.** The report covered all six standards' substance but was not organized into six explicit standard-based sections as the completion criteria required (it was structured around scope/extractability/three-buckets/verdict instead). Fixed: `docs/PRECHECKPOINT_KERNEL_AUDIT.md` now has an explicit "Review By Standard" section with one subsection per standard (Correctness, Verification-friendliness, Leanness, Modularity/extractability, Maintainability, Failure clarity), replacing the standalone extractability-only section (its content was folded into standard #4, not duplicated). The three required finding buckets and the bottom-line verdict are unchanged in substance.
+This is the fourth cycle of pcc-pathC-001.
 
-**Cycle 2: `FAIL`, but self-inflicted, not a content defect.** After resubmitting the fix above, the scheduled `PCC-CodexVerifyWatcher` run appeared to have failed (Windows Task Scheduler reported a non-zero `LastTaskResult`), and a stale lock file (`.cockpit/state/codex-watcher.lock`) was present. Reading that as a genuinely stuck invocation, the lock was cleared and the watcher was re-invoked manually. This was a mistake: the original invocation had not actually crashed -- it was still completing, and had in fact already written a `PASS` verdict (confirming the report content itself was correct) before the manual re-invocation raced it. The second (manual) invocation then correctly found the fresh `PASS` inconsistent with live task-state.json/project-state.json (which still recorded `returned_for_verification`/`FAIL` from before that PASS was ever processed by `advance-cockpit-state.ps1`), and -- exactly as designed for a Class B task -- refused to trust the contradictory artifact, returning a fresh `FAIL` instead of silently accepting it. This is the guardrail behaving correctly under an operational mistake, not a defect in the audit report. No further content change was needed; this resubmission is a clean, single, unrushed request for the watcher to verify the same report content again.
+**Cycle 1: `OUT_OF_SCOPE`.** The independent verifier correctly found that `docs/PROJECT_CHARTER.md` (recording `DECISION-077`) had been modified in the same working-tree cycle, which the directive's allowed scope did not authorize. That change (and a related `IDEA-013` backlog-intake entry, also outside this task's authorized `backlog/IDEAS.md` scope of "update IDEA-012 only") were split out and committed separately, on their own, as owner-directed session-level work distinct from this task:
 
-**Disclosure on the forbidden-scope boundary about `codex exec`:** the manual re-invocation above was `pwsh -NoProfile -File scripts/codex-verify-watcher.ps1 -Once` (the watcher script itself, its normal lock-checking logic intact), not a direct hand-crafted `codex exec` call bypassing the watcher. It is disclosed here regardless, since running the watcher out of its own schedule during live troubleshooting is close enough to the letter of that boundary to warrant being explicit rather than assuming the distinction is obviously fine.
+- `3641fc4` — "Promote modularity/extractability into core charter (DECISION-077)" — `docs/PROJECT_CHARTER.md` + the `DECISION-077` portion of `docs/DECISIONS.md`.
+- `6aadcd0` — "Backlog intake: record IDEA-013 ... as proposed, not promoted" — `backlog/IDEAS.md`'s `IDEA-013` entry only.
+
+**Cycle 2: `FAIL`.** Scope was confirmed clean this time (no `out_of_scope_findings`), but the verifier correctly flagged that the functional-test evidence was incomplete: the "baseline" doctor run was never actually against a clean tree (this task's own edits were already present), and the Working-tree check's `WARN` path was only ever shown via those same real edits, not a deliberately induced case distinct from them.
+
+**Cycle 3 fix attempt:** a genuinely clean-state baseline and a properly isolated induced case were produced using a disposable local git clone (`git clone --local`) of this repo at current HEAD, with only `scripts/doctor.ps1`'s new code copied in and committed inside that throwaway clone (never touching the real repo or its history). Full detail in Commands run / Command-test results below.
+
+**Cycle 3: `FAIL` again.** The implementation itself was again confirmed sound, but the verifier correctly caught two real gaps: (1) `DECISION-078`'s text still described the old (cycle 1-2) testing narrative -- real-repo clean-state claims and a natural Working-tree exercise via the task's own edits -- and was never updated when the clone method replaced that approach, so the decision record and actual evidence contradicted each other; (2) `task-state.json`'s completion criteria literally required testing "against the real repo in its current clean state," which the clone substitution does not literally satisfy, even though it is a reasonable answer to a genuine structural conflict (the real repo cannot simultaneously be clean and mid-task).
+
+**This cycle's fix:** the Codex advisor was consulted again (a second advisory-only consultation, not a self-verification) and recommended, and the owner approved: (a) `DECISION-078` corrected in place to accurately describe the clone-based method actually used, with a dated correction note rather than a silent rewrite; (b) `task-state.json`'s completion criteria explicitly amended to name the disposable-clone method as the disclosed, owner-approved equivalent for this one structurally-conflicting criterion; (c) one more retry on that corrected basis. Both fixes are committed to canonical state and doc truth before this resubmission; the underlying `scripts/doctor.ps1` code and its functional-test evidence are otherwise unchanged from cycle 3.
 
 ## Files created or changed
 
-- **Created** `docs/PRECHECKPOINT_KERNEL_AUDIT.md` — the audit report.
-- **Edited** `docs/DECISIONS.md` — recorded `DECISION-081` (bottom-line verdict and citation to the report). Also removed one stray duplicate `Related:` line at the file's end, a leftover formatting artifact from an earlier edit in this same session (unrelated to this task's content; a one-line incidental fix, disclosed here rather than left silent).
-- **Edited** `backlog/IDEAS.md` — updated `IDEA-014`'s entry to note delivery and link the report.
-- No file under `scripts/` was modified. No schema was modified.
+- **Edited** `scripts/doctor.ps1` — added three new advisory checks (Working tree, Branch hygiene, File structure), and fixed a pre-existing bug: the script never loaded `.cockpit/state/project-state.json` at all.
+- **Edited** `docs/DECISIONS.md` — recorded `DECISION-078` (this task's delivery; cites the already-committed `DECISION-077` by ID, does not modify it).
+- **Edited** `backlog/IDEAS.md` — added `IDEA-012`'s delivery note only (`IDEA-013` is not part of this file's diff in this cycle; it was committed separately in `6aadcd0`).
+- No other script modified. `docs/PROJECT_CHARTER.md` is not part of this cycle's diff.
 
-## Summary of method
+## Summary of changes
 
-All 23 scripts under `scripts/` were read in full (2,759 lines total) — every generator, handback, verification, close-out, doctor, and guardrail script in the kernel, per `IDEA-014`'s recommended scope. No archived artifacts, no doc rewrites beyond the new report, no speculative redesign.
+`doctor.ps1` previously reported five things: state consistency, restart safety, schema format, last gate result, and active task status. It now also reports:
 
-Each script was judged against IDEA-014's six standards (correctness, verification-friendliness, leanness, modularity/extractability, maintainability, failure clarity), and every script's inputs/outputs were separately checked against `DECISION-074`'s extractability rule specifically (does it communicate only through the documented `.cockpit/` file-bridge contract, with no hidden shared state or undocumented cross-script assumptions).
+1. **Working tree** — `git status --porcelain`; `OK` if clean, `WARN` (never `ISSUE`) if uncommitted changes exist.
+2. **Branch hygiene** — current branch vs. `project-state.json`'s `active_branch`; `OK` if matched, `WARN` if not, plus ahead/behind counts against any configured upstream as informational detail.
+3. **File structure** — confirms the five canonical `.cockpit/` subdirectories (`backups`, `handoff`, `logs`, `result`, `state`) and three canonical state files exist (`ISSUE` naming exactly what's missing if not); flags any unexpected top-level `.cockpit/` entry as `WARN`.
 
-Findings were sorted into exactly three buckets per IDEA-014's own guardrail (real risks / maintainability smells / optional polish); no finding was left unsorted, and none were acted on (fixing is explicitly out of this task's scope).
+All three are read-only, call no other script, and preserve `doctor.ps1`'s existing always-`exit 0` advisory-only contract.
 
-## Bottom-line verdict and justification
+**Bug found and fixed during implementation:** `doctor.ps1` read `handoff-gate.json` and `task-state.json` via `Read-JsonSafe`, but never read `project-state.json` — so `$projectState` was always `$null`. The new branch-hygiene check's comparison depends on `project-state.json`'s `active_branch`; without this fix it would have silently fallen through to its "no data to compare" branch on every run. Added `$projectState = Read-JsonSafe $projectStatePath` alongside the existing calls.
 
-**Solid enough if one concrete issue is fixed first — though accepting the risk as-is and freezing anyway is a reasonable owner call**, since the one real risk is a proven maintainability/duplication concern, not an active defect or a contract violation:
+## Commands run
 
-- **Extractability holds** across all 23 scripts. Every script communicates only via `.cockpit/state/*.json`, `.cockpit/result/*`, `.cockpit/handoff/*`, `.cockpit/logs/*.jsonl`, `schemas/*.json` reads, and subprocess composition (invoke another script, read its stdout/exit code) — never dot-sourcing or shared in-process state. One documentation gap, not a violation: every script implicitly assumes the repo root as its working directory, and this is not stated per-script (though `codex-verify-watcher.ps1` already handles it correctly via explicit `Push-Location`).
-- **One real risk, proven not hypothetical**: `scripts/close-out-verified-task.ps1` and `scripts/return-inadequate-work.ps1` are near-duplicate implementations of the same four-step close-out sequence. An identical bug fix (the attempt-suffix archive-collision fix) already had to be applied to both files by hand, on the same day, because the logic lives in two places instead of one. Nothing currently enforces the two staying in sync.
-- **Maintainability smells** (not broken, future babysitting multipliers if ignored): cross-process contracts rely on string/substring matching of another script's stdout (e.g. grepping for the literal `"[ISSUE]"`) rather than a structured, schema-validated format; `verify-handback-guardrails.ps1` and `doctor.ps1` redundantly double-run `validate-cockpit-state.ps1`/`check-schemas.ps1`; the per-script `Read-Json`/`Fail` helper duplication across ~15 scripts looks like a DRY violation but is very likely the *correct* choice under `DECISION-074` (a shared module would itself create hidden coupling) — flagged explicitly so a future reviewer doesn't "clean it up" and accidentally violate the extractability rule.
-- **Optional polish**: minor phrasing inconsistencies in advisory output, a couple of small duplicated ANSI-stripping helpers, nothing else.
-- **Nothing found rises to "not yet checkpoint-ready."** No finding threatens trust, correctness, or the file-bridge contract itself.
+Functional tests (not read-through only), each with results:
 
-Full detail, per-finding reasoning, and the complete scripts-reviewed list are in `docs/PRECHECKPOINT_KERNEL_AUDIT.md`.
+**Against the real repo:**
+1. `pwsh -NoProfile -File scripts/doctor.ps1` (baseline against the real repo's actual working state)
+2. Induced case A — branch mismatch: temporarily changed `project-state.json`'s `active_branch` from `main` to `scratch-test-branch`, ran doctor, reverted to `main`.
+3. Induced case B — missing directory: temporarily renamed `.cockpit/logs` to `.cockpit/logs_scratch_bak`, ran doctor, renamed back to `.cockpit/logs`.
+4. Re-ran doctor after each revert to confirm restoration; `git status --porcelain` confirmed no scratch artifacts left behind.
+
+**Against a disposable local clone (for a genuinely clean-tree baseline and an isolated Working-tree induced case):**
+5. `git clone --local . <scratch-path>` — a throwaway local clone of this repo at current HEAD.
+6. Copied only `scripts/doctor.ps1` (this task's new version) into the clone, `git add` + `git commit` inside the clone only (never touches the real repo's history or remote).
+7. Ran `pwsh -NoProfile -File scripts/doctor.ps1` in the clone with its tree genuinely clean (0 uncommitted changes).
+8. Created a throwaway untracked file (`scratch-induced-dirty.txt`) in the clone -- a dirty-tree case with no relationship to this task's own edits -- and re-ran doctor.
+9. Deleted the scratch file, re-ran doctor to confirm reversion to clean, then deleted the entire clone directory.
+
+## Command/test results
+
+| Test | Expected | Actual |
+|---|---|---|
+| Baseline run (before project-state.json fix) | Branch hygiene compares against active_branch | Bug found: always fell through to "no active_branch" WARN — `$projectState` was never loaded |
+| Baseline run (after fix, real repo) | Branch hygiene reports OK on main | `[OK] Branch hygiene: On expected branch 'main'. Upstream 'origin/main': 0 ahead, 0 behind.` |
+| Induced case A (branch mismatch, real repo) | WARN naming both branches | `[WARN] Branch hygiene: On branch 'main', but project-state.json's active_branch is 'scratch-test-branch'. ...` |
+| Induced case A reverted | Back to OK | Confirmed OK again after revert |
+| Induced case B (missing .cockpit/logs, real repo) | ISSUE naming the missing path | `[ISSUE] File structure: Missing expected .cockpit/ path(s): .cockpit/logs` |
+| Induced case B reverted | Back to OK | `[OK] File structure: All canonical .cockpit/ subdirectories and state files are present; no unexpected top-level entries.` |
+| **Clean-state baseline (disposable clone, genuinely 0 uncommitted changes)** | Working tree: OK | `[OK] Working tree: No uncommitted changes.` (also observed: Branch hygiene OK; File structure ISSUE for `.cockpit/backups`, expected -- that path is git-ignored per docs/STATE_MODEL.md and so absent from any fresh clone, not a defect in the check) |
+| **Induced Working-tree case (disposable clone, one throwaway untracked file, unrelated to this task's real edits)** | WARN, 1 change | `[WARN] Working tree: 1 uncommitted change(s) present. Normal mid-cycle; review before handoff/close-out.` |
+| **Induced case reverted (clone)** | Back to OK | `[OK] Working tree: No uncommitted changes.` |
+| doctor.ps1 exit code throughout | Always 0 | Confirmed 0 in every run above (real repo and clone), including all ISSUE/WARN cases |
 
 ## Known risks
 
-- This audit is a judgment-based code-quality review, not a mechanically-checkable test suite; its findings (especially the "one real risk" severity call) are this worker's assessment and are exactly why this task is Class B and must not be self-accepted.
-- The duplication finding (`close-out-verified-task.ps1`/`return-inadequate-work.ps1`) was not fixed as part of this task, by design — it remains a live risk until the owner chooses to act on it via a separate, explicitly-scoped task, or explicitly accepts it.
+- The branch-hygiene check's ahead/behind reporting depends on `git rev-list --left-right --count` against a configured upstream; if no upstream exists it states that plainly rather than treating it as a problem — this was exercised naturally (this repo has `origin/main` configured) but the "no upstream" wording itself was not separately forced/tested since inducing a genuinely upstream-less branch would require more disruptive git surgery than the bounded scope justified.
+- The project-state.json load fix is a genuine behavior change to `doctor.ps1` beyond the three new checks named in the task; it was necessary for branch-hygiene to work at all, and no other part of `doctor.ps1` uses `$projectState`, so the fix is additive and low-risk, but it is disclosed here rather than silently folded in.
+- The clean-state baseline and induced Working-tree case were run inside a disposable local clone rather than the real repo, since the real repo could not simultaneously be "genuinely clean" and "carrying this task's own in-progress edits." The clone was created via `git clone --local` (a local, same-machine operation only; nothing was pushed or fetched from any remote), had exactly one file (the new `scripts/doctor.ps1`) copied in and committed, and was deleted immediately after the test. This is disclosed as a testing-method choice, not silently substituted for real-repo evidence -- the branch-hygiene and file-structure induced cases were still exercised directly against the real repo.
 
 ## Unresolved assumptions
 
-- "Solid enough if one concrete issue is fixed first" treats the duplication finding as the one thing worth fixing before checkpoint; the owner may reasonably judge it low-priority enough to accept and proceed without fixing it, since it has caused a doubled manual effort once but no incorrect verdict or lost work to date.
-- This task satisfies only the extractability-audit half of `DECISION-074`'s Maturity Checkpoint pass criteria. The other half — Categories A-C "proven across real cycles," not merely each having one delivered task — is unaffected by this task and remains open.
+- The five expected `.cockpit/` subdirectory names (`backups`, `handoff`, `logs`, `result`, `state`) and three canonical state file paths were taken from `docs/STATE_MODEL.md` and the live repo layout; if a future task adds a new canonical subdirectory, this check's expected list will need a corresponding update (not automatically discovered).
 
 ## Confirmation that forbidden scope was not touched
 
-- No file under `scripts/` was modified.
-- No schema was modified.
-- No finding was acted on (no fixes, no refactors, no cleanup applied).
-- No expansion into archived artifacts, broad doc rewrites beyond `docs/PRECHECKPOINT_KERNEL_AUDIT.md`, or speculative architecture redesign.
-- No verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule changed. No new log event type added.
-- No manual `codex exec` invoked for this task's own verification — left to the live PCC-CodexVerifyWatcher scheduled task, per `DECISION-080`.
+- Only `scripts/doctor.ps1` was modified among scripts; no other script changed.
+- No schema changed, no verdict/task-status enum/Task Safety Class definition/Owner Review Matrix row/Stop-Instead-of-Guess trigger/Acceptance Boundary Rule changed.
+- No new log event type; no write to `routing-log.jsonl`.
+- `doctor.ps1`'s always-`exit 0` advisory-only contract preserved; none of the three new checks gate or block anything.
+- All scratch artifacts used to induce test cases (the `active_branch` value swap, the `.cockpit/logs` rename) were reverted before this evidence was written; confirmed via a clean `.cockpit/` directory listing. The disposable clone used for the clean-state/Working-tree tests was deleted in full after use and never touched the real repo.
+- No manual `codex exec` invoked — verification is left to the live PCC-CodexVerifyWatcher scheduled task.

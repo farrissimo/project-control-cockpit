@@ -1,25 +1,44 @@
 {
-  "task_id": "pcc-checkpoint-001",
+  "task_id": "pcc-pathC-001",
   "verdict": "PASS",
-  "verified_at": "2026-07-04T21:30:00-06:00",
+  "verified_at": "2026-07-04T20:42:30.3010651-06:00",
   "completion_criteria_checked": [
-    "docs/PRECHECKPOINT_KERNEL_AUDIT.md exists, reviews all 23 scripts, is organized by the six IDEA-014 standards, and states a bottom-line verdict.",
-    "Findings sorted into Real risks / Maintainability smells / Optional polish.",
-    "DECISION-074 extractability rule addressed.",
-    "Read-only: no scripts/ or schema changes.",
-    "docs/DECISIONS.md and backlog/IDEAS.md updated."
+    "scripts/doctor.ps1 adds advisory-only Working tree, Branch hygiene, and File structure checks.",
+    "doctor.ps1 remains read-only and preserves its always-exit-0 advisory contract.",
+    "Functional evidence covers branch-hygiene and file-structure induced cases against the real repo, with scratch changes reverted.",
+    "Functional evidence for the Working-tree clean/dirty proof matches the amended completion criterion: disposable local clone, isolated induced dirty case, and cleanup afterward.",
+    "docs/DECISIONS.md records the delivery decision and correction, and backlog/IDEAS.md records IDEA-012 delivery.",
+    "Allowed scope is respected in the current task cycle."
   ],
   "evidence_reviewed": [
-    "docs/PRECHECKPOINT_KERNEL_AUDIT.md",
+    ".cockpit/handoff/advisor-restart-brief.md",
+    "docs/VERIFICATION_RESULT_SPEC.md",
+    "docs/REPO_GOVERNANCE.md",
+    "docs/HANDOFF_PACKET_SPEC.md",
+    ".cockpit/state/project-state.json",
+    ".cockpit/state/task-state.json",
+    ".cockpit/handoff/worker-directive.md",
     ".cockpit/result/worker-result.md",
-    "Prior independent verification pass (before an operational lock-race produced a spurious FAIL; see DECISION-082)."
+    "docs/DECISIONS.md",
+    "backlog/IDEAS.md",
+    "docs/STATE_MODEL.md",
+    "scripts/doctor.ps1",
+    "pwsh -NoProfile -File scripts/verify-handback-guardrails.ps1",
+    "git status --short -- scripts/doctor.ps1 docs/DECISIONS.md backlog/IDEAS.md docs/PROJECT_CHARTER.md README.md .cockpit/state/task-state.json",
+    "git --no-pager diff --name-only -- scripts/doctor.ps1 docs/DECISIONS.md backlog/IDEAS.md docs/PROJECT_CHARTER.md README.md .cockpit/state/task-state.json",
+    "git --no-pager diff --unified=80 -- scripts/doctor.ps1",
+    "git --no-pager diff --unified=60 -- docs/DECISIONS.md",
+    "git --no-pager diff --unified=40 -- backlog/IDEAS.md",
+    "git --no-pager diff --unified=40 -- .cockpit/state/task-state.json",
+    "git --no-pager diff --unified=40 -- .cockpit/result/worker-result.md",
+    "rg -n \"IDEA-012|DECISION-078|communication_prefs|active_branch|Working tree|Branch hygiene|File structure|Read-JsonSafe|project-state.json|backups|handoff-gate.json\" backlog/IDEAS.md docs/DECISIONS.md docs/STATE_MODEL.md scripts/doctor.ps1 .cockpit/state/task-state.json"
   ],
   "missing_evidence": [],
   "out_of_scope_findings": [],
   "risks": [
-    "This is an owner-directed override of the acceptance boundary, not a fresh independent verifier PASS. The content was independently confirmed once already; the owner explicitly directed closing this out rather than waiting for a clean re-poll."
+    "The Working-tree clean/dirty proof relies on a one-off owner-approved completion-criterion amendment for this task's structural conflict; that exception should not be generalized to other tasks without separate review."
   ],
-  "summary": "Owner override: task closed complete by explicit, repeated owner instruction. Report content had already been independently verified correct prior to a self-inflicted lock-race producing a spurious FAIL (DECISION-082). No further waiting.",
-  "next_action": "Owner/advisor selects the next bounded task.",
+  "summary": "Independent verification passes. The verifier re-ran scripts/verify-handback-guardrails.ps1 successfully, confirmed doctor.ps1 now contains the required read-only Working tree, Branch hygiene, and File structure checks while preserving exit-0 advisory behavior, and found the current evidence package consistent with the amended completion contract. The prior failure mode is closed: DECISION-078 and task-state.json now accurately disclose the disposable-clone method used for the Working-tree clean/dirty proof, while the branch-hygiene and file-structure induced cases remain tested directly against the real repo and restored afterward.",
+  "next_action": "Task complete; owner/advisor selects the next post-BRR task from the roadmap or checkpoint backlog.",
   "state_update_allowed": true
 }

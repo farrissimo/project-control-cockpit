@@ -3,7 +3,7 @@
   "project_name": "Project Control Cockpit",
   "project_goal": "Build a lean, local-first AI project control cockpit that reduces owner babysitting.",
   "current_phase": "post-brr",
-  "current_task_id": "pcc-checkpoint-001",
+  "current_task_id": "pcc-pathC-001",
   "active_repo_path": "C:\\ProjectControlCockpit",
   "active_branch": "main",
   "owner_decisions": [
@@ -162,8 +162,8 @@
     "separate_facts_from_inference": true
   },
   "current_blocker": null,
-  "last_verified_handoff": ".cockpit/handoff/worker-directive.md",
+  "last_verified_handoff": ".cockpit/handoff/archive/pcc-pathC-001-attempt4-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Owner/advisor selects the next bounded task.",
-  "updated_at": "2026-07-04T21:30:00-06:00"
+  "next_expected_action": "Task 'pcc-pathC-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-04T20:45:14-06:00"
 }
