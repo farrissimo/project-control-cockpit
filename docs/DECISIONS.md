@@ -2121,3 +2121,31 @@ Process disclosure: this plan and decision were authored with Codex unavailable 
 
 Supersedes: None
 Related: DECISION-002, DECISION-003, DECISION-008, DECISION-074, DECISION-075, DECISION-076, DECISION-081, DECISION-084, DECISION-086, docs/PATH_A_PLAN.md, docs/CCB_PCC_RELATIONSHIP.md, archive/PCC Original Project Scope.md
+
+---
+
+## DECISION-088: LLM Use Is Minimized To Irreducible Judgment/Verification; Everything Mechanical Is Local-Deterministic
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+The owner reaffirmed and sharpened the local-first principle into a standing execution discipline: any LLM/CLI invocation is minimized. PowerShell, cmd, Git Bash, and other local deterministic tools are the default means of executing tasks and of building PCC's own capabilities. An LLM is used only where local-first genuinely cannot do the job — real judgment, natural-language work, or verification that no deterministic script can perform. The discipline is scoped across three layers:
+
+1. **PCC's own tool runtime** — all scripts, and the Category D dashboard — must be 100% local-deterministic with zero LLM dependency at runtime. Non-negotiable.
+2. **Task execution** — mechanical work (file operations, search, validation, formatting, git) is done with local shell tools; the LLM worker does only the irreducible judgment portion, as `scripts/classify-routing.ps1` already surfaces per task.
+3. **Advisor/verification** — LLM use here is structurally required (judgment over evidence) and is therefore the deliberately-minimized exception, confined to verification, not execution.
+
+Reason:
+
+This builds on `DECISION-002` (local-first by default), `DECISION-003` (no paid API), the active constraint "prefer local deterministic tools before model usage," and `DECISION-008` (no fake intelligence). What is new is making local-first an explicit execution discipline with teeth — governing how tasks are done and how PCC's own tools are built — not only a property of the finished product. The necessary reconciliation: PCC's worker and verifier are LLMs by design (`DECISION-004`/`DECISION-012`), so this decision means "minimize LLM to the irreducible," not "eliminate LLM." A naive zero-LLM reading would contradict PCC's own architecture and is explicitly not what is intended.
+
+Implications:
+
+Every future task — Category D included — must prefer a local-deterministic implementation and justify any LLM/CLI invocation against a local-first alternative before promotion; this rider is now part of the three-filter scoping test (`docs/PROJECT_CHARTER.md`). The Category D dashboard already complies by construction: Phases D1–D2 are read-only local file consumers rendered by PowerShell, Phase D3 writes only local request files, the Session/Usage panel is barred from fabricated numbers, and no phase carries a runtime LLM dependency. Recorded in `docs/PATH_A_PLAN.md` §4 guardrails. This changes no script, schema, verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule. Optional follow-up (owner call): surface this as an explicit live entry in `project-state.json`'s `active_constraints` so every generated worker directive states it verbatim, rather than relying on the existing more general "prefer local deterministic tools before model usage" line.
+
+Process disclosure: recorded with Codex unavailable (`DECISION-086`), under direct owner direction; self-checked with PCC's local guardrails (`validate-cockpit-state.ps1`, `check-schemas.ps1`, `doctor.ps1`), not independently Codex-verified.
+
+Supersedes: None
+Related: DECISION-002, DECISION-003, DECISION-004, DECISION-008, DECISION-012, DECISION-075, DECISION-087, docs/PATH_A_PLAN.md, docs/PROJECT_CHARTER.md

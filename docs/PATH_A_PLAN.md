@@ -115,6 +115,12 @@ the same technology — the read-only board is grown, not thrown away.
   babysitting, avoid bloat, and preserve modularity, or it is not promoted.
 - **Exercised, not spec'd.** A capability counts as done only when built and
   functionally tested on real `.cockpit/` artifacts, then verified.
+- **Local-first execution (`DECISION-088`).** Every task is built with
+  PowerShell / cmd / Git Bash / local deterministic tools, and the dashboard
+  runtime carries **zero LLM dependency**. An LLM/CLI is invoked only where
+  local-first genuinely cannot do the job (real judgment or verification), and
+  any such use is justified against a local alternative before the task is
+  promoted.
 
 ---
 
