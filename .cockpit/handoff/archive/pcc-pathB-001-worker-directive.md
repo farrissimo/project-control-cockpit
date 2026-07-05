@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-pathB-001
 * Task Title: Behavior Controls: Communication Preferences Stored And Surfaced In Worker Directive
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: C (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Objective

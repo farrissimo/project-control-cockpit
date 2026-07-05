@@ -110,6 +110,32 @@ $(Format-Bullets $odr.options)
 "@
 }
 
+# Communication Defaults (archive/PCC Original Project Scope.md §7.16;
+# DECISION-009, fielded by pcc-pathB-001): the owner's standing tone/language/
+# behavior preferences, rendered from project-state.json's communication_prefs
+# so a fresh worker session applies them without the owner restating them.
+# Guarded: if communication_prefs is absent (e.g. an older state file), the
+# section is simply omitted rather than erroring - this is worker-facing
+# guidance, not an enforcement gate.
+$communicationSection = ""
+if ($projectState.communication_prefs) {
+  $cp = $projectState.communication_prefs
+  $communicationSection = @"
+
+## Communication Defaults
+
+The owner's standing communication preferences (apply these without being asked; DECISION-009 / §7.16):
+
+* Tone: $($cp.tone)
+* Language level: $($cp.language_level)
+* Chattiness: $($cp.chattiness)
+* No cheerleading: $($cp.no_cheerleading)
+* Concise by default: $($cp.concise_by_default)
+* Explicit uncertainty: $($cp.explicit_uncertainty)
+* Separate facts from inference: $($cp.separate_facts_from_inference)
+"@
+}
+
 # Safe Next-Task Drafting Rules (docs/BRR_POLICY.md, DECISION-038/pcc-brr2-008):
 # when a task was auto-promoted inside an approved lane, the falsifiable
 # in-lane justification travels with it and is surfaced for the reviewer.
@@ -155,7 +181,7 @@ Read this directive from ``$directiveSelfPath``, complete the bounded task below
 ## Current Truth
 
 $(Format-Bullets $currentTruth)
-
+$communicationSection
 ## Exact Next Action
 
 $($taskState.task_objective)

@@ -67,6 +67,10 @@ Examples:
 
 `scripts/classify-routing.ps1` (`DECISION-075`, first Path-A task per `DECISION-074`) makes this principle a checkable per-task signal: a read-only, advisory, non-gating classifier that flags whether the active task looks local-tool-suitable. It never redirects or executes work.
 
+## Communication Defaults
+
+The owner's standing tone/language/behavior preferences live in `project-state.json`'s `communication_prefs` and are auto-surfaced into every generated worker directive (`DECISION-076`, `DECISION-009`, §7.16), so a fresh worker session applies them without the owner restating them.
+
 ## Initial Worker Layer
 
 Claude Code is the initial worker execution layer.

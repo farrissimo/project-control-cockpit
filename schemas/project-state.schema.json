@@ -15,6 +15,7 @@
     "owner_decisions",
     "active_constraints",
     "worker_context_facts",
+    "communication_prefs",
     "current_blocker",
     "last_verified_handoff",
     "last_verification_verdict",
@@ -103,6 +104,45 @@
       "type": "array",
       "items": {
         "type": "string"
+      }
+    },
+    "communication_prefs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tone",
+        "language_level",
+        "chattiness",
+        "no_cheerleading",
+        "concise_by_default",
+        "explicit_uncertainty",
+        "separate_facts_from_inference"
+      ],
+      "properties": {
+        "tone": {
+          "type": "string",
+          "enum": ["direct", "balanced", "chatty"]
+        },
+        "language_level": {
+          "type": "string",
+          "enum": ["plain", "mixed", "technical"]
+        },
+        "chattiness": {
+          "type": "string",
+          "enum": ["concise", "balanced", "verbose"]
+        },
+        "no_cheerleading": {
+          "type": "boolean"
+        },
+        "concise_by_default": {
+          "type": "boolean"
+        },
+        "explicit_uncertainty": {
+          "type": "boolean"
+        },
+        "separate_facts_from_inference": {
+          "type": "boolean"
+        }
       }
     },
     "current_blocker": {

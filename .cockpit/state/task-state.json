@@ -1,31 +1,33 @@
 {
-  "task_id": "pcc-pathA-001",
-  "task_title": "Local-First Routing: Advisory Task Routing Classifier",
-  "task_objective": "Deliver the original project scope's Local-First Routing capability (archive/PCC Original Project Scope.md §7.12) as a lean, read-only, self-contained advisory: a new script scripts/classify-routing.ps1 that reads the active task from .cockpit/state/task-state.json and mechanically classifies its routing-suitability (local_deterministic / model_judgment / mixed / unknown) using only fixed, observable signals already present in task state (task_safety_class and literal keyword matches against the task title/objective), then prints an advisory, explicitly non-authoritative recommendation to prefer local deterministic tools for the local-suitable portions (DECISION-002). It surfaces the local-first principle as a checkable per-task signal instead of an unmeasured convention. It is advisory only: it never gates, never redirects or executes work, never mutates state, and calls no other script. This is the first Path-A (post-BRR original-scope) task per DECISION-074's roadmap re-cut; §7.17 (session/usage pressure) is deferred and §7.18 (premium escalation) is already covered by the existing Owner Review Matrix, so this task is the entirety of Category A's honestly-buildable pre-checkpoint scope.",
+  "task_id": "pcc-pathB-001",
+  "task_title": "Behavior Controls: Communication Preferences Stored And Surfaced In Worker Directive",
+  "task_objective": "Deliver the original project scope's Tone / Chattiness / Language Controls (archive/PCC Original Project Scope.md §7.16; DECISION-009) as fielded state rather than an unenforced principle: add a communication_prefs object to .cockpit/state/project-state.json (and its schema) holding the owner's standing communication defaults, and edit scripts/generate-worker-directive.ps1 to render a 'Communication Defaults' section from it, so a fresh worker session auto-applies the owner's tone/language/behavior preferences without the owner restating them each session. This is a direct babysitting reduction (DECISION-001): repeated owner corrections about communication style are exactly what §7.16 exists to prevent. It is the sole honestly-buildable pre-checkpoint task in Category B; §7.19 (suggested tools) is declined for now as low-value and overlapping with scripts/classify-routing.ps1 / DECISION-002. This is Task Safety Class C because it edits a schema (a truth surface, Owner Review Matrix row 7); the owner approved it before execution.",
   "task_status": "complete",
   "assigned_worker": "Claude Code",
-  "task_safety_class": "A",
+  "task_safety_class": "C",
   "completion_criteria": [
-    "A new script scripts/classify-routing.ps1 exists and is strictly read-only: it reads .cockpit/state/task-state.json (path overridable by a parameter), writes/mutates no file or state, and invokes no other script. It exits 0 on a well-formed task-state and prints a clear error and non-zero exit only if the task-state file is missing or malformed JSON.",
-    "The classifier assigns exactly one routing class from a fixed closed set {local_deterministic, model_judgment, mixed, unknown} using only mechanical signals: (a) the task's task_safety_class, and (b) literal, case-insensitive keyword matches against task_title and task_objective from two fixed keyword lists (a deterministic/local-suitable list e.g. rename, move, list, search, grep, diff, count, validate, schema, json, path, whitespace; and a judgment/model-suitable list e.g. policy, decide, design, review, wording, prose, document, decision, tradeoff, architecture). No free-text interpretation beyond fixed keyword membership is performed, consistent with DECISION-008 (no fake intelligence): the output is explicitly labeled a mechanical keyword heuristic and an advisory hint, never a claim to know the task's true nature.",
-    "The script prints, in plain readable output: the detected routing class, which signals fired (the matched keywords and the safety class used), and an advisory recommendation tied to DECISION-002 (prefer local deterministic tools for local-suitable work; use the model for judgment-heavy work). The output explicitly states it is advisory and non-gating and does not redirect or execute any work.",
-    "Functionally tested (not read-through only): run against the real .cockpit/state/task-state.json and against at least two synthetic task shapes (one clearly deterministic, one clearly judgment-heavy) in an isolated scratch copy, confirming sane, correct-looking classifications and that malformed/missing input fails cleanly with a non-zero exit and no state mutation.",
-    "A new decision is recorded in docs/DECISIONS.md, and README.md's doc/status text is updated only as needed to note the first Path-A task is delivered.",
-    "No existing script, schema, verdict, task status, Owner Review Matrix row, Task Safety Class, or any other truth surface is modified. No new log event type is added. The routing classifier does not call scripts/log-event.ps1 or any other script."
+    "schemas/project-state.schema.json gains a communication_prefs object property with additionalProperties:false and its own required fields: tone (enum: direct, balanced, chatty), language_level (enum: plain, mixed, technical), chattiness (enum: concise, balanced, verbose), and four boolean toggles (no_cheerleading, concise_by_default, explicit_uncertainty, separate_facts_from_inference). communication_prefs is added to the top-level required list so it is always present going forward.",
+    ".cockpit/state/project-state.json gains a communication_prefs object matching the schema, seeded with the owner's documented defaults: tone=direct, language_level=mixed, chattiness=concise, no_cheerleading=true, concise_by_default=true, explicit_uncertainty=true, separate_facts_from_inference=true.",
+    "scripts/generate-worker-directive.ps1 renders a 'Communication Defaults' section from project-state.json's communication_prefs (guarded so it is simply omitted if the field is absent, rather than erroring), listing each preference so a fresh worker applies them without being asked, and tying the section to DECISION-009.",
+    "Functionally tested (not read-through only): scripts/check-schemas.ps1 passes against the updated project-state.json and schema; scripts/generate-worker-directive.ps1 runs and the generated .cockpit/handoff/worker-directive.md contains the Communication Defaults section with the seeded values; scripts/validate-cockpit-state.ps1 passes.",
+    "A new decision is recorded in docs/DECISIONS.md, and README.md is updated only as needed to note the capability. DECISION-009's status/relationship is referenced (it is now fielded, not just recorded).",
+    "No verdict, task status, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, Acceptance Boundary Rule, or any other truth surface beyond project-state.schema.json's additive communication_prefs field is changed. No new log event type is added."
   ],
   "boundaries": {
     "allowed": [
-      "Create scripts/classify-routing.ps1 as a new, self-contained, read-only advisory script over the .cockpit/ file-bridge contract (DECISION-074 extractability rule).",
+      "Edit schemas/project-state.schema.json to add the communication_prefs object property (additive only).",
+      "Edit .cockpit/state/project-state.json to add the communication_prefs values.",
+      "Edit scripts/generate-worker-directive.ps1 to render the Communication Defaults section from communication_prefs.",
       "Edit docs/DECISIONS.md to record the new decision.",
-      "Edit README.md only if needed to note this first Path-A deliverable in the doc index or status section.",
-      "Edit backlog/IDEAS.md only if an existing IDEA entry needs a delivered-status note for this exact change (check first; do not edit if none applies)."
+      "Edit README.md only if needed to note the capability.",
+      "Edit backlog/IDEAS.md only if an existing IDEA entry needs a delivered-status note (check first; do not edit if none applies)."
     ],
     "forbidden": [
-      "Do not modify any existing script (including scripts/log-event.ps1, scripts/summarize-routing-log.ps1, scripts/check-stop-conditions.ps1, scripts/doctor.ps1, and every other script).",
+      "Do not change any schema other than the additive communication_prefs addition to project-state.schema.json.",
+      "Do not modify any script other than scripts/generate-worker-directive.ps1.",
       "Do not add any new log event type or write to routing-log.jsonl.",
-      "Do not make the classifier gate, block, redirect, or execute any work — it is advisory-only. A router that autonomously redirects work is new authority requiring its own owner decision and is explicitly out of scope.",
-      "Do not modify any schema.",
-      "Do not change any verdict, task status, Task Safety Class, the Owner Review Matrix, Stop-Instead-of-Guess triggers, or any Acceptance Boundary Rule.",
+      "Do not make communication_prefs gate, block, or halt anything — it is worker-facing guidance rendered into the directive, not an enforcement mechanism.",
+      "Do not change any verdict, task status enum, Task Safety Class definition, the Owner Review Matrix, Stop-Instead-of-Guess triggers, or any Acceptance Boundary Rule.",
       "Do not manually invoke 'codex exec' for this task's own verification — let the live PCC-CodexVerifyWatcher scheduled task handle it."
     ]
   },
@@ -46,6 +48,6 @@
   "current_blocker": null,
   "owner_decision_request": null,
   "promotion_basis": null,
-  "next_action": "Task 'pcc-pathA-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T18:24:53-06:00"
+  "next_action": "Task 'pcc-pathB-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-04T18:36:10-06:00"
 }

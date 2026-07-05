@@ -1789,3 +1789,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-002, DECISION-008, DECISION-074, archive/PCC Original Project Scope.md, scripts/classify-routing.ps1
+
+---
+
+## DECISION-076: Communication Preferences Fielded In State And Surfaced In The Worker Directive (pcc-pathB-001)
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+The original project scope's Tone / Chattiness / Language Controls (`archive/PCC Original Project Scope.md` §7.16) — previously only recorded as a principle in `DECISION-009` — are now fielded: `.cockpit/state/project-state.json` carries a `communication_prefs` object (defined and required in `schemas/project-state.schema.json`), and `scripts/generate-worker-directive.ps1` renders a "Communication Defaults" section from it, so a fresh worker session applies the owner's standing tone/language/behavior preferences without the owner restating them each session. Seeded defaults (owner-chosen, trivially changeable): tone `direct`, language_level `mixed`, chattiness `concise`, and all four behavior toggles on (no_cheerleading, concise_by_default, explicit_uncertainty, separate_facts_from_inference). This is the single Category B deliverable; §7.19 (suggested tools) is declined for now as low-value and overlapping with `scripts/classify-routing.ps1` / `DECISION-002`.
+
+Reason:
+
+`DECISION-009` recorded that communication controls matter but left them unfielded — every fresh session the owner had to restate "be concise, no cheerleading, plain when possible," which is exactly the repeated owner correction §7.16 exists to remove and a direct hit on `DECISION-001` (reduce babysitting). Unlike Category A's routing advisory (more metric than babysitting-reduction), storing the prefs in canonical state and rendering them into the deterministically-generated directive means a disposable/fresh worker chat auto-applies them, consistent with `DECISION-017` (worker-facing standing truth lives in canonical state, not hardcoded in a script) and `DECISION-018` (restart-safe fresh sessions). The task was Task Safety Class C because it edits a schema — a truth surface, Owner Review Matrix row 7 — and was owner-approved before execution.
+
+Implications:
+
+`communication_prefs` is additive to `project-state.schema.json` (its own `additionalProperties:false` sub-object with enum-constrained tone/language_level/chattiness and four booleans) and is now a required top-level field, so it is always present going forward. The directive generator's rendering is guarded: if the field is absent (e.g. an older/backup state), the section is simply omitted rather than erroring — it is worker-facing guidance, not an enforcement gate, and it gates/blocks nothing. Functionally tested (not read-through only): `check-schemas.ps1` passes against the updated state and schema; the generated `worker-directive.md` contains the Communication Defaults section with the seeded values; the absent-field guard was exercised via a backup→remove→run→restore cycle (generator exited 0 and omitted the section, then the section and schema validity were confirmed restored); `validate-cockpit-state.ps1` passes. No script other than `generate-worker-directive.ps1` was modified, no schema other than the additive `communication_prefs` change, and no verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, Acceptance Boundary Rule, or log event type was changed. `DECISION-009` is now fielded rather than merely recorded; it is not superseded (its intent stands, this delivers it).
+
+Supersedes: None
+Related: DECISION-009, DECISION-017, DECISION-018, DECISION-074, archive/PCC Original Project Scope.md, schemas/project-state.schema.json, scripts/generate-worker-directive.ps1
