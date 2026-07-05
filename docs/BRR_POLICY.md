@@ -243,6 +243,16 @@ here.
   deliverables named in `docs/BRR_PLAN.md`. Phase 2 (applying them in live
   task flow) is underway; its own additions to this document follow below.
 
+### Advisory Consultation vs. Verification (standing rule, `DECISION-080`)
+
+Two distinct things both involve asking Codex a question, and they must not be conflated:
+
+**Verification** is Codex reviewing a task's own submitted evidence and writing a binding `PASS`/`FAIL`/`INSUFFICIENT`/`BLOCKED`/`OUT_OF_SCOPE` verdict to `.cockpit/result/verification-result.json` (`docs/VERIFICATION_RESULT_SPEC.md`). This is the two-role split's load-bearing safety property (`DECISION-012`/`DECISION-023`) — the single largest standing risk named in the BRR Phase 5 Readiness Review was every verification being performed by the same party that did the work, and independent verification is what closes that risk. Verification always goes through the live `PCC-CodexVerifyWatcher` scheduled task (`DECISION-067`), on its normal poll cycle, with no timeout-based bypass. **No waiting-time threshold ever justifies self-verifying or skipping the watcher.** If verification is genuinely too slow to be usable, that is itself an owner decision (a possible future fallback, same shape as `DECISION-033`'s prior degraded-mode precedent) — never a worker judgment call to route around silently.
+
+**Advisory consultation** is asking Codex, in its advisor capacity, for a recommendation, opinion, or second read on a genuine judgment call (which owner-decision option to pick, whether a fix approach is sound, etc.) — not a verdict on any task's own evidence. This is not gated by the watcher and never was; `DECISION-079`'s owner-decision consultations were performed via a direct, synchronous `codex exec` call precisely because waiting on the watcher's polling cycle for a non-verification question serves no safety purpose, only adds delay. **Standing rule: for advisory consultations, do not wait on the watcher poll cycle at all — invoke `codex exec` directly and synchronously the moment the question is needed.** There is no minimum or maximum wait time to apply here, because there is no scenario where waiting the watcher's schedule out first improves anything; the only reason to prefer a direct call is removing pointless delay on a question that was never going through the watcher's verification path in the first place.
+
+The dividing line is not urgency or how long the watcher would take — it is **whether Codex's answer is being treated as a binding verdict on submitted evidence (verification, never bypassed) or as input to a decision someone else still makes (advisory, always available on demand).**
+
 ---
 
 ## Governing Principles (BRR Autonomous Operation)

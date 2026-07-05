@@ -1881,3 +1881,25 @@ This is a one-time exception scoped to this single retry call; the script's defa
 
 Supersedes: None
 Related: DECISION-012, DECISION-023, docs/BRR_POLICY.md, scripts/finalize-worker-handback.ps1
+
+---
+
+## DECISION-080: Advisory Consultations Never Wait On The Watcher; Verification Never Gets A Timeout Bypass
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+Formalized as a standing rule (`docs/BRR_POLICY.md`'s new "Advisory Consultation vs. Verification" section) after pcc-pathC-001's retry consultations (`DECISION-079`): when Claude needs Codex's advisory input on a judgment call (not a verdict on a task's own submitted evidence), it invokes `codex exec` directly and synchronously rather than waiting on the `PCC-CodexVerifyWatcher` scheduled task's poll cycle. There is no minimum or maximum wait time governing this — advisory consultations simply do not go through the watcher and never have. Independent **verification** of a task's own evidence, by contrast, always goes through the watcher on its normal schedule; no waiting-time threshold ever justifies self-verifying or bypassing it.
+
+Reason:
+
+The owner observed that a quick, direct diagnosis (identifying the exact fix needed) was far more efficient than waiting on background polling, and proposed a general rule: if waiting on the other LLM exceeds some threshold, "just do the work" instead of waiting idle. Tested against `docs/PROJECT_CHARTER.md`'s core philosophy (owner's own framing: which case aligns with it), this could not be applied uniformly. Applied to advisory consultations, it is a pure efficiency win with zero cost — advisory input was never routed through the watcher's verification path in the first place (`DECISION-079` already established directly calling Codex for a recommendation is a legitimate use of the two-role split), so there is nothing to wait for and no reason to introduce a timer. Applied to verification itself, a timeout-based bypass would let the worker route around independent review whenever Codex is slow — precisely the failure mode BRR's two-role split (`DECISION-012`/`DECISION-023`) exists to prevent, named explicitly as PCC's single largest standing risk in the BRR Phase 5 Readiness Review. The same instinct that made the advisory case fast and safe (Claude reasoning directly instead of idling) would make the verification case unsafe if generalized without the independent check it exists to guarantee.
+
+Implications:
+
+No change to the verification flow, the watcher, or any verdict; `scripts/codex-verify-watcher.ps1` is not modified. The only behavior change is procedural and already-demonstrated: advisory consultations (recommendations, second opinions, judgment-call input) are invoked directly via `codex exec` on demand, with no polling wait, as `DECISION-079` already did twice. If Codex's verification turnaround is ever judged too slow to be workable, that is its own future owner decision (a possible disclosed fallback, same shape as the prior `DECISION-033` precedent) — not something this decision authorizes as a standing bypass.
+
+Supersedes: None
+Related: DECISION-012, DECISION-023, DECISION-066, DECISION-067, DECISION-079, docs/BRR_POLICY.md, docs/PROJECT_CHARTER.md, scripts/codex-verify-watcher.ps1
