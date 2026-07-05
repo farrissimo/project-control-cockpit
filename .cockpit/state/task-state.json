@@ -48,6 +48,6 @@
   "current_blocker": null,
   "owner_decision_request": null,
   "promotion_basis": null,
-  "next_action": "Task 'pcc-pathB-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T18:36:10-06:00"
+  "next_action": "Task 'pcc-pathB-001' is complete and verified PASS. NEXT LANE per DECISION-074 roadmap: Category C - Metrics & Evidence Depth (docs/CCB_PCC_RELATIONSHIP.md section 7; original scope sections 7.23, 12.7, 12.8). Owner/advisor scopes the first Category C task. Maturity Checkpoint follows once Categories A-C are proven and the extractability audit passes.",
+  "updated_at": "2026-07-04T18:37:30-06:00"
 }

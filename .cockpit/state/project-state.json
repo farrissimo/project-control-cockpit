@@ -164,6 +164,6 @@
   "current_blocker": null,
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-pathB-001-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Task 'pcc-pathB-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T18:36:10-06:00"
+  "next_expected_action": "Post-BRR Path-A roadmap (DECISION-074): Category A (pcc-pathA-001, local-first routing) and Category B (pcc-pathB-001, communication preferences) are complete and verified PASS. NEXT LANE: Category C - Metrics & Evidence Depth (see docs/CCB_PCC_RELATIONSHIP.md section 7 roadmap table; original scope archive/PCC Original Project Scope.md sections 7.23, 12.7, 12.8). Owner/advisor scopes the first Category C task, applying the same discipline used for A/B (check what exists first, keep it lean, honor DECISION-074's extractability rule). Per DECISION-074, the Maturity Checkpoint follows once Categories A-C are proven across real cycles and the extractability audit passes.",
+  "updated_at": "2026-07-04T18:37:30-06:00"
 }

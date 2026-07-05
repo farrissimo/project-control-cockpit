@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-04T18:36:11-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T18:39:11-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -38,5 +38,5 @@ Current phase: post-brr
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-pathB-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-pathB-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Task-level: Task 'pcc-pathB-001' is complete and verified PASS. NEXT LANE per DECISION-074 roadmap: Category C - Metrics & Evidence Depth (docs/CCB_PCC_RELATIONSHIP.md section 7; original scope sections 7.23, 12.7, 12.8). Owner/advisor scopes the first Category C task. Maturity Checkpoint follows once Categories A-C are proven and the extractability audit passes.
+* Project-level: Post-BRR Path-A roadmap (DECISION-074): Category A (pcc-pathA-001, local-first routing) and Category B (pcc-pathB-001, communication preferences) are complete and verified PASS. NEXT LANE: Category C - Metrics & Evidence Depth (see docs/CCB_PCC_RELATIONSHIP.md section 7 roadmap table; original scope archive/PCC Original Project Scope.md sections 7.23, 12.7, 12.8). Owner/advisor scopes the first Category C task, applying the same discipline used for A/B (check what exists first, keep it lean, honor DECISION-074's extractability rule). Per DECISION-074, the Maturity Checkpoint follows once Categories A-C are proven across real cycles and the extractability audit passes.
