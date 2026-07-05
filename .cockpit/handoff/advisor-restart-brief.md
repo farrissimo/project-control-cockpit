@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-05T13:36:33-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-05T14:59:37-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,21 +10,22 @@ Current phase: post-brr
 
 ## Active Task
 
-* Task ID: pcc-pathC-001
-* Title: Metrics & Evidence: Extend doctor.ps1 With Dirty-Tree, Branch-Hygiene, And File-Structure Checks
+* Task ID: pcc-pathC-002
+* Title: Truth Surface: Repair Canonical State Drift For Checkpoint Prep
 * Status: complete
-* Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Deliver the original project scope's Stronger Repo Health Diagnostics (archive/PCC Original Project Scope.md §12.7) by extending scripts/doctor.ps1 with three additional read-only, advisory checks it does not currently perform: (1) dirty working tree (uncommitted changes present via 'git status --porcelain'), (2) branch hygiene (current branch matches project-state.json's active_branch, and whether the branch is ahead/behind its upstream if one is configured), and (3) file-structure check (the expected .cockpit/ subdirectories and canonical state files from docs/STATE_MODEL.md are present, and no unexpected top-level .cockpit/ entries exist). This is the first Category C (Metrics & Evidence Depth) task per DECISION-074's roadmap. Scoped and justified against the three-filter test recorded in backlog/IDEAS.md IDEA-012 and docs/PROJECT_CHARTER.md's Core Design Rule (Modularity/Extractability, DECISION-077): purely additive to an already-existing advisory-only script, reduces owner babysitting (these are currently only caught by the owner noticing manually), and introduces no new shared state (reads git plumbing and the filesystem directly, prints report lines, exactly the same shape as doctor.ps1's four existing composed checks). Task Safety Class A: bounded, low-risk, mechanically checkable by running doctor.ps1 and inspecting its output; touches no schema, no state file, no verdict, and no Owner Review Matrix truth surface.
+* Safety Class: C (see docs/BRR_POLICY.md "Task Safety Classification")
+* Objective: Repair the owner-approved canonical-state drift before checkpoint work proceeds: update .cockpit/state/project-state.json so its DECISION-020 summary reflects DECISION-065's supersession of the old per-push approval clause, add the modularity/extractability rule to active_constraints in worker-facing canonical form, regenerate the live handoff artifacts from the updated state, and re-run scripts/validate-cockpit-state.ps1, scripts/check-schemas.ps1, and scripts/doctor.ps1 against the resulting repo state. This is pre-checkpoint Task 1 from the owner-approved sequence, and it is held for independent Codex verification rather than self-close.
 
 ## Last Verified
 
-* Verdict: PASS for task 'pcc-pathC-001', verified at 2026-07-04T20:42:30-06:00
-* Summary: Independent verification passes. The verifier re-ran scripts/verify-handback-guardrails.ps1 successfully, confirmed doctor.ps1 now contains the required read-only Working tree, Branch hygiene, and File structure checks while preserving exit-0 advisory behavior, and found the current evidence package consistent with the amended completion contract. The prior failure mode is closed: DECISION-078 and task-state.json now accurately disclose the disposable-clone method used for the Working-tree clean/dirty proof, while the branch-hygiene and file-structure induced cases remain tested directly against the real repo and restored afterward.
-* Last verified handoff: .cockpit/handoff/archive/pcc-pathC-001-attempt4-worker-directive.md
+* Verdict: PASS for task 'pcc-pathC-002', verified at 2026-07-05T15:00:00-06:00
+* Summary: Independent verification passes. The requested canonical-state repair is present in repo truth, the modularity/extractability rule is now carried in worker-facing state and rendered into the live directive, the mandatory Class C handoff gate was remediated before finalize and created restore point 20260705-145432, and verifier-side guardrails re-run cleanly against the returned-for-verification state with no ISSUE findings.
+* Last verified handoff: .cockpit/handoff/archive/pcc-pathC-002-worker-directive.md
 
 ## Open Issues
 
-* Risk from last verification of 'pcc-pathC-001': The Working-tree clean/dirty proof relies on a one-off owner-approved completion-criterion amendment for this task's structural conflict; that exception should not be generalized to other tasks without separate review.
+* Risk from last verification of 'pcc-pathC-002': This cycle proves the requested end-state, but not clean worker authorship of the two substantive project-state.json truth-surface edits; those edits were already present in the working tree at cycle start and were disclosed rather than re-created for appearance's sake.
+* Risk from last verification of 'pcc-pathC-002': A real process gap remains: the mandatory Class C handoff gate and pre-task backup were skipped during task setup and only remediated mid-cycle before finalize. The remediation is complete and verified for this task, but the setup-time gap itself is not fixed by this task.
 
 ## Read First
 
@@ -38,5 +39,5 @@ Current phase: post-brr
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-pathC-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-pathC-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Task-level: Task 'pcc-pathC-002' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Project-level: Task 'pcc-pathC-002' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.

@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-pathC-002
 * Task Title: Truth Surface: Repair Canonical State Drift For Checkpoint Prep
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: C (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Objective
