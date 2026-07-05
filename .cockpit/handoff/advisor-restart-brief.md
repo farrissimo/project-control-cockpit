@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-04T20:45:16-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-04T22:24:04-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,21 +10,21 @@ Current phase: post-brr
 
 ## Active Task
 
-* Task ID: pcc-pathC-001
-* Title: Metrics & Evidence: Extend doctor.ps1 With Dirty-Tree, Branch-Hygiene, And File-Structure Checks
+* Task ID: pcc-checkpoint-001
+* Title: Pre-Checkpoint Kernel Quality Audit (bundled with DECISION-074's extractability audit)
 * Status: complete
-* Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Deliver the original project scope's Stronger Repo Health Diagnostics (archive/PCC Original Project Scope.md §12.7) by extending scripts/doctor.ps1 with three additional read-only, advisory checks it does not currently perform: (1) dirty working tree (uncommitted changes present via 'git status --porcelain'), (2) branch hygiene (current branch matches project-state.json's active_branch, and whether the branch is ahead/behind its upstream if one is configured), and (3) file-structure check (the expected .cockpit/ subdirectories and canonical state files from docs/STATE_MODEL.md are present, and no unexpected top-level .cockpit/ entries exist). This is the first Category C (Metrics & Evidence Depth) task per DECISION-074's roadmap. Scoped and justified against the three-filter test recorded in backlog/IDEAS.md IDEA-012 and docs/PROJECT_CHARTER.md's Core Design Rule (Modularity/Extractability, DECISION-077): purely additive to an already-existing advisory-only script, reduces owner babysitting (these are currently only caught by the owner noticing manually), and introduces no new shared state (reads git plumbing and the filesystem directly, prints report lines, exactly the same shape as doctor.ps1's four existing composed checks). Task Safety Class A: bounded, low-risk, mechanically checkable by running doctor.ps1 and inspecting its output; touches no schema, no state file, no verdict, and no Owner Review Matrix truth surface.
+* Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
+* Objective: Perform a one-time, tightly bounded read-only audit of PCC's core kernel scripts (all 23 files under scripts/) against IDEA-014's six PCC-native standards (correctness, verification-friendliness, leanness, modularity/extractability, maintainability, failure clarity) to answer one narrow question: is the kernel solid enough to freeze, preserve, and branch from with confidence, ahead of DECISION-074's Maturity Checkpoint. This task also satisfies DECISION-074's own required extractability audit (confirming every script communicates only through the documented .cockpit/ file-bridge contract, with no hidden shared state or undocumented cross-script assumptions), bundled into the same pass per IDEA-014's own noted overlap rather than run as two separate reviews of the same files. This is read-only and produces a report only -- it changes no script's behavior. Findings must sort into exactly three buckets (real risks / maintainability smells / optional polish), per IDEA-014's guardrail against open-ended rewrite churn; polish items are recorded but not acted on. Task Safety Class B: the findings are judgment calls (code-quality assessment), not mechanically checkable, so this task may execute unattended but must not be self-accepted -- independent verifier review is required before acceptance.
 
 ## Last Verified
 
-* Verdict: PASS for task 'pcc-pathC-001', verified at 2026-07-04T20:42:30-06:00
-* Summary: Independent verification passes. The verifier re-ran scripts/verify-handback-guardrails.ps1 successfully, confirmed doctor.ps1 now contains the required read-only Working tree, Branch hygiene, and File structure checks while preserving exit-0 advisory behavior, and found the current evidence package consistent with the amended completion contract. The prior failure mode is closed: DECISION-078 and task-state.json now accurately disclose the disposable-clone method used for the Working-tree clean/dirty proof, while the branch-hygiene and file-structure induced cases remain tested directly against the real repo and restored afterward.
-* Last verified handoff: .cockpit/handoff/archive/pcc-pathC-001-attempt4-worker-directive.md
+* Verdict: PASS for task 'pcc-checkpoint-001', verified at 2026-07-04T21:30:00-06:00
+* Summary: Owner override: task closed complete by explicit, repeated owner instruction. Report content had already been independently verified correct prior to a self-inflicted lock-race producing a spurious FAIL (DECISION-082). No further waiting.
+* Last verified handoff: .cockpit/handoff/worker-directive.md
 
 ## Open Issues
 
-* Risk from last verification of 'pcc-pathC-001': The Working-tree clean/dirty proof relies on a one-off owner-approved completion-criterion amendment for this task's structural conflict; that exception should not be generalized to other tasks without separate review.
+* Risk from last verification of 'pcc-checkpoint-001': This is an owner-directed override of the acceptance boundary, not a fresh independent verifier PASS. The content was independently confirmed once already; the owner explicitly directed closing this out rather than waiting for a clean re-poll.
 
 ## Read First
 
@@ -38,5 +38,5 @@ Current phase: post-brr
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-pathC-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-pathC-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Task-level: Owner directly overrode the acceptance boundary and closed this task complete, per explicit repeated instruction, rather than waiting further on independent verification. Content had already been independently confirmed correct once before an operational lock-race produced a spurious FAIL (see worker-result.md, DECISION-082). Owner/advisor selects the next bounded task.
+* Project-level: Owner/advisor selects the next bounded task.

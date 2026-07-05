@@ -1,0 +1,41 @@
+{
+  "task_id": "pcc-checkpoint-001",
+  "verdict": "FAIL",
+  "verified_at": "2026-07-04T21:14:33.0119907-06:00",
+  "completion_criteria_checked": [
+    "docs/PRECHECKPOINT_KERNEL_AUDIT.md exists, reviews all 23 scripts under scripts/, is explicitly organized by the six IDEA-014 standards, and states a bottom-line verdict in the required shape.",
+    "The report's findings are sorted into exactly three sections: Real risks, Maintainability smells, and Optional polish.",
+    "The report explicitly addresses DECISION-074's extractability rule and names the shared repo-root working-directory assumption.",
+    "The audit remains read-only in scripts/ and schemas/, and docs/DECISIONS.md plus backlog/IDEAS.md contain the required delivery updates.",
+    "Independent verifier guardrails were re-run locally per Repo Governance step 11 before deciding whether PASS is supportable.",
+    "No verdict or task-cycle artifact drift may remain that contradicts live project/task state."
+  ],
+  "evidence_reviewed": [
+    ".cockpit/handoff/advisor-restart-brief.md",
+    "docs/VERIFICATION_RESULT_SPEC.md",
+    "docs/REPO_GOVERNANCE.md",
+    ".cockpit/state/project-state.json",
+    ".cockpit/state/task-state.json",
+    ".cockpit/handoff/worker-directive.md",
+    ".cockpit/result/worker-result.md",
+    "docs/PRECHECKPOINT_KERNEL_AUDIT.md",
+    "docs/DECISIONS.md",
+    "backlog/IDEAS.md",
+    "backlog/details/idea-014-pre-checkpoint-kernel-audit.md",
+    "pwsh -NoProfile -File scripts/verify-handback-guardrails.ps1",
+    "git status --short",
+    "git --no-pager diff --name-only",
+    "git --no-pager diff --unified=80 -- .cockpit/result/verification-result.json .cockpit/state/project-state.json .cockpit/state/task-state.json docs/PRECHECKPOINT_KERNEL_AUDIT.md docs/DECISIONS.md backlog/IDEAS.md",
+    "rg -n \"Review By Standard|### 1\\. Correctness|### 2\\. Verification-friendliness|### 3\\. Leanness|### 4\\. Modularity / extractability|### 5\\. Maintainability|### 6\\. Failure clarity|### Real risks|### Maintainability smells|### Optional polish|## Bottom-Line Verdict\" docs/PRECHECKPOINT_KERNEL_AUDIT.md"
+  ],
+  "missing_evidence": [],
+  "out_of_scope_findings": [],
+  "risks": [
+    "The audit report content now appears to satisfy the previously-missed six-standard organization requirement, but the current cycle still fails independent verification because the local guardrail pass did not come back clean.",
+    "scripts/verify-handback-guardrails.ps1 reported verification drift: .cockpit/result/verification-result.json already contained a PASS verdict for pcc-checkpoint-001 while .cockpit/state/project-state.json and .cockpit/state/task-state.json still recorded the task as returned_for_verification with FAIL as the current verification state.",
+    "Because this is a Class B task, accepting a contradictory prewritten PASS artifact would weaken the independent acceptance boundary the task is required to preserve."
+  ],
+  "summary": "Independent re-verification does not support PASS. The audit report itself is now explicitly organized by the six IDEA-014 standards and still includes the required three finding buckets, extractability conclusion, DECISION-081 entry, and IDEA-014 delivery update. However, the required local re-run of scripts/verify-handback-guardrails.ps1 failed because the repo already contained a PASS verification-result artifact that conflicted with live project/task state, and doctor surfaced that drift as an ISSUE. On this state, PASS is not supportable.",
+  "next_action": "Remove the contradictory prewritten PASS verification artifact/state drift, return the task to a clean returned_for_verification condition, and then re-run independent verification from that consistent state.",
+  "state_update_allowed": false
+}

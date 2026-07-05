@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-checkpoint-001
 * Task Title: Pre-Checkpoint Kernel Quality Audit (bundled with DECISION-074's extractability audit)
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Objective

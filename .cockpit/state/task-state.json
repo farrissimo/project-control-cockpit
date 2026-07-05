@@ -1,45 +1,42 @@
 {
-  "task_id": "pcc-pathC-001",
-  "task_title": "Metrics & Evidence: Extend doctor.ps1 With Dirty-Tree, Branch-Hygiene, And File-Structure Checks",
-  "task_objective": "Deliver the original project scope's Stronger Repo Health Diagnostics (archive/PCC Original Project Scope.md §12.7) by extending scripts/doctor.ps1 with three additional read-only, advisory checks it does not currently perform: (1) dirty working tree (uncommitted changes present via 'git status --porcelain'), (2) branch hygiene (current branch matches project-state.json's active_branch, and whether the branch is ahead/behind its upstream if one is configured), and (3) file-structure check (the expected .cockpit/ subdirectories and canonical state files from docs/STATE_MODEL.md are present, and no unexpected top-level .cockpit/ entries exist). This is the first Category C (Metrics & Evidence Depth) task per DECISION-074's roadmap. Scoped and justified against the three-filter test recorded in backlog/IDEAS.md IDEA-012 and docs/PROJECT_CHARTER.md's Core Design Rule (Modularity/Extractability, DECISION-077): purely additive to an already-existing advisory-only script, reduces owner babysitting (these are currently only caught by the owner noticing manually), and introduces no new shared state (reads git plumbing and the filesystem directly, prints report lines, exactly the same shape as doctor.ps1's four existing composed checks). Task Safety Class A: bounded, low-risk, mechanically checkable by running doctor.ps1 and inspecting its output; touches no schema, no state file, no verdict, and no Owner Review Matrix truth surface.",
+  "task_id": "pcc-checkpoint-001",
+  "task_title": "Pre-Checkpoint Kernel Quality Audit (bundled with DECISION-074's extractability audit)",
+  "task_objective": "Perform a one-time, tightly bounded read-only audit of PCC's core kernel scripts (all 23 files under scripts/) against IDEA-014's six PCC-native standards (correctness, verification-friendliness, leanness, modularity/extractability, maintainability, failure clarity) to answer one narrow question: is the kernel solid enough to freeze, preserve, and branch from with confidence, ahead of DECISION-074's Maturity Checkpoint. This task also satisfies DECISION-074's own required extractability audit (confirming every script communicates only through the documented .cockpit/ file-bridge contract, with no hidden shared state or undocumented cross-script assumptions), bundled into the same pass per IDEA-014's own noted overlap rather than run as two separate reviews of the same files. This is read-only and produces a report only -- it changes no script's behavior. Findings must sort into exactly three buckets (real risks / maintainability smells / optional polish), per IDEA-014's guardrail against open-ended rewrite churn; polish items are recorded but not acted on. Task Safety Class B: the findings are judgment calls (code-quality assessment), not mechanically checkable, so this task may execute unattended but must not be self-accepted -- independent verifier review is required before acceptance.",
   "task_status": "complete",
   "assigned_worker": "Claude Code",
-  "task_safety_class": "A",
+  "task_safety_class": "B",
   "completion_criteria": [
-    "scripts/doctor.ps1 gains a new 'Working tree' check: runs 'git status --porcelain' against the repo root; OK if empty output, WARN if uncommitted changes exist (never ISSUE -- an in-progress working tree is normal, not unsafe). Must not fail doctor.ps1 itself if git is unavailable or the directory is not a repo -- report WARN with a clear detail message in that case instead.",
-    "scripts/doctor.ps1 gains a new 'Branch hygiene' check: compares the current git branch (via 'git rev-parse --abbrev-ref HEAD') against project-state.json's active_branch field; OK if they match, WARN if they differ (naming both). If an upstream is configured, additionally reports ahead/behind counts as informational detail on the same finding; if no upstream is configured, states that plainly rather than treating it as a problem.",
-    "scripts/doctor.ps1 gains a new 'File structure' check: confirms the canonical .cockpit/ subdirectories (backups, handoff, logs, result, state) and canonical state files (.cockpit/state/project-state.json, .cockpit/state/task-state.json, .cockpit/state/handoff-gate.json) exist; OK if all present, ISSUE naming exactly which are missing if not. Additionally flags any top-level entry directly under .cockpit/ that is not one of the five expected subdirectories as a WARN (unexpected file/dir), without treating it as fatal.",
-    "All three new checks are read-only: they must not create, delete, or modify any file, must not call any other script, and must not change doctor.ps1's existing 'always exits 0, advisory-only' contract.",
-    "Functionally tested (not read-through only): Branch-hygiene and file-structure checks tested directly against the real repo (a scratch branch-name value swap and a scratch .cockpit/ subdirectory rename, each reverted immediately) to confirm WARN/ISSUE behavior and that doctor.ps1 still exits 0 throughout. AMENDED 2026-07-04 (owner + Codex advisor agreed, after verification cycle 3, that the real repo cannot simultaneously be genuinely clean and carry this task's own in-progress edits): the Working-tree check's clean-state baseline and its induced dirty-tree case are accepted as satisfied via a disposable local git clone of this repo (git clone --local at current HEAD, with only the new scripts/doctor.ps1 copied in and committed inside that throwaway clone, never touching the real repo's history or any remote, deleted immediately after use) instead of literally against the real repo. This is the disclosed, owner-approved equivalent for this one structurally-conflicting criterion only; it does not relax functional-testing rigor elsewhere in this task or set a standing precedent for other tasks without their own separate owner review.",
-    "A new decision is recorded in docs/DECISIONS.md documenting the delivered checks and the three-filter scoping rationale from IDEA-012. backlog/IDEAS.md's IDEA-012 entry is updated to note delivery.",
-    "No verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, Acceptance Boundary Rule, schema, or any other truth surface is changed. No new log event type is added. No script other than scripts/doctor.ps1 is modified (docs/DECISIONS.md and backlog/IDEAS.md edits are documentation, not code)."
+    "A new report document (docs/PRECHECKPOINT_KERNEL_AUDIT.md) reviews all 23 scripts under scripts/, organized by the six IDEA-014 standards, and states a plain-language bottom-line verdict in IDEA-014's own required shape: solid enough to freeze with no material concerns / solid enough if N concrete issues are fixed first / not yet checkpoint-ready because of specific named risks.",
+    "The report's findings are sorted into exactly three sections: Real risks (could undermine checkpoint confidence, trust, extractability, or correctness), Maintainability smells (not broken now, future babysitting multipliers), and Optional polish (ignored by default unless it unlocks major value). No finding may be left unsorted or split across sections.",
+    "The report explicitly addresses DECISION-074's extractability rule for every script: confirms (or names exceptions to) the claim that each script communicates only via documented .cockpit/ file-bridge inputs/outputs (or schemas/ and docs/ read access) plus subprocess composition (invoking another script and reading its stdout/exit code), with no shared in-process state, no dot-sourcing, and no hidden cross-script assumptions beyond 'run from the repo root as current working directory' (which must itself be named explicitly as the one implicit, shared assumption every script relies on, since it is not enforced or documented per-script today).",
+    "The audit is read-only: it must not modify any script, schema, or state file, and must not fix any of the findings it identifies -- fixing is explicitly out of scope for this task and belongs to separate future bounded tasks if the owner chooses to act on a finding.",
+    "A new decision is recorded in docs/DECISIONS.md summarizing the audit's bottom-line verdict and citing the report. backlog/IDEAS.md's IDEA-014 entry is updated to note delivery and link the report.",
+    "No verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, Acceptance Boundary Rule, or schema is changed. No new log event type is added. No script under scripts/ is modified by this task."
   ],
   "boundaries": {
     "allowed": [
-      "Edit scripts/doctor.ps1 to add the three new checks (Working tree, Branch hygiene, File structure).",
-      "Edit docs/DECISIONS.md to record the new decision.",
-      "Edit backlog/IDEAS.md to update IDEA-012's status/notes to reflect delivery.",
-      "Edit README.md only if needed to note the capability."
+      "Create docs/PRECHECKPOINT_KERNEL_AUDIT.md (new file) containing the audit report.",
+      "Edit docs/DECISIONS.md to record the audit's bottom-line decision.",
+      "Edit backlog/IDEAS.md to update IDEA-014's status/notes to reflect delivery."
     ],
     "forbidden": [
-      "Do not modify any script other than scripts/doctor.ps1.",
-      "Do not change doctor.ps1's always-exit-0 advisory-only contract, or make any new check a blocking/gating condition.",
-      "Do not add any new log event type or write to routing-log.jsonl.",
-      "Do not change any schema, verdict, task status enum, Task Safety Class definition, the Owner Review Matrix, Stop-Instead-of-Guess triggers, or any Acceptance Boundary Rule.",
-      "Do not commit or leave behind any scratch artifacts used to induce test cases (uncommitted changes, renamed directories, scratch branches) -- the real repo must be restored to its clean pre-task state before completion evidence is written.",
+      "Do not modify any file under scripts/.",
+      "Do not modify any schema.",
+      "Do not modify .cockpit/state/project-state.json or task-state.json content beyond the normal task-cycle fields the handoff/handback scripts themselves manage.",
+      "Do not act on any finding (no fixes, no refactors, no cleanup) -- this task reports only.",
+      "Do not expand scope into archived artifacts, broad doc rewrites outside docs/PRECHECKPOINT_KERNEL_AUDIT.md, or speculative architecture redesign, per IDEA-014's explicit non-goals.",
       "Do not manually invoke 'codex exec' for this task's own verification -- let the live PCC-CodexVerifyWatcher scheduled task handle it."
     ]
   },
   "required_evidence": [
     "Files created or changed.",
-    "Summary of changes.",
-    "Commands run, if any.",
-    "Command/test results, if any (including the induced-failure test cases and confirmation the repo was restored afterward).",
+    "Summary of the audit's method (which scripts were read, how the six standards were applied).",
+    "The bottom-line verdict and its justification.",
     "Known risks.",
     "Unresolved assumptions.",
-    "Confirmation that forbidden scope was not touched."
+    "Confirmation that forbidden scope was not touched (no fixes applied, no scripts modified)."
   ],
-  "attempts": 4,
+  "attempts": 3,
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
@@ -47,6 +44,6 @@
   "current_blocker": null,
   "owner_decision_request": null,
   "promotion_basis": null,
-  "next_action": "Task 'pcc-pathC-001' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-04T20:45:14-06:00"
+  "next_action": "Owner directly overrode the acceptance boundary and closed this task complete, per explicit repeated instruction, rather than waiting further on independent verification. Content had already been independently confirmed correct once before an operational lock-race produced a spurious FAIL (see worker-result.md, DECISION-082). Owner/advisor selects the next bounded task.",
+  "updated_at": "2026-07-04T21:16:36-06:00"
 }

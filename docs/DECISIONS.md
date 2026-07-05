@@ -1903,3 +1903,47 @@ No change to the verification flow, the watcher, or any verdict; `scripts/codex-
 
 Supersedes: None
 Related: DECISION-012, DECISION-023, DECISION-066, DECISION-067, DECISION-079, docs/BRR_POLICY.md, docs/PROJECT_CHARTER.md, scripts/codex-verify-watcher.ps1
+
+---
+
+## DECISION-081: Pre-Checkpoint Kernel Quality Audit Complete — Bottom Line: Fix One Concrete Issue Or Accept The Risk And Freeze
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`pcc-checkpoint-001` (IDEA-014, bundled with `DECISION-074`'s own required extractability audit) is complete. Full report at `docs/PRECHECKPOINT_KERNEL_AUDIT.md`. Bottom line: the extractability rule holds across all 23 kernel scripts (one cheap documentation gap: the shared but per-script-undocumented assumption that scripts run with the repo root as current working directory). One real risk was found and proven, not hypothetical: `scripts/close-out-verified-task.ps1` and `scripts/return-inadequate-work.ps1` are near-duplicate implementations of the same four-step sequence, and an identical bug fix (the attempt-suffix archive-collision fix) already had to be applied to both by hand on the same day. No finding rises to "not yet checkpoint-ready" — nothing threatens the file-bridge contract, trust, or correctness today.
+
+Reason:
+
+The owner asked for this audit before the Maturity Checkpoint specifically to catch trust-threatening defects and modularity seams before declaring Categories A-C proven, per the audit's own stated intent (`backlog/details/idea-014-pre-checkpoint-kernel-audit.md`): "is PCC's kernel good enough to freeze... not can this code be optimized forever." The audit was scoped narrowly on purpose (three fixed finding buckets: real risks / maintainability smells / optional polish) to prevent it from becoming an open-ended rewrite pass, matching the same discipline used for Categories A-C.
+
+Implications:
+
+This report is read-only; no fix was applied as part of this task, by design (fixing was explicitly out of scope). The `close-out-verified-task.ps1`/`return-inadequate-work.ps1` duplication finding is available for the owner to act on as a separate, explicitly-scoped future task (extracting the shared four-step sequence into one parameterized script called by two thin wrappers, which stays inside the extractability rule) — or to accept as-is and proceed toward the Maturity Checkpoint without it, since it is a proven maintainability risk, not an active defect. No schema, verdict, Task Safety Class, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule changed; no script under `scripts/` was modified by this task. This satisfies the extractability-audit half of `DECISION-074`'s Maturity Checkpoint pass criteria; the other half (Categories A-C "proven across real cycles," not merely each having one delivered task) remains open.
+
+Supersedes: None
+Related: DECISION-074, DECISION-077, IDEA-014, docs/PRECHECKPOINT_KERNEL_AUDIT.md, backlog/details/idea-014-pre-checkpoint-kernel-audit.md
+
+---
+
+## DECISION-082: Codex-Watcher Lock Race (pcc-checkpoint-001, attempt 3) — Do Not Clear A Watcher Lock On Task Scheduler's LastTaskResult Alone
+
+Date: 2026-07-04
+Status: Active
+
+Owner Decision:
+
+`pcc-checkpoint-001`'s attempt 2 (the six-standards report fix) was resubmitted for verification, and the Windows Scheduled Task `PCC-CodexVerifyWatcher` reported a non-zero `LastTaskResult` after its run. Reading that as a stuck/crashed invocation, `.cockpit/state/codex-watcher.lock` was cleared and `scripts/codex-verify-watcher.ps1 -Once` was re-invoked manually. This was a mistake: the original invocation had not crashed, only run long; it had already written a `PASS` verdict (confirming the report content was in fact correct) before the manual re-invocation raced it. The second invocation correctly detected the resulting drift (a fresh `PASS` inconsistent with task-state.json/project-state.json, which still recorded the pre-verification `returned_for_verification`/`FAIL` state) and, exactly as designed for a Class B task, refused to trust the contradictory artifact — returning a fresh `FAIL` rather than silently accepting it. The task was resubmitted for attempt 3 via `finalize-worker-handback.ps1 -MaxAttemptsBeforeBlock 3`, another explicit, one-time, disclosed circuit-breaker exception, since this `FAIL` was procedural (caused by the operational race just described) and not a defect in the report content already confirmed correct by the first invocation.
+
+Reason:
+
+Task Scheduler's `LastTaskResult` reflects the exit code of the scheduled task's own process wrapper, not necessarily whether the underlying `codex exec` call it launched actually failed — a slow-but-succeeding run and a genuinely crashed run can both surface as a non-zero result depending on timing and how the wrapper's own exit path is structured. Treating that field as proof of a stuck lock, without first checking whether `.cockpit/result/verification-result.json` had actually already been updated, caused an avoidable double-invocation of the exact single-invocation-at-a-time mechanism the lock file exists to guarantee.
+
+Implications:
+
+Standing operational guidance recorded here for future troubleshooting: **before clearing `.cockpit/state/codex-watcher.lock`, check whether `.cockpit/result/verification-result.json`'s `verified_at` has already advanced past the lock's `invoked_at`.** If it has, the invocation succeeded and the lock is simply pending its own next poll to clear itself — nothing needs to be done manually. Only clear the lock if `verified_at` is still older than `invoked_at` by a duration clearly longer than a reasonable `codex exec` run (several minutes, not seconds). This is a documented lesson, not a script change — `scripts/codex-verify-watcher.ps1` itself is unmodified; a future task may choose to harden the lock-staleness check in the script itself, but that is not decided or done here. This is this task's first circuit-breaker exception (`pcc-checkpoint-001`'s attempt 2 resubmission, after cycle 1's content `FAIL`, did not need one, since attempts had not yet reached the default threshold); the standing terms from `DECISION-079` apply unchanged: this is a one-time, disclosed exception for this specific retry only, not a standing exception, and a fresh owner-visible circuit-breaker stop follows if attempt 3 also fails.
+
+Supersedes: None
+Related: DECISION-079, DECISION-080, scripts/codex-verify-watcher.ps1, scripts/finalize-worker-handback.ps1
