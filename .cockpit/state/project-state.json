@@ -138,6 +138,12 @@
       "decision": "BRR Phase 5 is closed and BRR's original goal (DECISION-001/DECISION-021) is declared satisfied, now that independent Codex verification (the single largest standing risk named in the Phase 5 Readiness Review) has been fielded and proven fully unattended end-to-end (pcc-brr5-004/pcc-brr5-005). PCC moves to post-BRR work. Four items (Class A self-accept unexercised, chaining beyond two cycles untested, fuller BRR Metrics undelivered, no formalized Failure Review Loop) are carried forward as non-blocking backlog. All standing BRR-era policy remains active.",
       "date": "2026-07-04",
       "status": "active"
+    },
+    {
+      "id": "DECISION-082",
+      "decision": "Plain language is the standing default for user-facing explanations. Repo/process terms must be translated immediately rather than left as internal jargon.",
+      "date": "2026-07-05",
+      "status": "active"
     }
   ],
   "active_constraints": [
@@ -151,11 +157,12 @@
   "worker_context_facts": [
     "Worker claims are evidence, not truth.",
     "Claude Code is ready and pointed at this repository workspace.",
-    "PCC owns the worker handoff contract through repo files; the owner should not need to restate the instructions manually."
+    "PCC owns the worker handoff contract through repo files; the owner should not need to restate the instructions manually.",
+    "When explaining repo state, workflow, or decisions, use plain language first and translate any necessary jargon immediately."
   ],
   "communication_prefs": {
     "tone": "direct",
-    "language_level": "mixed",
+    "language_level": "plain",
     "chattiness": "concise",
     "no_cheerleading": true,
     "concise_by_default": true,
@@ -166,5 +173,5 @@
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-pathC-003-worker-directive.md",
   "last_verification_verdict": "PASS",
   "next_expected_action": "Task 'pcc-pathC-003' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-05T15:15:18-06:00"
+  "updated_at": "2026-07-05T15:24:00-06:00"
 }

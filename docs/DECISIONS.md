@@ -1930,3 +1930,25 @@ This closes the Category C portion of the checkpoint's pass criterion 1 (Categor
 
 Supersedes: None
 Related: DECISION-074, DECISION-075, DECISION-076, DECISION-078, backlog/IDEAS.md (IDEA-012, IDEA-013, IDEA-014), docs/CCB_PCC_RELATIONSHIP.md
+
+---
+
+## DECISION-082: Plain-Language Explanations Are The Standing Default, And Repo Jargon Must Be Translated Immediately
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+PCC's standing communication default is plain language, not mixed repo/process language. When explaining project state, task status, decisions, workflow steps, or checkpoint readiness, the advisor/worker must use plain language first. If a repo-specific or process-specific term is necessary, it must be translated immediately in the same answer rather than left hanging as internal jargon.
+
+Reason:
+
+The project's purpose is to reduce owner babysitting, and repeated requests to "say what this means in non-tech terms" are themselves babysitting. PCC already fields communication preferences in canonical state (`communication_prefs`, `DECISION-076`), but the seeded setting still said `language_level: mixed`, which left too much room for repo-native shorthand to leak into user-facing explanations. That created exactly the repeated correction loop the communication-controls feature exists to prevent.
+
+Implications:
+
+`.cockpit/state/project-state.json` is updated so `communication_prefs.language_level` is `plain`, and a worker-context fact is added stating that repo/workflow/decision explanations must use plain language first and translate any necessary jargon immediately. This is standing repo truth for future sessions and generated directives; the owner should not need to restate it. This decision does not change any task status, verdict, schema, Task Safety Class, Owner Review Matrix row, Stop-Instead-of-Guess trigger, Acceptance Boundary Rule, or script behavior. It tightens the meaning of the already-fielded communication default rather than introducing a new subsystem.
+
+Supersedes: None
+Related: DECISION-001, DECISION-009, DECISION-017, DECISION-018, DECISION-076, .cockpit/state/project-state.json

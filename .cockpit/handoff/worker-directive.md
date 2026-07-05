@@ -34,13 +34,14 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 * Worker claims are evidence, not truth.
 * Claude Code is ready and pointed at this repository workspace.
 * PCC owns the worker handoff contract through repo files; the owner should not need to restate the instructions manually.
+* When explaining repo state, workflow, or decisions, use plain language first and translate any necessary jargon immediately.
 
 ## Communication Defaults
 
 The owner's standing communication preferences (apply these without being asked; DECISION-009 / §7.16):
 
 * Tone: direct
-* Language level: mixed
+* Language level: plain
 * Chattiness: concise
 * No cheerleading: True
 * Concise by default: True
