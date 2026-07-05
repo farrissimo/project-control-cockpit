@@ -2036,3 +2036,31 @@ No further pre-checkpoint work remains. The next real step is optional but now p
 
 Supersedes: DECISION-083 as the authoritative checkpoint-reached record
 Related: DECISION-074, DECISION-077, DECISION-081, DECISION-083, pcc-pathC-004, docs/CCB_PCC_RELATIONSHIP.md, docs/PROJECT_CHARTER.md
+
+---
+
+## DECISION-085: Maturity Checkpoint Kernel Frozen And Backed Up (Baseline Preservation)
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+The optional baseline-preservation step named in `DECISION-084` has been performed. The kernel at the checkpoint commit is frozen and backed up as follows:
+
+* An annotated git tag `checkpoint-2026-07-05` marks the exact checkpoint commit (`83dd7f1`, the commit that recorded `DECISION-084`).
+* A git bundle (`pcc-checkpoint-2026-07-05.bundle`, containing the `main` branch history and the `checkpoint-2026-07-05` tag) was created as the canonical frozen artifact, stored at `C:\PCC-Checkpoints\` — outside the live repository and outside any path PCC's own scripts read from or write to.
+* The bundle was independently restore-tested before being treated as trustworthy: cloned into a disposable scratch directory, `main` checked out, and confirmed to reproduce `HEAD` `83dd7f1` exactly, with the tracked file count matching the live repo (241/241) and a clean working tree. The scratch clone was deleted after verification.
+* The local bundle file was marked read-only at the Windows filesystem level (not merely a Unix permission bit).
+* A second copy of the same bundle file was placed by the owner on a private cloud location (Google Cloud), off this machine, as the offsite copy.
+
+Reason:
+
+The owner's standing intent (stated before the checkpoint was reached) was to take a full backup of the project at the checkpoint, move it to a safe place, and mark it "do not touch," so that a trusted baseline survives independent of the live, still-evolving repo. A live folder copy was rejected in favor of a tagged git bundle: a single portable file carrying full history is harder to casually alter or confuse with an active workspace than a folder tree, and its integrity is independently checkable (as this cycle's restore test demonstrated) rather than assumed. Two copies (local + offsite) were kept so the baseline does not depend on the survival of a single machine or drive.
+
+Implications:
+
+This is preservation of an already-reached checkpoint, not a new gate: it does not reopen, re-verify, or alter `DECISION-084`'s basis for checkpoint-reached, and it changes no script, schema, verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule. The tag and bundle are outside PCC's own file-bridge contract by design (a frozen baseline must not be something PCC's own live machinery can read, write, or accidentally disturb), so this decision is their only record in repo truth; the bundle's own contents and the offsite copy's existence are not independently re-verifiable from within the live repo going forward and are recorded here on the owner's direct confirmation plus the restore test performed in this cycle. A second, pre-existing git tag, `recovery-before-rogue-window-20260705`, was also found in the repo during this work; it was not created as part of this decision and its origin is not established here.
+
+Supersedes: None
+Related: DECISION-084, DECISION-074
