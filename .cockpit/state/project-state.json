@@ -149,12 +149,19 @@
       "id": "DECISION-083",
       "decision": "The bounded extractability audit passes. PCC has reached the Maturity Checkpoint and is sound enough to freeze, back up, and branch from.",
       "date": "2026-07-05",
+      "status": "superseded"
+    },
+    {
+      "id": "DECISION-084",
+      "decision": "PCC has now properly reached the Maturity Checkpoint on the completed and independently verified pcc-pathC-004 audit cycle. The kernel is ready to freeze, back up, and branch from.",
+      "date": "2026-07-05",
       "status": "active"
     }
   ],
   "active_constraints": [
     "Reduce owner babysitting.",
     "Keep V1 lean.",
+    "Favor modularity and extractability: every PCC capability must stay a clearly bounded unit over the .cockpit file bridge with no hidden shared state or undocumented cross-script assumptions.",
     "Every PCC capability must use a documented .cockpit file-bridge contract with no hidden shared state or undocumented cross-script assumptions.",
     "State updates require verifier PASS or explicit owner override.",
     "Prefer local deterministic tools before model usage.",
@@ -176,8 +183,8 @@
     "separate_facts_from_inference": true
   },
   "current_blocker": null,
-  "last_verified_handoff": ".cockpit/handoff/archive/pcc-pathC-003-worker-directive.md",
+  "last_verified_handoff": ".cockpit/handoff/archive/pcc-pathC-004-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Worker evidence for task 'pcc-pathC-004' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict.",
-  "updated_at": "2026-07-05T15:43:25-06:00"
+  "next_expected_action": "Maturity Checkpoint is now properly reached on verified PASS of pcc-pathC-004. The next optional step is to freeze and back up this kernel baseline, then choose the post-checkpoint direction from evidence.",
+  "updated_at": "2026-07-05T16:02:00-06:00"
 }

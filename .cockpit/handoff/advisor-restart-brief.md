@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-05T15:43:27-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-05T15:54:01-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -12,20 +12,20 @@ Current phase: post-brr
 
 * Task ID: pcc-pathC-004
 * Title: Checkpoint Gate: Bounded Extractability Audit (Verified Cycle)
-* Status: returned_for_verification
+* Status: complete
 * Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 * Objective: Run the bounded extractability audit as a real two-role PCC cycle to satisfy Maturity Checkpoint criterion 2 (docs/CCB_PCC_RELATIONSHIP.md §8), replacing the self-declared DECISION-083 with a properly worker-produced, independently Codex-verified audit. DECISION-083 recorded 'extractability audit passes / checkpoint reached' directly in the decision log without a bounded task or independent verification; this task supplies the missing verified proof. Working only from repo truth, audit whether the extractability rule (DECISION-074/077: every capability is a discrete unit with an explicit .cockpit/ file-bridge contract, no hidden shared state, no undocumented cross-script assumptions) actually holds across the scripts changed since DECISION-074 plus the direct bridge/support scripts they rely on. Produce the audit and its evidence in .cockpit/result/worker-result.md, sorted strictly into real blockers / maintainability smells / optional polish. This task does NOT record checkpoint-reached and does NOT edit DECISION-083 or any doc/script/schema; recording checkpoint-reached is a separate step that happens only after Codex issues PASS.
 
 ## Last Verified
 
-* Verdict: PASS for task 'pcc-pathC-003', verified at 2026-07-05T15:16:00-06:00
-* Summary: Independent verification passes. DECISION-081 records the required Category C checkpoint-accounting call in bounds, chooses one allowed outcome clearly, grounds that judgment in existing repo truth about IDEA-012, IDEA-013, and DECISION-074, and leaves the final bounded extractability audit as the only remaining pre-checkpoint gate.
-* Last verified handoff: .cockpit/handoff/archive/pcc-pathC-003-worker-directive.md
+* Verdict: PASS for task 'pcc-pathC-004', verified at 2026-07-05T15:49:00-06:00
+* Summary: Independent verification passes. The worker completed the bounded extractability audit in scope, grounded its per-script findings in the audited files, found no real blocker to extractability, and correctly identified DECISION-083's issue as a process-timing problem rather than a substantive contradiction. This supplies the missing two-role proof for checkpoint criterion 2.
+* Last verified handoff: .cockpit/handoff/archive/pcc-pathC-004-worker-directive.md
 
 ## Open Issues
 
-* Risk from last verification of 'pcc-pathC-003': This is a judgment-record task rather than a purely mechanical one. The PASS verdict rests on the repo's own stated checkpoint bar and the cited backlog and decision records, not on a script-checkable proof.
-* Risk from last verification of 'pcc-pathC-003': DECISION-081 keeps IDEA-013 deferred based on its current incident-gated rationale. If a concrete evidence-review failure appears later, that idea should still be promoted then.
+* Risk from last verification of 'pcc-pathC-004': DECISION-083 remains in repo truth ahead of the formal post-PASS cleanup. Its substantive conclusion is now supported by this verified audit, but the repo still needs a final follow-through step to record checkpoint-reached on the back of this PASS rather than leaving the earlier premature wording standing alone.
+* Risk from last verification of 'pcc-pathC-004': The audit is intentionally bounded to the named script set and direct support scripts. That matches the task contract and the checkpoint framing used for this cycle.
 
 ## Read First
 
@@ -39,5 +39,5 @@ Current phase: post-brr
 
 ## What Happens Next
 
-* Task-level: Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.
-* Project-level: Worker evidence for task 'pcc-pathC-004' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict.
+* Task-level: Task 'pcc-pathC-004' is complete and verified PASS. That verified cycle is the basis for the checkpoint: the next optional step is to freeze and back up this kernel baseline.
+* Project-level: Maturity Checkpoint is now properly reached on verified PASS of pcc-pathC-004. The next optional step is to freeze and back up this kernel baseline, then choose the post-checkpoint direction from evidence.

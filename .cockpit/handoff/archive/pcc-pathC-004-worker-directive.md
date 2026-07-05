@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-pathC-004
 * Task Title: Checkpoint Gate: Bounded Extractability Audit (Verified Cycle)
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Objective
@@ -27,7 +27,6 @@ Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bo
 * Project Control Cockpit is a local-first AI project control board.
 * Reduce owner babysitting.
 * Keep V1 lean.
-* Favor modularity and extractability: every PCC capability must stay a clearly bounded unit over the .cockpit file bridge with no hidden shared state or undocumented cross-script assumptions.
 * Every PCC capability must use a documented .cockpit file-bridge contract with no hidden shared state or undocumented cross-script assumptions.
 * State updates require verifier PASS or explicit owner override.
 * Prefer local deterministic tools before model usage.

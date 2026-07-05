@@ -1958,7 +1958,7 @@ Related: DECISION-001, DECISION-009, DECISION-017, DECISION-018, DECISION-076, .
 ## DECISION-083: Bounded Extractability Audit Passes; PCC Has Reached The Maturity Checkpoint
 
 Date: 2026-07-05
-Status: Active
+Status: Superseded
 
 Owner Decision:
 
@@ -1999,3 +1999,40 @@ No further pre-checkpoint task is required. The next real action is the stop-and
 
 Supersedes: None
 Related: DECISION-074, DECISION-077, DECISION-078, DECISION-081, IDEA-014, docs/CCB_PCC_RELATIONSHIP.md, docs/PROJECT_CHARTER.md
+
+Note added after independent verification and close-out: this decision's substantive conclusion was later supported by the real two-role audit cycle (`pcc-pathC-004`), but this entry itself was recorded too early. `DECISION-084` is the authoritative checkpoint-reached record because it is grounded in the completed worker-plus-verifier cycle rather than declared ahead of it.
+
+---
+
+## DECISION-084: Maturity Checkpoint Properly Reached On Verified PASS Of pcc-pathC-004
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+PCC has now properly reached the Maturity Checkpoint. The basis is the completed and independently verified bounded extractability audit cycle (`pcc-pathC-004`), now closed out in repo truth. This kernel is ready to freeze, back up, and branch from.
+
+Reason:
+
+`DECISION-083` recorded the right substantive conclusion too early: it asserted checkpoint-reached before the checkpoint's last gate had gone through the required two-role proof path. That process gap is now closed.
+
+The missing proof has been supplied end to end:
+
+* the worker produced the bounded extractability audit and evidence in `pcc-pathC-004`;
+* Codex independently verified that audit as `PASS`;
+* the task was then closed out through the normal post-PASS repo path, archiving the directive, worker result, and verification result.
+
+That matters because `docs/CCB_PCC_RELATIONSHIP.md` §8 does not treat the checkpoint as "specified well enough" or "probably true." Its standard is that the system be demonstrated with real evidence. After `DECISION-081`, the only remaining checkpoint gate was criterion 2: prove in a bounded audit task that the extractability rule actually holds in the real kernel. `pcc-pathC-004` now supplies that proof on the project's own terms.
+
+Implications:
+
+The checkpoint is now reached on the footing PCC itself requires:
+
+1. Categories A-C were already recorded as substantially complete across real cycles (`DECISION-081`).
+2. Criterion 2 is now satisfied by a completed worker-produced, independently verified, and closed-out audit cycle (`pcc-pathC-004`), not by assertion alone.
+
+No further pre-checkpoint work remains. The next real step is optional but now properly available: freeze and back up this kernel as the preserved baseline, then decide from evidence whether to branch toward a CCB-v2 seed, continue PCC as a standalone control center, or both later. Category D (UI) remains post-checkpoint exactly as already recorded.
+
+Supersedes: DECISION-083 as the authoritative checkpoint-reached record
+Related: DECISION-074, DECISION-077, DECISION-081, DECISION-083, pcc-pathC-004, docs/CCB_PCC_RELATIONSHIP.md, docs/PROJECT_CHARTER.md
