@@ -1903,3 +1903,30 @@ No change to the verification flow, the watcher, or any verdict; `scripts/codex-
 
 Supersedes: None
 Related: DECISION-012, DECISION-023, DECISION-066, DECISION-067, DECISION-079, docs/BRR_POLICY.md, docs/PROJECT_CHARTER.md, scripts/codex-verify-watcher.ps1
+
+---
+
+## DECISION-081: Category C (Metrics & Evidence Depth) Substantially Complete For Checkpoint Purposes; IDEA-013 Stays Deferred (pcc-pathC-003)
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+Category C (Metrics & Evidence Depth) is recorded as **substantially complete for Maturity Checkpoint purposes** (`docs/CCB_PCC_RELATIONSHIP.md` §8 pass criterion 1; `DECISION-074`). Of Category C's two backlog items, `IDEA-012` (Repo Health Checks) is delivered and exercised on a real, independently-verified task cycle (`pcc-pathC-001` / `DECISION-078`), and `IDEA-013` (Richer evidence review during verification) remains deliberately deferred at `proposed`, not promoted. No additional Category C task is required before the checkpoint. This is the owner-approved pre-checkpoint Task 2, recorded after the `DECISION-020`/`active_constraints` state-drift repair (`pcc-pathC-002`) and before the final extractability audit gate. It is held for independent Codex verification, not self-closed.
+
+Reason:
+
+The checkpoint's own bar is "substantially complete ... exercised on real task cycles, not just spec'd" — not "every conceivable Category C idea built." Judged against that bar from repo truth:
+
+* `IDEA-012` is the category's one deliverable-shaped item and is DELIVERED: three read-only `doctor.ps1` checks (working-tree, branch-hygiene, file-structure), functionally tested including induced-failure cases, verified PASS through the two-role split (`DECISION-078`). That is a real exercised cycle, satisfying the "exercised, not spec'd" requirement.
+* `IDEA-013` is not a checkpoint blocker. Its own backlog reasoning (2026-07-04) already records why: verification here is an AI verifier reading evidence, not a deterministic script, so it has no bounded structural target; absent a concrete, nameable evidence-review failure, promoting it would be "the verifier should look harder" — a process instruction with no bounded feature behind it, the same shape of thing `IDEA-001` was declined for, and the exact bloat the backlog and the charter's leanness rule exist to filter out. It is intentionally incident-gated: held until a real evidence gap surfaces, then promoted with a concrete target.
+
+Deferring `IDEA-013` is therefore the lean, honest call, consistent with the charter's failure criterion "adds more process than it removes" and the three-filter scoping test in `docs/PROJECT_CHARTER.md`'s Core Design Rule.
+
+Implications:
+
+This closes the Category C portion of the checkpoint's pass criterion 1 (Categories A–C). With Category A (`DECISION-075`, `classify-routing.ps1`) and Category B (`DECISION-076`, `communication_prefs`) already recorded and the Category C state-drift repair complete (`pcc-pathC-002`), the sole remaining pre-checkpoint gate is criterion 2: the bounded extractability audit (`IDEA-014` / `DECISION-074`), which stays a separate task and was explicitly out of scope here. `IDEA-013` remains available for future promotion if and when a concrete evidence-review failure appears; this decision does not abandon it, only records that it is not required for the checkpoint. No product behavior, script logic, schema, verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule is changed — this is an accounting record only.
+
+Supersedes: None
+Related: DECISION-074, DECISION-075, DECISION-076, DECISION-078, backlog/IDEAS.md (IDEA-012, IDEA-013, IDEA-014), docs/CCB_PCC_RELATIONSHIP.md
