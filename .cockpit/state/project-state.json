@@ -156,6 +156,12 @@
       "decision": "PCC has now properly reached the Maturity Checkpoint on the completed and independently verified pcc-pathC-004 audit cycle. The kernel is ready to freeze, back up, and branch from.",
       "date": "2026-07-05",
       "status": "active"
+    },
+    {
+      "id": "DECISION-088",
+      "decision": "LLM use is minimized to irreducible judgment/verification. PCC's own tool runtime (scripts, dashboard) must be 100% local-deterministic with zero LLM dependency; task execution uses local shell tools by default, with an LLM only for the judgment portion a script cannot do; verification is the one structurally unavoidable LLM use, treated as the deliberately minimized exception.",
+      "date": "2026-07-05",
+      "status": "active"
     }
   ],
   "active_constraints": [
@@ -186,5 +192,5 @@
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-pathC-004-worker-directive.md",
   "last_verification_verdict": "PASS",
   "next_expected_action": "Path A is confirmed as the post-checkpoint direction and its plan of record is canonical at docs/PATH_A_PLAN.md (DECISION-087). The next buildable Path A task is pcc-pathD-001 (Category D, Phase D1: read-only Owner Control Board dashboard), promotable directly from docs/PATH_A_PLAN.md section 6 through the normal worker/verifier cycle. No further planning is required to begin Category D.",
-  "updated_at": "2026-07-05T17:30:00-06:00"
+  "updated_at": "2026-07-05T18:15:00-06:00"
 }
