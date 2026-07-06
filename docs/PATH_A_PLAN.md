@@ -132,7 +132,7 @@ the same technology — the read-only board is grown, not thrown away.
 | B — Behavior & Tooling Controls | 2 (pre-checkpoint) | ✅ Done — `DECISION-076` (`pcc-pathB-001`) |
 | C — Metrics & Evidence Depth | 3 (pre-checkpoint) | ✅ Done — `DECISION-081` (`pcc-pathC-001..004`) |
 | **Maturity Checkpoint** | Milestone | ✅ Reached — `DECISION-084`; frozen `DECISION-085` |
-| **D — Product Surface (UI)** | Post-checkpoint | 🔶 In progress — Phase D1 (`pcc-pathD-001..003`) delivered; next is Phase D2, `pcc-pathD-004` (§6) |
+| **D — Product Surface (UI)** | Post-checkpoint | 🔶 In progress — Phase D1 complete; `pcc-pathD-004` delivered; next is `pcc-pathD-005` (§6) |
 | E — Multi-Model/Multi-Agent | Deferred | Path-B / CCB-domain scope |
 | F — Knowledge & Memory | Deferred | Gated on proven need |
 
@@ -207,7 +207,7 @@ controls, calls no engine script.
 
 #### Phase D2 — Live refresh + full panel set (still read-only)
 
-- **`pcc-pathD-004` — Auto-refresh / watch mode:** poll `.cockpit/` files and
+- **`pcc-pathD-004` — Auto-refresh / watch mode** — ✅ **DELIVERED** (`DECISION-094`, pending verification): poll `.cockpit/` files and
   re-render; remains read-only.
 - **`pcc-pathD-005` — Session/Usage panel (honest-only):** the honest home for
   original scope §7.17. Shows only truthfully-derivable facts — current route

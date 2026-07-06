@@ -13,16 +13,16 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-pathD-003
-* Task Title: Routing / Local Tools Read-Only Panel
-* Task Status: complete
+* Task ID: pcc-pathD-004
+* Task Title: Auto-Refresh / Watch Mode (Phase D2, Read-Only)
+* Task Status: returned_for_verification
 * Task Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Auto-Promotion Basis
 
-* Approved lane: Path A / Category D / Phase D1
-* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-003)
-* Justification (continuation, not a fork): Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner said to keep going until told to stop, with verification paused before each cycle.
+* Approved lane: Path A / Category D / Phase D2
+* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-004)
+* Justification (continuation, not a fork): Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner said to keep going until told to stop, with verification paused before each cycle. Folds in the minor header-comment correction disclosed in pcc-pathD-003's verification (DECISION-093 / verification-result.json's next_action).
 ## Objective
 
 Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bounded task below, and return your result to `.cockpit/result/worker-result.md` using the required evidence format.
@@ -55,28 +55,31 @@ The owner's standing communication preferences (apply these without being asked;
 * Separate facts from inference: True
 ## Exact Next Action
 
-Extend scripts/generate-dashboard.ps1 (pcc-pathD-001/002) per docs/PATH_A_PLAN.md section 6, Phase D1, with the Local Tools Panel and a routing-history summary: the Local Tools Panel shows classify-routing.ps1's advisory output as display-only text (the panel never executes anything); the routing-history summary is a read-only tail of .cockpit/logs/routing-log.jsonl. This is a deliberate, disclosed, narrow exception to pcc-pathD-001/002's stricter 'calls no other script' rule: scripts/classify-routing.ps1 is invoked as an explicit subprocess and its stdout captured as display text, mirroring scripts/doctor.ps1's already-audited composition pattern (explicit subprocess + stdout consumption, no hidden shared state) rather than introducing a new hidden coupling. Still zero LLM dependency, zero external runtime (DECISION-088); still writes only the dashboard output file and mutates no .cockpit/ file itself.
+Deliver docs/PATH_A_PLAN.md section 6 Phase D2's first task: a new script scripts/watch-dashboard.ps1 that polls the .cockpit/ files scripts/generate-dashboard.ps1 already reads (project-state.json, task-state.json, verification-result.json, routing-log.jsonl) and re-invokes scripts/generate-dashboard.ps1 (as an explicit subprocess, the same composition pattern already used and verified for classify-routing.ps1 in pcc-pathD-003) whenever any of them changes, so the dashboard/index.html output stays current without the owner manually re-running the generator. Remains strictly read-only over the .cockpit/ bridge: watch-dashboard.ps1 itself never writes any file except by delegating the actual write to generate-dashboard.ps1's own existing, already-read-only render step. As minor housekeeping folded in per the pcc-pathD-003 verification's own next_action, also correct scripts/generate-dashboard.ps1's header comment block, which currently still states the older blanket 'calls no other script' claim alongside the newer, narrower pcc-pathD-003 exception language -- update it to state the current, accurate contract only (reads the four .cockpit/ inputs, invokes exactly one subprocess, classify-routing.ps1, writes only -OutputPath).
 
 ## Allowed Scope
 
 The worker may:
 
-* Edit scripts/generate-dashboard.ps1 to add the Local Tools Panel (invoking scripts/classify-routing.ps1 as an explicit subprocess and capturing its stdout as display text) and the Routing History panel (reading .cockpit/logs/routing-log.jsonl directly).
-* Edit docs/DECISIONS.md to record the new decision, including the explicit justification for the narrow 'calls another script' exception.
-* Edit docs/PATH_A_PLAN.md only to mark pcc-pathD-003 as delivered, not to change its scope or spec.
+* Create scripts/watch-dashboard.ps1 as a new, self-contained script that polls .cockpit/ file mtimes and invokes scripts/generate-dashboard.ps1 as its one permitted subprocess call.
+* Edit scripts/generate-dashboard.ps1's header comment block only, to correct the stale 'calls no other script' contradiction flagged in pcc-pathD-003's verification -- comment-only, no logic change.
+* Edit docs/DECISIONS.md to record the new decision.
+* Edit docs/PATH_A_PLAN.md only to mark pcc-pathD-004 as delivered, not to change its scope or spec.
 * Regenerate dashboard/index.html as part of normal testing (it is a gitignored, generated artifact).
 
 ## Forbidden Scope
 
 The worker must not:
 
-* Do not invoke any script as a subprocess other than scripts/classify-routing.ps1.
-* Do not modify scripts/classify-routing.ps1, scripts/doctor.ps1, or any other existing script besides scripts/generate-dashboard.ps1 itself.
+* Do not change any of scripts/generate-dashboard.ps1's actual logic/behavior; only its header comment block may change.
+* Do not invoke any script other than scripts/generate-dashboard.ps1 from scripts/watch-dashboard.ps1.
+* Do not modify scripts/classify-routing.ps1, scripts/doctor.ps1, or any other existing script.
 * Do not add any new log event type or write to routing-log.jsonl.
-* Do not make scripts/generate-dashboard.ps1 write to, or otherwise mutate, any .cockpit/ file; it remains read-only over the file bridge (the one permitted subprocess call is itself read-only per its own existing contract).
+* Do not make scripts/watch-dashboard.ps1 write any file directly itself; the only output is dashboard/index.html via the delegated generate-dashboard.ps1 call.
 * Do not modify any schema.
 * Do not change any verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule.
-* Do not build Phase D2 or D3 functionality (auto-refresh/watch mode, or any write-path/request-file controls) in this task.
+* Do not build Phase D3 functionality (any write-path/request-file controls) in this task.
+* Do not build the Session/Usage or Handoff/Rollover panels (pcc-pathD-005/006) in this task.
 * Do not manually invoke 'codex exec' or otherwise self-issue a verification verdict for this task in this cycle.
 * Do not skip the mandatory pre-task handoff/backup gate; it must be run while task_status is 'ready_for_worker', before any code change.
 
@@ -84,15 +87,15 @@ The worker must not:
 
 The task is complete only if:
 
-* scripts/generate-dashboard.ps1 gains a Local Tools Panel showing scripts/classify-routing.ps1's full advisory stdout output as display-only text (verbatim, HTML-escaped), invoked as an explicit subprocess call ('& pwsh -File scripts/classify-routing.ps1' or equivalent), with the panel never executing, gating, or redirecting anything -- it only displays the advisory that already exists.
-* If the classify-routing.ps1 subprocess call itself fails (non-zero exit) for any reason, the dashboard does not crash: the panel shows a clear inline message that the routing advisory was unavailable, and the rest of the dashboard (Owner Control Board, Directive, Verification panels) still renders normally.
-* scripts/generate-dashboard.ps1 gains a Routing History panel: a read-only tail (most recent N, e.g. 10) of .cockpit/logs/routing-log.jsonl, tolerant of the two existing entry shapes in that file (older {timestamp, task_id, route, reason, result} and newer {timestamp, task_id, event_type, detail} entries), skipping any malformed individual line rather than crashing, and rendering gracefully (an empty/none state, not an error) if the log file is missing or empty.
-* The script remains otherwise read-only over the .cockpit/ bridge: it writes only the existing -OutputPath, and does not itself mutate any .cockpit/ file (the one explicit subprocess call, to scripts/classify-routing.ps1, is itself a read-only, non-mutating, already-audited advisory per its own contract -- DECISION-075).
-* No script other than scripts/classify-routing.ps1 is invoked as a subprocess; no other new engine-script call is introduced.
-* Regeneration remains manual; no auto-refresh/watch mode is built in this task (still Phase D2, pcc-pathD-004).
-* Functionally tested (not read-through only): run against the real .cockpit/ state and real routing-log.jsonl (confirms sane Local Tools and Routing History output), against a synthetic missing/empty routing-log.jsonl (renders a graceful none-state, no crash), against a synthetic routing-log.jsonl containing one malformed line among valid ones (malformed line skipped, valid lines still rendered), and against a simulated classify-routing.ps1 failure (dashboard still renders with a clear inline unavailable-message for that one panel, no crash, no .cockpit/ mutation from any of these tests).
-* A new decision is recorded in docs/DECISIONS.md documenting the delivery, explicitly naming and justifying the narrow exception to the 'calls no other script' rule (precedent: scripts/doctor.ps1's audited composition pattern). docs/PATH_A_PLAN.md is updated only to mark pcc-pathD-003 as delivered, not to change its scope.
-* The mandatory pre-task handoff/backup gate (scripts/enforce-handoff-restart-safety.ps1) is run correctly before any code change, exactly as corrected on pcc-pathD-002 -- this is now the standing expectation for every task, not a one-off fix.
+* scripts/watch-dashboard.ps1 exists: a new, self-contained script that polls the mtimes of .cockpit/state/project-state.json, .cockpit/state/task-state.json, .cockpit/result/verification-result.json, and .cockpit/logs/routing-log.jsonl (paths overridable by parameter, defaulting to the canonical paths) on a configurable interval (parameter, default a few seconds), and re-invokes scripts/generate-dashboard.ps1 (explicit subprocess call, same pattern as pcc-pathD-003's classify-routing.ps1 call) only when at least one tracked file's mtime has changed since the last render.
+* watch-dashboard.ps1 itself writes no file directly; the only write that occurs is dashboard/index.html, produced by the delegated call to the already-read-only generate-dashboard.ps1. watch-dashboard.ps1 mutates no .cockpit/ file.
+* The watch loop runs until interrupted (Ctrl+C / normal PowerShell termination) and exits cleanly with no partial/corrupt output file left behind; a single poll-and-render cycle must also be runnable non-interactively for testing (e.g. a -Once / -MaxIterations style parameter) so the behavior can be verified without a human sitting at a terminal indefinitely.
+* If a single render cycle's call to generate-dashboard.ps1 fails (non-zero exit) for any reason, the watch loop logs/prints the failure clearly to its own stdout and continues polling on the next interval rather than crashing the whole watch process.
+* scripts/generate-dashboard.ps1's header comment block is corrected to state its current, accurate contract only (reads project-state.json, task-state.json, verification-result.json, and routing-log.jsonl; invokes exactly one subprocess, classify-routing.ps1; writes only -OutputPath) with no leftover contradictory 'calls no other script' blanket statement -- this is a comment-only correction, no behavior change.
+* Functionally tested (not read-through only): run the watch loop for a small fixed number of iterations (via the non-interactive test parameter) against the real .cockpit/ state, touching a tracked file mid-run and confirming a re-render is triggered only after that change (not on every poll); confirmed no re-render happens across iterations when nothing changed; confirmed a simulated generate-dashboard.ps1 failure (e.g. pointing at a bad path for one iteration) is logged and does not crash the watch loop, which continues polling.
+* A new decision is recorded in docs/DECISIONS.md documenting the delivery. docs/PATH_A_PLAN.md is updated only to mark pcc-pathD-004 as delivered, not to change its scope.
+* No existing script other than scripts/generate-dashboard.ps1 (comment-only change) is modified; no schema is modified; no new log event type is added; watch-dashboard.ps1 calls no script other than scripts/generate-dashboard.ps1.
+* The mandatory pre-task handoff/backup gate is run correctly before any code change, continuing the standing expectation from pcc-pathD-002/003.
 * The task is handed back through the normal worker path for verification; it is not self-closed in this cycle (owner's stated preference remains: pause before each verification), and no verification verdict is written by the worker.
 
 ## Required Evidence
@@ -102,10 +105,10 @@ Return the following evidence:
 * Files created or changed.
 * Summary of changes.
 * Commands run, including confirmation the pre-task handoff gate ran before work began.
-* Command/test results, including the functional tests against real and synthetic routing-log.jsonl and a simulated classify-routing.ps1 failure.
+* Command/test results, including the non-interactive watch-loop tests (change-triggers-render, no-change-means-no-render, simulated render failure logged and non-fatal).
 * Known risks.
 * Unresolved assumptions.
-* Confirmation that forbidden scope was not touched, including that no script other than classify-routing.ps1 was invoked as a subprocess.
+* Confirmation that forbidden scope was not touched, including that watch-dashboard.ps1 calls no script other than generate-dashboard.ps1 and that generate-dashboard.ps1's logic was not changed.
 
 ## Expected Return Format
 

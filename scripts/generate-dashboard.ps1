@@ -11,41 +11,41 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Owner Control Board + Directive + Verification panels (archive/PCC Original
-# Project Scope.md §11; pcc-pathD-001/pcc-pathD-002, Category D Phase D1 per
-# docs/PATH_A_PLAN.md).
+# PCC Dashboard: Owner Control Board, Directive, Verification, Local Tools,
+# and Routing History panels (archive/PCC Original Project Scope.md §11;
+# pcc-pathD-001..003, Category D Phase D1 per docs/PATH_A_PLAN.md).
 #
 # This is a READ-ONLY, self-contained local dashboard generator: the finished-
 # state UI form decided in DECISION-087 (a pure consumer of the .cockpit/ file
 # bridge) and the local-deterministic execution discipline of DECISION-088
 # (plain PowerShell + static HTML, zero LLM dependency, zero external runtime).
-# It:
-#   - reads only .cockpit/state/project-state.json, .cockpit/state/task-state.json,
-#     and .cockpit/result/verification-result.json,
+#
+# Current, accurate contract:
+#   - reads .cockpit/state/project-state.json, .cockpit/state/task-state.json,
+#     .cockpit/result/verification-result.json, and .cockpit/logs/routing-log.jsonl,
 #   - treats -WorkerResultPath as a display-only pointer (its path is shown,
 #     its content is never opened or parsed -- avoids a markdown-parsing
 #     dependency for content the owner can just open directly),
+#   - invokes exactly one other script as an explicit subprocess:
+#     scripts/classify-routing.ps1, capturing its stdout as display-only text
+#     for the Local Tools Panel (pcc-pathD-003). This mirrors
+#     scripts/doctor.ps1's already-audited composition pattern (explicit
+#     subprocess + stdout consumption, no hidden shared state,
+#     DECISION-074/077 extractability). If that one call fails, the panel
+#     shows a clear "unavailable" message rather than crashing the whole
+#     dashboard, consistent with the advisory being non-gating by its own
+#     contract (DECISION-075). No other script is invoked.
 #   - writes only the given -OutputPath (a static HTML file outside .cockpit/),
-#   - never mutates any .cockpit/ file,
-#   - calls no other script.
+#   - never mutates any .cockpit/ file.
+#
 # The Directive Panel is sourced entirely from task-state.json fields already
 # in hand (boundaries, required_evidence, completion_criteria,
 # current_directive_path) rather than parsing worker-directive.md's freeform
 # markdown -- simpler and no parser dependency for the same information.
 #
-# pcc-pathD-003 adds one deliberate, narrow exception to "calls no other
-# script": scripts/classify-routing.ps1 is invoked as an explicit subprocess
-# and its stdout captured as display-only text for the Local Tools Panel. This
-# mirrors scripts/doctor.ps1's already-audited composition pattern (explicit
-# subprocess + stdout consumption, no hidden shared state, DECISION-074/077
-# extractability) rather than introducing a new hidden coupling. No other
-# script is invoked. If that one subprocess call fails, the panel shows a
-# clear "unavailable" message rather than crashing the whole dashboard --
-# consistent with the advisory being non-gating by its own contract
-# (DECISION-075).
-#
-# Regeneration is manual: re-run this script. Auto-refresh (Phase D2) is out of
-# scope here.
+# Regeneration is manual: re-run this script. scripts/watch-dashboard.ps1
+# (pcc-pathD-004, Phase D2) polls the same inputs and re-invokes this script
+# when they change, without altering this script's own contract.
 
 function Fail {
   param([string]$Message)

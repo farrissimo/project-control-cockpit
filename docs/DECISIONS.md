@@ -2289,3 +2289,29 @@ Process disclosure: built with Codex unavailable (`DECISION-086`), under direct 
 
 Supersedes: None
 Related: DECISION-074, DECISION-075, DECISION-077, DECISION-086, DECISION-087, DECISION-088, DECISION-089, DECISION-090, DECISION-091, DECISION-092, docs/PATH_A_PLAN.md, scripts/generate-dashboard.ps1, scripts/classify-routing.ps1, scripts/doctor.ps1
+
+---
+
+## DECISION-094: Category D Phase D2 First Deliverable — Auto-Refresh / Watch Mode (pcc-pathD-004)
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+`scripts/watch-dashboard.ps1` is delivered per `docs/PATH_A_PLAN.md` §6, Phase D2's first task: it polls the same `.cockpit/` inputs `scripts/generate-dashboard.ps1` already reads (`project-state.json`, `task-state.json`, `verification-result.json`, `routing-log.jsonl`) and re-invokes `generate-dashboard.ps1` -- its one permitted subprocess call, the same composition pattern verified for `classify-routing.ps1` in `pcc-pathD-003` -- only when a tracked file's mtime has changed since the last render. As minor housekeeping folded in per `pcc-pathD-003`'s own verification `next_action`, `scripts/generate-dashboard.ps1`'s header comment block is also corrected: the stale blanket "calls no other script" statement (left over from before the `pcc-pathD-003` exception) is replaced with a single accurate description of the script's current contract. This is a comment-only change; no logic changed.
+
+Reason:
+
+`watch-dashboard.ps1` writes no file directly itself -- the only output, `dashboard/index.html`, is produced by the delegated call to the already-read-only `generate-dashboard.ps1` -- so it introduces no new write surface and mutates no `.cockpit/` file. A `-MaxIterations` parameter (default 0, meaning run until interrupted) allows the loop to be exercised deterministically in a small, fixed number of cycles for functional testing, rather than requiring an indefinitely-running process to be tested only by hand.
+
+Functionally tested (not read-through only): a 3-iteration run against real state confirmed exactly one render (iteration 1) with no re-render on iterations 2-3 when nothing changed; a 5-iteration run with a tracked file touched mid-run (after iteration 2, via a background job) confirmed a render on iteration 1, no render on iteration 2, and a render on iteration 3 -- exactly matching the change, not a fixed schedule; a run pointed at a nonexistent `generate-dashboard.ps1` path confirmed the failure (exit 64) is caught, printed as a clear `[WATCH WARNING]`, and the loop continues polling to completion rather than crashing. No `.cockpit/` file was mutated by any test run.
+
+Implications:
+
+No existing script other than `scripts/generate-dashboard.ps1`'s header comment (no logic change) was modified; no schema changed; no new log event type added; `watch-dashboard.ps1` calls no script other than `generate-dashboard.ps1`. This task is Task Safety Class A, same as its Phase D1 predecessors. Per the owner's stated mode this session, this cycle is handed back for verification rather than self-closed. The next task is `pcc-pathD-005` (Session/Usage panel, honest-only) per `docs/PATH_A_PLAN.md` §6.
+
+Process disclosure: built with Codex unavailable (`DECISION-086`), under direct owner direction ("keep going until I tell you to stop"); self-checked with PCC's local guardrails; the mandatory pre-task handoff/backup gate was run correctly before work began, continuing the corrected pattern from `pcc-pathD-002`/`003`.
+
+Supersedes: None
+Related: DECISION-074, DECISION-077, DECISION-086, DECISION-087, DECISION-088, DECISION-089, DECISION-090, DECISION-091, DECISION-092, DECISION-093, docs/PATH_A_PLAN.md, scripts/generate-dashboard.ps1, scripts/watch-dashboard.ps1
