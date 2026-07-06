@@ -59,13 +59,14 @@ ipcMain.handle('pcc:saveMemory', (_e, text) => {
 // (`codex exec`) in a read-only sandbox, so the verifier can inspect and run
 // checks but cannot change anything. Codex reads AGENTS.md for the verdict
 // format. The worker (Claude) never grades its own work.
+// Independent verification runs through one reusable script (scripts/
+// verify-work.ps1): Codex primary, Gemini fallback. The app button and the
+// scheduled after-10am-MT test both call it, so there is one source of truth.
 ipcMain.handle('pcc:verify', () => new Promise((resolve) => {
-  const prompt = 'Independently verify the most recent work in this repository following the review guidelines in AGENTS.md. Do not make any changes.';
-  const cmd = 'codex exec --sandbox read-only "' + prompt + '"';
-  exec(cmd, { cwd: PROJECT_DIR, maxBuffer: 12 * 1024 * 1024, timeout: 150000, windowsHide: true }, (err, stdout, stderr) => {
+  exec('pwsh -NoProfile -File scripts/verify-work.ps1', { cwd: PROJECT_DIR, maxBuffer: 12 * 1024 * 1024, timeout: 200000, windowsHide: true }, (err, stdout, stderr) => {
     const out = (stdout || '').trim();
     if (out) return resolve({ ok: true, text: out });
-    if (err) return resolve({ ok: false, text: 'Codex review unavailable (out of usage, not signed in, or timed out): ' + (err.killed ? 'timed out' : (stderr || err.message)) });
+    if (err) return resolve({ ok: false, text: 'Verification could not run: ' + (err.killed ? 'timed out' : (stderr || err.message)) });
     resolve({ ok: true, text: (stderr || '(no output)').trim() });
   });
 }));

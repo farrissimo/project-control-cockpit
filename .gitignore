@@ -12,3 +12,6 @@ dashboard/index.html
 
 # Electron dependencies for the desktop app (app/). Reinstalled via npm install; not source.
 app/node_modules/
+
+# Generated verification output written by scripts/verify-work.ps1 (-WriteFile). Not source.
+app/last-verification.txt
