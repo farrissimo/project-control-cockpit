@@ -2,8 +2,11 @@
   PCC independent verification (DECISION-102 verification layer).
 
   Primary verifier: Codex CLI (`codex exec`, read-only sandbox) - it can run
-  git and project checks itself. Fallback: Gemini CLI (`gemini -p`) reviewing
-  the git diff on stdin (used when Codex is unavailable / out of usage).
+  git and project checks itself. Fallback: Antigravity CLI (`agy -p`) reviewing
+  the git diff embedded in the prompt (used when Codex is unavailable / out of
+  usage). agy ignores stdin and hangs if asked to run tools itself in headless
+  print mode, so the diff is passed inline in the prompt (capped for the
+  Windows command-line length limit); agy reviews it as text only.
 
   Prints the verdict to stdout. With -WriteFile it also writes a timestamped
   copy to app/last-verification.txt (used by the scheduled after-10am-MT test).
@@ -39,18 +42,30 @@ function Invoke-Codex {
   return $null
 }
 
-function Invoke-Gemini {
+function Invoke-Agy {
+  $agy = Join-Path $env:LOCALAPPDATA 'agy\bin\agy.exe'
+  if (-not (Test-Path $agy)) { return $null }
   $diff = & git diff HEAD~1 HEAD 2>&1 | Out-String
   if (-not $diff.Trim()) { $diff = '(no committed diff found)' }
-  $instruction = 'You are an independent verifier. The git diff of the latest work is provided on stdin. Output VERDICT on one line (PASS, FAIL, INSUFFICIENT, BLOCKED, or OUT_OF_SCOPE), then EVIDENCE as bullets of what the diff shows, then NOT PROVEN. You cannot run tests, so state that functionality is not proven by you. Be honest. Make no changes.'
-  $out = $diff | & gemini --skip-trust -p $instruction 2>&1 | Out-String
-  if ($LASTEXITCODE -eq 0 -and $out.Trim()) { return "VERIFIER: Gemini (fallback)`n`n" + $out.Trim() }
+  # agy takes the diff inline (it ignores stdin). Cap it well under the Windows
+  # command-line arg limit (~32 KB); note truncation honestly if it happens.
+  $max = 20000
+  $truncNote = ''
+  if ($diff.Length -gt $max) { $diff = $diff.Substring(0, $max); $truncNote = "`n[diff truncated at $max chars]" }
+  $instruction = @"
+You are an independent verifier. The git diff of the latest committed work is included below. You cannot run tests or commands, so you must state that functionality is not proven by you. Output VERDICT on one line (one of PASS, FAIL, INSUFFICIENT, BLOCKED, OUT_OF_SCOPE), then EVIDENCE as 2-4 bullets of what the diff actually shows, then NOT PROVEN listing what you could not verify. Be honest; never PASS without evidence. Make no changes.
+
+=== GIT DIFF (HEAD~1..HEAD) ===
+$diff$truncNote
+"@
+  $out = & $agy -p $instruction 2>&1 | Out-String
+  if ($LASTEXITCODE -eq 0 -and $out.Trim()) { return "VERIFIER: Antigravity/agy (fallback, diff-only)`n`n" + $out.Trim() }
   return $null
 }
 
 $result = Invoke-Codex
-if (-not $result) { $result = Invoke-Gemini }
-if (-not $result) { $result = 'Both verifiers unavailable (Codex and Gemini). Try again when usage is available.' }
+if (-not $result) { $result = Invoke-Agy }
+if (-not $result) { $result = 'Both verifiers unavailable (Codex and agy). Try again when usage is available.' }
 
 Write-Output $result
 

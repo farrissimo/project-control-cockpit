@@ -60,7 +60,7 @@ ipcMain.handle('pcc:saveMemory', (_e, text) => {
 // checks but cannot change anything. Codex reads AGENTS.md for the verdict
 // format. The worker (Claude) never grades its own work.
 // Independent verification runs through one reusable script (scripts/
-// verify-work.ps1): Codex primary, Gemini fallback. The app button and the
+// verify-work.ps1): Codex primary, Antigravity/agy fallback. The app button and
 // scheduled after-10am-MT test both call it, so there is one source of truth.
 ipcMain.handle('pcc:verify', () => new Promise((resolve) => {
   exec('pwsh -NoProfile -File scripts/verify-work.ps1', { cwd: PROJECT_DIR, maxBuffer: 12 * 1024 * 1024, timeout: 200000, windowsHide: true }, (err, stdout, stderr) => {
