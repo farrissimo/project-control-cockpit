@@ -227,7 +227,7 @@ the UI still never executes work or mutates authoritative state directly.
 not auto-promoted from this plan, because it adds authority (a UI that can
 initiate actions), not just a view.
 
-- **`pcc-pathD-007` — Request-file inbox contract + schema** — ✅ **DELIVERED** (`DECISION-098`, pending verification; owner-authorized via `DECISION-097`): define a
+- **`pcc-pathD-007` — Request-file inbox contract + schema** — ✅ **DELIVERED, verified PASS** (`DECISION-098`; owner-authorized via `DECISION-097`): define a
   `.cockpit/request/` inbox convention and schema — the one genuinely new bridge
   surface.
 - **`pcc-pathD-008` — Rollover/handoff controls:** drop a rollover-request file;
