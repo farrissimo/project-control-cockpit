@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-05T19:41:55-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-05T19:51:20-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,17 +10,17 @@ Current phase: post-brr
 
 ## Active Task
 
-* Task ID: pcc-pathD-007
-* Title: Request-File Inbox Contract + Schema (Phase D3 Foundation)
-* Status: complete
+* Task ID: pcc-pathD-008
+* Title: Rollover/Handoff Controls (First Producer + Consumer, Command-to-Copy Design)
+* Status: returned_for_verification
 * Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Deliver docs/PATH_A_PLAN.md section 6 Phase D3's first task, explicitly owner-authorized (DECISION-097): define the .cockpit/request/ inbox convention and its schema -- the one genuinely new bridge surface for Category D. This task defines the contract ONLY: a new schemas/request.schema.json, the .cockpit/request/ directory, and a short canonical documentation of the request lifecycle (who writes, who consumes, how a request moves from pending to processed/rejected). It does NOT build any dashboard UI control that writes a request file (that is pcc-pathD-008/009), and does NOT build any consumer/watcher script that reads and acts on request files (also later tasks). This keeps the contract-defining step cleanly separated from its first real producer and consumer.
+* Objective: Deliver docs/PATH_A_PLAN.md section 6 Phase D3's second task: the first real producer and consumer for the .cockpit/request/ inbox contract defined in pcc-pathD-007. DESIGN DECISION (owner-confirmed): the dashboard remains a static HTML file with no server; a rollover 'control' cannot be a live clickable button that writes a file from the browser. Instead, this delivers (a) scripts/request-rollover.ps1, a small producer script the owner runs from a terminal that writes a properly-shaped rollover request file into .cockpit/request/; (b) scripts/process-rollover-requests.ps1, a consumer that detects pending rollover requests and runs the existing scripts/safe-stop.ps1 (unmodified, already read-only and always-exit-0) as its response, capturing the report into the request and moving it to .cockpit/request/processed/ or .cockpit/request/rejected/; (c) a small addition to the dashboard's Handoff/Rollover panel showing the exact command to run to request a rollover, matching the existing Local Tools Panel's command-preview pattern from the original scope. This does NOT invent any new automated rollover/reset behavior -- the 'existing safe-stop/handoff path' is exactly scripts/safe-stop.ps1's existing advisory check, run in response to the request, not a new irreversible action.
 
 ## Auto-Promotion Basis
 
 * Approved lane: Path A / Category D / Phase D3
-* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-007)
-* Justification (continuation, not a fork): Explicitly owner-authorized per DECISION-097 (direct yes/no confirmation obtained for Phase D3 specifically, not assumed from general continuation momentum). This is the first Phase D3 task, gated by its own owner decision as the plan itself requires; not an in-lane auto-promotion like the Phase D1/D2 tasks.
+* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-008)
+* Justification (continuation, not a fork): Continuation of the owner-authorized Phase D3 (DECISION-097). Design fork (command-to-copy vs. local server) was explicitly re-confirmed with the owner before drafting; command-to-copy was chosen to preserve the existing static-file architecture, per the owner's own stated reasoning.
 ## Last Verified
 
 * Verdict: PASS for task 'pcc-pathD-007', verified at 2026-07-05T22:50:00-06:00
@@ -46,5 +46,5 @@ Current phase: post-brr
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-pathD-007' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-pathD-007' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Task-level: Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.
+* Project-level: Worker evidence for task 'pcc-pathD-008' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict.

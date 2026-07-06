@@ -13,16 +13,16 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-pathD-007
-* Task Title: Request-File Inbox Contract + Schema (Phase D3 Foundation)
-* Task Status: complete
+* Task ID: pcc-pathD-008
+* Task Title: Rollover/Handoff Controls (First Producer + Consumer, Command-to-Copy Design)
+* Task Status: returned_for_verification
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Auto-Promotion Basis
 
 * Approved lane: Path A / Category D / Phase D3
-* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-007)
-* Justification (continuation, not a fork): Explicitly owner-authorized per DECISION-097 (direct yes/no confirmation obtained for Phase D3 specifically, not assumed from general continuation momentum). This is the first Phase D3 task, gated by its own owner decision as the plan itself requires; not an in-lane auto-promotion like the Phase D1/D2 tasks.
+* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-008)
+* Justification (continuation, not a fork): Continuation of the owner-authorized Phase D3 (DECISION-097). Design fork (command-to-copy vs. local server) was explicitly re-confirmed with the owner before drafting; command-to-copy was chosen to preserve the existing static-file architecture, per the owner's own stated reasoning.
 ## Objective
 
 Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bounded task below, and return your result to `.cockpit/result/worker-result.md` using the required evidence format.
@@ -55,30 +55,31 @@ The owner's standing communication preferences (apply these without being asked;
 * Separate facts from inference: True
 ## Exact Next Action
 
-Deliver docs/PATH_A_PLAN.md section 6 Phase D3's first task, explicitly owner-authorized (DECISION-097): define the .cockpit/request/ inbox convention and its schema -- the one genuinely new bridge surface for Category D. This task defines the contract ONLY: a new schemas/request.schema.json, the .cockpit/request/ directory, and a short canonical documentation of the request lifecycle (who writes, who consumes, how a request moves from pending to processed/rejected). It does NOT build any dashboard UI control that writes a request file (that is pcc-pathD-008/009), and does NOT build any consumer/watcher script that reads and acts on request files (also later tasks). This keeps the contract-defining step cleanly separated from its first real producer and consumer.
+Deliver docs/PATH_A_PLAN.md section 6 Phase D3's second task: the first real producer and consumer for the .cockpit/request/ inbox contract defined in pcc-pathD-007. DESIGN DECISION (owner-confirmed): the dashboard remains a static HTML file with no server; a rollover 'control' cannot be a live clickable button that writes a file from the browser. Instead, this delivers (a) scripts/request-rollover.ps1, a small producer script the owner runs from a terminal that writes a properly-shaped rollover request file into .cockpit/request/; (b) scripts/process-rollover-requests.ps1, a consumer that detects pending rollover requests and runs the existing scripts/safe-stop.ps1 (unmodified, already read-only and always-exit-0) as its response, capturing the report into the request and moving it to .cockpit/request/processed/ or .cockpit/request/rejected/; (c) a small addition to the dashboard's Handoff/Rollover panel showing the exact command to run to request a rollover, matching the existing Local Tools Panel's command-preview pattern from the original scope. This does NOT invent any new automated rollover/reset behavior -- the 'existing safe-stop/handoff path' is exactly scripts/safe-stop.ps1's existing advisory check, run in response to the request, not a new irreversible action.
 
 ## Allowed Scope
 
 The worker may:
 
-* Create schemas/request.schema.json, a new schema file.
-* Create the .cockpit/request/ directory with a placeholder file so git tracks it.
-* Edit docs/STATE_MODEL.md (or add a clearly-scoped section to docs/PATH_A_PLAN.md) to document the request-file lifecycle.
+* Create scripts/request-rollover.ps1 (new producer script).
+* Create scripts/process-rollover-requests.ps1 (new consumer script, invoking only scripts/safe-stop.ps1 as a subprocess).
+* Edit scripts/generate-dashboard.ps1 to add the one new display-only command line to the Handoff/Rollover panel.
+* Write and move real files within .cockpit/request/ (including creating .cockpit/request/processed/ and/or .cockpit/request/rejected/ subdirectories as needed) as part of normal functional testing and operation -- this is the designed write surface for this exact purpose (DECISION-098).
 * Edit docs/DECISIONS.md to record the new decision.
-* Edit docs/PATH_A_PLAN.md only to mark pcc-pathD-007 as delivered, not to change its scope or spec.
+* Edit docs/PATH_A_PLAN.md only to mark pcc-pathD-008 as delivered, not to change its scope or spec.
 
 ## Forbidden Scope
 
 The worker must not:
 
-* Do not modify scripts/generate-dashboard.ps1 or scripts/watch-dashboard.ps1.
-* Do not create any consumer/watcher script that reads or acts on request files.
-* Do not modify scripts/check-schemas.ps1 or any other existing script.
-* Do not write any real file into .cockpit/request/ other than the tracking placeholder; synthetic test examples must live outside .cockpit/ entirely.
-* Do not modify any existing schema (project-state, task-state, verification-result, handoff-packet).
+* Do not introduce a local web server, HTTP listener, or any live browser-to-filesystem bridge -- the owner explicitly rejected this design for this task.
+* Do not modify scripts/safe-stop.ps1 or any other existing script besides scripts/generate-dashboard.ps1 (display-only addition).
+* Do not modify schemas/request.schema.json or any other schema.
+* Do not invent any new automated rollover/reset/rotation behavior beyond running the existing scripts/safe-stop.ps1 check.
 * Do not add any new log event type or write to routing-log.jsonl.
+* Do not mutate any canonical .cockpit/ file (state/handoff/result) from either new script; all writes stay within .cockpit/request/.
 * Do not change any verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule.
-* Do not build pcc-pathD-008 or pcc-pathD-009's actual controls in this task.
+* Do not build pcc-pathD-009's tone/behavior controls in this task.
 * Do not manually invoke 'codex exec' or otherwise self-issue a verification verdict for this task in this cycle.
 * Do not skip the mandatory pre-task handoff/backup gate; it must be run while task_status is 'ready_for_worker', before any code change.
 
@@ -86,14 +87,13 @@ The worker must not:
 
 The task is complete only if:
 
-* schemas/request.schema.json exists, following the same JSON Schema conventions as the other schemas/*.schema.json files (draft/2020-12, $id, additionalProperties: false, required fields), defining a request file's shape: a stable identifier, a request_type (a closed enum, starting with the two concrete Phase D3 use cases already named in the plan -- 'rollover' for pcc-pathD-008 and 'communication_prefs_update' for pcc-pathD-009 -- plus room to add more via a future schema update, not an open string), a created_at timestamp, a source field (identifying what produced the request, e.g. 'dashboard'), a status enum (pending/processed/rejected), and a type-specific payload object.
-* The .cockpit/request/ directory exists (with a placeholder file, e.g. .gitkeep, so git tracks the empty directory) as the canonical inbox location.
-* A short, canonical lifecycle description is recorded (in docs/STATE_MODEL.md or a clearly-scoped addition to docs/PATH_A_PLAN.md) covering: a producer writes a new request file with status 'pending'; a consumer (a future script, not built in this task) is responsible for detecting new pending requests, acting on them, and then moving the file to .cockpit/request/processed/ or .cockpit/request/rejected/ (or updating its own status field and archiving it) -- the exact consumer mechanics are left to pcc-pathD-008/009, but the producer-side contract (what a valid request file looks like) is fixed here so those later tasks do not have to re-derive it.
-* No dashboard script is changed by this task: scripts/generate-dashboard.ps1 and scripts/watch-dashboard.ps1 are untouched. No consumer/watcher script is created.
-* scripts/check-schemas.ps1 is not modified to validate request files in this task (that is deferred to whichever later task actually produces real request files, since there is nothing to validate yet); this deferral is stated explicitly, not silently skipped.
-* The new schema is confirmed structurally valid by successfully validating at least one synthetic example request file (for each of the two named request_type values) against it, in an isolated scratch location -- not written into .cockpit/request/ itself, since no producer exists yet to create real ones.
-* A new decision is recorded in docs/DECISIONS.md documenting the delivery and the contract's shape/lifecycle. docs/PATH_A_PLAN.md is updated only to mark pcc-pathD-007 as delivered, not to change its scope.
-* No existing script is modified; no existing schema is modified; no new log event type is added; no verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule is changed.
+* scripts/request-rollover.ps1 (new): writes exactly one new file into .cockpit/request/ matching schemas/request.schema.json (request_type: 'rollover', status: 'pending', source identifying it as owner/CLI-initiated, a generated request_id, created_at timestamp, and an optional -Reason parameter stored in payload.reason, defaulting to a generic value if omitted). Writes nothing else; calls no other script.
+* scripts/process-rollover-requests.ps1 (new): scans .cockpit/request/ (top level only, not its processed/rejected subdirectories) for files with request_type 'rollover' and status 'pending'; for each, performs a lightweight structural validation (required fields present, request_type/status as expected) and skips (leaves in place, does not crash the batch) any file that fails it; for each valid pending rollover request, invokes scripts/safe-stop.ps1 as an explicit subprocess (unmodified, already read-only, always-exit-0), captures its full stdout, records it into the request (e.g. payload.safe_stop_report), sets status to 'processed', and moves the file to .cockpit/request/processed/. Malformed or unreadable files are left in place with a clear console warning, not silently discarded and not crash-inducing for other valid requests in the same batch.
+* scripts/generate-dashboard.ps1's Handoff/Rollover panel gains one new display-only line showing the exact copy-paste command to request a rollover (e.g. 'pwsh -File scripts/request-rollover.ps1'). This is static text: no new file read, no new subprocess call, no change to the dashboard's read-only contract.
+* Neither new script invokes any script other than scripts/safe-stop.ps1 (by process-rollover-requests.ps1 only); no existing script is modified; no schema is modified.
+* Functionally tested (not read-through only), against the real .cockpit/request/ inbox (this is the intended integration surface, unlike pcc-pathD-007's contract-only phase): run scripts/request-rollover.ps1 to create a real pending rollover request; run scripts/process-rollover-requests.ps1 and confirm it is detected, safe-stop.ps1's real report is captured into it, and the file is moved to .cockpit/request/processed/; run scripts/process-rollover-requests.ps1 again with the inbox empty and confirm a clean, graceful no-op; place one malformed JSON file directly in .cockpit/request/ and confirm it is skipped with a clear warning, not crashing the batch or being silently deleted.
+* A new decision is recorded in docs/DECISIONS.md documenting the delivery, the command-to-copy design choice and why a local server was rejected (per the owner's confirmed reasoning), and the fact that no new automated rollover action was invented -- only the existing safe-stop.ps1 check is composed. docs/PATH_A_PLAN.md is updated only to mark pcc-pathD-008 as delivered, not to change its scope.
+* No new log event type is added; the two new scripts do not call scripts/log-event.ps1.
 * The mandatory pre-task handoff/backup gate is run correctly before any code change, continuing the standing expectation from pcc-pathD-002 onward.
 * The task is handed back through the normal worker path for verification; it is not self-closed in this cycle (owner's stated preference remains: pause before each verification), and no verification verdict is written by the worker.
 
@@ -104,10 +104,10 @@ Return the following evidence:
 * Files created or changed.
 * Summary of changes.
 * Commands run, including confirmation the pre-task handoff gate ran before work began.
-* Command/test results, including the synthetic schema-validation test for both named request_type values.
+* Command/test results, including the real end-to-end producer->consumer test, the empty-inbox no-op test, and the malformed-file tolerance test.
 * Known risks.
 * Unresolved assumptions.
-* Confirmation that forbidden scope was not touched, including that no dashboard script, consumer script, or existing schema was modified, and that no real file was written into .cockpit/request/.
+* Confirmation that forbidden scope was not touched, including that no server/live-bridge was introduced and no new automated rollover action was invented beyond composing scripts/safe-stop.ps1.
 
 ## Expected Return Format
 

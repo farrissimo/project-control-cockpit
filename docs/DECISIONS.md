@@ -2419,3 +2419,31 @@ Process disclosure: built with Codex unavailable (`DECISION-086`), under direct 
 
 Supersedes: None
 Related: DECISION-074, DECISION-086, DECISION-087, DECISION-096, DECISION-097, docs/PATH_A_PLAN.md, docs/STATE_MODEL.md, schemas/request.schema.json
+
+---
+
+## DECISION-099: Rollover/Handoff Controls Delivered as Command-to-Copy (pcc-pathD-008)
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+The first real producer/consumer pair for the `.cockpit/request/` inbox (`pcc-pathD-007`) is delivered: `scripts/request-rollover.ps1` (producer) and `scripts/process-rollover-requests.ps1` (consumer), plus a new display-only "Request a Rollover" line in the dashboard's Handoff/Rollover panel showing the exact command to run.
+
+Reason (design fork, resolved before drafting):
+
+The dashboard is a static HTML file with no server; a static local file cannot write to disk from a button click in a browser. Two designs were considered: (A) command-to-copy -- the dashboard displays a ready-to-run command, the owner runs it themselves, and a script writes the properly-shaped request file; (B) add a local web server so the dashboard can have a live clickable button. The owner explicitly chose (A), with reasoning recorded verbatim: option B introduces a new server architecture, a much bigger step than "add a rollover control" that changes the shape of PCC rather than just the UI, weakens the current clean local-static-dashboard-plus-file-bridge story, and should not be smuggled into a bounded Phase D3 control task -- if a server is ever wanted, it should be its own explicit direction-change decision, not hidden inside this one.
+
+`scripts/process-rollover-requests.ps1` deliberately invents no new automated rollover/reset behavior: for each pending `rollover`-type request, it runs the existing, unmodified, already read-only, always-exit-0 `scripts/safe-stop.ps1` as an explicit subprocess (the same composition pattern already established and audited for `classify-routing.ps1`), captures its full report into the request's `payload.safe_stop_report`, marks it `processed`, and moves it to `.cockpit/request/processed/`. This is exactly "the existing safe-stop/handoff path" the plan names -- not a new capability, a new trigger for an existing one.
+
+Functionally tested (not read-through only), against the real `.cockpit/request/` inbox (the intended integration surface for this task, unlike `pcc-pathD-007`'s contract-only phase): ran `request-rollover.ps1` to create a real pending request; ran `process-rollover-requests.ps1` and confirmed it detected the request, ran the real `safe-stop.ps1` check, captured its honest (uncensored, including a real transient advisor-brief-staleness warning) report into the file, and moved it to `processed/`; ran the consumer again against an empty inbox and confirmed a clean no-op; placed one malformed JSON file directly in the inbox and confirmed it was skipped with a clear warning, left in place, not crashing the batch.
+
+Implications:
+
+No existing script was modified except `scripts/generate-dashboard.ps1`'s one new display-only line; no schema was modified. `.cockpit/request/processed/` now exists with one real processed test artifact from this task's own functional testing, left in place as honest evidence rather than deleted. `scripts/doctor.ps1`'s file-structure `[WARN]` on the `request` directory (first flagged in `pcc-pathD-007`) continues unchanged and un-fixed, per the same disclosed, out-of-scope reasoning. This task is Task Safety Class B, same as `pcc-pathD-007`; per the owner's stated mode this session, it is handed back for verification rather than self-closed. The next Phase D3 task is `pcc-pathD-009` (tone/behavior controls), the last task named in `docs/PATH_A_PLAN.md` §6's current Phase D3 scope.
+
+Process disclosure: built with Codex unavailable (`DECISION-086`), under direct owner direction, following the explicit design-fork confirmation recorded above; self-checked with PCC's local guardrails; the mandatory pre-task handoff/backup gate was run correctly before work began (genuine backup `20260705-194812`).
+
+Supersedes: None
+Related: DECISION-074, DECISION-086, DECISION-087, DECISION-097, DECISION-098, docs/PATH_A_PLAN.md, scripts/request-rollover.ps1, scripts/process-rollover-requests.ps1, scripts/safe-stop.ps1
