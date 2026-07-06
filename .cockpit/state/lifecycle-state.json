@@ -1,6 +1,7 @@
 {
   "lane": "app-build-decision-102",
-  "current_stage": "milestone",
-  "note": "P1 + P2 complete or honestly handled (only #3 awaits the scheduled Codex run; #12 deferred). Stopped deliberately at a clean boundary rather than rolling into P3/P4. Legal next: hand off (resume in a fresh chat) or plan the P3/P4 phase. Set deliberately, not inferred.",
-  "updated_at": "2026-07-06T14:20:00-06:00"
+  "current_stage": "work",
+  "active_task": "#23 UI polish — build a consistent visual/design system: one shared color palette (CSS variables), a reusable gauge component (chat-length, bloat), and a 'Project at a glance' panel. Grounded in real data; honest color meanings; researched against real-world status-dashboard conventions.",
+  "note": "Set deliberately by owner (2026-07-06). Working task #23. Multi-project switching (#20) stays paused.",
+  "updated_at": "2026-07-06T17:20:00-06:00"
 }

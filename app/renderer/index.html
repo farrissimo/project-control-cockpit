@@ -5,7 +5,23 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
 <title>PCC Cockpit</title>
 <style>
-  :root { color-scheme: dark; }
+  /* PCC design tokens — the single source of truth for color across the app
+     (roadmap #23). Semantic names (success/warning/danger/info), not color
+     names, so meaning stays consistent everywhere. Color is ALWAYS paired with
+     text/number in the UI (WCAG + colorblind-safe): the color reinforces, it
+     never carries meaning alone. Change a value here and the whole app follows. */
+  :root {
+    color-scheme: dark;
+    --success: #3f8f5f;   --success-text: #7fd6a0;  --success-bg: #16311f;  --success-border: #235c3a;
+    --warning: #f0c674;   --warning-text: #f0d9a8;  --warning-bg: #33290f;  --warning-border: #5c4a1f;
+    --danger:  #c65d5d;   --danger-text:  #e6a3a3;  --danger-bg:  #331717;  --danger-border:  #5c2a2a;
+    --info:    #8ab4ff;   --info-strong:  #3a6bd6;
+    --neutral: #5f646c;
+    --bg: #101216;  --surface: #0e1014;  --surface-2: #14171c;  --panel: #1a1d23;
+    --border: #23262d;  --border-2: #2b2f37;
+    --text: #e8eaed;  --text-2: #cdd2d9;  --muted: #7a7f87;  --muted-2: #5f646c;
+    --track: #23262d;
+  }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body { display: flex; font-family: system-ui, sans-serif; background: #101216; color: #e8eaed; }
@@ -105,16 +121,16 @@
   #signals-refresh:disabled { opacity: .5; cursor: default; }
   .signal-card { max-width: 760px; background: #0e1014; border: 1px solid #23262d;
     border-left: 3px solid #3a3f47; border-radius: 10px; padding: 14px 16px; margin-top: 14px; }
-  .signal-card.clear { border-left-color: #3f8f5f; }
-  .signal-card.notice { border-left-color: #f0c674; }
-  .signal-card.unknown { border-left-color: #b06a6a; }
+  .signal-card.clear { border-left-color: var(--success); }
+  .signal-card.notice { border-left-color: var(--warning); }
+  .signal-card.unknown { border-left-color: var(--danger); }
   .signal-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
   .signal-title { font-size: 14px; font-weight: 600; }
   .signal-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
     text-transform: uppercase; letter-spacing: .04em; }
-  .signal-badge.clear { background: #16311f; color: #7fd6a0; }
-  .signal-badge.notice { background: #33290f; color: #f0c674; }
-  .signal-badge.unknown { background: #331717; color: #e6a3a3; }
+  .signal-badge.clear { background: var(--success-bg); color: var(--success-text); }
+  .signal-badge.notice { background: var(--warning-bg); color: var(--warning-text); }
+  .signal-badge.unknown { background: var(--danger-bg); color: var(--danger-text); }
   .signal-row { font-size: 13px; line-height: 1.5; margin: 6px 0; color: #cdd2d9; }
   .signal-row .k { color: #8ab4ff; font-weight: 500; display: block; font-size: 11px;
     text-transform: uppercase; letter-spacing: .04em; margin-bottom: 1px; }
@@ -127,14 +143,14 @@
   .trust-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
     padding: 3px 10px; border-radius: 999px; border: 1px solid #2b2f37; color: #b8bdc6;
     background: #14171c; cursor: default; }
-  .trust-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #5f646c; flex: 0 0 auto; }
-  .trust-chip.good { color: #cfeeda; border-color: #235c3a; }
-  .trust-chip.good .dot { background: #3f8f5f; }
-  .trust-chip.warn { color: #f0d9a8; border-color: #5c4a1f; }
-  .trust-chip.warn .dot { background: #f0c674; }
-  .trust-chip.bad { color: #e9b3b3; border-color: #5c2a2a; }
-  .trust-chip.bad .dot { background: #c65d5d; }
-  .trust-chip.unknown .dot { background: #5f646c; }
+  .trust-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--neutral); flex: 0 0 auto; }
+  .trust-chip.good { color: var(--success-text); border-color: var(--success-border); }
+  .trust-chip.good .dot { background: var(--success); }
+  .trust-chip.warn { color: var(--warning-text); border-color: var(--warning-border); }
+  .trust-chip.warn .dot { background: var(--warning); }
+  .trust-chip.bad { color: var(--danger-text); border-color: var(--danger-border); }
+  .trust-chip.bad .dot { background: var(--danger); }
+  .trust-chip.unknown .dot { background: var(--neutral); }
   #trust .trust-label { font-size: 11px; color: #5f646c; margin-right: 2px; }
 
   .lc-map { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 16px 0 8px; }
