@@ -31,7 +31,7 @@ function addBubble(cls, text, persist) {
   el.textContent = text;
   log.appendChild(el);
   scrollDown();
-  if (persist) { history.push({ cls, text }); save(); }
+  if (persist) { history.push({ cls, text, ts: Date.now() }); save(); }
   return el;
 }
 
@@ -142,7 +142,55 @@ async function runHardChecks() {
 // ---- signals view ----
 // Renders each detector in the honest four-part format. The renderer only
 // displays what the deterministic scripts report; it never invents a verdict.
-const SIGNAL_TITLES = { 'untracked-files': 'Untracked files' };
+const SIGNAL_TITLES = { 'untracked-files': 'Untracked files', 'chat-rollover': 'Chat health / rollover' };
+
+// Chat rollover signal (roadmap #8). Computed from THIS chat's own history in
+// localStorage - the only honest data the app actually has. Named thresholds,
+// not mind-reading. It deliberately does NOT claim to measure tokens or true
+// context degradation (not observable from here); those go under NOT proven.
+const ROLLOVER_TURNS = 40;   // soft notice past this many of your messages
+const ROLLOVER_HOURS = 6;    // soft notice past this long on one chat
+
+function computeChatSignal() {
+  const userMsgs = history.filter((m) => m.cls === 'user');
+  const turns = userMsgs.length;
+
+  // Repeats: same message (whitespace/case-normalized) sent 2+ times - the
+  // exact "don't make me repeat myself" wound, and directly observable.
+  const norm = (t) => (t || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const counts = {};
+  userMsgs.forEach((m) => { const k = norm(m.text); if (k) counts[k] = (counts[k] || 0) + 1; });
+  const repeats = Object.entries(counts).filter(([, n]) => n >= 2)
+    .sort((a, b) => b[1] - a[1]);
+  const repeatItems = repeats.map(([k, n]) => n + '×  "' + (k.length > 60 ? k.slice(0, 60) + '…' : k) + '"');
+
+  // Elapsed span from whatever timestamps exist (older messages predate ts).
+  const ts = history.map((m) => m.ts).filter((t) => typeof t === 'number');
+  let spanHours = null;
+  if (ts.length >= 2) spanHours = (Math.max(...ts) - Math.min(...ts)) / 3600000;
+
+  const notice = (turns >= ROLLOVER_TURNS) || (repeats.length > 0) || (spanHours !== null && spanHours >= ROLLOVER_HOURS);
+
+  let observed = turns + ' message(s) sent in this chat';
+  if (spanHours !== null) observed += ', spanning ~' + (spanHours < 1 ? '<1' : spanHours.toFixed(1)) + ' hour(s)';
+  observed += '.';
+  if (repeats.length) observed += ' ' + repeats.length + ' message(s) were sent more than once.';
+
+  return {
+    detector: 'chat-rollover',
+    signal: notice ? 'notice' : 'clear',
+    checked_at: new Date().toISOString(),
+    items: repeatItems,
+    observed,
+    might_mean: notice
+      ? 'Long or looping chats tend to drift, lose the earlier thread, and make you repeat yourself. A fresh chat started from the handoff/brief often works better than pushing this one further.'
+      : 'This chat is still short and shows no repeated messages - no reason to roll over yet.',
+    not_proven: 'Token usage and whether context has actually degraded are NOT measurable from here. Whether a fresh chat is warranted is a judgment; these are just observable counts. Messages from before this update have no timestamp, so the time span may undercount.',
+    what_to_do: notice
+      ? 'If it feels like you are repeating yourself or the chat is drifting, start a new chat and paste the handoff block / PROJECT.md brief (roadmap #7). Otherwise keep going.'
+      : 'Nothing needed.',
+  };
+}
 
 function signalCard(d) {
   const sig = (d.signal || 'unknown');
@@ -171,8 +219,8 @@ async function loadSignals() {
   try {
     const r = await window.pcc.detections();
     const cards = Object.values(r || {});
-    if (!cards.length) { list.innerHTML = '<p class="muted">No detectors reported.</p>'; }
-    else { cards.forEach((d) => list.appendChild(signalCard(d))); }
+    cards.push(computeChatSignal()); // app-side signal from this chat's own history
+    cards.forEach((d) => list.appendChild(signalCard(d)));
     status.textContent = '';
   } catch (e) {
     list.innerHTML = '<p class="muted">Could not run signals: ' + escapeHtml(e.message) + '</p>';
