@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-pathD-006
 * Task Title: Handoff / Rollover Panel (Read-Only) — Phase D2 Complete
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Auto-Promotion Basis
