@@ -110,6 +110,7 @@ const views = {
   project: document.getElementById('view-project'),
   rules: document.getElementById('view-rules'),
   memory: document.getElementById('view-memory'),
+  verify: document.getElementById('view-verify'),
 };
 let loadedProject = false, loadedRules = false, loadedMemory = false;
 
@@ -188,6 +189,28 @@ document.getElementById('memory-save').addEventListener('click', async () => {
     status.textContent = 'Error: ' + e.message;
   }
   setTimeout(() => { status.textContent = ''; }, 2500);
+});
+
+// ---- verify view ----
+document.getElementById('verify-run').addEventListener('click', async () => {
+  const status = document.getElementById('verify-status');
+  const result = document.getElementById('verify-result');
+  const btn = document.getElementById('verify-run');
+  btn.disabled = true;
+  status.textContent = 'Codex is verifying… this can take a minute.';
+  result.style.display = 'none';
+  try {
+    const r = await window.pcc.verify();
+    result.textContent = (r && r.text) ? r.text : '(no result)';
+    result.style.display = 'block';
+    status.textContent = (r && r.ok) ? '' : 'Verifier error.';
+  } catch (e) {
+    result.textContent = 'Error: ' + e.message;
+    result.style.display = 'block';
+    status.textContent = '';
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 // ---- boot ----

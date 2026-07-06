@@ -19,6 +19,7 @@ start of every session, so these never need to be repeated.
 ## Work discipline
 - Stay in scope. Don't change things that weren't asked for.
 - Prefer local, deterministic tools for mechanical work; spend the LLM only on real judgment.
+- Before building something new, first check how it's already been solved (search the web for recent, real solutions) and reuse a proven tool. Don't reinvent the wheel.
 - Take snapshots (commits) as you go, so nothing is lost and anything can be rolled back.
 
 ## Current project context

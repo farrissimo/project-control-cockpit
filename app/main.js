@@ -10,7 +10,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
 
 const PROJECT_DIR = path.join(__dirname, '..');
 const COCKPIT = path.join(PROJECT_DIR, '.cockpit');
@@ -54,6 +54,21 @@ ipcMain.handle('pcc:saveMemory', (_e, text) => {
   try { fs.writeFileSync(MEMORY_PATH, String(text), 'utf8'); return { ok: true }; }
   catch (e) { return { ok: false, error: e.message }; }
 });
+
+// Independent verification: drive Codex CLI's supported non-interactive mode
+// (`codex exec`) in a read-only sandbox, so the verifier can inspect and run
+// checks but cannot change anything. Codex reads AGENTS.md for the verdict
+// format. The worker (Claude) never grades its own work.
+ipcMain.handle('pcc:verify', () => new Promise((resolve) => {
+  const prompt = 'Independently verify the most recent work in this repository following the review guidelines in AGENTS.md. Do not make any changes.';
+  const cmd = 'codex exec --sandbox read-only "' + prompt + '"';
+  exec(cmd, { cwd: PROJECT_DIR, maxBuffer: 12 * 1024 * 1024, timeout: 300000, windowsHide: true }, (err, stdout, stderr) => {
+    const out = (stdout || '').trim();
+    if (out) return resolve({ ok: true, text: out });
+    if (err) return resolve({ ok: false, text: 'Verifier could not run: ' + (err.killed ? 'timed out after 5 min' : (stderr || err.message)) });
+    resolve({ ok: true, text: (stderr || '(no output)').trim() });
+  });
+}));
 
 // Send a message to Claude Code non-interactively. The prompt goes in over
 // stdin (so quotes/newlines in the message can never break shell parsing).

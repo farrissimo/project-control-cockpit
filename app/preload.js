@@ -11,4 +11,5 @@ contextBridge.exposeInMainWorld('pcc', {
   getRules: () => ipcRenderer.invoke('pcc:getRules'),
   getMemory: () => ipcRenderer.invoke('pcc:getMemory'),
   saveMemory: (text) => ipcRenderer.invoke('pcc:saveMemory', text),
+  verify: () => ipcRenderer.invoke('pcc:verify'),
 });
