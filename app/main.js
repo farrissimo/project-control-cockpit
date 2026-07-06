@@ -30,6 +30,16 @@ ipcMain.handle('pcc:getState', () => ({
   task: readJson('state', 'task-state.json'),
 }));
 
+// Read the standing rules (CLAUDE.md) so the Rules view can show exactly what
+// loads into every Claude session. Read-only.
+ipcMain.handle('pcc:getRules', () => {
+  try {
+    return { ok: true, text: fs.readFileSync(path.join(PROJECT_DIR, 'CLAUDE.md'), 'utf8') };
+  } catch (e) {
+    return { ok: false, text: null };
+  }
+});
+
 // Send a message to Claude Code non-interactively. The prompt goes in over
 // stdin (so quotes/newlines in the message can never break shell parsing).
 // After the first turn we pass --continue so Claude keeps the conversation.

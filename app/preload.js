@@ -8,4 +8,5 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('pcc', {
   getState: () => ipcRenderer.invoke('pcc:getState'),
   send: (message) => ipcRenderer.invoke('pcc:send', message),
+  getRules: () => ipcRenderer.invoke('pcc:getRules'),
 });

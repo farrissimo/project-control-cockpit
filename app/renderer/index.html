@@ -8,44 +8,86 @@
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
-  body { display: flex; flex-direction: column; font-family: system-ui, sans-serif;
-    background: #101216; color: #e8eaed; }
-  header { display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 20px; border-bottom: 1px solid #23262d; flex: 0 0 auto; }
-  .brand { font-weight: 600; font-size: 15px; }
-  .project { color: #8ab4ff; font-weight: 500; }
-  .rules { font-size: 12px; color: #7a7f87; }
-  main { flex: 1 1 auto; overflow-y: auto; padding: 20px; display: flex;
-    flex-direction: column; gap: 12px; }
+  body { display: flex; font-family: system-ui, sans-serif; background: #101216; color: #e8eaed; }
+
+  aside { flex: 0 0 210px; background: #0b0d10; border-right: 1px solid #23262d;
+    display: flex; flex-direction: column; padding: 16px 12px; }
+  .brand { font-weight: 600; font-size: 15px; padding: 4px 8px 2px; }
+  .project { font-size: 12px; color: #8ab4ff; font-weight: 500; padding: 0 8px 14px; }
+  nav { display: flex; flex-direction: column; gap: 4px; }
+  .nav { text-align: left; background: transparent; border: none; color: #b8bdc6;
+    font-size: 14px; padding: 9px 10px; border-radius: 8px; cursor: pointer; }
+  .nav:hover { background: #1a1d23; }
+  .nav.active { background: #1c2637; color: #dbe8ff; }
+  .side-foot { margin-top: auto; font-size: 11px; color: #5f646c; padding: 8px; }
+
+  #content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .view { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .view.hidden { display: none; }
+
+  #log { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
   .bubble { max-width: 78%; padding: 10px 14px; border-radius: 12px; font-size: 14px;
     line-height: 1.55; white-space: pre-wrap; word-wrap: break-word; }
   .bubble.user { align-self: flex-end; background: #21406b; color: #dbe8ff; }
   .bubble.assistant { align-self: flex-start; background: #1a1d23; border: 1px solid #23262d; }
   .bubble.thinking { align-self: flex-start; color: #8a8f97; font-style: italic; }
-  .bubble.error { align-self: flex-start; background: #3a1c1c; color: #f0b0b0;
-    border: 1px solid #5a2a2a; }
-  form { flex: 0 0 auto; display: flex; gap: 10px; padding: 14px 20px;
-    border-top: 1px solid #23262d; }
-  textarea { flex: 1; resize: none; background: #1a1d23; color: #e8eaed;
-    border: 1px solid #2b2f37; border-radius: 10px; padding: 10px 12px;
-    font-family: inherit; font-size: 14px; max-height: 160px; }
+  .bubble.error { align-self: flex-start; background: #3a1c1c; color: #f0b0b0; border: 1px solid #5a2a2a; }
+  #corrections { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 20px 0; }
+  .corr { background: #14171c; border: 1px solid #2b2f37; color: #aeb4bd; font-size: 12px;
+    padding: 5px 10px; border-radius: 999px; cursor: pointer; }
+  .corr:hover { background: #1d2230; color: #dbe8ff; }
+  form { display: flex; gap: 10px; padding: 12px 20px 16px; }
+  textarea { flex: 1; resize: none; background: #1a1d23; color: #e8eaed; border: 1px solid #2b2f37;
+    border-radius: 10px; padding: 10px 12px; font-family: inherit; font-size: 14px; max-height: 160px; }
   textarea:focus { outline: none; border-color: #3a6bd6; }
-  button { background: #2f6bde; color: #fff; border: none; border-radius: 10px;
-    padding: 0 18px; font-weight: 500; font-size: 14px; cursor: pointer; }
-  button:disabled { opacity: .5; cursor: default; }
-  .empty { color: #6a6f77; font-size: 14px; align-self: center; margin-top: 40px; }
+  #send { background: #2f6bde; color: #fff; border: none; border-radius: 10px; padding: 0 18px;
+    font-weight: 500; font-size: 14px; cursor: pointer; }
+  #send:disabled { opacity: .5; cursor: default; }
+
+  .panel { padding: 24px; overflow-y: auto; }
+  .panel h2 { font-size: 16px; font-weight: 600; margin: 0 0 8px; }
+  table.state { border-collapse: collapse; width: 100%; max-width: 720px; margin-top: 12px; }
+  table.state th, table.state td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #23262d;
+    vertical-align: top; font-size: 14px; }
+  table.state th { width: 190px; color: #8ab4ff; font-weight: 500; }
+  pre.rules { background: #0b0d10; border: 1px solid #23262d; border-radius: 10px; padding: 16px;
+    font-size: 13px; white-space: pre-wrap; line-height: 1.6; color: #cdd2d9; margin-top: 12px; }
+  .muted { color: #7a7f87; font-size: 13px; }
 </style>
 </head>
 <body>
-  <header>
-    <div class="brand">PCC <span class="project" id="project"></span></div>
-    <div class="rules">Your rules load automatically from CLAUDE.md</div>
-  </header>
-  <main id="log"></main>
-  <form id="composer">
-    <textarea id="input" placeholder="Tell PCC what to do" rows="1"></textarea>
-    <button id="send" type="submit">Send</button>
-  </form>
+  <aside>
+    <div class="brand">PCC</div>
+    <div class="project" id="project"></div>
+    <nav>
+      <button class="nav active" data-view="chat">Chat</button>
+      <button class="nav" data-view="project">Project</button>
+      <button class="nav" data-view="rules">Rules</button>
+    </nav>
+    <div class="side-foot">Talking to your Claude Code</div>
+  </aside>
+
+  <section id="content">
+    <div class="view" id="view-chat">
+      <div id="log"></div>
+      <div id="corrections"></div>
+      <form id="composer">
+        <textarea id="input" placeholder="Tell PCC what to do" rows="1"></textarea>
+        <button id="send" type="submit">Send</button>
+      </form>
+    </div>
+
+    <div class="view hidden panel" id="view-project">
+      <h2>Where the project stands</h2>
+      <div id="project-body"><p class="muted">Loading…</p></div>
+    </div>
+
+    <div class="view hidden panel" id="view-rules">
+      <h2>Your standing rules</h2>
+      <p class="muted">These load into every Claude session automatically (CLAUDE.md).</p>
+      <pre class="rules" id="rules-content">Loading…</pre>
+    </div>
+  </section>
   <script src="renderer.js"></script>
 </body>
 </html>
