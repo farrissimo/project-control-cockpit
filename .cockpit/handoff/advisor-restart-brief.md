@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-05T19:24:14-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-05T19:37:32-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,17 +10,17 @@ Current phase: post-brr
 
 ## Active Task
 
-* Task ID: pcc-pathD-006
-* Title: Handoff / Rollover Panel (Read-Only) — Phase D2 Complete
-* Status: complete
-* Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Deliver docs/PATH_A_PLAN.md section 6 Phase D2's final task: a Handoff/Rollover panel in dashboard/index.html showing the latest clean/verified handoff (from project-state.json's already-loaded last_verified_handoff field) and current rollover-trigger warnings. CORRECTED MID-TASK: the original plan was to invoke scripts/check-stop-conditions.ps1 as a subprocess, mirroring the classify-routing.ps1 pattern. Testing during this task discovered that check-stop-conditions.ps1 is NOT side-effect-free: it writes a stop_condition_fired event to routing-log.jsonl whenever it detects a stop condition (BRR Phase 4/IDEA-008), which would break the dashboard's read-only contract and would be actively dangerous under scripts/watch-dashboard.ps1's polling loop (repeated writes every few seconds while a condition stays active). Testing this also surfaced a real, pre-existing, out-of-scope finding: check-stop-conditions.ps1's approved-lane-source list does not recognize docs/PATH_A_PLAN.md, so it mechanically false-flags every Path A task's promotion_basis -- not fixed here (would require modifying a different existing script, forbidden by this task's scope), disclosed for a future task instead. The corrected design reads the two most owner-relevant, side-effect-free signals (owner_decision_request pending; task_status in an attention-needed state) directly from task-state.json fields already loaded, with no subprocess call and no write risk. Completing this delivers all of Phase D2 (pcc-pathD-004 through pcc-pathD-006).
+* Task ID: pcc-pathD-007
+* Title: Request-File Inbox Contract + Schema (Phase D3 Foundation)
+* Status: returned_for_verification
+* Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
+* Objective: Deliver docs/PATH_A_PLAN.md section 6 Phase D3's first task, explicitly owner-authorized (DECISION-097): define the .cockpit/request/ inbox convention and its schema -- the one genuinely new bridge surface for Category D. This task defines the contract ONLY: a new schemas/request.schema.json, the .cockpit/request/ directory, and a short canonical documentation of the request lifecycle (who writes, who consumes, how a request moves from pending to processed/rejected). It does NOT build any dashboard UI control that writes a request file (that is pcc-pathD-008/009), and does NOT build any consumer/watcher script that reads and acts on request files (also later tasks). This keeps the contract-defining step cleanly separated from its first real producer and consumer.
 
 ## Auto-Promotion Basis
 
-* Approved lane: Path A / Category D / Phase D2
-* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-006)
-* Justification (continuation, not a fork): Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner said to keep going until told to stop, with verification paused before each cycle.
+* Approved lane: Path A / Category D / Phase D3
+* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-007)
+* Justification (continuation, not a fork): Explicitly owner-authorized per DECISION-097 (direct yes/no confirmation obtained for Phase D3 specifically, not assumed from general continuation momentum). This is the first Phase D3 task, gated by its own owner decision as the plan itself requires; not an in-lane auto-promotion like the Phase D1/D2 tasks.
 ## Last Verified
 
 * Verdict: PASS for task 'pcc-pathD-006', verified at 2026-07-05T22:00:00-06:00
@@ -45,5 +45,5 @@ Current phase: post-brr
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-pathD-006' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-pathD-006' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Task-level: Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.
+* Project-level: Worker evidence for task 'pcc-pathD-007' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict.

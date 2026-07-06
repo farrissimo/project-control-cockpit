@@ -2371,3 +2371,51 @@ Process disclosure: built with Codex unavailable (`DECISION-086`), under direct 
 
 Supersedes: None
 Related: DECISION-040, DECISION-074, DECISION-075, DECISION-086, DECISION-087, DECISION-088, DECISION-092, DECISION-093, DECISION-094, DECISION-095, docs/PATH_A_PLAN.md, scripts/generate-dashboard.ps1, scripts/check-stop-conditions.ps1
+
+---
+
+## DECISION-097: Owner Authorizes Category D Phase D3 (Write-Path Controls)
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+The owner explicitly authorizes `docs/PATH_A_PLAN.md` §6 Phase D3 to begin, starting with `pcc-pathD-007`. This is the first Category D step where the dashboard gains the ability to initiate an action (dropping a request file into a defined inbox that an existing script/watcher then acts on) rather than only display information. The UI still never executes work directly and never edits authoritative state directly.
+
+Reason:
+
+`docs/PATH_A_PLAN.md` §6 deliberately gated Phase D3 behind its own explicit owner decision, separate from the general continuation authority already granted for Phase D1/D2 read-only work, because it is a different risk category: new authority, not just more display surface. After Phase D2 closed out clean (verified PASS on `pcc-pathD-004..006`, `DECISION-096`), the owner gave a general "move forward if no blockers" instruction; per the plan's own design intent, this was explicitly re-confirmed as a direct yes/no on Phase D3 specifically, rather than assumed to be carried by that general momentum. The owner confirmed "yes" to the direct question.
+
+Implications:
+
+`pcc-pathD-007` (request-file inbox contract + schema) may now be drafted and built. `pcc-pathD-008`/`009` (rollover/handoff controls; tone/behavior controls) remain the subsequent Phase D3 tasks per the plan, each still subject to the normal worker/verifier cycle. This authorization covers Phase D3 as scoped in the plan; it does not authorize any capability beyond what `docs/PATH_A_PLAN.md` §6 already describes for that phase.
+
+Supersedes: None
+Related: DECISION-087, DECISION-096, docs/PATH_A_PLAN.md
+
+---
+
+## DECISION-098: Request-File Inbox Contract + Schema Delivered (pcc-pathD-007, First Phase D3 Task)
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+The Category D Phase D3 request-file contract is delivered per `docs/PATH_A_PLAN.md` §6, following the owner's explicit authorization (`DECISION-097`): `schemas/request.schema.json` (a closed `request_type` enum starting with `rollover` and `communication_prefs_update`, a `status` enum of `pending`/`processed`/`rejected`, and a type-specific `payload` object), the `.cockpit/request/` directory (tracked via a placeholder), and a canonical lifecycle description added to `docs/STATE_MODEL.md`.
+
+Reason:
+
+This task deliberately defines the contract only -- no dashboard control writes a request file yet, and no consumer script reads or acts on one yet; those are separate, later, bounded tasks (`pcc-pathD-008`/`009`) so the producer-side contract does not have to be re-derived each time. The schema's `request_type` enum is closed (not an open string) so a request file's shape stays checkable rather than becoming an unconstrained free-form blob as new request types are added later; extending it to a new type requires its own schema update, not silent drift. `scripts/check-schemas.ps1` is deliberately not extended to validate request files in this task, since none exist yet to validate -- explicitly deferred to whichever later task first produces real ones, not silently skipped.
+
+Functionally tested (not read-through only): two synthetic example request files (one per named `request_type`) validated successfully against the new schema via `Test-Json`, in an isolated scratch location outside `.cockpit/` (since no producer exists yet to write real ones); a third synthetic example using an unrecognized `request_type` was confirmed to be correctly rejected by the schema's enum constraint. `scripts/doctor.ps1`'s file-structure check correctly flagged the new `.cockpit/request/` directory as an unexpected-but-not-necessarily-a-problem `[WARN]` (its `expectedSubdirs` list predates this task and was not modified, consistent with this task's own scope boundaries) -- expected, disclosed, non-blocking.
+
+Implications:
+
+No existing script was modified; no existing schema was modified; no new log event type was added. This task is Task Safety Class B (new schema/contract-defining work, more consequential than the read-only Category D panels), so per the Acceptance Boundary Rules it is not self-accepted regardless of outcome -- consistent with the owner's stated mode this session (pause before each verification). `.cockpit/request/` remains empty (besides its tracking placeholder) until a producer exists. The next Phase D3 task is `pcc-pathD-008` (rollover/handoff controls: the first producer and consumer pair), per `docs/PATH_A_PLAN.md` §6.
+
+Process disclosure: built with Codex unavailable (`DECISION-086`), under direct owner direction, following explicit Phase D3 authorization (`DECISION-097`); self-checked with PCC's local guardrails; the mandatory pre-task handoff/backup gate was run correctly before work began (genuine backup `20260705-193433`).
+
+Supersedes: None
+Related: DECISION-074, DECISION-086, DECISION-087, DECISION-096, DECISION-097, docs/PATH_A_PLAN.md, docs/STATE_MODEL.md, schemas/request.schema.json

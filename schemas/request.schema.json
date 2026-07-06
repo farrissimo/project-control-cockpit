@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "request.schema.json",
+  "title": "Project Cockpit Request File (Category D Phase D3 write-path)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "request_type",
+    "created_at",
+    "source",
+    "status",
+    "payload"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "request_type": {
+      "type": "string",
+      "enum": [
+        "rollover",
+        "communication_prefs_update"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processed",
+        "rejected"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    }
+  }
+}

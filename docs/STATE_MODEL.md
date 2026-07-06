@@ -317,6 +317,24 @@ returned_for_verification
 
 ---
 
+## Request-File Inbox (Category D Phase D3)
+
+`.cockpit/request/` is the one write-path the owner-facing dashboard is permitted to use (`DECISION-097`; `docs/PATH_A_PLAN.md` §6 Phase D3). Its shape is fixed by `schemas/request.schema.json`. This section defines the lifecycle so any producer or consumer can be built against a single fixed contract rather than re-deriving it.
+
+### Lifecycle
+
+1. **Producer writes a new file** into `.cockpit/request/`, matching `schemas/request.schema.json`, with `status: "pending"`.
+2. **A consumer script** (built per-`request_type` in its own bounded task, e.g. `pcc-pathD-008`/`009`) detects pending request files, acts on the request through PCC's normal deterministic scripts, and then either:
+   - moves the file to `.cockpit/request/processed/` (accepted and acted on), or
+   - moves the file to `.cockpit/request/rejected/` (not acted on, with the reason recorded in the file or a paired log entry).
+3. Request files are transient, operational artifacts, not canonical truth: the request itself is evidence that an action was asked for, not proof it happened. The actual effect (e.g. a rollover, an updated `communication_prefs`) still goes through PCC's existing state-update paths and verification discipline exactly as if the owner or worker had triggered it directly.
+
+### What this task (`pcc-pathD-007`) defines vs. defers
+
+This contract (schema + directory + lifecycle) is defined once, here. Building the first producer (a dashboard control that writes a request file) and the first consumer (a script that detects and acts on one) are separate, later, bounded tasks. Neither exists yet as of this section being written; `.cockpit/request/` is empty until one does.
+
+---
+
 ## Truth Source Priority
 
 When sources conflict, use this priority order:

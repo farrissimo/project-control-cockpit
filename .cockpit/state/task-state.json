@@ -1,35 +1,39 @@
 {
-  "task_id": "pcc-pathD-006",
-  "task_title": "Handoff / Rollover Panel (Read-Only) — Phase D2 Complete",
-  "task_objective": "Deliver docs/PATH_A_PLAN.md section 6 Phase D2's final task: a Handoff/Rollover panel in dashboard/index.html showing the latest clean/verified handoff (from project-state.json's already-loaded last_verified_handoff field) and current rollover-trigger warnings. CORRECTED MID-TASK: the original plan was to invoke scripts/check-stop-conditions.ps1 as a subprocess, mirroring the classify-routing.ps1 pattern. Testing during this task discovered that check-stop-conditions.ps1 is NOT side-effect-free: it writes a stop_condition_fired event to routing-log.jsonl whenever it detects a stop condition (BRR Phase 4/IDEA-008), which would break the dashboard's read-only contract and would be actively dangerous under scripts/watch-dashboard.ps1's polling loop (repeated writes every few seconds while a condition stays active). Testing this also surfaced a real, pre-existing, out-of-scope finding: check-stop-conditions.ps1's approved-lane-source list does not recognize docs/PATH_A_PLAN.md, so it mechanically false-flags every Path A task's promotion_basis -- not fixed here (would require modifying a different existing script, forbidden by this task's scope), disclosed for a future task instead. The corrected design reads the two most owner-relevant, side-effect-free signals (owner_decision_request pending; task_status in an attention-needed state) directly from task-state.json fields already loaded, with no subprocess call and no write risk. Completing this delivers all of Phase D2 (pcc-pathD-004 through pcc-pathD-006).",
-  "task_status": "complete",
+  "task_id": "pcc-pathD-007",
+  "task_title": "Request-File Inbox Contract + Schema (Phase D3 Foundation)",
+  "task_objective": "Deliver docs/PATH_A_PLAN.md section 6 Phase D3's first task, explicitly owner-authorized (DECISION-097): define the .cockpit/request/ inbox convention and its schema -- the one genuinely new bridge surface for Category D. This task defines the contract ONLY: a new schemas/request.schema.json, the .cockpit/request/ directory, and a short canonical documentation of the request lifecycle (who writes, who consumes, how a request moves from pending to processed/rejected). It does NOT build any dashboard UI control that writes a request file (that is pcc-pathD-008/009), and does NOT build any consumer/watcher script that reads and acts on request files (also later tasks). This keeps the contract-defining step cleanly separated from its first real producer and consumer.",
+  "task_status": "returned_for_verification",
   "assigned_worker": "Claude Code",
-  "task_safety_class": "A",
+  "task_safety_class": "B",
   "completion_criteria": [
-    "scripts/generate-dashboard.ps1 gains a Handoff/Rollover panel showing: (a) the latest clean/verified handoff, sourced from project-state.json's already-loaded last_verified_handoff field (no new file read); (b) current rollover-trigger warnings, computed directly from task-state.json's already-loaded owner_decision_request and task_status fields (mirroring only check-stop-conditions.ps1's first two, side-effect-free conditions) -- NOT via a subprocess call to check-stop-conditions.ps1, per the mid-task correction recorded in the task objective.",
-    "The script still writes only -OutputPath and mutates no .cockpit/ file directly; no new subprocess call is introduced by this task at all.",
-    "No script other than scripts/classify-routing.ps1 (already established) is invoked as a subprocess; no new engine-script call is introduced.",
-    "Functionally tested (not read-through only): run against the real live state (confirms sane Handoff/Rollover output, including the rollover-warnings text); confirm zero .cockpit/ mutation (including routing-log.jsonl) from the render, by diffing the log file before and after.",
-    "A new decision is recorded in docs/DECISIONS.md documenting the delivery, the mid-task discovery and correction (check-stop-conditions.ps1's log-write side effect), and the separately-disclosed out-of-scope finding (its stale approved-lane-source list not recognizing docs/PATH_A_PLAN.md), and explicitly noting that Phase D2 (pcc-pathD-004 through pcc-pathD-006) is now complete. docs/PATH_A_PLAN.md is updated only to mark pcc-pathD-006 as delivered and Phase D2 as complete, not to change its scope.",
-    "No existing script is modified; no schema is modified; no new log event type is added.",
+    "schemas/request.schema.json exists, following the same JSON Schema conventions as the other schemas/*.schema.json files (draft/2020-12, $id, additionalProperties: false, required fields), defining a request file's shape: a stable identifier, a request_type (a closed enum, starting with the two concrete Phase D3 use cases already named in the plan -- 'rollover' for pcc-pathD-008 and 'communication_prefs_update' for pcc-pathD-009 -- plus room to add more via a future schema update, not an open string), a created_at timestamp, a source field (identifying what produced the request, e.g. 'dashboard'), a status enum (pending/processed/rejected), and a type-specific payload object.",
+    "The .cockpit/request/ directory exists (with a placeholder file, e.g. .gitkeep, so git tracks the empty directory) as the canonical inbox location.",
+    "A short, canonical lifecycle description is recorded (in docs/STATE_MODEL.md or a clearly-scoped addition to docs/PATH_A_PLAN.md) covering: a producer writes a new request file with status 'pending'; a consumer (a future script, not built in this task) is responsible for detecting new pending requests, acting on them, and then moving the file to .cockpit/request/processed/ or .cockpit/request/rejected/ (or updating its own status field and archiving it) -- the exact consumer mechanics are left to pcc-pathD-008/009, but the producer-side contract (what a valid request file looks like) is fixed here so those later tasks do not have to re-derive it.",
+    "No dashboard script is changed by this task: scripts/generate-dashboard.ps1 and scripts/watch-dashboard.ps1 are untouched. No consumer/watcher script is created.",
+    "scripts/check-schemas.ps1 is not modified to validate request files in this task (that is deferred to whichever later task actually produces real request files, since there is nothing to validate yet); this deferral is stated explicitly, not silently skipped.",
+    "The new schema is confirmed structurally valid by successfully validating at least one synthetic example request file (for each of the two named request_type values) against it, in an isolated scratch location -- not written into .cockpit/request/ itself, since no producer exists yet to create real ones.",
+    "A new decision is recorded in docs/DECISIONS.md documenting the delivery and the contract's shape/lifecycle. docs/PATH_A_PLAN.md is updated only to mark pcc-pathD-007 as delivered, not to change its scope.",
+    "No existing script is modified; no existing schema is modified; no new log event type is added; no verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule is changed.",
     "The mandatory pre-task handoff/backup gate is run correctly before any code change, continuing the standing expectation from pcc-pathD-002 onward.",
     "The task is handed back through the normal worker path for verification; it is not self-closed in this cycle (owner's stated preference remains: pause before each verification), and no verification verdict is written by the worker."
   ],
   "boundaries": {
     "allowed": [
-      "Edit scripts/generate-dashboard.ps1 to add the Handoff/Rollover panel (direct field reads only, no new subprocess call).",
-      "Edit docs/DECISIONS.md to record the new decision, including noting Phase D2 completion and the mid-task discovery/correction.",
-      "Edit docs/PATH_A_PLAN.md only to mark pcc-pathD-006 as delivered and Phase D2 complete, not to change its scope or spec.",
-      "Regenerate dashboard/index.html as part of normal testing (it is a gitignored, generated artifact)."
+      "Create schemas/request.schema.json, a new schema file.",
+      "Create the .cockpit/request/ directory with a placeholder file so git tracks it.",
+      "Edit docs/STATE_MODEL.md (or add a clearly-scoped section to docs/PATH_A_PLAN.md) to document the request-file lifecycle.",
+      "Edit docs/DECISIONS.md to record the new decision.",
+      "Edit docs/PATH_A_PLAN.md only to mark pcc-pathD-007 as delivered, not to change its scope or spec."
     ],
     "forbidden": [
-      "Do not invoke any script other than scripts/classify-routing.ps1 (already established) as a subprocess; do not invoke scripts/check-stop-conditions.ps1 from the dashboard at all, per the discovered log-write side effect.",
-      "Do not modify scripts/check-stop-conditions.ps1, scripts/classify-routing.ps1, scripts/doctor.ps1, or any other existing script.",
+      "Do not modify scripts/generate-dashboard.ps1 or scripts/watch-dashboard.ps1.",
+      "Do not create any consumer/watcher script that reads or acts on request files.",
+      "Do not modify scripts/check-schemas.ps1 or any other existing script.",
+      "Do not write any real file into .cockpit/request/ other than the tracking placeholder; synthetic test examples must live outside .cockpit/ entirely.",
+      "Do not modify any existing schema (project-state, task-state, verification-result, handoff-packet).",
       "Do not add any new log event type or write to routing-log.jsonl.",
-      "Do not make scripts/generate-dashboard.ps1 write to, or otherwise mutate, any .cockpit/ file.",
-      "Do not modify any schema.",
       "Do not change any verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule.",
-      "Do not build any Phase D3 functionality (write-path/request-file controls) in this task.",
+      "Do not build pcc-pathD-008 or pcc-pathD-009's actual controls in this task.",
       "Do not manually invoke 'codex exec' or otherwise self-issue a verification verdict for this task in this cycle.",
       "Do not skip the mandatory pre-task handoff/backup gate; it must be run while task_status is 'ready_for_worker', before any code change."
     ]
@@ -38,23 +42,23 @@
     "Files created or changed.",
     "Summary of changes.",
     "Commands run, including confirmation the pre-task handoff gate ran before work began.",
-    "Command/test results, including the real-state test and the routing-log.jsonl before/after diff confirming zero mutation.",
+    "Command/test results, including the synthetic schema-validation test for both named request_type values.",
     "Known risks.",
     "Unresolved assumptions.",
-    "Confirmation that forbidden scope was not touched, including that no script other than classify-routing.ps1 was invoked as a subprocess, and disclosure of the mid-task discovery (check-stop-conditions.ps1's log-write side effect and stale approved-lane-source list)."
+    "Confirmation that forbidden scope was not touched, including that no dashboard script, consumer script, or existing schema was modified, and that no real file was written into .cockpit/request/."
   ],
   "attempts": 1,
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
-  "verification_verdict": "PASS",
+  "verification_verdict": null,
   "current_blocker": null,
   "owner_decision_request": null,
   "promotion_basis": {
-    "lane": "Path A / Category D / Phase D2",
-    "priority_ref": "docs/PATH_A_PLAN.md section 6 (pcc-pathD-006)",
-    "justification": "Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner said to keep going until told to stop, with verification paused before each cycle."
+    "lane": "Path A / Category D / Phase D3",
+    "priority_ref": "docs/PATH_A_PLAN.md section 6 (pcc-pathD-007)",
+    "justification": "Explicitly owner-authorized per DECISION-097 (direct yes/no confirmation obtained for Phase D3 specifically, not assumed from general continuation momentum). This is the first Phase D3 task, gated by its own owner decision as the plan itself requires; not an in-lane auto-promotion like the Phase D1/D2 tasks."
   },
-  "next_action": "Task 'pcc-pathD-006' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-05T19:24:12-06:00"
+  "next_action": "Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.",
+  "updated_at": "2026-07-05T19:37:31-06:00"
 }
