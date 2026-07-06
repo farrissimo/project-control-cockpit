@@ -50,9 +50,14 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
    clean run is observed.
 2. FIX scripts/verify-work.ps1 fallback: it still calls the RETIRED Gemini CLI
    (`gemini --skip-trust -p`). Gemini CLI was replaced by Antigravity `agy`
-   (v1.0.10, at %LOCALAPPDATA%\agy\bin\agy.exe). Update the fallback to use
-   `agy -p` headless print mode — TEST the exact invocation first (it is a
-   slow-booting agent; confirm how it takes the git diff before wiring).
+   (v1.0.10, at %LOCALAPPDATA%\agy\bin\agy.exe). TESTED finding: a plain
+   `agy -p "..."` HANGS (waits for an approval prompt that never renders in a
+   non-interactive shell) and gets killed (exit 255). Per Antigravity docs,
+   non-interactive runs need `agy --headless` plus an `--approve` policy (or
+   `--dangerously-skip-permissions`), and it may need `agy auth login` first
+   (interactive; owner must do it). So: ensure auth, then wire the fallback as
+   e.g. `agy --headless --approve <policy> -p "<review prompt>"`, and TEST it
+   actually returns before trusting it. Codex stays the primary verifier.
 3. Continue down docs/COCKPIT_ROADMAP.md by priority.
 
 ## Roadmap status (full list: docs/COCKPIT_ROADMAP.md)
