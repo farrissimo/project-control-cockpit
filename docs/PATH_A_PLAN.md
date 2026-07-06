@@ -132,7 +132,7 @@ the same technology — the read-only board is grown, not thrown away.
 | B — Behavior & Tooling Controls | 2 (pre-checkpoint) | ✅ Done — `DECISION-076` (`pcc-pathB-001`) |
 | C — Metrics & Evidence Depth | 3 (pre-checkpoint) | ✅ Done — `DECISION-081` (`pcc-pathC-001..004`) |
 | **Maturity Checkpoint** | Milestone | ✅ Reached — `DECISION-084`; frozen `DECISION-085` |
-| **D — Product Surface (UI)** | Post-checkpoint | 🔶 In progress — `pcc-pathD-001` delivered; next is `pcc-pathD-002` (§6) |
+| **D — Product Surface (UI)** | Post-checkpoint | 🔶 In progress — `pcc-pathD-001`/`pcc-pathD-002` delivered; next is `pcc-pathD-003` (§6) |
 | E — Multi-Model/Multi-Agent | Deferred | Path-B / CCB-domain scope |
 | F — Knowledge & Memory | Deferred | Gated on proven need |
 
@@ -191,7 +191,7 @@ controls, calls no engine script.
     `.cockpit/` state and against a synthetic malformed-state case (fails clean,
     no mutation).
   - D1-T1.4 — Record decision + evidence; hand back for verification.
-- **`pcc-pathD-002` — Directive + Verification panels**
+- **`pcc-pathD-002` — Directive + Verification panels** — ✅ **DELIVERED** (`DECISION-092`, pending verification)
   - D1-T2.1 — Directive Panel: current directive, boundaries, required evidence,
     success criteria, handoff target (from `.cockpit/handoff/worker-directive.md`).
   - D1-T2.2 — Verification Panel: returned evidence, changed files, verdict,

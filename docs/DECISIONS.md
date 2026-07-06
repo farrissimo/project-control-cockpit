@@ -2231,3 +2231,31 @@ Process disclosure: decided by the owner directly, with ChatGPT manual-bridge ad
 
 Supersedes: None
 Related: DECISION-006, DECISION-086, DECISION-089, DECISION-090, docs/VERIFICATION_RESULT_SPEC.md, docs/BRR_POLICY.md
+
+---
+
+## DECISION-092: Category D Phase D1 Second Deliverable — Directive + Verification Panels (pcc-pathD-002)
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+`scripts/generate-dashboard.ps1` (`pcc-pathD-001`, `DECISION-089`) is extended with two more read-only panels per `docs/PATH_A_PLAN.md` §6, Phase D1: the **Directive Panel** (task ID/title, safety class, allowed scope, forbidden scope, completion criteria, required evidence, handoff target) and the **Verification Panel** (verdict, summary, missing evidence, out-of-scope findings, risks, next action, and a pointer to the evidence file). `dashboard/index.html` now renders all three panels: Owner Control Board, Directive, Verification.
+
+Reason:
+
+The Directive Panel is sourced entirely from `.cockpit/state/task-state.json` fields already read by the script (`boundaries`, `completion_criteria`, `required_evidence`, `current_directive_path`) rather than parsing `worker-directive.md`'s freeform markdown — the same information, without adding a markdown-parser dependency, consistent with `DECISION-088`'s local-first-simplicity preference. The Verification Panel reads the one genuinely new input, `.cockpit/result/verification-result.json` (clean structured JSON), and treats `worker-result.md` as a display-only pointer (its path is shown, its content is never opened or parsed) since it is freeform evidence meant to be read directly, not summarized by the script. This keeps the extractability contract unchanged: still only reads canonical `.cockpit/` files, writes only `-OutputPath`, mutates nothing, calls no other script.
+
+**Process disclosure, stated plainly per the requirement this cycle carries forward from `DECISION-090`'s finding:** the mandatory pre-task handoff/backup gate (`scripts/enforce-handoff-restart-safety.ps1`) **was run correctly this cycle**, before any code change. Task-state was moved to `ready_for_worker` first; the gate's first run failed only on a stale advisor-restart-brief (a known, benign staleness case fixed by regenerating live handoff artifacts, not a process skip); it was re-run afterward and passed cleanly, producing a genuine pre-task backup (`.cockpit/backups/20260705-183639`) before `in_progress` began. The specific gap disclosed on `pcc-pathD-001` did not recur.
+
+Functionally tested (not read-through only): against a real completed cycle's archived artifacts (`.cockpit/result/archive/pcc-pathD-001-verification-result.json` / `-worker-result.md`, confirmed the Verification Panel renders the actual archived INSUFFICIENT verdict and its full evidence correctly), against the live in-progress cycle's own state, and against synthetic malformed-JSON and missing-file inputs for `-VerificationResultPath` in an isolated scratch directory (both fail cleanly, non-zero exit, no output written, no `.cockpit/` mutation from the test runs themselves).
+
+Implications:
+
+`dashboard/index.html` remains a generated, gitignored artifact. No existing script other than `scripts/generate-dashboard.ps1` was modified; no schema changed; no new log event type added; the dashboard generator still calls no other script. This task is Task Safety Class A, same as `pcc-pathD-001`. Per the owner's stated mode this session (pause before each verification, ChatGPT manual bridge), this cycle is handed back for verification rather than self-closed. The next Phase D1 task remains `pcc-pathD-003` (Routing / Local Tools read-only panel) per `docs/PATH_A_PLAN.md` §6.
+
+Process disclosure: built with Codex unavailable (`DECISION-086`), under direct owner direction ("keep going until I tell you to stop"); self-checked with PCC's local guardrails (`validate-cockpit-state.ps1`, `check-schemas.ps1`, `doctor.ps1`), and — unlike `pcc-pathD-001` — the mandatory pre-task handoff/backup gate was run correctly before work began.
+
+Supersedes: None
+Related: DECISION-074, DECISION-077, DECISION-087, DECISION-088, DECISION-089, DECISION-090, DECISION-091, docs/PATH_A_PLAN.md, scripts/generate-dashboard.ps1

@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-05T18:32:08-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-05T18:40:05-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,17 +10,17 @@ Current phase: post-brr
 
 ## Active Task
 
-* Task ID: pcc-pathD-001
-* Title: Dashboard Skeleton + Owner Control Board Panel (Read-Only)
-* Status: complete
+* Task ID: pcc-pathD-002
+* Title: Directive + Verification Panels (Read-Only)
+* Status: returned_for_verification
 * Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Deliver the first Category D (Product Surface) task per docs/PATH_A_PLAN.md section 6, Phase D1: a new, self-contained, read-only script scripts/generate-dashboard.ps1 that reads .cockpit/state/project-state.json and .cockpit/state/task-state.json (paths overridable by parameter) and renders a local static HTML file at dashboard/index.html showing the Owner Control Board panel (original scope section 11): current project, current task, current state, next expected action, current role, current worker, current verdict, and current blocker. This proves the UI's pure-consumer-of-the-file-bridge pattern (DECISION-074/077 extractability rule; DECISION-087 UI form decision) before any other panel is added. The script is read-only over the .cockpit/ bridge: it writes only the new top-level dashboard/ directory, never mutates any .cockpit/ file, and calls no other script (DECISION-088 local-first execution discipline: plain PowerShell + HTML, zero LLM dependency, zero external runtime).
+* Objective: Extend scripts/generate-dashboard.ps1 (pcc-pathD-001, DECISION-089) per docs/PATH_A_PLAN.md section 6, Phase D1, with two more read-only panels: the Directive Panel (current directive, boundaries, required evidence, success criteria, handoff target, from .cockpit/handoff/worker-directive.md) and the Verification Panel (returned evidence, changed files, verdict, missing evidence, next action, from .cockpit/result/worker-result.md and .cockpit/result/verification-result.json). This remains a pure consumer of the .cockpit/ file bridge (DECISION-074/077/087) and the local-first execution discipline (DECISION-088): still plain PowerShell + static HTML, zero LLM dependency, zero external runtime, no new engine-script calls.
 
 ## Auto-Promotion Basis
 
 * Approved lane: Path A / Category D / Phase D1
-* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-001)
-* Justification (continuation, not a fork): Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); this is continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner separately confirmed readiness to start Path A actual work in this session.
+* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-002)
+* Justification (continuation, not a fork): Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner explicitly said to keep going until told to stop, with verification paused before each cycle per the owner's chosen mode this session.
 ## Last Verified
 
 * Verdict: INSUFFICIENT for task 'pcc-pathD-001', verified at 2026-07-05T19:20:00-06:00
@@ -46,5 +46,5 @@ Current phase: post-brr
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-pathD-001' is complete via explicit owner override (DECISION-091), despite an INSUFFICIENT verifier verdict on process compliance (DECISION-090). The delivered artifact itself was independently confirmed sound; the override is a narrow, disclosed exception justified by an exact pre-task git commit already preserving the true restore point, and is not a precedent for future tasks. Next: pcc-pathD-002 (Directive + Verification panels) per docs/PATH_A_PLAN.md section 6.
-* Project-level: Task 'pcc-pathD-001' is complete via explicit owner override (DECISION-091), despite an INSUFFICIENT verifier verdict on process compliance (DECISION-090). The delivered artifact itself was independently confirmed sound; the override is a narrow, disclosed exception justified by an exact pre-task git commit already preserving the true restore point, and is not a precedent for future tasks. Next: pcc-pathD-002 (Directive + Verification panels) per docs/PATH_A_PLAN.md section 6.
+* Task-level: Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.
+* Project-level: Worker evidence for task 'pcc-pathD-002' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict.

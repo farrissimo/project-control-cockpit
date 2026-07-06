@@ -13,16 +13,16 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-pathD-001
-* Task Title: Dashboard Skeleton + Owner Control Board Panel (Read-Only)
-* Task Status: complete
+* Task ID: pcc-pathD-002
+* Task Title: Directive + Verification Panels (Read-Only)
+* Task Status: returned_for_verification
 * Task Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Auto-Promotion Basis
 
 * Approved lane: Path A / Category D / Phase D1
-* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-001)
-* Justification (continuation, not a fork): Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); this is continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner separately confirmed readiness to start Path A actual work in this session.
+* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-002)
+* Justification (continuation, not a fork): Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner explicitly said to keep going until told to stop, with verification paused before each cycle per the owner's chosen mode this session.
 ## Objective
 
 Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bounded task below, and return your result to `.cockpit/result/worker-result.md` using the required evidence format.
@@ -55,44 +55,45 @@ The owner's standing communication preferences (apply these without being asked;
 * Separate facts from inference: True
 ## Exact Next Action
 
-Deliver the first Category D (Product Surface) task per docs/PATH_A_PLAN.md section 6, Phase D1: a new, self-contained, read-only script scripts/generate-dashboard.ps1 that reads .cockpit/state/project-state.json and .cockpit/state/task-state.json (paths overridable by parameter) and renders a local static HTML file at dashboard/index.html showing the Owner Control Board panel (original scope section 11): current project, current task, current state, next expected action, current role, current worker, current verdict, and current blocker. This proves the UI's pure-consumer-of-the-file-bridge pattern (DECISION-074/077 extractability rule; DECISION-087 UI form decision) before any other panel is added. The script is read-only over the .cockpit/ bridge: it writes only the new top-level dashboard/ directory, never mutates any .cockpit/ file, and calls no other script (DECISION-088 local-first execution discipline: plain PowerShell + HTML, zero LLM dependency, zero external runtime).
+Extend scripts/generate-dashboard.ps1 (pcc-pathD-001, DECISION-089) per docs/PATH_A_PLAN.md section 6, Phase D1, with two more read-only panels: the Directive Panel (current directive, boundaries, required evidence, success criteria, handoff target, from .cockpit/handoff/worker-directive.md) and the Verification Panel (returned evidence, changed files, verdict, missing evidence, next action, from .cockpit/result/worker-result.md and .cockpit/result/verification-result.json). This remains a pure consumer of the .cockpit/ file bridge (DECISION-074/077/087) and the local-first execution discipline (DECISION-088): still plain PowerShell + static HTML, zero LLM dependency, zero external runtime, no new engine-script calls.
 
 ## Allowed Scope
 
 The worker may:
 
-* Create scripts/generate-dashboard.ps1 as a new, self-contained, read-only script over the .cockpit/ file-bridge contract (DECISION-074 extractability rule; DECISION-088 local-first execution), reading only .cockpit/state/project-state.json and .cockpit/state/task-state.json (paths overridable by parameter), writing only to a new top-level dashboard/ directory.
-* Create the dashboard/ directory and its generated dashboard/index.html output.
-* Edit docs/DECISIONS.md to record the new decision.
-* Edit README.md only as needed to note this first Category D deliverable in the doc index or status section.
-* Edit .gitignore to exclude the generated dashboard/index.html artifact.
-* Edit docs/PATH_A_PLAN.md only to mark pcc-pathD-001 as delivered, not to change its scope or spec.
+* Edit scripts/generate-dashboard.ps1 to add the Directive Panel and Verification Panel, and any new parameters needed for their source file paths.
+* Edit docs/DECISIONS.md to record the new decision, including an explicit statement that the pre-task handoff gate was run correctly this cycle.
+* Edit docs/PATH_A_PLAN.md only to mark pcc-pathD-002 as delivered, not to change its scope or spec.
+* Regenerate dashboard/index.html as part of normal testing (it is a gitignored, generated artifact).
 
 ## Forbidden Scope
 
 The worker must not:
 
-* Do not modify any existing script.
+* Do not modify any other existing script.
 * Do not add any new log event type or write to routing-log.jsonl.
-* Do not make the dashboard write to, or otherwise mutate, any .cockpit/ file; it is read-only over the file bridge.
+* Do not make scripts/generate-dashboard.ps1 write to, or otherwise mutate, any .cockpit/ file; it remains read-only over the file bridge.
 * Do not call any other script from scripts/generate-dashboard.ps1.
 * Do not modify any schema.
 * Do not change any verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule.
-* Do not build Phase D2 or D3 functionality (auto-refresh/watch mode, additional panels, or any write-path/request-file controls) in this task.
+* Do not build Phase D2 or D3 functionality (auto-refresh/watch mode, the Local Tools/routing-history panel, or any write-path/request-file controls) in this task.
 * Do not manually invoke 'codex exec' or otherwise self-issue a verification verdict for this task in this cycle.
+* Do not skip the mandatory pre-task handoff/backup gate (scripts/enforce-handoff-restart-safety.ps1); it must be run while task_status is 'ready_for_worker', before any code change, per the disclosed gap on pcc-pathD-001 (DECISION-090).
 
 ## Completion Criteria
 
 The task is complete only if:
 
-* scripts/generate-dashboard.ps1 exists, is self-contained, and is strictly read-only: it reads .cockpit/state/project-state.json and .cockpit/state/task-state.json (paths overridable by parameters for testing), writes only dashboard/index.html (a new top-level, non-.cockpit directory), mutates no .cockpit/ file, and invokes no other script.
-* The rendered dashboard/index.html shows the Owner Control Board panel: current project (project_name/project_id), current task (task_id/task_title/task_status), current state (current_phase), next expected action, current role (Worker, per the fixed two-role split), current worker (assigned_worker), current verdict (verification_verdict), and current blocker (current_blocker), sourced only from the two state files.
-* Regeneration is manual (re-run the script); no auto-refresh/watch mode is built in this task (that is Phase D2, pcc-pathD-004).
-* The script exits 0 on well-formed input and prints a clear error with a non-zero exit on missing or malformed state file input, writing/mutating no file in that failure case.
-* Functionally tested (not read-through only): run against the real .cockpit/ state (confirms sane, correct-looking output matching actual project/task fields) and against synthetic malformed-JSON and missing-file state in an isolated scratch copy (both fail cleanly, non-zero exit, no dashboard file written or left stale).
-* A new decision is recorded in docs/DECISIONS.md documenting the delivery. README.md is updated only as needed to note this first Category D deliverable. .gitignore is updated to exclude the generated dashboard/index.html artifact (it is derived output, regenerated from state, not source). docs/PATH_A_PLAN.md is updated only to mark pcc-pathD-001 as delivered, not to change its scope.
-* No existing script, schema, verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule is modified. No new log event type is added; the dashboard generator does not call scripts/log-event.ps1 or any other script.
-* The task is handed back through the normal worker path for verification; it is not self-closed in this cycle (owner's stated preference this session is to route verification through the ChatGPT manual bridge per DECISION-086, given remote repo access), and no verification verdict is written by the worker.
+* scripts/generate-dashboard.ps1 gains two new parameters (paths for the worker-directive, worker-result, and verification-result files, defaulting to the canonical .cockpit/ paths) and renders two additional panels in dashboard/index.html: a Directive Panel and a Verification Panel, in addition to the existing Owner Control Board panel from pcc-pathD-001.
+* Directive Panel shows: task ID/title, allowed scope, forbidden scope, required evidence, completion criteria, and the directive's own path -- parsed or read from .cockpit/handoff/worker-directive.md (the live markdown file) or equivalently sourced fields already available in task-state.json, whichever is simpler and does not require a markdown parser dependency; if worker-directive.md is used as the source, parsing must be tolerant of its being freeform markdown (no hard crash on unexpected structure).
+* Verification Panel shows: verdict, summary, missing evidence, out-of-scope findings, risks, and next action, sourced from .cockpit/result/verification-result.json (structured JSON, straightforward to read) -- and a pointer to .cockpit/result/worker-result.md as the evidence file (linked or named, not necessarily rendered in full).
+* The script remains strictly read-only: no new file is written other than the existing -OutputPath; no .cockpit/ file is mutated; no other script is called.
+* Regeneration remains manual; no auto-refresh/watch mode is built in this task (still Phase D2, pcc-pathD-004).
+* The script continues to exit 0 on well-formed input and fail cleanly (clear error, non-zero exit, no output written) on missing or malformed input for any of the files it now reads, including the two new ones.
+* Functionally tested (not read-through only): run against a real completed cycle's archived artifacts (e.g. .cockpit/handoff/archive/pcc-pathD-001-worker-directive.md and .cockpit/result/archive/pcc-pathD-001-worker-result.md / -verification-result.json, or the live pcc-pathD-002 cycle's own artifacts once handed back) to confirm sane, correct-looking panel output, and against synthetic malformed/missing input for the two new files in an isolated scratch copy (both fail cleanly, no output written, no .cockpit/ mutation).
+* A new decision is recorded in docs/DECISIONS.md documenting the delivery, including an explicit statement that the mandatory pre-task handoff/backup gate (scripts/enforce-handoff-restart-safety.ps1) was run correctly this cycle before work began -- the specific process gap disclosed on pcc-pathD-001 must not recur. docs/PATH_A_PLAN.md is updated only to mark pcc-pathD-002 as delivered, not to change its scope.
+* No existing script other than scripts/generate-dashboard.ps1 itself is modified; no schema is modified; no new log event type is added; the dashboard generator still calls no other script.
+* The task is handed back through the normal worker path for verification; it is not self-closed in this cycle (owner's stated preference remains: pause before each verification and route through the ChatGPT manual bridge per DECISION-086), and no verification verdict is written by the worker.
 
 ## Required Evidence
 
@@ -100,8 +101,8 @@ Return the following evidence:
 
 * Files created or changed.
 * Summary of changes.
-* Commands run.
-* Command/test results, including the functional tests against real and synthetic state.
+* Commands run, including confirmation the pre-task handoff gate ran before work began.
+* Command/test results, including the functional tests against real archived artifacts and synthetic malformed/missing state.
 * Known risks.
 * Unresolved assumptions.
 * Confirmation that forbidden scope was not touched.
