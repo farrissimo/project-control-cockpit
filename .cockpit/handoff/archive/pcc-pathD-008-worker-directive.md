@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-pathD-008
 * Task Title: Rollover/Handoff Controls (First Producer + Consumer, Command-to-Copy Design)
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Auto-Promotion Basis

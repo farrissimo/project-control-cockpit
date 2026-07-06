@@ -2,7 +2,7 @@
   "task_id": "pcc-pathD-008",
   "task_title": "Rollover/Handoff Controls (First Producer + Consumer, Command-to-Copy Design)",
   "task_objective": "Deliver docs/PATH_A_PLAN.md section 6 Phase D3's second task: the first real producer and consumer for the .cockpit/request/ inbox contract defined in pcc-pathD-007. DESIGN DECISION (owner-confirmed): the dashboard remains a static HTML file with no server; a rollover 'control' cannot be a live clickable button that writes a file from the browser. Instead, this delivers (a) scripts/request-rollover.ps1, a small producer script the owner runs from a terminal that writes a properly-shaped rollover request file into .cockpit/request/; (b) scripts/process-rollover-requests.ps1, a consumer that detects pending rollover requests and runs the existing scripts/safe-stop.ps1 (unmodified, already read-only and always-exit-0) as its response, capturing the report into the request and moving it to .cockpit/request/processed/ or .cockpit/request/rejected/; (c) a small addition to the dashboard's Handoff/Rollover panel showing the exact command to run to request a rollover, matching the existing Local Tools Panel's command-preview pattern from the original scope. This does NOT invent any new automated rollover/reset behavior -- the 'existing safe-stop/handoff path' is exactly scripts/safe-stop.ps1's existing advisory check, run in response to the request, not a new irreversible action.",
-  "task_status": "returned_for_verification",
+  "task_status": "complete",
   "assigned_worker": "Claude Code",
   "task_safety_class": "B",
   "completion_criteria": [
@@ -51,7 +51,7 @@
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
-  "verification_verdict": null,
+  "verification_verdict": "PASS",
   "current_blocker": null,
   "owner_decision_request": null,
   "promotion_basis": {
@@ -59,6 +59,6 @@
     "priority_ref": "docs/PATH_A_PLAN.md section 6 (pcc-pathD-008)",
     "justification": "Continuation of the owner-authorized Phase D3 (DECISION-097). Design fork (command-to-copy vs. local server) was explicitly re-confirmed with the owner before drafting; command-to-copy was chosen to preserve the existing static-file architecture, per the owner's own stated reasoning."
   },
-  "next_action": "Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.",
-  "updated_at": "2026-07-05T19:51:19-06:00"
+  "next_action": "Task 'pcc-pathD-008' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-05T20:04:46-06:00"
 }
