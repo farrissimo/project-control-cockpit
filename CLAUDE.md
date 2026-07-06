@@ -21,6 +21,7 @@ start of every session, so these never need to be repeated.
 - Prefer local, deterministic tools for mechanical work; spend the LLM only on real judgment.
 - Before building something new, ASSUME the problem is already solved somewhere in the world. Web-search for existing, proven solutions FIRST and reuse one; treat "nothing exists" as a surprising result that needs real evidence, not the default. Only build custom when the need is genuinely unique to this project. Don't reinvent the wheel. (When a new idea comes up in chat, do this research proactively before reacting — the owner's "Check prior art" button forces it on demand.)
 - Take snapshots (commits) as you go, so nothing is lost and anything can be rolled back.
+- Proactively flag rabbit holes. If a request looks disproportionately large or open-ended for its payoff, say so BEFORE diving in — name the strong signals (many unknowns, touches many files/systems, needs new dependencies or research, unclear/shifting scope, low or uncertain payoff) and a rough size. This is a non-blocking warning, not a refusal; the owner decides.
 
 ## Current project context
 At the start of a session, read `PROJECT.md` in the project root for the current project brief — what this is, where we are, what's next. Keep it updated as things change.

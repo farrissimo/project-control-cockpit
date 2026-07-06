@@ -20,6 +20,7 @@ const CORRECTIONS = [
   { label: 'Stop reacting', msg: 'Stop reacting. Think it through first.' },
   { label: 'Push back', msg: "Push back on this. What are the real risks, downsides, and the strongest case against it? Don't just agree with me." },
   { label: 'Check prior art', msg: 'Before we build anything: assume this problem is already solved somewhere. Web-search for existing tools/solutions and tell me what already exists and whether we should reuse it instead of building.' },
+  { label: 'Rabbit-hole check', msg: "Honestly assess whether this idea is a rabbit hole - disproportionately large or open-ended for its payoff. This is a WARNING, not a blocker: don't refuse it. List the strong signals you see (many unknowns, touches many files/systems, needs new dependencies or research, unclear or shifting scope, low/uncertain payoff vs effort), give a rough size (small / medium / large / open-ended), and say plainly whether it looks like a rabbit hole and why - so I can decide." },
   { label: 'Copy block', msg: 'Put that in a copy block.' },
 ];
 
