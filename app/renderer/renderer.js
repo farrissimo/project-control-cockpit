@@ -1,6 +1,6 @@
-// PCC Cockpit - renderer. Chat + Project view + Rules view + one-click
-// corrections. Conversation persists in localStorage; Claude keeps its own
-// side via --continue (main.js), so context survives restarts.
+// PCC Cockpit - renderer. Chat + Project + Rules + Memory views, plus
+// one-click corrections. Conversation persists in localStorage; Claude keeps
+// its own side via --continue (main.js), so context survives restarts.
 
 const log = document.getElementById('log');
 const input = document.getElementById('input');
@@ -12,7 +12,6 @@ const HISTORY_KEY = 'pcc.chat.history';
 let history = [];
 let busy = false;
 
-// One-click standing corrections, so the owner never retypes them.
 const CORRECTIONS = [
   { label: 'Be concise', msg: 'Be concise.' },
   { label: 'No cheerleading', msg: 'No cheerleading - just the facts.' },
@@ -110,8 +109,9 @@ const views = {
   chat: document.getElementById('view-chat'),
   project: document.getElementById('view-project'),
   rules: document.getElementById('view-rules'),
+  memory: document.getElementById('view-memory'),
 };
-let loadedProject = false, loadedRules = false;
+let loadedProject = false, loadedRules = false, loadedMemory = false;
 
 document.querySelectorAll('.nav').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -121,6 +121,7 @@ document.querySelectorAll('.nav').forEach((btn) => {
     Object.entries(views).forEach(([k, el]) => el.classList.toggle('hidden', k !== v));
     if (v === 'project' && !loadedProject) { loadProject(); loadedProject = true; }
     if (v === 'rules' && !loadedRules) { loadRules(); loadedRules = true; }
+    if (v === 'memory' && !loadedMemory) { loadMemory(); loadedMemory = true; }
   });
 });
 
@@ -169,6 +170,25 @@ async function loadRules() {
     el.textContent = 'Could not read rules.';
   }
 }
+
+// ---- memory view ----
+async function loadMemory() {
+  const el = document.getElementById('memory-text');
+  try { const r = await window.pcc.getMemory(); el.value = (r && r.text) || ''; }
+  catch (e) { el.value = ''; }
+}
+
+document.getElementById('memory-save').addEventListener('click', async () => {
+  const status = document.getElementById('memory-status');
+  status.textContent = 'Saving…';
+  try {
+    const r = await window.pcc.saveMemory(document.getElementById('memory-text').value);
+    status.textContent = r && r.ok ? 'Saved.' : ('Error: ' + (r && r.error ? r.error : 'unknown'));
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+  }
+  setTimeout(() => { status.textContent = ''; }, 2500);
+});
 
 // ---- boot ----
 renderCorrections();

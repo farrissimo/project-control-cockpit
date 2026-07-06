@@ -40,6 +40,21 @@ ipcMain.handle('pcc:getRules', () => {
   }
 });
 
+// Project memory: a plain-text brief (PROJECT.md) the owner curates and Claude
+// reads at the start of every session (CLAUDE.md points to it). No fake
+// auto-extraction - it is exactly what is written here, nothing more.
+const MEMORY_PATH = path.join(PROJECT_DIR, 'PROJECT.md');
+
+ipcMain.handle('pcc:getMemory', () => {
+  try { return { ok: true, text: fs.readFileSync(MEMORY_PATH, 'utf8') }; }
+  catch (e) { return { ok: true, text: '' }; }
+});
+
+ipcMain.handle('pcc:saveMemory', (_e, text) => {
+  try { fs.writeFileSync(MEMORY_PATH, String(text), 'utf8'); return { ok: true }; }
+  catch (e) { return { ok: false, error: e.message }; }
+});
+
 // Send a message to Claude Code non-interactively. The prompt goes in over
 // stdin (so quotes/newlines in the message can never break shell parsing).
 // After the first turn we pass --continue so Claude keeps the conversation.

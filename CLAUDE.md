@@ -20,3 +20,6 @@ start of every session, so these never need to be repeated.
 - Stay in scope. Don't change things that weren't asked for.
 - Prefer local, deterministic tools for mechanical work; spend the LLM only on real judgment.
 - Take snapshots (commits) as you go, so nothing is lost and anything can be rolled back.
+
+## Current project context
+At the start of a session, read `PROJECT.md` in the project root for the current project brief — what this is, where we are, what's next. Keep it updated as things change.
