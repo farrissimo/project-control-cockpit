@@ -1,6 +1,6 @@
 {
   "lane": "app-build-decision-102",
-  "current_stage": "work",
-  "note": "Building features down COCKPIT_ROADMAP.md by priority. Set deliberately; not inferred. Update this when the lane genuinely moves stages.",
-  "updated_at": "2026-07-06T14:05:00-06:00"
+  "current_stage": "milestone",
+  "note": "P1 + P2 complete or honestly handled (only #3 awaits the scheduled Codex run; #12 deferred). Stopped deliberately at a clean boundary rather than rolling into P3/P4. Legal next: hand off (resume in a fresh chat) or plan the P3/P4 phase. Set deliberately, not inferred.",
+  "updated_at": "2026-07-06T14:20:00-06:00"
 }
