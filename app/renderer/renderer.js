@@ -513,6 +513,12 @@ function computeChatSignal() {
 
   const notice = (turns >= ROLLOVER_TURNS) || (repeats.length > 0) || (spanHours !== null && spanHours >= ROLLOVER_HOURS);
 
+  // Gauge fill = how close this chat is to the rollover thresholds (real,
+  // already-declared limits: ROLLOVER_TURNS / ROLLOVER_HOURS). Honest, bounded.
+  const pctTurns = turns / ROLLOVER_TURNS;
+  const pctSpan = spanHours !== null ? spanHours / ROLLOVER_HOURS : 0;
+  const gaugePct = Math.min(100, Math.round(100 * Math.max(pctTurns, pctSpan)));
+
   let observed = turns + ' message(s) sent in this chat';
   if (spanHours !== null) observed += ', spanning ~' + (spanHours < 1 ? '<1' : spanHours.toFixed(1)) + ' hour(s)';
   observed += '.';
@@ -522,6 +528,7 @@ function computeChatSignal() {
     detector: 'chat-rollover',
     signal: notice ? 'notice' : 'clear',
     checked_at: new Date().toISOString(),
+    gauge: { value: gaugePct, label: 'Chat length' },
     items: repeatItems,
     observed,
     might_mean: notice
@@ -534,6 +541,23 @@ function computeChatSignal() {
   };
 }
 
+// Reusable gauge (roadmap #23). A semicircle "speedometer/tank" for a single,
+// bounded metric approaching a limit (chat length, bloat). Color reinforces but
+// never carries meaning alone: the fill LEVEL and the numeric readout convey the
+// value even without color (WCAG + colorblind-safe). Zones: green under 60%,
+// amber 60-85%, red 85%+. pathLength=100 lets the fill be a simple percentage.
+function zoneForPct(p) { return p < 60 ? 'success' : (p < 85 ? 'warning' : 'danger'); }
+function gaugeSVG(pct, label) {
+  const p = Math.max(0, Math.min(100, Math.round(pct)));
+  const arc = 'M 12 60 A 40 40 0 0 1 108 60';
+  return '<div class="gauge-wrap" role="img" aria-label="' + escapeHtml(label + ': ' + p + ' percent') + '">'
+    + '<svg viewBox="0 0 120 70" class="gauge">'
+    + '<path class="gauge-track" d="' + arc + '" pathLength="100"/>'
+    + '<path class="gauge-fill ' + zoneForPct(p) + '" d="' + arc + '" pathLength="100" stroke-dasharray="' + p + ' 100"/>'
+    + '<text x="60" y="55" text-anchor="middle" class="gauge-val">' + p + '%</text>'
+    + '</svg><div class="gauge-cap">' + escapeHtml(label) + '</div></div>';
+}
+
 function signalCard(d) {
   const sig = (d.signal || 'unknown');
   const card = document.createElement('div');
@@ -541,6 +565,7 @@ function signalCard(d) {
   const title = SIGNAL_TITLES[d.detector] || d.detector || 'Signal';
   let html = '<div class="signal-head"><span class="signal-title">' + escapeHtml(title)
     + '</span><span class="signal-badge ' + sig + '">' + escapeHtml(sig) + '</span></div>';
+  if (d.gauge) html += gaugeSVG(d.gauge.value, d.gauge.label || '');
   html += '<div class="signal-row"><span class="k">Observed</span>' + escapeHtml(d.observed || '—') + '</div>';
   if (Array.isArray(d.items) && d.items.length) {
     html += '<ul class="signal-items">' + d.items.map((i) => '<li>' + escapeHtml(i) + '</li>').join('') + '</ul>';

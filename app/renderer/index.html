@@ -138,6 +138,18 @@
   .signal-items li { margin: 1px 0; font-family: ui-monospace, monospace; }
   .signal-foot { font-size: 11px; color: #5f646c; margin-top: 10px; }
 
+  /* Reusable gauge (roadmap #23) — colors from the shared tokens; value is also
+     shown as a number so it never depends on color alone. */
+  .gauge-wrap { text-align: center; margin: 4px 0 10px; }
+  .gauge { width: 132px; height: auto; }
+  .gauge-track { fill: none; stroke: var(--track); stroke-width: 11; stroke-linecap: round; }
+  .gauge-fill { fill: none; stroke-width: 11; stroke-linecap: round; }
+  .gauge-fill.success { stroke: var(--success); }
+  .gauge-fill.warning { stroke: var(--warning); }
+  .gauge-fill.danger { stroke: var(--danger); }
+  .gauge-val { fill: var(--text); font-size: 16px; font-weight: 700; font-family: system-ui, sans-serif; }
+  .gauge-cap { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+
   #trust { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 6px 20px;
     border-bottom: 1px solid #23262d; background: #0b0d10; flex: 0 0 auto; }
   .trust-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
