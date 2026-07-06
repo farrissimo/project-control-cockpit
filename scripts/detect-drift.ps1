@@ -80,15 +80,17 @@ if (-not (Test-Path -LiteralPath $scopePath -PathType Leaf)) {
     $committed = @()
     & git rev-parse --verify --quiet $baseline > $null 2>&1
     if ($LASTEXITCODE -eq 0) {
-      $committed = & git diff --name-only "$baseline...HEAD" 2>&1
+      $committed = & git diff --name-only "$baseline...HEAD" 2>$null
     } else {
       $baseErr = "Baseline ref '$baseline' not found; compared working tree to HEAD only."
     }
-    $uncommitted = & git diff --name-only HEAD 2>&1
+    $uncommitted = & git diff --name-only HEAD 2>$null
 
+    # Coerce to string before trimming: git can emit non-string warnings and an
+    # empty diff yields nothing, neither of which has a .Trim() method.
     $changed = @($committed) + @($uncommitted) |
-      Where-Object { $_ -and $_.Trim() } |
-      ForEach-Object { $_.Trim() } |
+      ForEach-Object { "$_".Trim() } |
+      Where-Object { $_ } |
       Sort-Object -Unique
 
     $outside = @()

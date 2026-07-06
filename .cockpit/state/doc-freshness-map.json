@@ -1,0 +1,37 @@
+{
+  "map_id": "doc-freshness-v1",
+  "title": "Stale-docs rules (starter list, deliberately narrow, adjustable)",
+  "plain_language": {
+    "what_this_is": "A small, explicit starter list of 'if this kind of code changed, this doc should have been updated too.' Kept narrow on purpose to avoid false alarms; tighten and grow it from real misses rather than designing the whole policy up front.",
+    "how_it_reads": "Each rule has when_changed (code globs) and expect_updated (docs). If any file matching when_changed changed on the branch but the expected doc(s) did NOT, the stale-docs signal flags it. If no rule matches the changes, the signal stays QUIET -- it never guesses.",
+    "adjustable": "Add rules as you find real misses; remove any that cry wolf. This is a starter, not a fixed policy."
+  },
+  "compare_baseline": "main",
+  "rules": [
+    {
+      "id": "app-feature-in-roadmap",
+      "when_changed": ["app/**"],
+      "expect_updated": ["docs/COCKPIT_ROADMAP.md"],
+      "satisfied_by": "any",
+      "why": "A user-facing app change is a feature; the roadmap should reflect it."
+    },
+    {
+      "id": "new-detector-in-roadmap",
+      "when_changed": ["scripts/detect-*.ps1"],
+      "expect_updated": ["docs/COCKPIT_ROADMAP.md"],
+      "satisfied_by": "any",
+      "why": "A detector script is a feature; the roadmap should reflect it."
+    },
+    {
+      "id": "verification-wiring-documented",
+      "when_changed": ["scripts/verify-work.ps1"],
+      "expect_updated": ["PROJECT.md", "docs/COCKPIT_ROADMAP.md"],
+      "satisfied_by": "all",
+      "why": "Verification wiring / fallback behavior is load-bearing; both the brief and the roadmap should reflect a change to it."
+    }
+  ],
+  "not_yet_automated": [
+    "Standing product-direction / architecture changes should be reflected in docs/DECISIONS.md or PROJECT.md, but 'a direction change' has no clean code-file trigger, so it is left to human/verifier judgment for now rather than faked into a false alarm."
+  ],
+  "updated_at": "2026-07-06T13:20:00-06:00"
+}
