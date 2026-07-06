@@ -213,7 +213,7 @@ controls, calls no engine script.
   original scope §7.17. Shows only truthfully-derivable facts — current route
   (from `classify-routing.ps1`), routing history — and explicitly **not** any
   fabricated usage/pressure number (`DECISION-008`).
-- **`pcc-pathD-006` — Handoff/Rollover panel (read-only)** — ✅ **DELIVERED, Phase D2 complete** (`DECISION-096`, pending verification; delivered without the originally-planned check-stop-conditions.ps1 subprocess call, per a mid-task discovery -- see decision): latest clean handoff
+- **`pcc-pathD-006` — Handoff/Rollover panel (read-only)** — ✅ **DELIVERED, Phase D2 complete, verified PASS** (`DECISION-096`; delivered without the originally-planned check-stop-conditions.ps1 subprocess call, per a mid-task discovery -- see decision): latest clean handoff
   and current rollover-trigger warnings (from `check-stop-conditions` output).
 
 #### Phase D3 — Thin write-path for controls (first interactivity) — OWNER-GATED
