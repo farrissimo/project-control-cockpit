@@ -14,7 +14,7 @@ Status: [x] Done · [~] In progress / Partial · [ ] Planned
 6. [~] Standardized lifecycle — lifecycle bar shows current state, next action, and "Decision required" (done); full state-machine of legal transitions pending
 
 ## P2 — High (the "huge" wounds; the governed loop)
-7. [ ] Clean new-chat handoff generation (compact, from verified state only)
+7. [~] Clean new-chat handoff — PROJECT.md brief + handoff paste block proven (first slice done; in-app auto-generation pending)
 8. [ ] Chat end-of-usefulness / rollover trigger (turns, tokens, time, repeat-count)
 9. [ ] Untracked-files detection
 10. [ ] Out-of-scope / drift detection (changed files vs task scope)
