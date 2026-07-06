@@ -38,7 +38,7 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
 - Lifecycle bar (top): "You are here -> Next action -> Decision required", from real state.
 - Live trust strip (top, always visible): On the rails / Backed up / Verified / Rules loaded. Each chip is green only when a real deterministic check says so; "Verified" stays amber unless a fresh independent PASS newer than HEAD exists (never faked).
 - Lifecycle view: the standardized stage map (define → plan → work → verify → phase-close → milestone → handoff → rollover) from .cockpit/state/lifecycle-model.json, with a "you are here" pin (lifecycle-state.json) and only the LEGAL next steps shown (scripts/lifecycle-status.ps1). Never auto-advances.
-- One-click corrections under the chat (Be concise, No cheerleading, Stay in scope, Show evidence, Stop reacting, Push back, Check prior art, Rabbit-hole check, Copy block).
+- One-click corrections under the chat (Be concise, No cheerleading, Stay in scope, Show evidence, Stop reacting, Push back, Check prior art, Rabbit-hole check, Capture decisions, Copy block).
 - Standing rules auto-load from CLAUDE.md; the Rules view shows them.
 - Project memory: this PROJECT.md, editable in the Memory view, auto-read each session. Plus recent-decisions carry-forward — the Project view surfaces the latest agreements from docs/DECISIONS.md (scripts/recent-decisions.ps1), and the handoff embeds the 3 most recent, so settled decisions are never re-derived.
 - New-chat handoff: one-click "Generate handoff" in the Project view (scripts/generate-handoff.ps1) builds a ready-to-paste briefing from real repo truth (git state, phase, honest verification status, standing orders) so a fresh chat never needs re-briefing.
@@ -69,11 +69,15 @@ copy blocks + no tool-failure narration (#29), model switcher + fallback,
 conversation-hijack fix (per-chat session ids), mandatory backup policy.
 NEW PROJECT creation is done (#20 pt1): chat-first guided intake (reuses CCB
 wizard logic) + blueprint scaffold + "New project…" button.
+#12 (agreements-only-in-chat) is now DONE: "Capture decisions" button grounds
+itself in this chat's own literal, persisted transcript (never Claude's own
+memory) and proposes quoted candidates for owner confirmation before writing to
+docs/DECISIONS.md. Honest limit: only sees this one chat's history.
+
 Open / deferred:
 - #3 verification — awaits the scheduled Codex run (2026-07-07 10:05 MT).
 - #20 multi-project SWITCHING — PAUSED by owner (real architectural change; one
   project today). Creating new projects works; switching the app between them does not.
-- #12 agreements-only-in-chat — deferred (needs AI judgment).
 - #21 peek-under-the-hood, #23 UI polish — optional, not started.
 Every detection ships ONLY in the "Observed / what it might mean / what's NOT
 proven / what to do" format — never a fake certainty.

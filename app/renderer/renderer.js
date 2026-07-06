@@ -90,19 +90,25 @@ log.addEventListener('click', (e) => {
   }).catch(() => { btn.textContent = 'Copy failed'; });
 });
 
-async function sendMessage(text) {
+// `displayText`, when given, is what's SHOWN and PERSISTED as your bubble
+// (and so what future transcript-building sees) - while the full `text` is what
+// actually goes to Claude. Needed for "Capture decisions": without this, the
+// giant embedded transcript would itself get stored in history, and the NEXT
+// capture would re-embed it, growing without bound.
+async function sendMessage(text, displayText) {
   const msg = (text || '').trim();
   if (!msg || busy) return;
+  const shown = (displayText || msg).trim();
   const chat = activeChat();
   if (!chat) return;
   const welcome = log.querySelector('.welcome');
   if (welcome) welcome.remove();
   // Auto-name a fresh chat from its first message (like Claude Code's Recents).
   if (chat.name === 'New chat' && chat.messages.filter((m) => m.cls === 'user').length === 0) {
-    chat.name = msg.replace(/\s+/g, ' ').slice(0, 40) + (msg.length > 40 ? '…' : '');
+    chat.name = shown.replace(/\s+/g, ' ').slice(0, 40) + (shown.length > 40 ? '…' : '');
     renderChatList();
   }
-  addBubble('user', msg, true);
+  addBubble('user', shown, true);
   busy = true; sendBtn.disabled = true;
   const thinking = addBubble('assistant thinking', 'Claude is working…', false);
   try {
@@ -206,6 +212,55 @@ function renderCorrections() {
     });
     correctionsBar.appendChild(b);
   });
+  correctionsBar.appendChild(makeCaptureDecisionsButton());
+}
+
+// ---- Capture decisions (roadmap #12) ----
+// Owner's design: a button, but it must ground itself in the literal chat
+// transcript - NOT in Claude's own conversational memory (which this session
+// already proved can be hijacked/lost - see the --resume session-pinning fix).
+// So this reads the ACTIVE chat's own already-persisted messages (verbatim,
+// from `history`/localStorage - real, non-memory data) and hands that text to
+// Claude, asking it to quote candidate agreements from within it - never invent
+// one - and to get the owner's confirmation before writing anything to
+// docs/DECISIONS.md. Honest limit: it can only see THIS chat's own history: a
+// decision made in a different or already-closed chat is invisible to it.
+const CAPTURE_TRANSCRIPT_MAX_CHARS = 12000;
+
+function buildChatTranscript() {
+  const msgs = history.filter((m) => m.cls === 'user' || m.cls === 'assistant');
+  const lines = msgs.map((m) => (m.cls === 'user' ? 'OWNER: ' : 'ASSISTANT: ') + m.text);
+  let text = lines.join('\n\n');
+  let truncated = false;
+  if (text.length > CAPTURE_TRANSCRIPT_MAX_CHARS) {
+    text = text.slice(text.length - CAPTURE_TRANSCRIPT_MAX_CHARS);
+    truncated = true;
+  }
+  return { text, truncated, count: msgs.length };
+}
+
+function makeCaptureDecisionsButton() {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'corr';
+  b.textContent = 'Capture decisions';
+  b.title = 'Scans THIS chat\'s own transcript (not memory) for agreements you made, and proposes them - quoted, never invented - for you to confirm before writing to docs/DECISIONS.md.';
+  b.addEventListener('click', () => {
+    if (busy) return;
+    const { text, truncated, count } = buildChatTranscript();
+    if (!count) { addBubble('assistant error', 'Nothing to scan yet - this chat has no messages.', true); return; }
+    const note = truncated ? '\n(Transcript truncated to the most recent ~' + CAPTURE_TRANSCRIPT_MAX_CHARS + ' characters - only what fits below was scanned.)' : '';
+    const prompt = 'Scan the transcript of THIS chat below (verbatim, provided fresh - do not rely on your own memory of the conversation) for any concrete decision or agreement the owner made that is not yet recorded in docs/DECISIONS.md. '
+      + 'Only use what was actually said - do not infer or invent a decision that was not explicitly stated. '
+      + 'For each candidate, quote the exact line(s) it came from and give a one-line plain-English summary. '
+      + 'If none are found, say so plainly - do not force one. '
+      + 'Do NOT write anything yet: list the candidates and ask me which (if any) to record as a new DECISION-NNN in docs/DECISIONS.md.' + note
+      + '\n\n=== THIS CHAT\'S TRANSCRIPT (' + count + ' message(s)) ===\n' + text;
+    // Show/store a short label, not the giant embedded transcript - otherwise
+    // the next capture would re-scan this capture's own huge prompt too.
+    sendMessage(prompt, 'Capture decisions (scanned ' + count + ' message(s) from this chat' + (truncated ? ', truncated' : '') + ')');
+  });
+  return b;
 }
 
 function showWelcome() {
