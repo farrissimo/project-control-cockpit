@@ -207,7 +207,7 @@ controls, calls no engine script.
 
 #### Phase D2 — Live refresh + full panel set (still read-only)
 
-- **`pcc-pathD-004` — Auto-refresh / watch mode** — ✅ **DELIVERED** (`DECISION-094`, pending verification): poll `.cockpit/` files and
+- **`pcc-pathD-004` — Auto-refresh / watch mode** — ✅ **DELIVERED, verified PASS** (`DECISION-094`): poll `.cockpit/` files and
   re-render; remains read-only.
 - **`pcc-pathD-005` — Session/Usage panel (honest-only):** the honest home for
   original scope §7.17. Shows only truthfully-derivable facts — current route
