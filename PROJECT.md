@@ -39,7 +39,7 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
 - Standing rules auto-load from CLAUDE.md; the Rules view shows them.
 - Project memory: this PROJECT.md, editable in the Memory view, auto-read each session.
 - Verify view: Hard checks (git + scripts/doctor.ps1, deterministic, work today) plus independent review (Codex/agy) via scripts/verify-work.ps1.
-- Signals view: the DECISION-102 honest-detection system. Shipped detectors: untracked-files (scripts/detect-untracked.ps1, git-only, respects .gitignore), chat-rollover (turns/time/repeats from the app's own chat history), out-of-scope/drift (scripts/detect-drift.ps1, branch changes vs the declared boundary), and stale-docs (scripts/detect-stale-docs.ps1, changed code vs a declared doc-freshness rule list). Every detector uses the "Observed / what it might mean / what's NOT proven / what to do" format; built to grow (one script + one line in main.js per detector).
+- Signals view: the DECISION-102 honest-detection system. Shipped detectors: untracked-files (scripts/detect-untracked.ps1, git-only, respects .gitignore), chat-rollover (turns/time/repeats from the app's own chat history), out-of-scope/drift (scripts/detect-drift.ps1, branch changes vs the declared boundary), stale-docs (scripts/detect-stale-docs.ps1, changed code vs a declared doc-freshness rule list), and repo-sync (scripts/detect-repo-sync.ps1, is the work backed up to the remote — uncommitted/untracked/unpushed). Every detector uses the "Observed / what it might mean / what's NOT proven / what to do" format; built to grow (one script + one line in main.js per detector).
 - Declared boundaries (so detectors never guess): .cockpit/state/app-build-scope.json (what the app-build lane is allowed to change — drift checks this) and .cockpit/state/doc-freshness-map.json (a small, adjustable "if this code changes, this doc should too" list — stale-docs checks this). Both have plain-language sections; update them deliberately as the work grows. If a boundary is missing, its detector reports "unknown" rather than guessing.
 - AGENTS.md: verifier verdict format (PASS/FAIL/INSUFFICIENT/BLOCKED/OUT_OF_SCOPE + NOT PROVEN).
 
@@ -61,9 +61,11 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
      stays the primary verifier; this is parked, not being worked.
 2. Continue down docs/COCKPIT_ROADMAP.md by priority. Shipped this session:
    the Signals view + detectors #9 (untracked-files), #8 (chat-rollover), and
-   #10 (out-of-scope/drift), and #11 (stale-docs), each with its declared
-   boundary file. Next: #12 agreements-to-truth, #13 repo-sync "work not backed
-   up yet", #14 live trust signals.
+   #10 (out-of-scope/drift), #11 (stale-docs), and #13 (repo-sync "work backed
+   up?"). #12 (agreements-only-in-chat) is deferred: it needs AI judgment, not a
+   deterministic script, so it is parked rather than faked with keyword guesses.
+   Next: #14 live trust signals (aggregate the Signals into an at-a-glance
+   strip), then #12 as a small on-demand LLM check when the owner wants it.
 
 ## Roadmap status (full list: docs/COCKPIT_ROADMAP.md)
 8 done, 7 in motion, 10 planned. Next priorities: finish P1 verification (#3,

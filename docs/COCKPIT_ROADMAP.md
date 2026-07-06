@@ -20,7 +20,7 @@ Status: [x] Done · [~] In progress / Partial · [ ] Planned
 10. [x] Out-of-scope / drift detection — `scripts/detect-drift.ps1` compares files changed on the branch against a REAL declared boundary (.cockpit/state/app-build-scope.json allowed_globs), not a guess. Clear when work stays in scope; honest 'notice' when a changed file is outside it (revert, or update the boundary on purpose). Reports 'unknown' (never guesses) if the boundary file is missing.
 11. [x] Stale-docs detection — `scripts/detect-stale-docs.ps1` checks a small, explicit, adjustable rule list (.cockpit/state/doc-freshness-map.json): if code matching a rule changed but the doc that should track it did not, it flags an honest 'notice'. Stays QUIET when no rule matches (never guesses); 'unknown' if the map is missing. Starter rules: app change → roadmap; new detector → roadmap; verify-work.ps1 → PROJECT.md + roadmap.
 12. [ ] Agreements-only-in-chat -> flag + capture to truth
-13. [~] Repo-sync discipline (surface when to commit/sync)
+13. [x] Repo-sync discipline — `scripts/detect-repo-sync.ps1` Signals card: is the work actually backed up to the remote? Flags uncommitted changes, untracked files, and committed-but-unpushed commits (and a missing upstream). Pure git, deterministic, zero false positives. Clear only when the tree is clean and the branch is level with its upstream.
 14. [~] Live trust signals (on the rails / independently verified / following your rules)
 
 ## P3 — Medium (honest detections + lifecycle extras)
