@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-pathD-004
 * Task Title: Auto-Refresh / Watch Mode (Phase D2, Read-Only)
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Auto-Promotion Basis

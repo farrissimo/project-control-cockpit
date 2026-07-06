@@ -2,7 +2,7 @@
   "task_id": "pcc-pathD-004",
   "task_title": "Auto-Refresh / Watch Mode (Phase D2, Read-Only)",
   "task_objective": "Deliver docs/PATH_A_PLAN.md section 6 Phase D2's first task: a new script scripts/watch-dashboard.ps1 that polls the .cockpit/ files scripts/generate-dashboard.ps1 already reads (project-state.json, task-state.json, verification-result.json, routing-log.jsonl) and re-invokes scripts/generate-dashboard.ps1 (as an explicit subprocess, the same composition pattern already used and verified for classify-routing.ps1 in pcc-pathD-003) whenever any of them changes, so the dashboard/index.html output stays current without the owner manually re-running the generator. Remains strictly read-only over the .cockpit/ bridge: watch-dashboard.ps1 itself never writes any file except by delegating the actual write to generate-dashboard.ps1's own existing, already-read-only render step. As minor housekeeping folded in per the pcc-pathD-003 verification's own next_action, also correct scripts/generate-dashboard.ps1's header comment block, which currently still states the older blanket 'calls no other script' claim alongside the newer, narrower pcc-pathD-003 exception language -- update it to state the current, accurate contract only (reads the four .cockpit/ inputs, invokes exactly one subprocess, classify-routing.ps1, writes only -OutputPath).",
-  "task_status": "returned_for_verification",
+  "task_status": "complete",
   "assigned_worker": "Claude Code",
   "task_safety_class": "A",
   "completion_criteria": [
@@ -52,7 +52,7 @@
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
-  "verification_verdict": null,
+  "verification_verdict": "PASS",
   "current_blocker": null,
   "owner_decision_request": null,
   "promotion_basis": {
@@ -60,6 +60,6 @@
     "priority_ref": "docs/PATH_A_PLAN.md section 6 (pcc-pathD-004)",
     "justification": "Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner said to keep going until told to stop, with verification paused before each cycle. Folds in the minor header-comment correction disclosed in pcc-pathD-003's verification (DECISION-093 / verification-result.json's next_action)."
   },
-  "next_action": "Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.",
-  "updated_at": "2026-07-05T19:00:19-06:00"
+  "next_action": "Task 'pcc-pathD-004' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-05T19:02:45-06:00"
 }
