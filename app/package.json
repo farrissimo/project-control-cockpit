@@ -1,0 +1,14 @@
+{
+  "name": "pcc-cockpit",
+  "version": "0.0.1",
+  "description": "PCC - local-first project control cockpit (desktop app). Consumes the .cockpit/ file bridge; drives Claude Code as the worker.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "devDependencies": {
+    "electron": "^33.2.0"
+  }
+}

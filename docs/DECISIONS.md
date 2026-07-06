@@ -2505,3 +2505,42 @@ No script, schema, verdict, task status enum, Task Safety Class definition, Owne
 
 Supersedes: None
 Related: DECISION-069, DECISION-074, DECISION-075, DECISION-076, DECISION-087, archive/PCC Original Project Scope.md, backlog/IDEAS.md (IDEA-008, IDEA-015), docs/PATH_A_PLAN.md
+
+---
+
+## DECISION-102: PCC's Product Surface Is a Chat-Centered Local-First Desktop App Over a Standardized Project-Lifecycle + Detection Engine; Supersedes DECISION-087's Read-Only Web Dashboard
+
+Date: 2026-07-06
+Status: Active
+
+Owner Decision:
+
+Reviewing the finished Category D read-only web dashboard, the owner judged it far from what PCC was always for. After an extended design discussion this session, the owner set the true product: PCC's owner-facing surface is a fully functional, local-first desktop application (Electron) in which the owner builds real projects by working with an LLM through a chat interface, wrapped in a standardized project-management system. The chat is the center of gravity -- the place the owner works -- and everything else (project state, verification, corrections, detections) is the frame around it. The app drives Claude Code (the worker the owner already runs) under the hood rather than a new paid API, keeping no-paid-API (DECISION-003) and local-first (DECISION-002); mechanical work routes to local deterministic tools so the LLM is spent only on irreducible judgment, minimizing tokens (DECISION-088; original scope §7.12).
+
+Two capabilities define "much better, not a little better," both owner-stated:
+
+1. A standardized project lifecycle so neither owner nor LLM ever guesses the next action. Every point -- define, plan, work a task, close a phase, hit a milestone, hand off, roll over -- has a known entry, a known "what to do now," and a known verified exit. This is the original scope's Core Operating Model (§5) made always-on and surfaced: at any moment the system states where the project is and what the next action is. No guessing, no re-briefing, no repetition.
+
+2. A continuous detection-and-truth system that takes over the jobs the owner does by hand today. The owner is currently the human smoke alarm for: agreements that live only in chat history; docs the LLM created but never tracked; stale docs; when the repo gets synced; chats going rogue; drift/out-of-scope; reinventing the wheel; the LLM never saying no (sycophancy); a chat reaching end of usefulness; project bloat; fake completion. The product detects these and standardizes the response, so the owner stops being the detector.
+
+Around the chat: live trust signals (on the rails / independently verified / following the rules), proof-or-not stamped inline on every AI claim, one-click standing corrections (be concise, no cheerleading, stay in scope, re-verify, put it in a copy block, stop reacting) so the owner never retypes standing instructions, a plain-language at-a-glance project view, a project switcher (single owner, many projects), and a "peek under the hood" affordance that keeps technical detail out of the main view until asked.
+
+Reason:
+
+This is not a new direction; it is PCC finally assembled into one product. It directly realizes the original scope's #1 rule (reduce owner babysitting), Core Operating Model (§5), recommended desktop-app form (§10), interface areas (§11), and named features -- verification gate (§7.9), refusal/insufficiency path (§7.10), tone/behavior controls (§7.16), local-first routing (§7.12), handoff packets (§7.5), session hygiene/rollover (§7.14-7.15), structural warning signals (§7.20). It is aimed squarely at the failure modes CCB documented against itself: over-governance ceremony and no graduated trust (FAILURE_CLASS_MATRIX Class 5, GOVERNANCE_FRICTION_PATTERNS), task-count theater / fake completion (Class 7, Class 4), handoff-truth divergence (Class 2), owner forced into state-file archaeology (Class 5/6) -- the same wounds the owner raises across every project.
+
+Framework is Electron, not Tauri: the owner is a non-coder who will direct an LLM to extend this for years, so the largest ecosystem / training-data footprint is decisive (an LLM builds and extends JS/Electron more reliably than Rust/Tauri); the owner explicitly accepted Electron's heavier install and periodic Chromium updates as a non-issue. The fork option (forking an existing open-source agent board such as Claude Agent Teams UI) was rejected: those tools are built on the opposite philosophy (agents self-manage, owner watches) the owner distrusts, and forking one would mean discarding PCC's real asset -- its already-built governance engine -- to inherit foreign assumptions. Chosen instead: build fresh in Electron on top of the existing `.cockpit/` engine, copying only proven UX patterns.
+
+What DECISION-087 got right is kept: the UI is a pure consumer of the `.cockpit/` file bridge -- it reads the same state/result/log files the scripts use and drops request files existing scripts act on, never reaching into script internals -- satisfying the DECISION-074/077 extractability rule and keeping engine and UI cleanly separated. What DECISION-087 got wrong is superseded: its conclusion that the surface should be a read-only, static, non-interactive local web page with no chat and "controls" that are only printed shell commands. That conclusion stretched a backend cleanliness rule into a product-form decision it had no authority over, reframed the owner's own §10 desktop-app vision as a risk, and was filed as a "disclosed departure" rather than surfaced as a plain owner choice -- a process failure this decision explicitly corrects.
+
+Implications:
+
+- The finished-state UI form in DECISION-087 is superseded. `docs/PATH_A_PLAN.md`'s Category D "read-only dashboard" is now a first throwaway proof, not the product; `scripts/generate-dashboard.ps1` / `scripts/watch-dashboard.ps1` remain as a static fallback view, not the product surface.
+- The build is staged; each stage must produce something real and showable and is expected to span multiple sessions. Staging (subject to normal per-task governance): (S1) Electron shell that boots, loads real `.cockpit/` state, and renders the chat-centered cockpit with a "you are here / next action" bar and trust strip; (S2) drive Claude Code as worker from the chat, with local-first routing; (S3) the standardized lifecycle engine (define -> plan -> work -> phase-close -> milestone -> handoff/rollover), always surfacing the next action; (S4) the detection-and-truth system, one detector at a time, each writing to repo truth via the file bridge; (S5) one-click standing corrections + persistent rules; (S6) multi-project switching.
+- Each stage is built under PCC's existing discipline: bounded task, local-first execution (DECISION-088), extractability (DECISION-074), independent verification before state advances (§7.4/7.9). The app lives in a new top-level `app/` directory, keeping `.cockpit/` as its backend contract.
+- Changes the product form and roadmap placement only; changes no schema, verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule. The lifecycle engine and detectors, when built, introduce new state/log surfaces through their own governed tasks, not by this record.
+
+Process disclosure: this direction was set by the owner directly this session and authorized for build ("if you know what to build that has all this then let's build it"). The framework, fork-vs-build, and product-form choices were made in explicit plain-English discussion with the owner, not filed unilaterally -- the corrective to how DECISION-087 was handled. Individual build stages remain subject to their own bounded tasks and independent verification.
+
+Supersedes: DECISION-087 (finished-UI form only; DECISION-087's file-bridge-consumer architecture is retained)
+Related: DECISION-002, DECISION-003, DECISION-074, DECISION-077, DECISION-086, DECISION-087, DECISION-088, DECISION-089, archive/PCC Original Project Scope.md (§5, §7, §10, §11), docs/PATH_A_PLAN.md, docs/CCB_PCC_RELATIONSHIP.md, C:\CommandCenterCCB (.ccb/governance/FAILURE_CLASS_MATRIX.md, GOVERNANCE_FRICTION_PATTERNS.md)

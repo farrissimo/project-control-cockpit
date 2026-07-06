@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+<title>PCC Cockpit</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; font-family: system-ui, sans-serif;
+    background: #101216; color: #e8eaed; }
+  header { display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px; border-bottom: 1px solid #23262d; flex: 0 0 auto; }
+  .brand { font-weight: 600; font-size: 15px; }
+  .project { color: #8ab4ff; font-weight: 500; }
+  .rules { font-size: 12px; color: #7a7f87; }
+  main { flex: 1 1 auto; overflow-y: auto; padding: 20px; display: flex;
+    flex-direction: column; gap: 12px; }
+  .bubble { max-width: 78%; padding: 10px 14px; border-radius: 12px; font-size: 14px;
+    line-height: 1.55; white-space: pre-wrap; word-wrap: break-word; }
+  .bubble.user { align-self: flex-end; background: #21406b; color: #dbe8ff; }
+  .bubble.assistant { align-self: flex-start; background: #1a1d23; border: 1px solid #23262d; }
+  .bubble.thinking { align-self: flex-start; color: #8a8f97; font-style: italic; }
+  .bubble.error { align-self: flex-start; background: #3a1c1c; color: #f0b0b0;
+    border: 1px solid #5a2a2a; }
+  form { flex: 0 0 auto; display: flex; gap: 10px; padding: 14px 20px;
+    border-top: 1px solid #23262d; }
+  textarea { flex: 1; resize: none; background: #1a1d23; color: #e8eaed;
+    border: 1px solid #2b2f37; border-radius: 10px; padding: 10px 12px;
+    font-family: inherit; font-size: 14px; max-height: 160px; }
+  textarea:focus { outline: none; border-color: #3a6bd6; }
+  button { background: #2f6bde; color: #fff; border: none; border-radius: 10px;
+    padding: 0 18px; font-weight: 500; font-size: 14px; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  .empty { color: #6a6f77; font-size: 14px; align-self: center; margin-top: 40px; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">PCC <span class="project" id="project"></span></div>
+    <div class="rules">Your rules load automatically from CLAUDE.md</div>
+  </header>
+  <main id="log"></main>
+  <form id="composer">
+    <textarea id="input" placeholder="Tell PCC what to do" rows="1"></textarea>
+    <button id="send" type="submit">Send</button>
+  </form>
+  <script src="renderer.js"></script>
+</body>
+</html>
