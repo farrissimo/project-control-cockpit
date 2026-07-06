@@ -167,6 +167,25 @@ function startNewChat() {
 }
 document.getElementById('new-chat').addEventListener('click', startNewChat);
 
+// New project: start a guided, chat-first intake (reuses CCB's intake logic via
+// scripts/new-project-intake.ps1). Opens a fresh named chat and kicks off the
+// interview; the worker runs the protocol, interviews in plain language, and
+// scaffolds via bootstrap-project.ps1 when the owner approves.
+document.getElementById('new-project').addEventListener('click', () => {
+  if (busy) return;
+  const name = prompt('What would you like to call the new project?');
+  if (!name || !name.trim()) return;
+  const nm = name.trim();
+  document.querySelector('.nav[data-view="chat"]').click();
+  startNewChat();
+  const c = activeChat();
+  if (c) { c.name = 'New project: ' + nm.slice(0, 30); renderChatList(); }
+  const kickoff = 'I want to start a NEW project called "' + nm + '". '
+    + 'Run `scripts/new-project-intake.ps1` to load the intake protocol, then interview me in plain language following it, one or two questions at a time. '
+    + 'Do not skip the approval gates. When I approve the blueprint, scaffold the project into a new folder next to this one using `scripts/bootstrap-project.ps1` with the blueprint, and tell me how to open it. Ask me the first question now.';
+  sendMessage(kickoff);
+});
+
 // Quick buttons act on the conversation, smartly (owner feedback):
 //  - If you've TYPED a question, the modifier is applied to it and sent in ONE
 //    turn (e.g. type a question, click "Be concise" -> concise answer).

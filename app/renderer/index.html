@@ -94,7 +94,7 @@
     padding: 12px 14px; font-family: inherit; font-size: 14px; line-height: 1.6; margin-top: 12px; }
   .memory-box:focus { outline: none; border-color: #3a6bd6; }
   .memory-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
-  #memory-save, #verify-run, #handoff-gen, #handoff-copy { background: #2f6bde; color: #fff; border: none; border-radius: 10px;
+  #memory-save, #verify-run, #handoff-gen, #handoff-copy, #new-project { background: #2f6bde; color: #fff; border: none; border-radius: 10px;
     padding: 8px 18px; font-weight: 500; font-size: 14px; cursor: pointer; }
   #handoff-copy { background: #1a1d23; border: 1px solid #2b2f37; }
   #verify-run:disabled { opacity: .5; cursor: default; }
@@ -210,6 +210,10 @@
     <div class="view hidden panel" id="view-project">
       <h2>Where the project stands</h2>
       <div id="project-body"><p class="muted">Loading…</p></div>
+
+      <h3 style="font-size:14px; margin:22px 0 2px; color:#8ab4ff; font-weight:500;">Start a new project</h3>
+      <p class="muted">Begins a guided, plain-language interview in the chat (no forms, no jargon). At the end it scaffolds a fresh project — its own cockpit, brief, and first commit — from your answers.</p>
+      <div class="signals-actions"><button id="new-project" type="button">New project…</button></div>
 
       <h3 style="font-size:14px; margin:22px 0 2px; color:#8ab4ff; font-weight:500;">Babysitting reduction</h3>
       <p class="muted">Observable proxies only — honestly NOT a productivity score. They show what PCC now watches for you, not proof that babysitting dropped.</p>
