@@ -132,7 +132,7 @@ the same technology — the read-only board is grown, not thrown away.
 | B — Behavior & Tooling Controls | 2 (pre-checkpoint) | ✅ Done — `DECISION-076` (`pcc-pathB-001`) |
 | C — Metrics & Evidence Depth | 3 (pre-checkpoint) | ✅ Done — `DECISION-081` (`pcc-pathC-001..004`) |
 | **Maturity Checkpoint** | Milestone | ✅ Reached — `DECISION-084`; frozen `DECISION-085` |
-| **D — Product Surface (UI)** | Post-checkpoint | 🔶 In progress — `pcc-pathD-001`/`pcc-pathD-002` delivered; next is `pcc-pathD-003` (§6) |
+| **D — Product Surface (UI)** | Post-checkpoint | 🔶 In progress — Phase D1 (`pcc-pathD-001..003`) delivered; next is Phase D2, `pcc-pathD-004` (§6) |
 | E — Multi-Model/Multi-Agent | Deferred | Path-B / CCB-domain scope |
 | F — Knowledge & Memory | Deferred | Gated on proven need |
 
@@ -199,7 +199,7 @@ controls, calls no engine script.
     `verification-result.json`).
   - D1-T2.3 — Functionally test against a real completed cycle's archived
     artifacts.
-- **`pcc-pathD-003` — Routing / Local Tools read-only panel**
+- **`pcc-pathD-003` — Routing / Local Tools read-only panel** — ✅ **DELIVERED** (`DECISION-093`, pending verification)
   - D1-T3.1 — Local Tools Panel: suggested local route + command preview, shown
     as **display-only** (the panel never executes anything), sourced from
     `classify-routing.ps1` output captured as data.

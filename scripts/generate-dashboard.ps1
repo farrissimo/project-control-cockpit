@@ -3,6 +3,9 @@ param(
   [string]$TaskStatePath = ".cockpit/state/task-state.json",
   [string]$VerificationResultPath = ".cockpit/result/verification-result.json",
   [string]$WorkerResultPath = ".cockpit/result/worker-result.md",
+  [string]$RoutingLogPath = ".cockpit/logs/routing-log.jsonl",
+  [string]$ClassifyRoutingScriptPath = "scripts/classify-routing.ps1",
+  [int]$RoutingHistoryTailCount = 10,
   [string]$OutputPath = "dashboard/index.html"
 )
 
@@ -29,6 +32,18 @@ $ErrorActionPreference = "Stop"
 # in hand (boundaries, required_evidence, completion_criteria,
 # current_directive_path) rather than parsing worker-directive.md's freeform
 # markdown -- simpler and no parser dependency for the same information.
+#
+# pcc-pathD-003 adds one deliberate, narrow exception to "calls no other
+# script": scripts/classify-routing.ps1 is invoked as an explicit subprocess
+# and its stdout captured as display-only text for the Local Tools Panel. This
+# mirrors scripts/doctor.ps1's already-audited composition pattern (explicit
+# subprocess + stdout consumption, no hidden shared state, DECISION-074/077
+# extractability) rather than introducing a new hidden coupling. No other
+# script is invoked. If that one subprocess call fails, the panel shows a
+# clear "unavailable" message rather than crashing the whole dashboard --
+# consistent with the advisory being non-gating by its own contract
+# (DECISION-075).
+#
 # Regeneration is manual: re-run this script. Auto-refresh (Phase D2) is out of
 # scope here.
 
@@ -67,6 +82,68 @@ function Build-Table {
   return (($Rows.GetEnumerator() | ForEach-Object {
     "      <tr><th>$(Encode-Html $_.Key)</th><td>$(Encode-Html ([string]$_.Value))</td></tr>"
   }) -join "`n")
+}
+
+function Get-RoutingHistoryHtml {
+  param([string]$Path, [int]$TailCount)
+
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+    return "    <p>(no routing history: $(Encode-Html $Path) not found)</p>"
+  }
+
+  $lines = Get-Content -LiteralPath $Path -ErrorAction SilentlyContinue
+  if (-not $lines -or $lines.Count -eq 0) {
+    return "    <p>(routing history is empty)</p>"
+  }
+
+  $entries = New-Object System.Collections.Generic.List[object]
+  foreach ($line in $lines) {
+    if ([string]::IsNullOrWhiteSpace($line)) { continue }
+    try {
+      $entries.Add((ConvertFrom-Json -InputObject $line))
+    } catch {
+      # Skip malformed individual lines rather than failing the whole
+      # dashboard -- routing-log.jsonl is append-only operational history,
+      # not a hard contract this read-only panel enforces.
+      continue
+    }
+  }
+
+  if ($entries.Count -eq 0) {
+    return "    <p>(no readable routing history entries)</p>"
+  }
+
+  $tail = $entries | Select-Object -Last $TailCount
+  $rowsHtml = ($tail | ForEach-Object {
+    $routeOrEvent = if ($_.event_type) { $_.event_type } else { $_.route }
+    $detailOrReason = if ($_.detail) { $_.detail } else { $_.reason }
+    "      <tr><td>$(Encode-Html ([string]$_.timestamp))</td><td>$(Encode-Html ([string]$_.task_id))</td><td>$(Encode-Html ([string]$routeOrEvent))</td><td>$(Encode-Html ([string]$detailOrReason))</td></tr>"
+  }) -join "`n"
+
+  return @"
+    <table>
+      <tr><th>Timestamp</th><th>Task</th><th>Route / Event</th><th>Detail</th></tr>
+$rowsHtml
+    </table>
+"@
+}
+
+function Get-LocalToolsAdvisoryHtml {
+  param([string]$ScriptPath, [string]$TaskStatePath)
+
+  if (-not (Test-Path -LiteralPath $ScriptPath -PathType Leaf)) {
+    return "    <p>(routing advisory unavailable: $(Encode-Html $ScriptPath) not found)</p>"
+  }
+
+  $output = & pwsh -NoProfile -File $ScriptPath -TaskStatePath $TaskStatePath 2>&1
+  $exitCode = $LASTEXITCODE
+
+  if ($exitCode -ne 0) {
+    return "    <p>(routing advisory unavailable: $(Encode-Html $ScriptPath) exited $exitCode)</p>"
+  }
+
+  $escaped = Encode-Html ([string]($output -join "`n"))
+  return "    <pre>$escaped</pre>"
 }
 
 Add-Type -AssemblyName System.Web
@@ -122,6 +199,8 @@ $generatedAt = (Get-Date).ToString("yyyy-MM-ddTHH:mm:sszzz")
 $ownerControlHtml = Build-Table $ownerControlRows
 $directiveHtml = Build-Table $directiveRows
 $verificationHtml = Build-Table $verificationRows
+$localToolsHtml = Get-LocalToolsAdvisoryHtml -ScriptPath $ClassifyRoutingScriptPath -TaskStatePath $TaskStatePath
+$routingHistoryHtml = Get-RoutingHistoryHtml -Path $RoutingLogPath -TailCount $RoutingHistoryTailCount
 
 $html = @"
 <!DOCTYPE html>
@@ -137,6 +216,7 @@ $html = @"
   th, td { text-align: left; padding: 0.5rem 1rem; border-bottom: 1px solid #333; vertical-align: top; }
   th { width: 220px; color: #9cf; }
   .meta { color: #888; font-size: 0.85rem; margin-top: 1rem; }
+  pre { white-space: pre-wrap; background: #1a1a1a; padding: 1rem; border-radius: 4px; max-width: 900px; }
 </style>
 </head>
 <body>
@@ -157,6 +237,12 @@ $directiveHtml
 $verificationHtml
   </table>
 
+  <h2>Local Tools Panel</h2>
+$localToolsHtml
+
+  <h2>Routing History</h2>
+$routingHistoryHtml
+
   <p class="meta">Generated $generatedAt from canonical .cockpit/ state. Read-only: this page never writes to .cockpit/. Re-run scripts/generate-dashboard.ps1 to refresh.</p>
 </body>
 </html>
@@ -168,4 +254,4 @@ if ($outputDir -and -not (Test-Path -LiteralPath $outputDir)) {
 }
 
 Set-Content -LiteralPath $OutputPath -Value $html -NoNewline
-Write-Output "Generated dashboard at $OutputPath from $ProjectStatePath, $TaskStatePath, and $VerificationResultPath."
+Write-Output "Generated dashboard at $OutputPath from $ProjectStatePath, $TaskStatePath, $VerificationResultPath, and $RoutingLogPath."

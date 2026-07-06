@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-05T18:43:25-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-05T18:49:30-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,17 +10,17 @@ Current phase: post-brr
 
 ## Active Task
 
-* Task ID: pcc-pathD-002
-* Title: Directive + Verification Panels (Read-Only)
-* Status: complete
+* Task ID: pcc-pathD-003
+* Title: Routing / Local Tools Read-Only Panel
+* Status: returned_for_verification
 * Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Extend scripts/generate-dashboard.ps1 (pcc-pathD-001, DECISION-089) per docs/PATH_A_PLAN.md section 6, Phase D1, with two more read-only panels: the Directive Panel (current directive, boundaries, required evidence, success criteria, handoff target, from .cockpit/handoff/worker-directive.md) and the Verification Panel (returned evidence, changed files, verdict, missing evidence, next action, from .cockpit/result/worker-result.md and .cockpit/result/verification-result.json). This remains a pure consumer of the .cockpit/ file bridge (DECISION-074/077/087) and the local-first execution discipline (DECISION-088): still plain PowerShell + static HTML, zero LLM dependency, zero external runtime, no new engine-script calls.
+* Objective: Extend scripts/generate-dashboard.ps1 (pcc-pathD-001/002) per docs/PATH_A_PLAN.md section 6, Phase D1, with the Local Tools Panel and a routing-history summary: the Local Tools Panel shows classify-routing.ps1's advisory output as display-only text (the panel never executes anything); the routing-history summary is a read-only tail of .cockpit/logs/routing-log.jsonl. This is a deliberate, disclosed, narrow exception to pcc-pathD-001/002's stricter 'calls no other script' rule: scripts/classify-routing.ps1 is invoked as an explicit subprocess and its stdout captured as display text, mirroring scripts/doctor.ps1's already-audited composition pattern (explicit subprocess + stdout consumption, no hidden shared state) rather than introducing a new hidden coupling. Still zero LLM dependency, zero external runtime (DECISION-088); still writes only the dashboard output file and mutates no .cockpit/ file itself.
 
 ## Auto-Promotion Basis
 
 * Approved lane: Path A / Category D / Phase D1
-* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-002)
-* Justification (continuation, not a fork): Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner explicitly said to keep going until told to stop, with verification paused before each cycle per the owner's chosen mode this session.
+* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-003)
+* Justification (continuation, not a fork): Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner said to keep going until told to stop, with verification paused before each cycle.
 ## Last Verified
 
 * Verdict: PASS for task 'pcc-pathD-002', verified at 2026-07-05T20:10:00-06:00
@@ -45,5 +45,5 @@ Current phase: post-brr
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-pathD-002' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-pathD-002' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Task-level: Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.
+* Project-level: Worker evidence for task 'pcc-pathD-003' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict.

@@ -2259,3 +2259,33 @@ Process disclosure: built with Codex unavailable (`DECISION-086`), under direct 
 
 Supersedes: None
 Related: DECISION-074, DECISION-077, DECISION-087, DECISION-088, DECISION-089, DECISION-090, DECISION-091, docs/PATH_A_PLAN.md, scripts/generate-dashboard.ps1
+
+---
+
+## DECISION-093: Category D Phase D1 Third Deliverable — Local Tools + Routing History Panels (pcc-pathD-003)
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+`scripts/generate-dashboard.ps1` gains its final two Phase D1 panels per `docs/PATH_A_PLAN.md` §6: the **Local Tools Panel** (displays `scripts/classify-routing.ps1`'s advisory stdout verbatim, as display-only text) and **Routing History** (a read-only tail of `.cockpit/logs/routing-log.jsonl`). `dashboard/index.html` now renders all five Phase D1 panels: Owner Control Board, Directive, Verification, Local Tools, Routing History.
+
+Reason:
+
+**A deliberate, narrow, disclosed exception to `pcc-pathD-001`/`pcc-pathD-002`'s stricter "calls no other script" rule.** `classify-routing.ps1` produces plain advisory stdout, not structured data, and the plan's own D1-T3.1 explicitly calls for surfacing that output. Rather than duplicating its classification logic inline (which would create the exact undocumented cross-script assumption the extractability rule forbids -- two copies of the same logic silently drifting apart), the dashboard invokes it as an explicit subprocess and captures stdout, mirroring `scripts/doctor.ps1`'s own composition pattern, which the `pcc-pathC-004` extractability audit already reviewed and found extractable (explicit subprocess + stdout/exit-code consumption, no hidden shared state). No other script is invoked. If that one subprocess call fails, the panel shows a clear "unavailable" message rather than crashing the whole dashboard -- consistent with the advisory being non-gating by its own contract (`DECISION-075`).
+
+Routing History reads `.cockpit/logs/routing-log.jsonl` directly (append-only JSONL, two historical entry shapes -- older `{timestamp, task_id, route, reason, result}` and newer `{timestamp, task_id, event_type, detail}` -- both rendered by field-presence check), skipping any individual malformed line rather than failing the whole panel, and rendering a graceful "(none)" state if the file is missing or empty.
+
+**Process disclosure, continuing the standing expectation set on `pcc-pathD-002`:** the mandatory pre-task handoff/backup gate (`scripts/enforce-handoff-restart-safety.ps1`) was run correctly before any code change this cycle too, passing cleanly on its first real run with a genuine pre-task backup (`.cockpit/backups/20260705-184557`).
+
+Functionally tested (not read-through only): against the real live cycle (Local Tools Panel correctly shows the live routing advisory for `pcc-pathD-003` itself; Routing History correctly tails the real log across both entry shapes); against a missing routing-log file (graceful none-state); against an empty routing-log file (graceful none-state); against a routing-log containing one malformed line among two valid ones (malformed line skipped, both valid entries rendered); against a missing `classify-routing.ps1` script path (graceful "unavailable" message, rest of dashboard still renders); and confirmed a malformed core `task-state.json` still correctly fails the whole dashboard (distinct, correct failure mode, unchanged from `pcc-pathD-001`/`002`). No `.cockpit/` mutation occurred from any test run.
+
+Implications:
+
+`dashboard/index.html` remains a generated, gitignored artifact. No script other than `scripts/generate-dashboard.ps1` was modified (including `scripts/classify-routing.ps1` and `scripts/doctor.ps1`, both read-only referenced, not touched); no schema changed; no new log event type added. This task is Task Safety Class A, same as its predecessors. Per the owner's stated mode this session, this cycle is handed back for verification rather than self-closed. **Phase D1 is now complete** (`pcc-pathD-001` through `pcc-pathD-003`, all five panels delivered). The next task is Phase D2's first item, `pcc-pathD-004` (auto-refresh/watch mode), per `docs/PATH_A_PLAN.md` §6.
+
+Process disclosure: built with Codex unavailable (`DECISION-086`), under direct owner direction ("keep going until I tell you to stop"); self-checked with PCC's local guardrails; the mandatory pre-task handoff/backup gate was run correctly before work began, continuing the corrected pattern from `pcc-pathD-002`.
+
+Supersedes: None
+Related: DECISION-074, DECISION-075, DECISION-077, DECISION-086, DECISION-087, DECISION-088, DECISION-089, DECISION-090, DECISION-091, DECISION-092, docs/PATH_A_PLAN.md, scripts/generate-dashboard.ps1, scripts/classify-routing.ps1, scripts/doctor.ps1
