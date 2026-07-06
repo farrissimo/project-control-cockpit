@@ -5,3 +5,7 @@
 # Ephemeral runtime lock for scripts/codex-verify-watcher.ps1 (pcc-brr5-004).
 # Not project truth; recreated/cleared automatically each cycle.
 .cockpit/state/codex-watcher.lock
+
+# Generated Owner Control Board dashboard (scripts/generate-dashboard.ps1,
+# pcc-pathD-001). Derived output regenerated from .cockpit/ state; not source.
+dashboard/index.html

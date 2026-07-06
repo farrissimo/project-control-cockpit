@@ -1,55 +1,61 @@
 {
-  "task_id": "pcc-pathC-004",
-  "task_title": "Checkpoint Gate: Bounded Extractability Audit (Verified Cycle)",
-  "task_objective": "Run the bounded extractability audit as a real two-role PCC cycle to satisfy Maturity Checkpoint criterion 2 (docs/CCB_PCC_RELATIONSHIP.md §8), replacing the self-declared DECISION-083 with a properly worker-produced, independently Codex-verified audit. DECISION-083 recorded 'extractability audit passes / checkpoint reached' directly in the decision log without a bounded task or independent verification; this task supplies the missing verified proof. Working only from repo truth, audit whether the extractability rule (DECISION-074/077: every capability is a discrete unit with an explicit .cockpit/ file-bridge contract, no hidden shared state, no undocumented cross-script assumptions) actually holds across the scripts changed since DECISION-074 plus the direct bridge/support scripts they rely on. Produce the audit and its evidence in .cockpit/result/worker-result.md, sorted strictly into real blockers / maintainability smells / optional polish. This task does NOT record checkpoint-reached and does NOT edit DECISION-083 or any doc/script/schema; recording checkpoint-reached is a separate step that happens only after Codex issues PASS.",
-  "task_status": "complete",
+  "task_id": "pcc-pathD-001",
+  "task_title": "Dashboard Skeleton + Owner Control Board Panel (Read-Only)",
+  "task_objective": "Deliver the first Category D (Product Surface) task per docs/PATH_A_PLAN.md section 6, Phase D1: a new, self-contained, read-only script scripts/generate-dashboard.ps1 that reads .cockpit/state/project-state.json and .cockpit/state/task-state.json (paths overridable by parameter) and renders a local static HTML file at dashboard/index.html showing the Owner Control Board panel (original scope section 11): current project, current task, current state, next expected action, current role, current worker, current verdict, and current blocker. This proves the UI's pure-consumer-of-the-file-bridge pattern (DECISION-074/077 extractability rule; DECISION-087 UI form decision) before any other panel is added. The script is read-only over the .cockpit/ bridge: it writes only the new top-level dashboard/ directory, never mutates any .cockpit/ file, and calls no other script (DECISION-088 local-first execution discipline: plain PowerShell + HTML, zero LLM dependency, zero external runtime).",
+  "task_status": "returned_for_verification",
   "assigned_worker": "Claude Code",
-  "task_safety_class": "B",
+  "task_safety_class": "A",
   "completion_criteria": [
-    "The audit covers exactly the scripts already identified for the checkpoint extractability check (per DECISION-083 and IDEA-014), and no broader: the changed-since-DECISION-074 set (scripts/classify-routing.ps1, scripts/generate-worker-directive.ps1, scripts/doctor.ps1, scripts/enforce-handoff-restart-safety.ps1, scripts/backup-protected-files.ps1) plus the direct support/bridge scripts they rely on (scripts/validate-cockpit-state.ps1, scripts/verify-dual-restart-safety.ps1, scripts/verify-worker-restart-safety.ps1, scripts/generate-advisor-restart-brief.ps1, scripts/refresh-live-handoff-artifacts.ps1, scripts/check-schemas.ps1).",
-    "For each audited script, the worker states from the actual file whether it communicates only through explicit .cockpit/ files and/or stdout/exit codes, whether it introduces any hidden shared runtime state, and whether it makes any undocumented cross-script assumption. Claims are grounded in the file contents, not asserted.",
-    "Findings are sorted into exactly three buckets: real blockers (would make the kernel unsound or untrustworthy to freeze), maintainability smells (non-blocking), and optional polish. If a bucket is empty, that is stated plainly.",
-    "The audit ends with an explicit yes/no judgment on whether the extractability rule holds in the real kernel, and whether the conclusion matches, overstates, or contradicts DECISION-083 -- reached from the evidence, not chosen to agree with DECISION-083.",
-    "No script, no doc (including docs/DECISIONS.md and DECISION-083), and no schema is edited by this task. Checkpoint-reached is NOT recorded by this task.",
-    "scripts/validate-cockpit-state.ps1, scripts/check-schemas.ps1, and scripts/doctor.ps1 pass/run cleanly after the task's normal state bookkeeping; any WARN is disclosed honestly in the worker result.",
-    "The task is handed back through the normal worker path for independent Codex verification; it is not self-closed and no verification verdict is written by the worker."
+    "scripts/generate-dashboard.ps1 exists, is self-contained, and is strictly read-only: it reads .cockpit/state/project-state.json and .cockpit/state/task-state.json (paths overridable by parameters for testing), writes only dashboard/index.html (a new top-level, non-.cockpit directory), mutates no .cockpit/ file, and invokes no other script.",
+    "The rendered dashboard/index.html shows the Owner Control Board panel: current project (project_name/project_id), current task (task_id/task_title/task_status), current state (current_phase), next expected action, current role (Worker, per the fixed two-role split), current worker (assigned_worker), current verdict (verification_verdict), and current blocker (current_blocker), sourced only from the two state files.",
+    "Regeneration is manual (re-run the script); no auto-refresh/watch mode is built in this task (that is Phase D2, pcc-pathD-004).",
+    "The script exits 0 on well-formed input and prints a clear error with a non-zero exit on missing or malformed state file input, writing/mutating no file in that failure case.",
+    "Functionally tested (not read-through only): run against the real .cockpit/ state (confirms sane, correct-looking output matching actual project/task fields) and against synthetic malformed-JSON and missing-file state in an isolated scratch copy (both fail cleanly, non-zero exit, no dashboard file written or left stale).",
+    "A new decision is recorded in docs/DECISIONS.md documenting the delivery. README.md is updated only as needed to note this first Category D deliverable. .gitignore is updated to exclude the generated dashboard/index.html artifact (it is derived output, regenerated from state, not source). docs/PATH_A_PLAN.md is updated only to mark pcc-pathD-001 as delivered, not to change its scope.",
+    "No existing script, schema, verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule is modified. No new log event type is added; the dashboard generator does not call scripts/log-event.ps1 or any other script.",
+    "The task is handed back through the normal worker path for verification; it is not self-closed in this cycle (owner's stated preference this session is to route verification through the ChatGPT manual bridge per DECISION-086, given remote repo access), and no verification verdict is written by the worker."
   ],
   "boundaries": {
     "allowed": [
-      "Read the audited scripts listed in the completion criteria, plus backlog/IDEAS.md (IDEA-014), docs/CCB_PCC_RELATIONSHIP.md §8, and DECISION-074/077/083 in docs/DECISIONS.md, strictly as read-only evidence.",
-      "Write the bounded extractability audit and its evidence to .cockpit/result/worker-result.md.",
-      "Regenerate the live handoff artifacts from canonical state using the existing repo scripts.",
-      "Run scripts/validate-cockpit-state.ps1, scripts/check-schemas.ps1, and scripts/doctor.ps1 and report their results honestly.",
-      "Finalize the handback through the normal repo path for independent Codex verification."
+      "Create scripts/generate-dashboard.ps1 as a new, self-contained, read-only script over the .cockpit/ file-bridge contract (DECISION-074 extractability rule; DECISION-088 local-first execution), reading only .cockpit/state/project-state.json and .cockpit/state/task-state.json (paths overridable by parameter), writing only to a new top-level dashboard/ directory.",
+      "Create the dashboard/ directory and its generated dashboard/index.html output.",
+      "Edit docs/DECISIONS.md to record the new decision.",
+      "Edit README.md only as needed to note this first Category D deliverable in the doc index or status section.",
+      "Edit .gitignore to exclude the generated dashboard/index.html artifact.",
+      "Edit docs/PATH_A_PLAN.md only to mark pcc-pathD-001 as delivered, not to change its scope or spec."
     ],
     "forbidden": [
-      "Do not edit any script, any doc (including docs/DECISIONS.md and the DECISION-083 text), backlog/IDEAS.md, docs/CCB_PCC_RELATIONSHIP.md, docs/PROJECT_CHARTER.md, or any schema.",
-      "Do not record checkpoint-reached anywhere; that is a separate post-PASS step, not part of this task.",
-      "Do not broaden the audit into a rewrite pass, a refactor, or a review of scripts outside the identified set.",
-      "Do not change any script logic, product behavior, verdict definition, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule.",
-      "Do not add any new log event type or change routing-log.jsonl semantics.",
-      "Do not self-close the task, write a verification verdict, or manually invoke codex exec for this task's verification."
+      "Do not modify any existing script.",
+      "Do not add any new log event type or write to routing-log.jsonl.",
+      "Do not make the dashboard write to, or otherwise mutate, any .cockpit/ file; it is read-only over the file bridge.",
+      "Do not call any other script from scripts/generate-dashboard.ps1.",
+      "Do not modify any schema.",
+      "Do not change any verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule.",
+      "Do not build Phase D2 or D3 functionality (auto-refresh/watch mode, additional panels, or any write-path/request-file controls) in this task.",
+      "Do not manually invoke 'codex exec' or otherwise self-issue a verification verdict for this task in this cycle."
     ]
   },
   "required_evidence": [
     "Files created or changed.",
-    "Summary of the audit and its yes/no extractability judgment.",
-    "Per-script findings grounded in file contents.",
-    "Findings sorted into real blockers / maintainability smells / optional polish.",
-    "Commands run, if any.",
-    "Command/test results for validate-cockpit-state.ps1, check-schemas.ps1, and doctor.ps1.",
+    "Summary of changes.",
+    "Commands run.",
+    "Command/test results, including the functional tests against real and synthetic state.",
     "Known risks.",
     "Unresolved assumptions.",
-    "Confirmation that forbidden scope was not touched (no script/doc/schema edited, checkpoint-reached not recorded)."
+    "Confirmation that forbidden scope was not touched."
   ],
   "attempts": 1,
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
-  "verification_verdict": "PASS",
+  "verification_verdict": null,
   "current_blocker": null,
   "owner_decision_request": null,
-  "promotion_basis": null,
-  "next_action": "Task 'pcc-pathC-004' is complete and verified PASS. That verified cycle is the basis for the checkpoint: the next optional step is to freeze and back up this kernel baseline.",
-  "updated_at": "2026-07-05T16:02:00-06:00"
+  "promotion_basis": {
+    "lane": "Path A / Category D / Phase D1",
+    "priority_ref": "docs/PATH_A_PLAN.md section 6 (pcc-pathD-001)",
+    "justification": "Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); this is continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner separately confirmed readiness to start Path A actual work in this session."
+  },
+  "next_action": "Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.",
+  "updated_at": "2026-07-05T18:15:19-06:00"
 }

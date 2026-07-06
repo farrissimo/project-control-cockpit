@@ -132,7 +132,7 @@ the same technology — the read-only board is grown, not thrown away.
 | B — Behavior & Tooling Controls | 2 (pre-checkpoint) | ✅ Done — `DECISION-076` (`pcc-pathB-001`) |
 | C — Metrics & Evidence Depth | 3 (pre-checkpoint) | ✅ Done — `DECISION-081` (`pcc-pathC-001..004`) |
 | **Maturity Checkpoint** | Milestone | ✅ Reached — `DECISION-084`; frozen `DECISION-085` |
-| **D — Product Surface (UI)** | Post-checkpoint | ⬜ **Next** — broken down in §6 |
+| **D — Product Surface (UI)** | Post-checkpoint | 🔶 In progress — `pcc-pathD-001` delivered; next is `pcc-pathD-002` (§6) |
 | E — Multi-Model/Multi-Agent | Deferred | Path-B / CCB-domain scope |
 | F — Knowledge & Memory | Deferred | Gated on proven need |
 
@@ -179,7 +179,7 @@ Verification, Local Tools, Session/Usage, Handoff/Rollover, Tone/Behavior).
 Prove the consumer-of-file-bridge pattern. Read-only throughout: no writes, no
 controls, calls no engine script.
 
-- **`pcc-pathD-001` — Dashboard skeleton + Owner Control Board panel** *(first buildable task)*
+- **`pcc-pathD-001` — Dashboard skeleton + Owner Control Board panel** *(first buildable task)* — ✅ **DELIVERED** (`DECISION-089`, `scripts/generate-dashboard.ps1`)
   - D1-T1.1 — Choose and record the local-serving mechanism: a single,
     self-contained PowerShell script that reads `.cockpit/` state and renders a
     local HTML view, with no external runtime dependency and no engine-script

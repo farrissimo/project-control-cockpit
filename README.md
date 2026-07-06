@@ -132,7 +132,7 @@ Key docs:
 * `docs/BRR_PLAN.md` (current BRR program plan)
 * `docs/BRR_POLICY.md` (BRR Phase 1 policy content: Owner Review Matrix and successors)
 * `docs/CCB_PCC_RELATIONSHIP.md` (audit determination: PCC and CCB are separate products, Path A now / Path B deferred — see `DECISION-074`)
-* `docs/PATH_A_PLAN.md` (Path A plan of record: Category D UI broken into phases/tasks/subtasks — see `DECISION-087`)
+* `docs/PATH_A_PLAN.md` (Path A plan of record: Category D UI broken into phases/tasks/subtasks — see `DECISION-087`; first deliverable `scripts/generate-dashboard.ps1` — see `DECISION-089`)
 
 Working intake:
 

@@ -1,87 +1,66 @@
 # Worker Result
 
-* Task ID: pcc-pathC-004
-* Task Title: Checkpoint Gate: Bounded Extractability Audit (Verified Cycle)
-* Task Safety Class: B
+* Task ID: pcc-pathD-001
+* Task Title: Dashboard Skeleton + Owner Control Board Panel (Read-Only)
+* Task Safety Class: A
 * Worker: Claude Code
-* Handback: for independent Codex verification (not self-closed)
+* Handback: for verification via ChatGPT manual bridge (owner's stated session preference), not self-closed even though Class A would otherwise permit self-acceptance
 
 ### Summary
 
-I ran the bounded extractability audit as a real worker cycle, reading each script in the identified set from source and judging its contract boundaries from the file itself. **Extractability judgment: YES — the rule holds.** Every audited script communicates only through explicit `.cockpit/` files and/or stdout/exit codes, composes other scripts only by explicit subprocess invocation (`& pwsh -File ...`, reading stdout/exit), and introduces no hidden shared runtime state and no undocumented cross-script assumption.
-
-**Relationship to DECISION-083:** my substantive conclusion **matches** DECISION-083 — the kernel is extractable. But DECISION-083 was **overstated in process, not in content**: it asserted "audit passes / checkpoint reached" directly in the decision log with no bounded task and no independent verification. This cycle supplies exactly the missing proof: a worker-produced audit grounded in the files, now handed to Codex for the independent verdict. I reached the "holds" conclusion from the evidence below, not to agree with DECISION-083 — and I flag its process defect explicitly rather than ratifying it.
-
-**Authorship note:** DECISION-083 was recorded by an earlier session (commit `b0a0ff7`), not in this cycle. I did not write it and did not edit it here (forbidden by scope). This task neither records checkpoint-reached nor modifies DECISION-083; those are deferred to a separate post-PASS step.
+Delivered `scripts/generate-dashboard.ps1`: a self-contained, read-only PowerShell script that reads `.cockpit/state/project-state.json` and `.cockpit/state/task-state.json` and renders a static local HTML file (`dashboard/index.html`) showing the Owner Control Board panel (original scope §11) -- current project, current task, current state, next expected action, current role, current worker, current verdict, and current blocker. This is the first Category D task (`docs/PATH_A_PLAN.md` §6, Phase D1) and the first real exercise of both the pure-consumer-of-the-file-bridge UI form (`DECISION-087`) and the local-first execution discipline (`DECISION-088`): zero LLM dependency, zero external runtime, plain PowerShell + static HTML.
 
 ### Files Changed
 
-Working tree vs HEAD (all `.cockpit/`, no source/doc/schema touched):
+1. `scripts/generate-dashboard.ps1` (new) -- the dashboard generator.
+2. `dashboard/index.html` (new, generated artifact -- gitignored, not committed).
+3. `.gitignore` -- added `dashboard/index.html` as a derived/regenerable artifact.
+4. `README.md` -- doc index note for `docs/PATH_A_PLAN.md` updated to mention this deliverable and `DECISION-089`.
+5. `docs/DECISIONS.md` -- added `DECISION-089`.
+6. `docs/PATH_A_PLAN.md` -- marked `pcc-pathD-001` delivered in §5 and §6; scope/spec unchanged.
+7. `.cockpit/state/task-state.json`, `.cockpit/state/project-state.json` -- drafted/advanced for this task.
+8. `.cockpit/handoff/worker-directive.md` -- regenerated from canonical state.
 
-1. `.cockpit/state/task-state.json` — drafted task pcc-pathC-004 (Class B, audit); moves to `returned_for_verification` on finalize.
-2. `.cockpit/state/project-state.json` — `current_task_id` → pcc-pathC-004; `next_expected_action` rewritten to state plainly that the checkpoint is NOT yet confirmed and must not be recorded until Codex PASS; `updated_at`.
-3. `.cockpit/state/handoff-gate.json` — PASS gate record for pcc-pathC-004 (from the mandatory Class B handoff gate).
-4. `.cockpit/handoff/worker-directive.md`, `.cockpit/handoff/advisor-restart-brief.md` — regenerated from canonical state.
-5. `.cockpit/result/worker-result.md` — this audit evidence (the task's deliverable).
-
-**No script, no doc (including `docs/DECISIONS.md` / DECISION-083), and no schema was edited.**
+**No existing script, schema, or verdict/status enum was edited.**
 
 ### Commands / Tests Run
 
-* Read from source (evidence): all 11 audited scripts (see per-script findings), plus IDEA-014 (`backlog/IDEAS.md`), `docs/CCB_PCC_RELATIONSHIP.md` §8, and DECISION-074/077/083.
-* `scripts/generate-worker-directive.ps1`, then `scripts/refresh-live-handoff-artifacts.ps1` — drafted/refreshed both live handoff artifacts.
-* `scripts/enforce-handoff-restart-safety.ps1` — mandatory Class B handoff gate + pre-task backup. First run FAILED (dual-restart mismatch: I had regenerated only the directive, not the advisor brief); corrected by refreshing both artifacts, then re-ran → PASS. Backup `20260705-154043` (45 files).
-* `scripts/validate-cockpit-state.ps1`, `scripts/check-schemas.ps1`, `scripts/doctor.ps1`.
+* `pwsh -File scripts/generate-dashboard.ps1` -- against the real `.cockpit/` state.
+* Bug found and fixed mid-test: `verification_verdict`/`current_blocker` (both currently `null`) rendered as blank table cells instead of `(none)`, because casting a JSON `null` to `[string]` before the null-check silently produced an empty string. Fixed by checking `[string]::IsNullOrEmpty` after the cast, in `Encode-Html`. Re-ran and confirmed the fix.
+* Synthetic failure-mode tests, in an isolated scratch directory outside the repo:
+  * Malformed JSON for `-ProjectStatePath` -> `Fail "Invalid JSON in ... :: Conversion from JSON failed ..."`, exit 1, no output file written.
+  * Missing file for `-TaskStatePath` -> `Fail "Missing required file: ..."`, exit 1, no output file written.
+* Confirmed via `git status --short .cockpit/` that neither test run touched any `.cockpit/` file (the only diffs present are from this task's own normal state bookkeeping, not from the script under test).
+* `scripts/validate-cockpit-state.ps1`, `scripts/check-schemas.ps1` -- both clean before and after the change.
+* `scripts/doctor.ps1` -- clean (see Results).
 
 ### Results
 
-* **validate-cockpit-state.ps1** → `PCC state validation OK` (exit 0).
-* **check-schemas.ps1** → `[PASS]` for all three files (exit 0).
-* **doctor.ps1** → exit 0, **no `[ISSUE]`**, 1 informational `[WARN]` (working tree uncommitted — normal mid-cycle). Handoff gate `[OK]` PASS for pcc-pathC-004.
-* **Handoff gate** → PASS after the two-artifact fix; backup created.
+* Real-state run: dashboard correctly shows `Project Control Cockpit (project-control-cockpit)`, `pcc-pathD-001 -- Dashboard Skeleton + Owner Control Board Panel (Read-Only)`, `in_progress (phase: post-brr)`, the live `next_expected_action` text (HTML-encoded correctly, including an embedded apostrophe as `&#39;`), the fixed two-role split, `assigned_worker` = Claude Code, and `(none)` for both currently-null verdict and blocker fields.
+* Both synthetic failure cases exit non-zero, print a clear, specific error, and write nothing.
+* `doctor.ps1`: no `[ISSUE]`; the pre-existing "Working tree: N uncommitted change(s)" `[WARN]` is expected mid-cycle and not a defect.
 
-### Evidence — Per-Script Audit Findings
+### Evidence
 
-Audited set = scripts changed since DECISION-074 (1–5) plus the direct support/bridge scripts they rely on (6–11). For each: does it use only explicit file/stdout contracts, any hidden shared state, any undocumented cross-script assumption.
+* `scripts/generate-dashboard.ps1` is read-only over the `.cockpit/` bridge: reads two state files by parameterized path (defaults to the canonical paths), writes only `-OutputPath` (defaults to `dashboard/index.html`, a new top-level directory outside `.cockpit/`, avoiding an unexpected `.cockpit/` top-level entry per `doctor.ps1`'s file-structure check), and calls no other script -- consistent with `DECISION-074`/`077` extractability and `DECISION-088` local-first execution.
+* HTML output is escaped via `System.Web.HttpUtility.HtmlEncode` (loaded through `Add-Type -AssemblyName System.Web`), confirmed working against real state content.
+* `dashboard/index.html` added to `.gitignore`, consistent with how `.cockpit/backups/` is already treated as a non-canonical, regenerable artifact.
 
-1. **classify-routing.ps1** — Reads `task-state.json` (param, default canonical path); prints an advisory to stdout; `exit 0`; mutates nothing; calls no other script. Self-contained. **Extractable.**
-2. **generate-worker-directive.ps1** — Reads `project-state.json` + `task-state.json`; writes `worker-directive.md` (param). Current Truth is built entirely from `active_constraints` + `worker_context_facts` + `communication_prefs` (DECISION-017) — no hardcoded facts. Fails loudly on state drift / empty fields. No other-script calls. **Extractable.**
-3. **doctor.ps1** — Read-only advisory; always `exit 0`. Composes `validate-cockpit-state`, `verify-dual-restart-safety`, `check-schemas` by explicit `& pwsh -File` subprocess, consuming stdout/exit; reads state, git, and filesystem directly. No shared in-process state. **Extractable.**
-4. **enforce-handoff-restart-safety.ps1** — Reads `task-state.json`; writes `handoff-gate.json`; invokes `backup-protected-files.ps1` and `verify-dual-restart-safety.ps1` as subprocesses. Backup-dedup reads backup `manifest.json` files. All contracts explicit/file-based. **Extractable.**
-5. **backup-protected-files.ps1** — Snapshots an explicit protected set into `.cockpit/backups/<ts>/` with a visible `manifest.json`; restore reads the manifest and copies back; calls no other script. Plain filesystem helper, no hidden channel. **Extractable.**
-6. **validate-cockpit-state.ps1** — Reads the three canonical JSON files; cross-checks consistency; prints result / fails; no mutation, no other-script calls. **Extractable.**
-7. **verify-dual-restart-safety.ps1** — Reads the advisor brief, regenerates to a temp scratch file, compares (timestamp normalized), then invokes `verify-worker-restart-safety.ps1`; cleans up scratch in `finally`. Explicit file + subprocess contract. **Extractable.**
-8. **verify-worker-restart-safety.ps1** — Reads the directive, checks required sections, regenerates to temp scratch, compares byte-for-byte, cleans up. Explicit. **Extractable.**
-9. **generate-advisor-restart-brief.ps1** — Reads `project-state` + `task-state` + `verification-result`; writes the brief (param); all content from state; fails on drift; no other-script calls. **Extractable.**
-10. **refresh-live-handoff-artifacts.ps1** — One shared call site that invokes both generators by subprocess; no shared state of its own. **Extractable.**
-11. **check-schemas.ps1** — Validates the three canonical JSON files against `schemas/*.schema.json` via `Test-Json`; prints results; exit code advisory only. No mutation, no other-script calls. **Extractable.**
+### Process Disclosure (self-reported gap)
 
-### Findings — Sorted
-
-**Real blockers (would make the kernel unsound/untrustworthy to freeze): NONE.** The extractability rule (DECISION-074/077) holds across the audited kernel. No hidden shared state, no undocumented cross-script coupling, no reach-into-another-script's-internals pattern was found.
-
-**Maintainability smells (non-blocking):**
-* Small helper duplication across scripts — `Fail`, `Read-Json`/`Read-JsonSafe`, `Format-Bullets` are re-defined locally in several scripts (DECISION-083 noted the `Fail`/`Read-Json` case). This is copy-paste of ~5-line helpers, **not** shared state, and does not weaken extractability (each script stays independently runnable). A future consolidation option, not a freeze blocker.
-* The list of the three canonical JSON files is hardcoded in both `doctor.ps1` (indirectly, via the checks it calls) and `check-schemas.ps1`. Minor duplication, no coupling risk.
-* Implicit repo-root working-directory assumption — scripts use relative `.cockpit/...` paths and assume they run from the repo root. It is a consistent, visible convention (and paths are parameterized with defaults), not a hidden per-script assumption, but it is convention rather than an enforced contract.
-
-**Optional polish:** none worth promoting before freeze.
+This task skipped the mandatory handoff gate before execution. `scripts/enforce-handoff-restart-safety.ps1` requires `task_status` to be `ready_for_worker` to run, and its scope scan would have required a pre-task backup here (the task's scope text mentions `scripts/`, `docs/`, and `.cockpit/state/`, which trips `$touchesCoreScope = $true` regardless of Task Safety Class). This cycle moved task-state directly from drafted to `in_progress` without ever passing through `ready_for_worker` and running that gate, so **no pre-task backup existed before this task's changes were made**. Caught after the fact, before handback: a backup was taken retroactively (`.cockpit/backups/20260705-181559`, 47 files, tagged `task_id: pcc-pathD-001` from live `task-state.json`), but it is a post-hoc snapshot of the already-changed repo, not a true pre-task restore point. Flagging this plainly rather than omitting it: the verifier should treat this as a real process-compliance gap in how this cycle was run, separate from whether the delivered script itself is sound.
 
 ### Known Risks
 
-* This is a **judgment audit**, not a mechanically-provable fact. I read the scripts and reasoned about their contracts; "extractability holds" is a defended conclusion, not a script-checkable assertion — which is exactly why it is held for independent Codex verification. Codex should re-read the same scripts and confirm or dispute the per-script findings.
-* The audit is deliberately bounded to the identified set. Scripts outside that set (e.g. close-out / handback / log-event) were not audited here, per scope; if the checkpoint intends "every script," that is a scope question for the owner/verifier, but the identified set is what DECISION-083/IDEA-014 named.
+* `dashboard/index.html` is a static snapshot; it goes stale the moment state changes again until manually re-run. Auto-refresh is explicitly Phase D2 (`pcc-pathD-004`), not this task.
+* The dashboard states the standing two-role split (Worker: Claude Code / Advisor-Verifier: Codex, disclosed fallback per `DECISION-086`) as a fixed string rather than a live per-task field, since neither state file currently carries a "current role" field of its own. If a future state schema change adds one, this hardcoded line should be revisited.
+* `System.Web.HttpUtility` availability was assumed for PowerShell 7 (pwsh) on this Windows host and confirmed working here; not tested on other platforms.
 
 ### Unresolved Assumptions
 
-* Assumes the identified script set (DECISION-083's changed-since-074 list plus its named support scripts) is the correct, complete boundary for the checkpoint extractability check.
-* Assumes recording checkpoint-reached and reconciling DECISION-083's premature claim are a separate post-PASS step, not part of this task (per the directive).
+* That a static-HTML, PowerShell-only local page satisfies "local web dashboard" from `DECISION-087` without any local web server for this read-only phase -- the owner opens `dashboard/index.html` directly in a browser (`file://`). Whether a served (rather than `file://`-opened) page is ever needed is left for a later phase's judgment, not decided here.
+* That Task Safety Class A is correct for this task (matches `pcc-pathA-001`'s precedent for a new, self-contained, read-only advisory script); not independently re-derived beyond that precedent.
 
 ### Out-of-Scope Confirmation
 
-Nothing outside the allowed scope was touched:
-
-* No script, no doc (including `docs/DECISIONS.md` and the DECISION-083 text), `backlog/IDEAS.md`, `docs/CCB_PCC_RELATIONSHIP.md`, `docs/PROJECT_CHARTER.md`, or any schema was edited.
-* Checkpoint-reached was **not** recorded anywhere; the audit did not broaden into a rewrite/refactor and did not review scripts outside the identified set.
-* No script logic, product behavior, verdict definition, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule changed. No new log event type; no routing-log.jsonl change.
-* Did not self-close, did not write a verification verdict, and did not manually invoke `codex exec` for this task's verification.
+Confirmed: no existing script was modified; no schema was modified; no new log event type was added; `scripts/generate-dashboard.ps1` calls no other script and writes no `.cockpit/` file; no verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule was changed; no Phase D2/D3 functionality (auto-refresh, other panels, write-path controls) was built; `codex exec` was not invoked and no verification verdict was self-issued for this task.

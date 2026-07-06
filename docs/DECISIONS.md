@@ -2149,3 +2149,29 @@ Process disclosure: recorded with Codex unavailable (`DECISION-086`), under dire
 
 Supersedes: None
 Related: DECISION-002, DECISION-003, DECISION-004, DECISION-008, DECISION-012, DECISION-075, DECISION-087, docs/PATH_A_PLAN.md, docs/PROJECT_CHARTER.md
+
+---
+
+## DECISION-089: Category D Phase D1 First Deliverable — Read-Only Owner Control Board Dashboard (pcc-pathD-001)
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+The first Category D task named in `docs/PATH_A_PLAN.md` §6 is delivered: `scripts/generate-dashboard.ps1`, a self-contained, read-only PowerShell script that reads `.cockpit/state/project-state.json` and `.cockpit/state/task-state.json` and renders a static local HTML file (`dashboard/index.html`) showing the Owner Control Board panel (original scope §11): current project, current task, current state, next expected action, current role, current worker, current verdict, and current blocker.
+
+Reason:
+
+This is the first proof of the UI form decided in `DECISION-087`: a pure consumer of the `.cockpit/` file bridge, and the first exercise of the local-first execution discipline in `DECISION-088` — the entire dashboard is plain PowerShell generating static HTML, with zero LLM dependency and zero external runtime. It reads only the two state files (paths overridable by parameter for testing), writes only the new top-level `dashboard/` directory (outside `.cockpit/`, avoiding an unexpected `.cockpit/` top-level entry per `doctor.ps1`'s file-structure check), mutates no `.cockpit/` file, and calls no other script — satisfying the `DECISION-074`/`077` extractability rule by construction. Regeneration is manual (re-run the script); auto-refresh is deliberately deferred to Phase D2 (`pcc-pathD-004`) per the plan's own phasing.
+
+A real bug was found and fixed during functional testing: the initial implementation cast a JSON `null` (e.g. `verification_verdict` when no verdict yet exists) to `[string]` before checking for null, which silently turned it into an empty string and produced a blank table cell instead of the intended `(none)` placeholder. Fixed by checking `[string]::IsNullOrEmpty` after the cast rather than checking for `$null` before it. Functionally tested (not read-through only): against the real `.cockpit/` state (correct output, including the fixed `(none)` rendering for the currently-null verdict/blocker fields) and against synthetic malformed-JSON and missing-file inputs in an isolated scratch copy (both fail cleanly, non-zero exit, no output file written, no `.cockpit/` mutation).
+
+Implications:
+
+`dashboard/index.html` is a generated artifact, not source — added to `.gitignore` accordingly, regenerated on demand. No existing script, schema, verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule is changed; no new log event type is added. This task is Task Safety Class A (new, self-contained, read-only advisory script; same classification as `pcc-pathA-001`'s `classify-routing.ps1`) and is therefore eligible for standing self-verification per `docs/BRR_POLICY.md`'s Acceptance Boundary Rules — but per the owner's stated session preference, this cycle is instead routed through the ChatGPT manual bridge (`DECISION-086`) for an external check rather than self-accepted, since Codex remains temporarily unavailable and the owner has direct remote-repo access available for GPT this session. The next Phase D1 task remains `pcc-pathD-002` (Directive + Verification panels) per `docs/PATH_A_PLAN.md` §6.
+
+Process disclosure: built with Codex unavailable (`DECISION-086`), under direct owner direction; self-checked with PCC's local guardrails (`validate-cockpit-state.ps1`, `check-schemas.ps1`, `doctor.ps1`), and handed back for external verification per the owner's stated preference rather than self-accepted, even though Class A would otherwise permit self-acceptance.
+
+Supersedes: None
+Related: DECISION-074, DECISION-077, DECISION-075, DECISION-086, DECISION-087, DECISION-088, docs/PATH_A_PLAN.md, docs/BRR_POLICY.md, scripts/generate-dashboard.ps1

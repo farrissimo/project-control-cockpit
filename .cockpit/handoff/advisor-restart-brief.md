@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-05T16:49:25-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-05T18:15:20-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,12 +10,17 @@ Current phase: post-brr
 
 ## Active Task
 
-* Task ID: pcc-pathC-004
-* Title: Checkpoint Gate: Bounded Extractability Audit (Verified Cycle)
-* Status: complete
-* Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Run the bounded extractability audit as a real two-role PCC cycle to satisfy Maturity Checkpoint criterion 2 (docs/CCB_PCC_RELATIONSHIP.md §8), replacing the self-declared DECISION-083 with a properly worker-produced, independently Codex-verified audit. DECISION-083 recorded 'extractability audit passes / checkpoint reached' directly in the decision log without a bounded task or independent verification; this task supplies the missing verified proof. Working only from repo truth, audit whether the extractability rule (DECISION-074/077: every capability is a discrete unit with an explicit .cockpit/ file-bridge contract, no hidden shared state, no undocumented cross-script assumptions) actually holds across the scripts changed since DECISION-074 plus the direct bridge/support scripts they rely on. Produce the audit and its evidence in .cockpit/result/worker-result.md, sorted strictly into real blockers / maintainability smells / optional polish. This task does NOT record checkpoint-reached and does NOT edit DECISION-083 or any doc/script/schema; recording checkpoint-reached is a separate step that happens only after Codex issues PASS.
+* Task ID: pcc-pathD-001
+* Title: Dashboard Skeleton + Owner Control Board Panel (Read-Only)
+* Status: returned_for_verification
+* Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
+* Objective: Deliver the first Category D (Product Surface) task per docs/PATH_A_PLAN.md section 6, Phase D1: a new, self-contained, read-only script scripts/generate-dashboard.ps1 that reads .cockpit/state/project-state.json and .cockpit/state/task-state.json (paths overridable by parameter) and renders a local static HTML file at dashboard/index.html showing the Owner Control Board panel (original scope section 11): current project, current task, current state, next expected action, current role, current worker, current verdict, and current blocker. This proves the UI's pure-consumer-of-the-file-bridge pattern (DECISION-074/077 extractability rule; DECISION-087 UI form decision) before any other panel is added. The script is read-only over the .cockpit/ bridge: it writes only the new top-level dashboard/ directory, never mutates any .cockpit/ file, and calls no other script (DECISION-088 local-first execution discipline: plain PowerShell + HTML, zero LLM dependency, zero external runtime).
 
+## Auto-Promotion Basis
+
+* Approved lane: Path A / Category D / Phase D1
+* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-001)
+* Justification (continuation, not a fork): Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); this is continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner separately confirmed readiness to start Path A actual work in this session.
 ## Last Verified
 
 * Verdict: PASS for task 'pcc-pathC-004', verified at 2026-07-05T15:49:00-06:00
@@ -39,5 +44,5 @@ Current phase: post-brr
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-pathC-004' is complete and verified PASS. That verified cycle is the basis for the checkpoint: the next optional step is to freeze and back up this kernel baseline.
-* Project-level: Path A is confirmed as the post-checkpoint direction and its plan of record is canonical at docs/PATH_A_PLAN.md (DECISION-087). The next buildable Path A task is pcc-pathD-001 (Category D, Phase D1: read-only Owner Control Board dashboard), promotable directly from docs/PATH_A_PLAN.md section 6 through the normal worker/verifier cycle. No further planning is required to begin Category D.
+* Task-level: Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.
+* Project-level: Worker evidence for task 'pcc-pathD-001' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict.
