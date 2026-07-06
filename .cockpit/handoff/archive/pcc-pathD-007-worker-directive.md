@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-pathD-007
 * Task Title: Request-File Inbox Contract + Schema (Phase D3 Foundation)
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Auto-Promotion Basis
