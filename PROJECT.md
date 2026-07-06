@@ -48,32 +48,19 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
 - AGENTS.md: verifier verdict format (PASS/FAIL/INSUFFICIENT/BLOCKED/OUT_OF_SCOPE + NOT PROVEN).
 
 ## Pending / immediate next tasks
-1. VERIFICATION not yet confirmed working. A Windows scheduled task
-   "PCC Verify Codex 10am MT" runs `scripts/verify-work.ps1 -WriteFile` at
-   10:05 MT on 2026-07-07 and writes the verdict to app/last-verification.txt.
-   After it runs, read that file (or use the Verify tab) and confirm a real
-   verdict appears. Do NOT claim verification works until a clean run is
-   observed.
-   - DONE this session (commit d89a174): the fallback no longer calls the
-     retired Gemini CLI; it now calls Antigravity `agy -p` with the git diff
-     embedded inline (agy ignores stdin). NOT PROVEN: agy as a reliable
-     verifier — a real-diff run hung ~13 min and returned nothing. The reliable
-     non-interactive agy invocation is still open: a prior handoff note
-     suggested `agy --headless --approve`, but those flags are NOT in the
-     installed v1.0.10 `agy --help` (which lists `-p/--print`, `--sandbox`,
-     `--dangerously-skip-permissions`), so that note is unconfirmed. Codex
-     stays the primary verifier; this is parked, not being worked.
-2. Continue down docs/COCKPIT_ROADMAP.md by priority. Shipped this session:
-   the Signals view + detectors #9 (untracked-files), #8 (chat-rollover), and
-   #10 (out-of-scope/drift), #11 (stale-docs), #13 (repo-sync "work backed
-   up?"), #14 (live trust strip), and #7 (in-app new-chat handoff generation).
-   #6 (lifecycle state-machine), and #5 (deeper memory / recent-decisions
-   carry-forward). #12 (agreements-only-in-chat) is deferred: it needs AI
-   judgment, not a deterministic script, so it is parked rather than faked with
-   keyword guesses. With P1+P2 complete, the remaining work is P3/P4 (a new
-   phase): extra honest detections (#15-17), project bootstrap (#18), metrics
-   (#19), multi-project (#20), polish (#21/#23), plus #12 as an on-demand LLM
-   check when the owner wants it.
+1. VERIFICATION (#3): self-resolving. A Windows scheduled task "PCC Verify
+   Codex 10am MT" runs `scripts/verify-work.ps1 -WriteFile` at 10:05 MT on
+   2026-07-07 and writes the verdict to app/last-verification.txt. After it
+   runs, read that file (or use the Verify tab) and confirm a real verdict
+   appears — do NOT claim verification works until then. Fallback (agy) is
+   wired but NOT PROVEN reliable (a real-diff run hung ~13 min); Codex stays
+   primary and this is parked, not being worked.
+2. No other task is required right now. #20 (multi-project switching) is
+   PAUSED by owner choice (creating projects works; switching the app between
+   them does not — a real architectural change, deliberately deferred). #12
+   (agreements-only-in-chat) is deferred (needs AI judgment, not a script).
+   #21 (peek under the hood) and #23 (UI polish) are optional and unstarted.
+   Everything else in P1/P2/P3 is done. Next real work is the owner's call.
 
 ## Roadmap status (full list: docs/COCKPIT_ROADMAP.md)
 All of P1/P2/P3 done or honestly handled. Also shipped (owner feedback while
