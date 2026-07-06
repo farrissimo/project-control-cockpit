@@ -87,6 +87,25 @@ ipcMain.handle('pcc:hardChecks', async () => {
   return { git, doctor };
 });
 
+// Detections - the "human smoke alarm" jobs from DECISION-102, each a
+// deterministic script that emits the honest four-part format (Observed / what
+// it might mean / what's NOT proven / what to do). The app is a pure consumer:
+// it runs the script with -Json and renders the result, never judging itself.
+// Add new detectors here as their scripts land; the CLI works without app/.
+function runDetector(script) {
+  return new Promise((resolve) => {
+    exec('pwsh -NoProfile -File ' + script + ' -Json', { cwd: PROJECT_DIR, maxBuffer: 8 * 1024 * 1024, timeout: 30000, windowsHide: true }, (err, stdout) => {
+      const out = (stdout || '').trim();
+      try { resolve(JSON.parse(out)); }
+      catch (e) { resolve({ detector: script, signal: 'unknown', observed: 'Detector could not run: ' + (err ? err.message : 'no output'), might_mean: '', not_proven: '', what_to_do: '', items: [] }); }
+    });
+  });
+}
+
+ipcMain.handle('pcc:detections', async () => ({
+  untracked: await runDetector('scripts/detect-untracked.ps1'),
+}));
+
 // Send a message to Claude Code non-interactively. The prompt goes in over
 // stdin (so quotes/newlines in the message can never break shell parsing).
 // After the first turn we pass --continue so Claude keeps the conversation.

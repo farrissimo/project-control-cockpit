@@ -16,7 +16,7 @@ Status: [x] Done · [~] In progress / Partial · [ ] Planned
 ## P2 — High (the "huge" wounds; the governed loop)
 7. [~] Clean new-chat handoff — PROJECT.md brief + handoff paste block proven (first slice done; in-app auto-generation pending)
 8. [ ] Chat end-of-usefulness / rollover trigger (turns, tokens, time, repeat-count)
-9. [ ] Untracked-files detection
+9. [x] Untracked-files detection — deterministic `scripts/detect-untracked.ps1` (git-only, no LLM, respects .gitignore) + new Signals view rendering the honest 4-part format. CLI-first (works with app/ deleted); writes truth to .cockpit/result/detections/ with -WriteFile.
 10. [ ] Out-of-scope / drift detection (changed files vs task scope)
 11. [ ] Stale-docs detection (narrow, honest: changed code but required doc untouched)
 12. [ ] Agreements-only-in-chat -> flag + capture to truth

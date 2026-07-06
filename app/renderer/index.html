@@ -66,6 +66,29 @@
   #memory-save, #verify-run { background: #2f6bde; color: #fff; border: none; border-radius: 10px;
     padding: 8px 18px; font-weight: 500; font-size: 14px; cursor: pointer; }
   #verify-run:disabled { opacity: .5; cursor: default; }
+
+  .signals-actions { display: flex; align-items: center; gap: 12px; margin: 14px 0 4px; }
+  #signals-refresh { background: #2f6bde; color: #fff; border: none; border-radius: 10px;
+    padding: 8px 18px; font-weight: 500; font-size: 14px; cursor: pointer; }
+  #signals-refresh:disabled { opacity: .5; cursor: default; }
+  .signal-card { max-width: 760px; background: #0e1014; border: 1px solid #23262d;
+    border-left: 3px solid #3a3f47; border-radius: 10px; padding: 14px 16px; margin-top: 14px; }
+  .signal-card.clear { border-left-color: #3f8f5f; }
+  .signal-card.notice { border-left-color: #f0c674; }
+  .signal-card.unknown { border-left-color: #b06a6a; }
+  .signal-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .signal-title { font-size: 14px; font-weight: 600; }
+  .signal-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: .04em; }
+  .signal-badge.clear { background: #16311f; color: #7fd6a0; }
+  .signal-badge.notice { background: #33290f; color: #f0c674; }
+  .signal-badge.unknown { background: #331717; color: #e6a3a3; }
+  .signal-row { font-size: 13px; line-height: 1.5; margin: 6px 0; color: #cdd2d9; }
+  .signal-row .k { color: #8ab4ff; font-weight: 500; display: block; font-size: 11px;
+    text-transform: uppercase; letter-spacing: .04em; margin-bottom: 1px; }
+  .signal-items { margin: 4px 0 0; padding-left: 18px; color: #b8bdc6; font-size: 13px; }
+  .signal-items li { margin: 1px 0; font-family: ui-monospace, monospace; }
+  .signal-foot { font-size: 11px; color: #5f646c; margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -77,6 +100,7 @@
       <button class="nav" data-view="project">Project</button>
       <button class="nav" data-view="rules">Rules</button>
       <button class="nav" data-view="memory">Memory</button>
+      <button class="nav" data-view="signals">Signals</button>
       <button class="nav" data-view="verify">Verify</button>
     </nav>
     <div class="side-foot">Talking to your Claude Code</div>
@@ -113,6 +137,13 @@
       <p class="muted">The always-current brief for this project. Claude reads it at the start of every session, so a new chat never starts from zero. Edit it and hit Save.</p>
       <textarea id="memory-text" class="memory-box" placeholder="What this project is, where you are, what's next…"></textarea>
       <div class="memory-actions"><button id="memory-save" type="button">Save</button><span id="memory-status" class="muted"></span></div>
+    </div>
+
+    <div class="view hidden panel" id="view-signals">
+      <h2>Signals</h2>
+      <p class="muted">Jobs you used to do by hand — watched for you. Every signal is honest: what was observed, what it might mean, what is NOT proven, and what to do. Never a fake certainty.</p>
+      <div class="signals-actions"><button id="signals-refresh" type="button">Refresh</button><span id="signals-status" class="muted"></span></div>
+      <div id="signals-list"></div>
     </div>
 
     <div class="view hidden panel" id="view-verify">

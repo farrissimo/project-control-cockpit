@@ -110,9 +110,10 @@ const views = {
   project: document.getElementById('view-project'),
   rules: document.getElementById('view-rules'),
   memory: document.getElementById('view-memory'),
+  signals: document.getElementById('view-signals'),
   verify: document.getElementById('view-verify'),
 };
-let loadedProject = false, loadedRules = false, loadedMemory = false, loadedVerify = false;
+let loadedProject = false, loadedRules = false, loadedMemory = false, loadedSignals = false, loadedVerify = false;
 
 document.querySelectorAll('.nav').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -123,6 +124,7 @@ document.querySelectorAll('.nav').forEach((btn) => {
     if (v === 'project' && !loadedProject) { loadProject(); loadedProject = true; }
     if (v === 'rules' && !loadedRules) { loadRules(); loadedRules = true; }
     if (v === 'memory' && !loadedMemory) { loadMemory(); loadedMemory = true; }
+    if (v === 'signals' && !loadedSignals) { loadSignals(); loadedSignals = true; }
     if (v === 'verify' && !loadedVerify) { runHardChecks(); loadedVerify = true; }
   });
 });
@@ -136,6 +138,49 @@ async function runHardChecks() {
     el.textContent = 'Could not run hard checks: ' + e.message;
   }
 }
+
+// ---- signals view ----
+// Renders each detector in the honest four-part format. The renderer only
+// displays what the deterministic scripts report; it never invents a verdict.
+const SIGNAL_TITLES = { 'untracked-files': 'Untracked files' };
+
+function signalCard(d) {
+  const sig = (d.signal || 'unknown');
+  const card = document.createElement('div');
+  card.className = 'signal-card ' + sig;
+  const title = SIGNAL_TITLES[d.detector] || d.detector || 'Signal';
+  let html = '<div class="signal-head"><span class="signal-title">' + escapeHtml(title)
+    + '</span><span class="signal-badge ' + sig + '">' + escapeHtml(sig) + '</span></div>';
+  html += '<div class="signal-row"><span class="k">Observed</span>' + escapeHtml(d.observed || '—') + '</div>';
+  if (Array.isArray(d.items) && d.items.length) {
+    html += '<ul class="signal-items">' + d.items.map((i) => '<li>' + escapeHtml(i) + '</li>').join('') + '</ul>';
+  }
+  html += '<div class="signal-row"><span class="k">What it might mean</span>' + escapeHtml(d.might_mean || '—') + '</div>';
+  html += '<div class="signal-row"><span class="k">What is NOT proven</span>' + escapeHtml(d.not_proven || '—') + '</div>';
+  html += '<div class="signal-row"><span class="k">What to do</span>' + escapeHtml(d.what_to_do || '—') + '</div>';
+  if (d.checked_at) html += '<div class="signal-foot">Checked ' + escapeHtml(d.checked_at) + '</div>';
+  card.innerHTML = html;
+  return card;
+}
+
+async function loadSignals() {
+  const list = document.getElementById('signals-list');
+  const status = document.getElementById('signals-status');
+  status.textContent = 'Checking…';
+  list.innerHTML = '';
+  try {
+    const r = await window.pcc.detections();
+    const cards = Object.values(r || {});
+    if (!cards.length) { list.innerHTML = '<p class="muted">No detectors reported.</p>'; }
+    else { cards.forEach((d) => list.appendChild(signalCard(d))); }
+    status.textContent = '';
+  } catch (e) {
+    list.innerHTML = '<p class="muted">Could not run signals: ' + escapeHtml(e.message) + '</p>';
+    status.textContent = '';
+  }
+}
+
+document.getElementById('signals-refresh').addEventListener('click', () => loadSignals());
 
 // ---- project view ----
 function row(label, value) {
