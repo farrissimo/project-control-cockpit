@@ -132,7 +132,7 @@ the same technology — the read-only board is grown, not thrown away.
 | B — Behavior & Tooling Controls | 2 (pre-checkpoint) | ✅ Done — `DECISION-076` (`pcc-pathB-001`) |
 | C — Metrics & Evidence Depth | 3 (pre-checkpoint) | ✅ Done — `DECISION-081` (`pcc-pathC-001..004`) |
 | **Maturity Checkpoint** | Milestone | ✅ Reached — `DECISION-084`; frozen `DECISION-085` |
-| **D — Product Surface (UI)** | Post-checkpoint | 🔶 In progress — `pcc-pathD-004`/`005` delivered; next is `pcc-pathD-006` (§6) |
+| **D — Product Surface (UI)** | Post-checkpoint | 🔶 In progress — Phase D2 complete (`pcc-pathD-004..006`); next is Phase D3, owner-gated (§6) |
 | E — Multi-Model/Multi-Agent | Deferred | Path-B / CCB-domain scope |
 | F — Knowledge & Memory | Deferred | Gated on proven need |
 
@@ -213,7 +213,7 @@ controls, calls no engine script.
   original scope §7.17. Shows only truthfully-derivable facts — current route
   (from `classify-routing.ps1`), routing history — and explicitly **not** any
   fabricated usage/pressure number (`DECISION-008`).
-- **`pcc-pathD-006` — Handoff/Rollover panel (read-only):** latest clean handoff
+- **`pcc-pathD-006` — Handoff/Rollover panel (read-only)** — ✅ **DELIVERED, Phase D2 complete** (`DECISION-096`, pending verification; delivered without the originally-planned check-stop-conditions.ps1 subprocess call, per a mid-task discovery -- see decision): latest clean handoff
   and current rollover-trigger warnings (from `check-stop-conditions` output).
 
 #### Phase D3 — Thin write-path for controls (first interactivity) — OWNER-GATED

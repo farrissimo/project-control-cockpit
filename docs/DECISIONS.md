@@ -2343,3 +2343,31 @@ Process disclosure: built with Codex unavailable (`DECISION-086`), under direct 
 
 Supersedes: None
 Related: DECISION-008, DECISION-074, DECISION-075, DECISION-086, DECISION-087, DECISION-088, DECISION-092, DECISION-093, DECISION-094, docs/PATH_A_PLAN.md, docs/PROJECT_CHARTER.md, scripts/generate-dashboard.ps1
+
+---
+
+## DECISION-096: Handoff/Rollover Panel Delivered Without check-stop-conditions.ps1 Subprocess (Discovered Log-Write Side Effect); Phase D2 Complete (pcc-pathD-006)
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+`scripts/generate-dashboard.ps1`'s final Phase D2 panel, Handoff/Rollover, is delivered showing (a) the latest clean/verified handoff from `project-state.json`'s already-loaded `last_verified_handoff` field, and (b) rollover-trigger warnings computed directly from `task-state.json`'s already-loaded `owner_decision_request` and `task_status` fields -- **not** via a subprocess call to `scripts/check-stop-conditions.ps1`, which was the original plan. **Phase D2 (`pcc-pathD-004` through `pcc-pathD-006`) is now complete.**
+
+Reason (mid-task discovery and correction):
+
+The task was originally scoped to invoke `check-stop-conditions.ps1` as a second explicit subprocess, mirroring the `classify-routing.ps1` pattern already verified in `pcc-pathD-003`. During functional testing, this surfaced a real problem: `check-stop-conditions.ps1` is **not** side-effect-free -- it writes a `stop_condition_fired` event to `routing-log.jsonl` whenever it detects a stop condition (BRR Phase 4 / `IDEA-008`'s own design). Invoking it from the dashboard would have broken the dashboard's read-only guarantee (every prior decision in this Category D sequence has stated "never mutates any `.cockpit/` file" as a load-bearing invariant), and would have been actively dangerous under `scripts/watch-dashboard.ps1`'s polling loop: a repeated write to the append-only log every few seconds for as long as any stop condition stayed active. This was caught before handback, not after -- confirmed by hashing `routing-log.jsonl` before and after a render with the corrected design and finding it byte-identical.
+
+The corrected design instead reads only the two most owner-relevant, side-effect-free signals -- whether `owner_decision_request` is populated, and whether `task_status` is in an attention-needed state (`blocked`, `verified_fail`, `insufficient_evidence`, `out_of_scope`) -- directly from fields the dashboard already has loaded in memory. This deliberately mirrors only `check-stop-conditions.ps1`'s first two (of four) conditions; it does not attempt to replicate its `doctor.ps1`-composing check or its approved-lane-source check, since doing so would either require its own subprocess call (reintroducing risk) or duplicating more logic than is honestly worth it for a dashboard panel.
+
+**Separately disclosed out-of-scope finding, not fixed in this task:** testing `check-stop-conditions.ps1` directly also surfaced that its approved-lane-source list (`BRR_PLAN`, `backlog/IDEAS.md`, `IDEAS.md`, "phase plan", "phase-plan") does not recognize `docs/PATH_A_PLAN.md` -- meaning every `pcc-pathD-0XX` task's `promotion_basis.lane` in this entire session would mechanically trigger a false-positive "cannot confirm this promotion is in-lane" stop condition if that script were ever run against them. This is a real, pre-existing staleness gap in `check-stop-conditions.ps1` itself (it predates `docs/PATH_A_PLAN.md`, which was only created earlier in this session via `DECISION-087`), not a defect in this task's own work. Fixing it would require editing a different existing script, forbidden by this task's own boundaries -- it is disclosed here for a future task, not silently worked around or ignored.
+
+Implications:
+
+No existing script was modified; no schema changed; no new log event type added; no new subprocess call was introduced by this task at all (the one existing subprocess call, to `classify-routing.ps1`, is unchanged). This task is Task Safety Class A, same as its predecessors. Per the owner's stated mode this session, this cycle is handed back for verification rather than self-closed. **Phase D2 is complete.** The remaining Category D work is Phase D3 (thin write-path for controls), which is explicitly owner-gated per `docs/PATH_A_PLAN.md` §6 and not auto-promotable from this plan.
+
+Process disclosure: built with Codex unavailable (`DECISION-086`), under direct owner direction ("keep going until I tell you to stop"); self-checked with PCC's local guardrails; the mandatory pre-task handoff/backup gate was run correctly before work began (genuine backup `20260705-191337`).
+
+Supersedes: None
+Related: DECISION-040, DECISION-074, DECISION-075, DECISION-086, DECISION-087, DECISION-088, DECISION-092, DECISION-093, DECISION-094, DECISION-095, docs/PATH_A_PLAN.md, scripts/generate-dashboard.ps1, scripts/check-stop-conditions.ps1

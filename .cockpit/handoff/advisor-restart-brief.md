@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-05T19:11:37-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-05T19:20:17-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,17 +10,17 @@ Current phase: post-brr
 
 ## Active Task
 
-* Task ID: pcc-pathD-005
-* Title: Session/Usage Panel, Honest-Only (No Duplication of Existing Panels)
-* Status: complete
+* Task ID: pcc-pathD-006
+* Title: Handoff / Rollover Panel (Read-Only) — Phase D2 Complete
+* Status: returned_for_verification
 * Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Deliver docs/PATH_A_PLAN.md section 6 Phase D2's Session/Usage panel: the honest home for original scope section 7.17 (Visible Usage / Session Pressure Awareness). Scoping note, checked against repo truth before drafting: section 7.17's honest remainder (per DECISION-075, which already determined real provider usage cannot be measured or estimated pre-checkpoint and that this is fundamentally a Category D/UI concern) is exactly 'current selected model/tool' and 'whether the system is estimating or reading actual usage' -- and 'current route' plus 'routing history' are already fully delivered as the Local Tools Panel and Routing History panel in pcc-pathD-003. Duplicating those tables under a new panel name would be exactly the bloat docs/PROJECT_CHARTER.md's three-filter test exists to catch. This task therefore adds a small, new, honest-only Session/Usage section to dashboard/index.html that (a) references/points to the existing Local Tools and Routing History panels rather than re-rendering their content, and (b) explicitly states, in plain language, that no real session/usage pressure number is tracked, computed, or estimated by PCC -- because PCC has no mechanism to measure real provider usage (DECISION-008: no fake intelligence / no fabricated numbers) -- rather than silently omitting any usage section at all, which is what original scope section 7.17 actually asks for ('must not pretend to know exact provider limits if it cannot measure them').
+* Objective: Deliver docs/PATH_A_PLAN.md section 6 Phase D2's final task: a Handoff/Rollover panel in dashboard/index.html showing the latest clean/verified handoff (from project-state.json's already-loaded last_verified_handoff field) and current rollover-trigger warnings. CORRECTED MID-TASK: the original plan was to invoke scripts/check-stop-conditions.ps1 as a subprocess, mirroring the classify-routing.ps1 pattern. Testing during this task discovered that check-stop-conditions.ps1 is NOT side-effect-free: it writes a stop_condition_fired event to routing-log.jsonl whenever it detects a stop condition (BRR Phase 4/IDEA-008), which would break the dashboard's read-only contract and would be actively dangerous under scripts/watch-dashboard.ps1's polling loop (repeated writes every few seconds while a condition stays active). Testing this also surfaced a real, pre-existing, out-of-scope finding: check-stop-conditions.ps1's approved-lane-source list does not recognize docs/PATH_A_PLAN.md, so it mechanically false-flags every Path A task's promotion_basis -- not fixed here (would require modifying a different existing script, forbidden by this task's scope), disclosed for a future task instead. The corrected design reads the two most owner-relevant, side-effect-free signals (owner_decision_request pending; task_status in an attention-needed state) directly from task-state.json fields already loaded, with no subprocess call and no write risk. Completing this delivers all of Phase D2 (pcc-pathD-004 through pcc-pathD-006).
 
 ## Auto-Promotion Basis
 
 * Approved lane: Path A / Category D / Phase D2
-* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-005)
-* Justification (continuation, not a fork): Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner said to keep going until told to stop, with verification paused before each cycle. Scope narrowed from the plan's literal wording to avoid duplicating pcc-pathD-003's already-delivered panels, per the three-filter test in docs/PROJECT_CHARTER.md -- a worker/verifier-discretion judgment call per DECISION-074's own framing, disclosed in this task's objective and to be recorded in the resulting decision.
+* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-006)
+* Justification (continuation, not a fork): Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner said to keep going until told to stop, with verification paused before each cycle.
 ## Last Verified
 
 * Verdict: PASS for task 'pcc-pathD-005', verified at 2026-07-05T21:45:00-06:00
@@ -44,5 +44,5 @@ Current phase: post-brr
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-pathD-005' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-pathD-005' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Task-level: Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.
+* Project-level: Worker evidence for task 'pcc-pathD-006' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict.

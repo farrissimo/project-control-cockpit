@@ -1,59 +1,63 @@
 # Worker Result
 
-* Task ID: pcc-pathD-005
-* Task Title: Session/Usage Panel, Honest-Only (No Duplication of Existing Panels)
+* Task ID: pcc-pathD-006
+* Task Title: Handoff / Rollover Panel (Read-Only) — Phase D2 Complete
 * Task Safety Class: A
 * Worker: Claude Code
 * Handback: for verification via ChatGPT manual bridge (owner's stated session preference: pause before each verification), not self-closed
 
 ### Summary
 
-Delivered `docs/PATH_A_PLAN.md` §6's Session/Usage panel, **deliberately scoped narrower than the plan's literal wording**. Before building, I checked repo truth and found that §7.17's honest remainder (per `DECISION-075`, which already determined real provider usage cannot be measured pre-checkpoint) is exactly "current route" and "routing history" -- both already fully delivered as `pcc-pathD-003`'s Local Tools Panel and Routing History panel. Building a second panel that re-renders the same content would be exactly the bloat `docs/PROJECT_CHARTER.md`'s three-filter test exists to catch. Instead, the new Session/Usage section (a) references the existing panels by name rather than duplicating them, and (b) explicitly states, as an honest disclosure, that PCC tracks/estimates no real usage or session-pressure number -- satisfying §7.17's actual requirement without fabricating anything (`DECISION-008`).
+Delivered the Handoff/Rollover panel, the final Phase D2 task. **Phase D2 is now complete.** The delivered design differs from the original plan for a real reason discovered mid-task, disclosed here in full rather than smoothed over.
+
+**What changed and why:** the plan was to invoke `scripts/check-stop-conditions.ps1` as a second subprocess, mirroring `classify-routing.ps1`'s already-verified composition pattern (`pcc-pathD-003`). During testing, I discovered `check-stop-conditions.ps1` is **not** side-effect-free: it writes a `stop_condition_fired` event to `routing-log.jsonl` whenever it detects a stop condition. Invoking it from the dashboard would have broken the read-only guarantee every prior Category D decision has stated as load-bearing, and would have been actively dangerous under `scripts/watch-dashboard.ps1`'s polling loop -- a repeated log write every few seconds while any condition stayed active. I caught this before handback, reverted the subprocess-call design, and rebuilt the panel to read the two most owner-relevant, side-effect-free signals (`owner_decision_request` pending; `task_status` in an attention-needed state) directly from already-loaded `task-state.json` fields instead.
+
+**Separate out-of-scope finding, disclosed not fixed:** testing `check-stop-conditions.ps1` directly also revealed its approved-lane-source list doesn't recognize `docs/PATH_A_PLAN.md` -- so it would mechanically false-flag every `pcc-pathD-0XX` task's `promotion_basis` as "cannot confirm in-lane" if ever run against them. This is a real, pre-existing gap in that script (it predates `docs/PATH_A_PLAN.md`), not something this task's boundaries permit fixing (would require editing a different existing script). Flagged for a future task.
 
 ### Files Changed
 
-1. `scripts/generate-dashboard.ps1` -- added the Session/Usage HTML section; updated header comment to describe it and its non-duplication rationale.
-2. `docs/DECISIONS.md` -- added `DECISION-095`, including the explicit scoping-judgment disclosure.
-3. `docs/PATH_A_PLAN.md` -- marked `pcc-pathD-005` delivered (pending verification), noting it was delivered non-duplicatively.
-4. `.cockpit/state/task-state.json`, `.cockpit/state/project-state.json` -- drafted/advanced for this task.
-5. `.cockpit/state/handoff-gate.json` -- PASS gate record for `pcc-pathD-005`.
+1. `scripts/generate-dashboard.ps1` -- added the Handoff/Rollover panel via direct field reads (no new subprocess call); header comment updated to explain why `check-stop-conditions.ps1` is deliberately not invoked.
+2. `docs/DECISIONS.md` -- added `DECISION-096`, including the full discovery/correction and the separately-disclosed out-of-scope finding.
+3. `docs/PATH_A_PLAN.md` -- marked `pcc-pathD-006` delivered (pending verification) and Phase D2 complete.
+4. `.cockpit/state/task-state.json`, `.cockpit/state/project-state.json` -- drafted/advanced for this task; task-state's own objective/completion criteria were corrected mid-task to describe what was actually built, not what was originally planned.
+5. `.cockpit/state/handoff-gate.json` -- PASS gate record for `pcc-pathD-006`.
 6. `.cockpit/handoff/worker-directive.md`, `.cockpit/handoff/advisor-restart-brief.md` -- regenerated.
 7. `dashboard/index.html` -- regenerated (gitignored, generated artifact).
 
-**No script other than `scripts/generate-dashboard.ps1` was touched; no schema edited.**
+**No script other than `scripts/generate-dashboard.ps1` was touched; no schema edited; `scripts/check-stop-conditions.ps1` was read for investigation but not modified.**
 
 ### Commands / Tests Run
 
-* Set `task_status` to `ready_for_worker`; ran `scripts/enforce-handoff-restart-safety.ps1` **before any code change** -- passed cleanly, genuine pre-task backup `20260705-190455` (48 files) created before work began.
-* Set `task_status` to `in_progress`; made the code changes.
-* `pwsh -File scripts/generate-dashboard.ps1` -- against the real, live `.cockpit/` state: confirmed the new Session/Usage section renders with the correct disclosure text and correctly references (not duplicates) the Local Tools Panel and Routing History panel above it.
-* `grep`-confirmed the existing panels' own content is unchanged (same table structure, same data).
-* Confirmed via `git status --short .cockpit/` that the change touched no `.cockpit/` file beyond this task's own legitimate state bookkeeping.
-* No synthetic failure-mode tests were run for this task: unlike prior cycles, this task introduces no new file read, no new subprocess call, and no new parameter -- there is no new failure surface to exercise, consistent with the completion criteria's own explicit scoping.
+* Set `task_status` to `ready_for_worker`; ran `scripts/enforce-handoff-restart-safety.ps1` **before any code change** -- passed cleanly, genuine pre-task backup `20260705-191337` (48 files) created before work began.
+* Set `task_status` to `in_progress`; built the originally-planned design (subprocess call to `check-stop-conditions.ps1`).
+* `pwsh -File scripts/generate-dashboard.ps1` against real state -- rendered correctly, but `git status --short .cockpit/` unexpectedly showed `.cockpit/logs/routing-log.jsonl` as modified. Investigated by reading `check-stop-conditions.ps1`'s full source: confirmed it calls `scripts/log-event.ps1` internally whenever a stop condition fires (this is documented, intentional behavior in that script -- BRR Phase 4/`IDEA-008` -- not a bug in it, but incompatible with the dashboard's read-only design).
+* Reverted the subprocess-call design; rebuilt using direct field reads from already-loaded `task-state.json`.
+* Confirmed the fix: hashed `routing-log.jsonl` (`md5sum`) before and after a fresh render -- identical hash, zero mutation.
 * `scripts/validate-cockpit-state.ps1`, `scripts/check-schemas.ps1`, `scripts/doctor.ps1` -- all clean after the change (see Results).
 
 ### Results
 
-* Real-state run: Session/Usage section renders correctly below Routing History, with the honest-disclosure text intact and correct references to the two existing panels by name.
-* No existing panel's content changed.
-* `doctor.ps1`: no `[ISSUE]`. Handoff gate `[OK]` for `pcc-pathD-005`. The pre-existing "Working tree: N uncommitted change(s)" `[WARN]` is expected mid-cycle.
+* Handoff/Rollover panel correctly shows the latest verified handoff path and (currently) "(none: no owner decision pending, task status is not in an attention-needed state)" for rollover warnings, matching the real current state.
+* `routing-log.jsonl` hash confirmed identical before/after render: `55f01867a0f300977bab77dfd7d79fb6` both times.
+* `doctor.ps1`: no `[ISSUE]` in the final state (a transient `[ISSUE]` appeared mid-edit from the normal advisor-brief staleness during active code changes -- expected, resolved by the handback finalize step, not a real defect). Handoff gate `[OK]` for `pcc-pathD-006`. The pre-existing "Working tree: N uncommitted change(s)" `[WARN]` is expected mid-cycle.
 
 ### Evidence
 
-* `docs/PATH_A_PLAN.md` §6's own text for `pcc-pathD-005` ("current route from `classify-routing.ps1`, routing history") maps one-to-one onto content already rendered by `pcc-pathD-003`'s Local Tools Panel and Routing History panel -- confirmed by direct comparison before drafting this task.
-* `DECISION-075` (recorded when Category A was scoped) already determined "§7.17 cannot be honestly built pre-checkpoint because PCC cannot measure real provider usage ... has no turn counter ... is fundamentally a UI concern (Category D, post-checkpoint)" -- this task supplies exactly that deferred UI concern, honestly, rather than inventing a number to fill the gap.
-* The new section introduces no new .cockpit/ read, no new subprocess call, and reuses no data beyond what the existing panels already load.
+* `scripts/check-stop-conditions.ps1`'s log-write behavior, quoted from its own source: calls `& pwsh -NoProfile -File "scripts/log-event.ps1" -EventType "stop_condition_fired" ...` whenever `$stops.Count -gt 0`.
+* `scripts/check-stop-conditions.ps1`'s approved-lane-source list, quoted from its own source: `$approvedLaneSources = @("BRR_PLAN", "backlog/IDEAS.md", "IDEAS.md", "phase plan", "phase-plan")` -- does not include any string matching `docs/PATH_A_PLAN.md` or "PATH_A_PLAN".
+* An actual `stop_condition_fired` event was logged to `routing-log.jsonl` during this task's own testing (before the design correction), timestamped `2026-07-05T19:14:49-06:00`, task_id `pcc-pathD-006` -- left in place as an honest, append-only historical record of what actually happened during this session, not rewritten or hidden.
 
 ### Known Risks
 
-* This is a scope-narrowing judgment call relative to the plan's literal wording, made under the worker/verifier discretion `DECISION-074` explicitly delegates for pass-criteria judgment calls -- disclosed here and in `DECISION-095` rather than silently applied. If the owner intended a more literal, separately-labeled duplicate panel for some reason not visible in repo truth, that would need to be said explicitly; nothing in the plan doc or original scope suggested that was the intent.
-* The Session/Usage section is plain static HTML text (no table), which is a lighter-weight presentation than the other panels; judged appropriate given it has no real per-field data to show, only a disclosure statement.
+* The corrected Handoff/Rollover panel is intentionally narrower than `check-stop-conditions.ps1`'s full four-condition check (it mirrors only conditions 1 and 2: owner decision pending, attention-needed status). It does not surface doctor.ps1 issues or lane-recognition problems in the dashboard. Judged an acceptable, disclosed narrowing rather than accepting the log-write risk or duplicating more logic than is honestly worth it for a status panel.
+* The disclosed `check-stop-conditions.ps1` approved-lane-source staleness is a real, unaddressed gap. If that script is ever run directly against any `pcc-pathD-0XX` task-state (rather than through this dashboard, which no longer invokes it), it will produce a false-positive STOP recommendation about the lane not being recognized.
 
 ### Unresolved Assumptions
 
-* That "referencing panels by name" (plain text pointing at "Local Tools Panel" and "Routing History" above) is sufficient without visual/hyperlink anchors (e.g. `<a href="#...">`) -- judged unnecessary complexity for a single-page dashboard where all panels are already visible on one scroll.
-* That Task Safety Class A remains correct for this task (same precedent as the prior four).
+* That mirroring only two of `check-stop-conditions.ps1`'s four conditions, via direct field reads rather than any subprocess call, is an acceptable scope for "current rollover-trigger warnings" per the plan's wording -- judged the safest option once the log-write side effect was discovered, and still delivers the two most owner-actionable signals.
+* That leaving the accidental `stop_condition_fired` log entry from testing in place (rather than trying to remove/rewrite it) is correct, consistent with the project's append-only, never-rewrite-history log discipline.
+* That Task Safety Class A remains correct for this task (same precedent as the prior five).
 
 ### Out-of-Scope Confirmation
 
-Confirmed: no script other than `scripts/generate-dashboard.ps1` was modified; no schema was modified; no new log event type was added; no new subprocess call or file read was introduced; no fabricated usage/session-pressure number was displayed anywhere; the existing Local Tools Panel and Routing History panel content was not duplicated or altered; no verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule was changed; the Handoff/Rollover panel (`pcc-pathD-006`) and Phase D3 functionality were not built; `codex exec` was not invoked and no verification verdict was self-issued; the mandatory pre-task handoff/backup gate was run correctly before work began.
+Confirmed: no existing script was modified (including `scripts/check-stop-conditions.ps1`, read but not edited); no schema was modified; no new log event type was added by this task's own code (the one `stop_condition_fired` entry present was produced by `check-stop-conditions.ps1`'s own pre-existing, documented behavior during testing, not by new code this task added); the final delivered `scripts/generate-dashboard.ps1` invokes no subprocess beyond the already-established `classify-routing.ps1` call; no verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule was changed; no Phase D3 functionality was built; `codex exec` was not invoked and no verification verdict was self-issued; the mandatory pre-task handoff/backup gate was run correctly before work began. The `check-stop-conditions.ps1` staleness finding is disclosed, not fixed, per this task's own scope boundary.

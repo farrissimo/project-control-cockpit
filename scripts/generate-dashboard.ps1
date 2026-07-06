@@ -12,10 +12,10 @@ param(
 $ErrorActionPreference = "Stop"
 
 # PCC Dashboard: Owner Control Board, Directive, Verification, Local Tools,
-# Routing History, and Session/Usage panels (archive/PCC Original Project
-# Scope.md §11/§7.17; pcc-pathD-001..003 Phase D1, pcc-pathD-005 Phase D2 per
-# docs/PATH_A_PLAN.md). The Session/Usage section deliberately does not
-# duplicate the Local Tools/Routing History panels above it (see
+# Routing History, Session/Usage, and Handoff/Rollover panels (archive/PCC
+# Original Project Scope.md §11/§7.17; pcc-pathD-001..006, Category D Phases
+# D1-D2 per docs/PATH_A_PLAN.md). The Session/Usage section deliberately does
+# not duplicate the Local Tools/Routing History panels above it (see
 # pcc-pathD-005): it references them by name and adds only an honest
 # disclosure that no real usage/session-pressure number is tracked or
 # estimated (DECISION-008), since building a real one is not possible
@@ -33,16 +33,30 @@ $ErrorActionPreference = "Stop"
 #     its content is never opened or parsed -- avoids a markdown-parsing
 #     dependency for content the owner can just open directly),
 #   - invokes exactly one other script as an explicit subprocess:
-#     scripts/classify-routing.ps1, capturing its stdout as display-only text
-#     for the Local Tools Panel (pcc-pathD-003). This mirrors
+#     scripts/classify-routing.ps1 (Local Tools Panel, pcc-pathD-003),
+#     captured as display-only stdout text. This mirrors
 #     scripts/doctor.ps1's already-audited composition pattern (explicit
 #     subprocess + stdout consumption, no hidden shared state,
-#     DECISION-074/077 extractability). If that one call fails, the panel
-#     shows a clear "unavailable" message rather than crashing the whole
-#     dashboard, consistent with the advisory being non-gating by its own
-#     contract (DECISION-075). No other script is invoked.
+#     DECISION-074/077 extractability). If that call fails, its panel shows a
+#     clear "unavailable" message rather than crashing the whole dashboard,
+#     consistent with the advisory being non-gating by its own contract
+#     (DECISION-075). No other script is invoked.
 #   - writes only the given -OutputPath (a static HTML file outside .cockpit/),
 #   - never mutates any .cockpit/ file.
+#
+# The Handoff/Rollover panel (pcc-pathD-006) deliberately does NOT invoke
+# scripts/check-stop-conditions.ps1, even though it is the plan's named
+# source for rollover-trigger warnings. Discovered during this task: that
+# script writes a stop_condition_fired event to routing-log.jsonl whenever it
+# detects a stop condition (BRR Phase 4, IDEA-008) -- a real side effect that
+# would break this dashboard's read-only contract, and would be actively
+# dangerous under scripts/watch-dashboard.ps1's polling loop (repeated writes
+# every few seconds while any condition stays active). Instead, the panel
+# reads the two most owner-relevant, side-effect-free signals directly from
+# task-state.json fields already loaded above: whether owner_decision_request
+# is populated, and whether task_status is in an attention-needed state. This
+# mirrors only check-stop-conditions.ps1's first two (of four) conditions,
+# deliberately not its doctor.ps1-composing or lane-recognition checks.
 #
 # The Directive Panel is sourced entirely from task-state.json fields already
 # in hand (boundaries, required_evidence, completion_criteria,
@@ -134,18 +148,18 @@ $rowsHtml
 "@
 }
 
-function Get-LocalToolsAdvisoryHtml {
-  param([string]$ScriptPath, [string]$TaskStatePath)
+function Get-AdvisoryScriptOutputHtml {
+  param([string]$Label, [string]$ScriptPath, [string]$TaskStatePath)
 
   if (-not (Test-Path -LiteralPath $ScriptPath -PathType Leaf)) {
-    return "    <p>(routing advisory unavailable: $(Encode-Html $ScriptPath) not found)</p>"
+    return "    <p>($Label unavailable: $(Encode-Html $ScriptPath) not found)</p>"
   }
 
   $output = & pwsh -NoProfile -File $ScriptPath -TaskStatePath $TaskStatePath 2>&1
   $exitCode = $LASTEXITCODE
 
   if ($exitCode -ne 0) {
-    return "    <p>(routing advisory unavailable: $(Encode-Html $ScriptPath) exited $exitCode)</p>"
+    return "    <p>($Label unavailable: $(Encode-Html $ScriptPath) exited $exitCode)</p>"
   }
 
   $escaped = Encode-Html ([string]($output -join "`n"))
@@ -205,8 +219,23 @@ $generatedAt = (Get-Date).ToString("yyyy-MM-ddTHH:mm:sszzz")
 $ownerControlHtml = Build-Table $ownerControlRows
 $directiveHtml = Build-Table $directiveRows
 $verificationHtml = Build-Table $verificationRows
-$localToolsHtml = Get-LocalToolsAdvisoryHtml -ScriptPath $ClassifyRoutingScriptPath -TaskStatePath $TaskStatePath
+$localToolsHtml = Get-AdvisoryScriptOutputHtml -Label "routing advisory" -ScriptPath $ClassifyRoutingScriptPath -TaskStatePath $TaskStatePath
 $routingHistoryHtml = Get-RoutingHistoryHtml -Path $RoutingLogPath -TailCount $RoutingHistoryTailCount
+$latestCleanHandoff = if ($projectState.last_verified_handoff) { $projectState.last_verified_handoff } else { "(none recorded)" }
+
+# Rollover-trigger warnings: mirrors check-stop-conditions.ps1's first two
+# conditions only (owner decision pending; attention-needed status), read
+# directly from already-loaded task-state.json fields -- no subprocess call,
+# no routing-log.jsonl write risk. See header comment for why.
+$attentionStatuses = @("blocked", "verified_fail", "insufficient_evidence", "out_of_scope")
+$rolloverWarnings = New-Object System.Collections.Generic.List[string]
+if ($taskState.owner_decision_request) {
+  $rolloverWarnings.Add("An owner decision is pending on task '$($taskState.task_id)': $($taskState.owner_decision_request.question)")
+}
+if ($taskState.task_status -in $attentionStatuses) {
+  $rolloverWarnings.Add("Task '$($taskState.task_id)' status is '$($taskState.task_status)', which needs attention rather than autonomous continuation.")
+}
+$rolloverWarningsText = if ($rolloverWarnings.Count -gt 0) { $rolloverWarnings -join " | " } else { "(none: no owner decision pending, task status is not in an attention-needed state)" }
 
 $html = @"
 <!DOCTYPE html>
@@ -252,6 +281,12 @@ $routingHistoryHtml
   <h2>Session/Usage Panel</h2>
   <p>Current selected route: see the <strong>Local Tools Panel</strong> above. Routing history: see <strong>Routing History</strong> above. Neither is re-rendered here to avoid showing the same data twice.</p>
   <p><strong>Honest disclosure (original scope &#167;7.17; DECISION-008):</strong> PCC does not track, compute, or estimate any real session-usage percentage, weekly-pressure figure, or provider-limit count. It has no mechanism to measure actual provider usage, and DECISION-008 forbids fabricating one. This panel exists to state that plainly rather than silently omitting a usage section, per &#167;7.17's own requirement not to pretend to know exact provider limits when they cannot be measured.</p>
+
+  <h2>Handoff / Rollover Panel</h2>
+  <table>
+      <tr><th>Latest Clean Handoff</th><td>$(Encode-Html $latestCleanHandoff)</td></tr>
+      <tr><th>Rollover-Trigger Warnings</th><td>$(Encode-Html $rolloverWarningsText)</td></tr>
+  </table>
 
   <p class="meta">Generated $generatedAt from canonical .cockpit/ state. Read-only: this page never writes to .cockpit/. Re-run scripts/generate-dashboard.ps1 to refresh.</p>
 </body>
