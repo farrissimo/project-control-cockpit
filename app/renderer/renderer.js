@@ -18,6 +18,8 @@ const CORRECTIONS = [
   { label: 'Stay in scope', msg: 'Stay in scope. Only do what I asked.' },
   { label: 'Show evidence', msg: 'Show me the evidence for that.' },
   { label: 'Stop reacting', msg: 'Stop reacting. Think it through first.' },
+  { label: 'Push back', msg: "Push back on this. What are the real risks, downsides, and the strongest case against it? Don't just agree with me." },
+  { label: 'Check prior art', msg: 'Before we build anything: assume this problem is already solved somewhere. Web-search for existing tools/solutions and tell me what already exists and whether we should reuse it instead of building.' },
   { label: 'Copy block', msg: 'Put that in a copy block.' },
 ];
 
@@ -144,7 +146,47 @@ async function runHardChecks() {
 // ---- signals view ----
 // Renders each detector in the honest four-part format. The renderer only
 // displays what the deterministic scripts report; it never invents a verdict.
-const SIGNAL_TITLES = { 'untracked-files': 'Untracked files', 'scope-drift': 'Out-of-scope / drift', 'stale-docs': 'Stale docs', 'repo-sync': 'Work backed up? (repo sync)', 'bloat': 'Project bloat', 'chat-rollover': 'Chat health / rollover' };
+const SIGNAL_TITLES = { 'untracked-files': 'Untracked files', 'scope-drift': 'Out-of-scope / drift', 'stale-docs': 'Stale docs', 'repo-sync': 'Work backed up? (repo sync)', 'bloat': 'Project bloat', 'sycophancy': 'Never says no?', 'chat-rollover': 'Chat health / rollover' };
+
+// Sycophancy / never-says-no nudge (roadmap #17). Honest and light: it checks
+// whether the most recent substantive AI answer used ANY risk/pushback language.
+// Absence is a weak signal (an answer can push back without these exact words),
+// so it is framed as a nudge, never a verdict. The "Push back" correction button
+// is the solid half; this just surfaces when a second look might be worth it.
+const RISK_WORDS = ['risk', 'downside', 'trade-off', 'tradeoff', 'drawback', 'limitation',
+  'caveat', 'concern', 'caution', 'pitfall', "won't work", 'not recommend', "don't recommend",
+  'disagree', 'watch out', 'not proven', 'however', 'on the other hand', 'the catch'];
+
+function computeSycophancySignal() {
+  const answers = history.filter((m) => m.cls === 'assistant');
+  const last = answers.length ? answers[answers.length - 1] : null;
+  // Only judge a substantive answer; a short reply isn't sycophancy.
+  if (!last || (last.text || '').length < 400) {
+    return {
+      detector: 'sycophancy', signal: 'clear', checked_at: new Date().toISOString(), items: [],
+      observed: last ? 'The latest answer is short; not evaluated.' : 'No AI answers in this chat yet.',
+      might_mean: 'Nothing to flag.',
+      not_proven: 'This only looks at the most recent substantive answer, by keywords - it cannot truly judge whether the AI pushed back.',
+      what_to_do: 'Nothing needed.',
+    };
+  }
+  const lower = last.text.toLowerCase();
+  const hasRisk = RISK_WORDS.some((w) => lower.includes(w));
+  return {
+    detector: 'sycophancy',
+    signal: hasRisk ? 'clear' : 'notice',
+    checked_at: new Date().toISOString(),
+    items: [],
+    observed: hasRisk
+      ? 'The latest substantive answer did mention risk / downside / pushback language.'
+      : 'The latest substantive answer named no risk, downside, or trade-off.',
+    might_mean: hasRisk
+      ? 'The AI at least surfaced some caution - no nudge needed.'
+      : 'The AI may just be agreeing without weighing the downside (the "never says no" trap) - OR the answer genuinely had no downside to raise.',
+    not_proven: 'This is a keyword heuristic on one answer, not proof of sycophancy. An answer can push back without these words, or use a word without really pushing back.',
+    what_to_do: hasRisk ? 'Nothing needed.' : 'If it felt one-sided, hit the "Push back" button to make it argue the other side.',
+  };
+}
 
 // Chat rollover signal (roadmap #8). Computed from THIS chat's own history in
 // localStorage - the only honest data the app actually has. Named thresholds,
@@ -221,6 +263,7 @@ async function loadSignals() {
   try {
     const r = await window.pcc.detections();
     const cards = Object.values(r || {});
+    cards.push(computeSycophancySignal()); // app-side: never-says-no nudge
     cards.push(computeChatSignal()); // app-side signal from this chat's own history
     cards.forEach((d) => list.appendChild(signalCard(d)));
     status.textContent = '';

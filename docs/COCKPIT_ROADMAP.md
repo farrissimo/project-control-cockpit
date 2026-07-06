@@ -26,7 +26,7 @@ Status: [x] Done · [~] In progress / Partial · [ ] Planned
 ## P3 — Medium (honest detections + lifecycle extras)
 15. [ ] Reinventing-the-wheel signal (overlap vs existing, honest)
 16. [x] Project-bloat signal — `scripts/detect-bloat.ps1` flags objective, threshold-based bloat (large source files + dependency count) against a declared, adjustable `.cockpit/state/bloat-thresholds.json`. Grounded in real-world bloat research; deliberately skips duplication/dead-code (need language tooling, would false-alarm). Reports facts, not verdicts.
-17. [ ] "Never says no" / sycophancy signal (missing risk/opposition section)
+17. [x] "Never says no" / sycophancy signal — a one-click "Push back" correction (makes the AI argue the downside/other side) PLUS an honest, clearly-labeled nudge in Signals that flags when the latest substantive answer named no risk/downside/trade-off. The nudge is a keyword heuristic on one answer (stated as NOT proof), never a verdict; the button is the solid half.
 18. [ ] Standardized new-project bootstrap (every project starts the same way)
 19. [ ] Honest babysitting-reduction metrics
 
