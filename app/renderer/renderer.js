@@ -391,6 +391,26 @@ async function loadProject() {
   } catch (e) {
     body.innerHTML = '<p class="muted">Could not read project state.</p>';
   }
+  loadDecisions();
+}
+
+// Recent decisions carry-forward (roadmap #5): surfaced from docs/DECISIONS.md.
+async function loadDecisions() {
+  const el = document.getElementById('decisions-body');
+  if (!el) return;
+  try {
+    const r = await window.pcc.recentDecisions();
+    const ds = (r && r.decisions) || [];
+    if (!ds.length) { el.innerHTML = '<p class="muted">No decisions found.</p>'; return; }
+    el.innerHTML = ds.map((d) =>
+      '<div class="decision-item"><div class="d-head">' + escapeHtml(d.id)
+      + (d.date ? ' · ' + escapeHtml(d.date) : '')
+      + (d.status ? ' · <span class="d-status">' + escapeHtml(d.status) + '</span>' : '')
+      + '</div><div class="d-title">' + escapeHtml(d.title) + '</div></div>'
+    ).join('');
+  } catch (e) {
+    el.innerHTML = '<p class="muted">Could not read decisions.</p>';
+  }
 }
 
 // ---- new-chat handoff (roadmap #7) ----

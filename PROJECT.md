@@ -39,7 +39,7 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
 - Lifecycle view: the standardized stage map (define → plan → work → verify → phase-close → milestone → handoff → rollover) from .cockpit/state/lifecycle-model.json, with a "you are here" pin (lifecycle-state.json) and only the LEGAL next steps shown (scripts/lifecycle-status.ps1). Never auto-advances.
 - One-click corrections under the chat (Be concise, No cheerleading, Stay in scope, Show evidence, Stop reacting, Copy block).
 - Standing rules auto-load from CLAUDE.md; the Rules view shows them.
-- Project memory: this PROJECT.md, editable in the Memory view, auto-read each session.
+- Project memory: this PROJECT.md, editable in the Memory view, auto-read each session. Plus recent-decisions carry-forward — the Project view surfaces the latest agreements from docs/DECISIONS.md (scripts/recent-decisions.ps1), and the handoff embeds the 3 most recent, so settled decisions are never re-derived.
 - New-chat handoff: one-click "Generate handoff" in the Project view (scripts/generate-handoff.ps1) builds a ready-to-paste briefing from real repo truth (git state, phase, honest verification status, standing orders) so a fresh chat never needs re-briefing.
 - Verify view: Hard checks (git + scripts/doctor.ps1, deterministic, work today) plus independent review (Codex/agy) via scripts/verify-work.ps1.
 - Signals view: the DECISION-102 honest-detection system. Shipped detectors: untracked-files (scripts/detect-untracked.ps1, git-only, respects .gitignore), chat-rollover (turns/time/repeats from the app's own chat history), out-of-scope/drift (scripts/detect-drift.ps1, branch changes vs the declared boundary), stale-docs (scripts/detect-stale-docs.ps1, changed code vs a declared doc-freshness rule list), and repo-sync (scripts/detect-repo-sync.ps1, is the work backed up to the remote — uncommitted/untracked/unpushed). Every detector uses the "Observed / what it might mean / what's NOT proven / what to do" format; built to grow (one script + one line in main.js per detector).
@@ -66,17 +66,20 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
    the Signals view + detectors #9 (untracked-files), #8 (chat-rollover), and
    #10 (out-of-scope/drift), #11 (stale-docs), #13 (repo-sync "work backed
    up?"), #14 (live trust strip), and #7 (in-app new-chat handoff generation).
-   #12 (agreements-only-in-chat) is deferred: it needs AI judgment, not a
-   deterministic script, so it is parked rather than faked with keyword guesses.
-   Next candidates: P1 #6 lifecycle state-machine, P1 #5 deeper memory
-   carry-forward, then #12 as a small on-demand LLM check when the owner wants it.
+   #6 (lifecycle state-machine), and #5 (deeper memory / recent-decisions
+   carry-forward). #12 (agreements-only-in-chat) is deferred: it needs AI
+   judgment, not a deterministic script, so it is parked rather than faked with
+   keyword guesses. With P1+P2 complete, the remaining work is P3/P4 (a new
+   phase): extra honest detections (#15-17), project bootstrap (#18), metrics
+   (#19), multi-project (#20), polish (#21/#23), plus #12 as an on-demand LLM
+   check when the owner wants it.
 
 ## Roadmap status (full list: docs/COCKPIT_ROADMAP.md)
-14 done, 4 in motion, 7 planned. All of P1 and P2 is now done or honestly
-handled except: P1 verification (#3) awaits the scheduled Codex run, and P1
-deeper memory carry-forward (#5) remains. #12 (agreements-only-in-chat) is
-deferred (needs AI judgment). Remaining is mostly P3/P4 (extra honest detections,
-bootstrap, metrics, multi-project, polish). Every detection ships ONLY in the
+15 done, 3 in motion, 7 planned. ALL of P1 and P2 is now done or honestly
+handled: the only open P1 is #3 verification, which awaits the scheduled Codex
+run (wiring + fallback done). #12 (agreements-only-in-chat) is deferred (needs AI
+judgment). Everything remaining is P3/P4 (extra honest detections, bootstrap,
+metrics, multi-project, polish) — a new phase. Every detection ships ONLY in the
 "Observed / what it might mean / what's NOT proven / what to do" format —
 never a fake certainty.
 

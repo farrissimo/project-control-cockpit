@@ -121,6 +121,12 @@
   .lc-next-item { border: 1px solid #23262d; border-radius: 8px; padding: 9px 12px; margin-top: 6px; background: #14171c; }
   .lc-next-item .lbl { font-weight: 600; font-size: 13px; color: #dbe8ff; }
   .lc-next-item .do { font-size: 13px; color: #b8bdc6; margin-top: 2px; }
+
+  .decision-item { max-width: 760px; border: 1px solid #23262d; border-radius: 8px;
+    padding: 9px 12px; margin-top: 6px; background: #14171c; }
+  .decision-item .d-head { font-size: 12px; color: #8ab4ff; font-weight: 600; }
+  .decision-item .d-status { font-size: 11px; color: #7fd6a0; }
+  .decision-item .d-title { font-size: 13px; color: #cdd2d9; margin-top: 2px; line-height: 1.45; }
 </style>
 </head>
 <body>
@@ -164,6 +170,10 @@
     <div class="view hidden panel" id="view-project">
       <h2>Where the project stands</h2>
       <div id="project-body"><p class="muted">Loading…</p></div>
+
+      <h3 style="font-size:14px; margin:22px 0 2px; color:#8ab4ff; font-weight:500;">Recent decisions</h3>
+      <p class="muted">The latest agreements from the canonical log (docs/DECISIONS.md), so you never re-decide what's already settled.</p>
+      <div id="decisions-body"><p class="muted">Loading…</p></div>
 
       <h3 style="font-size:14px; margin:22px 0 2px; color:#8ab4ff; font-weight:500;">Start a fresh chat</h3>
       <p class="muted">Generates a ready-to-paste briefing from real repo truth, so a new chat starts fully oriented without you re-explaining anything.</p>

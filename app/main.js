@@ -122,6 +122,15 @@ function runDetector(script) {
   });
 }
 
+// Recent decisions: carry-forward memory so "what did we decide?" is one click
+// away, read straight from the canonical log (docs/DECISIONS.md).
+ipcMain.handle('pcc:recentDecisions', () => new Promise((resolve) => {
+  exec('pwsh -NoProfile -File scripts/recent-decisions.ps1 -Json -Count 6', { cwd: PROJECT_DIR, maxBuffer: 4 * 1024 * 1024, timeout: 20000, windowsHide: true }, (err, stdout) => {
+    try { resolve(JSON.parse((stdout || '').trim())); }
+    catch (e) { resolve({ decisions: [], found: 0, showing: 0 }); }
+  });
+}));
+
 // Lifecycle: the declared stage map + where you are + the legal next stages.
 // Read-only consumer of the same deterministic script the CLI uses.
 ipcMain.handle('pcc:lifecycle', async () => runDetector('scripts/lifecycle-status.ps1'));

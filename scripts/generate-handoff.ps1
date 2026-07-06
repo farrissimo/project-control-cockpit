@@ -67,6 +67,19 @@ if ($LASTEXITCODE -eq 0 -and $upstream) {
   $sync = 'no upstream remote set (local work is not backed up off this machine)'
 }
 
+# Recent decisions (carry-forward memory) - reuse the sibling script so there is
+# one parser of DECISIONS.md. Compact: the 3 most recent.
+$decisionsBlock = ''
+try {
+  $recentScript = Join-Path $PSScriptRoot 'recent-decisions.ps1'
+  if (Test-Path -LiteralPath $recentScript) {
+    $rj = & $recentScript -Count 3 -Json | Out-String | ConvertFrom-Json
+    if ($rj -and $rj.decisions) {
+      $decisionsBlock = ($rj.decisions | ForEach-Object { "  - $($_.id) [$($_.status)]: $($_.title)" }) -join "`n"
+    }
+  }
+} catch { }
+
 $porcelain = @(& git status --porcelain=v1 --untracked-files=all 2>$null | ForEach-Object { "$_" } | Where-Object { $_.Trim() })
 $untracked = @($porcelain | Where-Object { $_ -match '^\?\?' }).Count
 $trackedChanges = @($porcelain | Where-Object { $_ -notmatch '^\?\?' }).Count
@@ -92,6 +105,9 @@ CURRENT STATE (as of $now):
 - Verification: $verdict
 - Next action: see "Pending / immediate next tasks" in PROJECT.md (the canonical
   brief; kept current for the app-build lane).
+
+RECENT DECISIONS (most recent 3; full log in docs/DECISIONS.md):
+$decisionsBlock
 
 STANDING ORDERS:
 - Keep going by default (stop only when genuinely unsure or at a real milestone).

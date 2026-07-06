@@ -10,7 +10,7 @@ Status: [x] Done · [~] In progress / Partial · [ ] Planned
 2. [x] Standing rules persist (CLAUDE.md) + one-click corrections (no repeating yourself)
 3. [~] Independent verification — Codex primary, Antigravity `agy` fallback (Gemini retired; wiring done). BLOCKED on a proven verdict: Codex out of usage; agy hung ~13 min headless on a real diff and returned nothing. Reliable headless verifier still unproven.
 4. [x] Hard-checks layer — git facts + PCC health check (deterministic, no LLM)
-5. [~] Project memory / brief — no Groundhog Day (editable brief + auto-load done; deeper carry-forward pending)
+5. [x] Project memory / brief — no Groundhog Day. Editable brief (PROJECT.md, auto-loaded each session) PLUS carry-forward of the canonical decisions: `scripts/recent-decisions.ps1` surfaces the latest agreements from docs/DECISIONS.md in the Project view, and the new-chat handoff embeds the 3 most recent — so settled decisions are never re-derived. (Auto-capturing NEW agreements from chat is the separate, deferred #12, which needs AI judgment.)
 6. [x] Standardized lifecycle — declared stage model (.cockpit/state/lifecycle-model.json: define → plan → work → verify → phase-close → milestone → handoff → rollover, each with entry/what-to-do/exit/legal-next) + a "you are here" pin (.cockpit/state/lifecycle-state.json) + `scripts/lifecycle-status.ps1` + a Lifecycle view showing the map, current stage, and only the LEGAL next steps. Deliberately never auto-advances (moving stages is a recorded choice). Top lifecycle bar (current/next/decision) shipped earlier.
 
 ## P2 — High (the "huge" wounds; the governed loop)
