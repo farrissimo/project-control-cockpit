@@ -12,8 +12,14 @@ param(
 $ErrorActionPreference = "Stop"
 
 # PCC Dashboard: Owner Control Board, Directive, Verification, Local Tools,
-# and Routing History panels (archive/PCC Original Project Scope.md §11;
-# pcc-pathD-001..003, Category D Phase D1 per docs/PATH_A_PLAN.md).
+# Routing History, and Session/Usage panels (archive/PCC Original Project
+# Scope.md §11/§7.17; pcc-pathD-001..003 Phase D1, pcc-pathD-005 Phase D2 per
+# docs/PATH_A_PLAN.md). The Session/Usage section deliberately does not
+# duplicate the Local Tools/Routing History panels above it (see
+# pcc-pathD-005): it references them by name and adds only an honest
+# disclosure that no real usage/session-pressure number is tracked or
+# estimated (DECISION-008), since building a real one is not possible
+# pre-checkpoint (DECISION-075).
 #
 # This is a READ-ONLY, self-contained local dashboard generator: the finished-
 # state UI form decided in DECISION-087 (a pure consumer of the .cockpit/ file
@@ -242,6 +248,10 @@ $localToolsHtml
 
   <h2>Routing History</h2>
 $routingHistoryHtml
+
+  <h2>Session/Usage Panel</h2>
+  <p>Current selected route: see the <strong>Local Tools Panel</strong> above. Routing history: see <strong>Routing History</strong> above. Neither is re-rendered here to avoid showing the same data twice.</p>
+  <p><strong>Honest disclosure (original scope &#167;7.17; DECISION-008):</strong> PCC does not track, compute, or estimate any real session-usage percentage, weekly-pressure figure, or provider-limit count. It has no mechanism to measure actual provider usage, and DECISION-008 forbids fabricating one. This panel exists to state that plainly rather than silently omitting a usage section, per &#167;7.17's own requirement not to pretend to know exact provider limits when they cannot be measured.</p>
 
   <p class="meta">Generated $generatedAt from canonical .cockpit/ state. Read-only: this page never writes to .cockpit/. Re-run scripts/generate-dashboard.ps1 to refresh.</p>
 </body>

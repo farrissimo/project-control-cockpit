@@ -13,16 +13,16 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-pathD-004
-* Task Title: Auto-Refresh / Watch Mode (Phase D2, Read-Only)
-* Task Status: complete
+* Task ID: pcc-pathD-005
+* Task Title: Session/Usage Panel, Honest-Only (No Duplication of Existing Panels)
+* Task Status: returned_for_verification
 * Task Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Auto-Promotion Basis
 
 * Approved lane: Path A / Category D / Phase D2
-* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-004)
-* Justification (continuation, not a fork): Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner said to keep going until told to stop, with verification paused before each cycle. Folds in the minor header-comment correction disclosed in pcc-pathD-003's verification (DECISION-093 / verification-result.json's next_action).
+* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-005)
+* Justification (continuation, not a fork): Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner said to keep going until told to stop, with verification paused before each cycle. Scope narrowed from the plan's literal wording to avoid duplicating pcc-pathD-003's already-delivered panels, per the three-filter test in docs/PROJECT_CHARTER.md -- a worker/verifier-discretion judgment call per DECISION-074's own framing, disclosed in this task's objective and to be recorded in the resulting decision.
 ## Objective
 
 Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bounded task below, and return your result to `.cockpit/result/worker-result.md` using the required evidence format.
@@ -55,31 +55,29 @@ The owner's standing communication preferences (apply these without being asked;
 * Separate facts from inference: True
 ## Exact Next Action
 
-Deliver docs/PATH_A_PLAN.md section 6 Phase D2's first task: a new script scripts/watch-dashboard.ps1 that polls the .cockpit/ files scripts/generate-dashboard.ps1 already reads (project-state.json, task-state.json, verification-result.json, routing-log.jsonl) and re-invokes scripts/generate-dashboard.ps1 (as an explicit subprocess, the same composition pattern already used and verified for classify-routing.ps1 in pcc-pathD-003) whenever any of them changes, so the dashboard/index.html output stays current without the owner manually re-running the generator. Remains strictly read-only over the .cockpit/ bridge: watch-dashboard.ps1 itself never writes any file except by delegating the actual write to generate-dashboard.ps1's own existing, already-read-only render step. As minor housekeeping folded in per the pcc-pathD-003 verification's own next_action, also correct scripts/generate-dashboard.ps1's header comment block, which currently still states the older blanket 'calls no other script' claim alongside the newer, narrower pcc-pathD-003 exception language -- update it to state the current, accurate contract only (reads the four .cockpit/ inputs, invokes exactly one subprocess, classify-routing.ps1, writes only -OutputPath).
+Deliver docs/PATH_A_PLAN.md section 6 Phase D2's Session/Usage panel: the honest home for original scope section 7.17 (Visible Usage / Session Pressure Awareness). Scoping note, checked against repo truth before drafting: section 7.17's honest remainder (per DECISION-075, which already determined real provider usage cannot be measured or estimated pre-checkpoint and that this is fundamentally a Category D/UI concern) is exactly 'current selected model/tool' and 'whether the system is estimating or reading actual usage' -- and 'current route' plus 'routing history' are already fully delivered as the Local Tools Panel and Routing History panel in pcc-pathD-003. Duplicating those tables under a new panel name would be exactly the bloat docs/PROJECT_CHARTER.md's three-filter test exists to catch. This task therefore adds a small, new, honest-only Session/Usage section to dashboard/index.html that (a) references/points to the existing Local Tools and Routing History panels rather than re-rendering their content, and (b) explicitly states, in plain language, that no real session/usage pressure number is tracked, computed, or estimated by PCC -- because PCC has no mechanism to measure real provider usage (DECISION-008: no fake intelligence / no fabricated numbers) -- rather than silently omitting any usage section at all, which is what original scope section 7.17 actually asks for ('must not pretend to know exact provider limits if it cannot measure them').
 
 ## Allowed Scope
 
 The worker may:
 
-* Create scripts/watch-dashboard.ps1 as a new, self-contained script that polls .cockpit/ file mtimes and invokes scripts/generate-dashboard.ps1 as its one permitted subprocess call.
-* Edit scripts/generate-dashboard.ps1's header comment block only, to correct the stale 'calls no other script' contradiction flagged in pcc-pathD-003's verification -- comment-only, no logic change.
-* Edit docs/DECISIONS.md to record the new decision.
-* Edit docs/PATH_A_PLAN.md only to mark pcc-pathD-004 as delivered, not to change its scope or spec.
+* Edit scripts/generate-dashboard.ps1 to add the small, non-duplicative Session/Usage section described above.
+* Edit docs/DECISIONS.md to record the new decision, including the explicit non-duplication scoping judgment.
+* Edit docs/PATH_A_PLAN.md only to mark pcc-pathD-005 as delivered, not to change its scope or spec.
 * Regenerate dashboard/index.html as part of normal testing (it is a gitignored, generated artifact).
 
 ## Forbidden Scope
 
 The worker must not:
 
-* Do not change any of scripts/generate-dashboard.ps1's actual logic/behavior; only its header comment block may change.
-* Do not invoke any script other than scripts/generate-dashboard.ps1 from scripts/watch-dashboard.ps1.
-* Do not modify scripts/classify-routing.ps1, scripts/doctor.ps1, or any other existing script.
+* Do not re-render, duplicate, or re-fetch the Local Tools Panel's or Routing History panel's content in the new Session/Usage section; reference them instead.
+* Do not fabricate, estimate, or display any invented usage/session-pressure number, percentage, or count -- this is exactly what DECISION-008 forbids and what this task exists to avoid.
+* Do not modify any other existing script.
 * Do not add any new log event type or write to routing-log.jsonl.
-* Do not make scripts/watch-dashboard.ps1 write any file directly itself; the only output is dashboard/index.html via the delegated generate-dashboard.ps1 call.
+* Do not introduce any new subprocess call or new file read beyond what is already loaded by the existing panels.
 * Do not modify any schema.
 * Do not change any verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule.
-* Do not build Phase D3 functionality (any write-path/request-file controls) in this task.
-* Do not build the Session/Usage or Handoff/Rollover panels (pcc-pathD-005/006) in this task.
+* Do not build the Handoff/Rollover panel (pcc-pathD-006) or any Phase D3 functionality in this task.
 * Do not manually invoke 'codex exec' or otherwise self-issue a verification verdict for this task in this cycle.
 * Do not skip the mandatory pre-task handoff/backup gate; it must be run while task_status is 'ready_for_worker', before any code change.
 
@@ -87,15 +85,14 @@ The worker must not:
 
 The task is complete only if:
 
-* scripts/watch-dashboard.ps1 exists: a new, self-contained script that polls the mtimes of .cockpit/state/project-state.json, .cockpit/state/task-state.json, .cockpit/result/verification-result.json, and .cockpit/logs/routing-log.jsonl (paths overridable by parameter, defaulting to the canonical paths) on a configurable interval (parameter, default a few seconds), and re-invokes scripts/generate-dashboard.ps1 (explicit subprocess call, same pattern as pcc-pathD-003's classify-routing.ps1 call) only when at least one tracked file's mtime has changed since the last render.
-* watch-dashboard.ps1 itself writes no file directly; the only write that occurs is dashboard/index.html, produced by the delegated call to the already-read-only generate-dashboard.ps1. watch-dashboard.ps1 mutates no .cockpit/ file.
-* The watch loop runs until interrupted (Ctrl+C / normal PowerShell termination) and exits cleanly with no partial/corrupt output file left behind; a single poll-and-render cycle must also be runnable non-interactively for testing (e.g. a -Once / -MaxIterations style parameter) so the behavior can be verified without a human sitting at a terminal indefinitely.
-* If a single render cycle's call to generate-dashboard.ps1 fails (non-zero exit) for any reason, the watch loop logs/prints the failure clearly to its own stdout and continues polling on the next interval rather than crashing the whole watch process.
-* scripts/generate-dashboard.ps1's header comment block is corrected to state its current, accurate contract only (reads project-state.json, task-state.json, verification-result.json, and routing-log.jsonl; invokes exactly one subprocess, classify-routing.ps1; writes only -OutputPath) with no leftover contradictory 'calls no other script' blanket statement -- this is a comment-only correction, no behavior change.
-* Functionally tested (not read-through only): run the watch loop for a small fixed number of iterations (via the non-interactive test parameter) against the real .cockpit/ state, touching a tracked file mid-run and confirming a re-render is triggered only after that change (not on every poll); confirmed no re-render happens across iterations when nothing changed; confirmed a simulated generate-dashboard.ps1 failure (e.g. pointing at a bad path for one iteration) is logged and does not crash the watch loop, which continues polling.
-* A new decision is recorded in docs/DECISIONS.md documenting the delivery. docs/PATH_A_PLAN.md is updated only to mark pcc-pathD-004 as delivered, not to change its scope.
-* No existing script other than scripts/generate-dashboard.ps1 (comment-only change) is modified; no schema is modified; no new log event type is added; watch-dashboard.ps1 calls no script other than scripts/generate-dashboard.ps1.
-* The mandatory pre-task handoff/backup gate is run correctly before any code change, continuing the standing expectation from pcc-pathD-002/003.
+* scripts/generate-dashboard.ps1 gains a new Session/Usage section in dashboard/index.html, positioned after the existing Routing History panel.
+* The Session/Usage section does NOT duplicate/re-render the Local Tools Panel's advisory text or the Routing History table; it is short, and it references those existing panels by name (e.g. 'see Local Tools Panel above for the current route; see Routing History above for history') rather than re-fetching or re-printing their data.
+* The Session/Usage section explicitly and plainly states that PCC does not track, compute, or estimate any real session/usage pressure number, weekly pressure, or provider-limit percentage, and why: PCC has no mechanism to measure actual provider usage, and DECISION-008 forbids fabricating one. This satisfies original scope section 7.17's actual requirement ('must not pretend to know exact provider limits if it cannot measure them') honestly, as an explicit disclosure rather than a silent gap.
+* The section remains strictly read-only and introduces no new file reads, no new subprocess calls, and no new parameters beyond what pcc-pathD-001..004 already established -- this is a small addition to the existing HTML body using data already available from the earlier panels' own already-loaded state, not a new data source.
+* Functionally tested (not read-through only): regenerate dashboard/index.html against the real live state and confirm the new section renders with the correct honest-disclosure text and correctly references the existing panels; confirm no existing panel's content changed.
+* A new decision is recorded in docs/DECISIONS.md documenting the delivery and explicitly recording the scoping judgment made here (why this task does not duplicate pcc-pathD-003's panels, and how it still satisfies section 7.17's actual honest-disclosure requirement). docs/PATH_A_PLAN.md is updated only to mark pcc-pathD-005 as delivered, not to change its scope.
+* No existing script other than scripts/generate-dashboard.ps1 is modified; no schema is modified; no new log event type is added; no new subprocess call is introduced.
+* The mandatory pre-task handoff/backup gate is run correctly before any code change, continuing the standing expectation from pcc-pathD-002 onward.
 * The task is handed back through the normal worker path for verification; it is not self-closed in this cycle (owner's stated preference remains: pause before each verification), and no verification verdict is written by the worker.
 
 ## Required Evidence
@@ -105,10 +102,10 @@ Return the following evidence:
 * Files created or changed.
 * Summary of changes.
 * Commands run, including confirmation the pre-task handoff gate ran before work began.
-* Command/test results, including the non-interactive watch-loop tests (change-triggers-render, no-change-means-no-render, simulated render failure logged and non-fatal).
+* Command/test results, including confirmation the new section renders correctly and does not duplicate existing panel content.
 * Known risks.
 * Unresolved assumptions.
-* Confirmation that forbidden scope was not touched, including that watch-dashboard.ps1 calls no script other than generate-dashboard.ps1 and that generate-dashboard.ps1's logic was not changed.
+* Confirmation that forbidden scope was not touched, including that no fabricated usage number was introduced and no existing panel content was duplicated.
 
 ## Expected Return Format
 

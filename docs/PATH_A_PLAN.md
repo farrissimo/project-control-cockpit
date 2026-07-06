@@ -132,7 +132,7 @@ the same technology — the read-only board is grown, not thrown away.
 | B — Behavior & Tooling Controls | 2 (pre-checkpoint) | ✅ Done — `DECISION-076` (`pcc-pathB-001`) |
 | C — Metrics & Evidence Depth | 3 (pre-checkpoint) | ✅ Done — `DECISION-081` (`pcc-pathC-001..004`) |
 | **Maturity Checkpoint** | Milestone | ✅ Reached — `DECISION-084`; frozen `DECISION-085` |
-| **D — Product Surface (UI)** | Post-checkpoint | 🔶 In progress — Phase D1 complete; `pcc-pathD-004` delivered; next is `pcc-pathD-005` (§6) |
+| **D — Product Surface (UI)** | Post-checkpoint | 🔶 In progress — `pcc-pathD-004`/`005` delivered; next is `pcc-pathD-006` (§6) |
 | E — Multi-Model/Multi-Agent | Deferred | Path-B / CCB-domain scope |
 | F — Knowledge & Memory | Deferred | Gated on proven need |
 
@@ -209,7 +209,7 @@ controls, calls no engine script.
 
 - **`pcc-pathD-004` — Auto-refresh / watch mode** — ✅ **DELIVERED, verified PASS** (`DECISION-094`): poll `.cockpit/` files and
   re-render; remains read-only.
-- **`pcc-pathD-005` — Session/Usage panel (honest-only):** the honest home for
+- **`pcc-pathD-005` — Session/Usage panel (honest-only)** — ✅ **DELIVERED, non-duplicatively** (`DECISION-095`, pending verification): the honest home for
   original scope §7.17. Shows only truthfully-derivable facts — current route
   (from `classify-routing.ps1`), routing history — and explicitly **not** any
   fabricated usage/pressure number (`DECISION-008`).

@@ -2315,3 +2315,31 @@ Process disclosure: built with Codex unavailable (`DECISION-086`), under direct 
 
 Supersedes: None
 Related: DECISION-074, DECISION-077, DECISION-086, DECISION-087, DECISION-088, DECISION-089, DECISION-090, DECISION-091, DECISION-092, DECISION-093, docs/PATH_A_PLAN.md, scripts/generate-dashboard.ps1, scripts/watch-dashboard.ps1
+
+---
+
+## DECISION-095: Session/Usage Panel Delivered Non-Duplicatively (pcc-pathD-005)
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+`docs/PATH_A_PLAN.md` §6's Session/Usage panel (original scope §7.17) is delivered as a small new section in `dashboard/index.html`, added to `scripts/generate-dashboard.ps1`, deliberately **narrowed from the plan's literal wording** to avoid duplicating content already delivered in `pcc-pathD-003`.
+
+Reason:
+
+Checked against repo truth before building: §7.17's honest remainder was already determined by `DECISION-075` -- real provider usage cannot be measured or estimated pre-checkpoint, so the only honestly-buildable content is "current selected model/tool" and "whether the system is estimating or reading actual usage." "Current route" and "routing history" are exactly what `pcc-pathD-003`'s Local Tools Panel and Routing History panel already render in full. Building a second, differently-labeled panel that re-renders the same tables would be precisely the bloat `docs/PROJECT_CHARTER.md`'s three-filter test exists to catch -- this scoping call was made under the worker/verifier discretion `DECISION-074` explicitly delegates for exactly this kind of judgment, and is disclosed here rather than silently narrowing scope.
+
+The Session/Usage section instead: (1) references the existing Local Tools and Routing History panels by name rather than re-fetching or re-printing their data, and (2) states plainly, as an explicit disclosure rather than a silent omission, that PCC does not track, compute, or estimate any real session-usage percentage, weekly-pressure figure, or provider-limit count -- satisfying §7.17's actual requirement ("must not pretend to know exact provider limits if it cannot measure them") honestly. No fabricated number of any kind was introduced (`DECISION-008`).
+
+Functionally tested: regenerated `dashboard/index.html` against the real live state; confirmed the new section renders the correct disclosure text and correctly references (not duplicates) the existing panels; confirmed no existing panel's content changed. No new file read, subprocess call, or parameter was introduced, so no new failure surface exists to test synthetically -- the task's own completion criteria explicitly scoped it this way.
+
+Implications:
+
+`scripts/generate-dashboard.ps1`'s header comment was also updated to describe the Session/Usage section and its non-duplication rationale, keeping the running header-comment-accuracy discipline established in `pcc-pathD-004`. No existing script other than `scripts/generate-dashboard.ps1` was modified; no schema changed; no new log event type added. This task is Task Safety Class A, same as its predecessors. Per the owner's stated mode this session, this cycle is handed back for verification rather than self-closed. The next task is `pcc-pathD-006` (Handoff/Rollover panel) per `docs/PATH_A_PLAN.md` §6.
+
+Process disclosure: built with Codex unavailable (`DECISION-086`), under direct owner direction ("keep going until I tell you to stop"); self-checked with PCC's local guardrails; the mandatory pre-task handoff/backup gate was run correctly before work began (genuine backup `20260705-190455`).
+
+Supersedes: None
+Related: DECISION-008, DECISION-074, DECISION-075, DECISION-086, DECISION-087, DECISION-088, DECISION-092, DECISION-093, DECISION-094, docs/PATH_A_PLAN.md, docs/PROJECT_CHARTER.md, scripts/generate-dashboard.ps1
