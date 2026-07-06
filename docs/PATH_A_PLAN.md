@@ -232,7 +232,7 @@ initiate actions), not just a view.
   surface.
 - **`pcc-pathD-008` — Rollover/handoff controls** — ✅ **DELIVERED, command-to-copy design, verified PASS** (`DECISION-099`): drop a rollover-request file;
   the existing safe-stop/handoff path picks it up.
-- **`pcc-pathD-009` — Tone/Behavior controls** — ✅ **DELIVERED, first request-driven state mutation** (`DECISION-100`, pending verification): update `communication_prefs`
+- **`pcc-pathD-009` — Tone/Behavior controls** — ✅ **DELIVERED, first request-driven state mutation, verified PASS** (`DECISION-100`): update `communication_prefs`
   (Category B) via a request-file → existing state-update path, never a direct
   edit from the UI.
 
