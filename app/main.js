@@ -15,6 +15,15 @@ const { spawn, exec } = require('child_process');
 const PROJECT_DIR = path.join(__dirname, '..');
 const COCKPIT = path.join(PROJECT_DIR, '.cockpit');
 
+// PCC drives Claude Code through the owner's claude.ai LOGIN, not a paid API key
+// (DECISION-003: no paid-API dependency). If ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN
+// are present in the environment, Claude Code uses them instead of the login -
+// billing the metered API per message and disabling claude.ai org connectors.
+// Scrub them from THIS process so every `claude -p` we spawn falls back to the
+// login. This only affects PCC's own child processes; the machine-wide User
+// variable is left untouched (remove it yourself if you want it gone everywhere).
+for (const k of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN']) delete process.env[k];
+
 let conversationStarted = false;
 
 function readJson(...rel) {
