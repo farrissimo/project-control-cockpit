@@ -10,6 +10,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { spawn, exec } = require('child_process');
 
 const PROJECT_DIR = path.join(__dirname, '..');
@@ -24,7 +25,17 @@ const COCKPIT = path.join(PROJECT_DIR, '.cockpit');
 // variable is left untouched (remove it yourself if you want it gone everywhere).
 for (const k of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN']) delete process.env[k];
 
-let conversationStarted = false;
+// BUG FOUND AND FIXED (owner report, 2026-07-06): Claude Code's `--continue`
+// resumes "the most recent conversation IN THE CURRENT DIRECTORY" - not this
+// app's specific conversation. Proven by direct test: an unrelated `claude -p`
+// call from the same repo directory (e.g. any manual testing while the app is
+// open) silently hijacks the app's next `--continue`, so the chat replies as a
+// stranger with no memory of its own prior turn. Fix: pin every conversation to
+// its own UUID (`--session-id` on the first turn, `--resume <uuid>` after),
+// which is immune to other claude invocations in the same directory - proven
+// with the same interloper test (resumed the pinned session correctly even
+// after an unrelated call ran in between).
+let sessionId = null;
 
 function readJson(...rel) {
   try {
@@ -189,13 +200,15 @@ function readModels() {
 
 ipcMain.handle('pcc:getModels', () => readModels());
 
-// Start a fresh chat: drop the --continue thread so the next message begins a
-// new Claude conversation. (The renderer also clears its own history.)
-ipcMain.handle('pcc:newChat', () => { conversationStarted = false; return { ok: true }; });
+// Start a fresh chat: assign a brand-new pinned session id, so the next
+// message starts an isolated conversation. (The renderer also clears its own
+// history.)
+ipcMain.handle('pcc:newChat', () => { sessionId = null; return { ok: true }; });
 
 // Send a message to Claude Code non-interactively. The prompt goes in over
 // stdin (so quotes/newlines in the message can never break shell parsing).
-// After the first turn we pass --continue so Claude keeps the conversation.
+// The conversation is pinned to a UUID (see the note above sessionId) so it
+// can never be hijacked by an unrelated `claude -p` call in this directory.
 // --model picks the chosen model; --fallback-model makes an unavailable model
 // fall back gracefully instead of crashing the chat.
 function askClaude(message, model) {
@@ -204,7 +217,9 @@ function askClaude(message, model) {
     const chosen = model || cfg.default;
     const args = ['-p', '--model', chosen];
     if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
-    if (conversationStarted) args.push('--continue');
+    const isNewSession = !sessionId;
+    if (isNewSession) sessionId = crypto.randomUUID();
+    args.push(isNewSession ? '--session-id' : '--resume', sessionId);
     let out = '';
     let err = '';
     let child;
@@ -217,9 +232,14 @@ function askClaude(message, model) {
     child.stdout.on('data', (d) => { out += d.toString(); });
     child.stderr.on('data', (d) => { err += d.toString(); });
     child.on('close', (code) => {
-      conversationStarted = true;
       if (code === 0) resolve({ ok: true, text: out.trim() });
-      else resolve({ ok: false, text: (err || out || ('Claude exited with code ' + code)).trim() });
+      else {
+        // A failed FIRST turn means no session actually exists at that id -
+        // reset so the next attempt starts a genuinely fresh one rather than
+        // trying to --resume a session that was never created.
+        if (isNewSession) sessionId = null;
+        resolve({ ok: false, text: (err || out || ('Claude exited with code ' + code)).trim() });
+      }
     });
     child.stdin.write(message);
     child.stdin.end();

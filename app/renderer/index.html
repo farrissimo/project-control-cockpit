@@ -23,7 +23,8 @@
 
   #content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   #lifecycle { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; padding: 8px 20px;
-    border-bottom: 1px solid #23262d; background: #0e1014; font-size: 13px; flex: 0 0 auto; }
+    border-bottom: 1px solid #23262d; background: #0e1014; font-size: 13px; flex: 0 0 auto; cursor: pointer; }
+  #lifecycle:hover { background: #12151a; }
   #lifecycle .lc-label { color: #7a7f87; }
   #lc-next { color: #8ab4ff; }
   #lc-decision { display: none; color: #f0c674; font-weight: 500; }
@@ -141,19 +142,19 @@
     <div class="brand">PCC</div>
     <div class="project" id="project"></div>
     <nav>
-      <button class="nav active" data-view="chat">Chat</button>
-      <button class="nav" data-view="project">Project</button>
-      <button class="nav" data-view="rules">Rules</button>
-      <button class="nav" data-view="memory">Memory</button>
-      <button class="nav" data-view="lifecycle">Lifecycle</button>
-      <button class="nav" data-view="signals">Signals</button>
-      <button class="nav" data-view="verify">Verify</button>
+      <button class="nav active" data-view="chat" title="Talk to Claude Code about this project.">Chat</button>
+      <button class="nav" data-view="project" title="Current project state, decisions, babysitting-reduction metrics, and the new-chat handoff generator.">Project</button>
+      <button class="nav" data-view="rules" title="Your standing rules (CLAUDE.md) - loads into every Claude session automatically.">Rules</button>
+      <button class="nav" data-view="memory" title="The project brief (PROJECT.md) Claude reads at the start of every session. Edit and save here.">Memory</button>
+      <button class="nav" data-view="lifecycle" title="The full stage map: where the project is, what to do now, and the only legal next steps.">Lifecycle</button>
+      <button class="nav" data-view="signals" title="Honest alarms: untracked files, drift, stale docs, backup status, bloat, and more.">Signals</button>
+      <button class="nav" data-view="verify" title="Deterministic hard checks plus independent AI review of the work.">Verify</button>
     </nav>
     <div class="side-foot">Talking to your Claude Code</div>
   </aside>
 
   <section id="content">
-    <div id="lifecycle">
+    <div id="lifecycle" title="Click for the full stage map and legal next steps (Lifecycle tab).">
       <span><span class="lc-label">You are here:</span> <span id="lc-phase">…</span></span>
       <span><span class="lc-label">Next:</span> <span id="lc-next">…</span></span>
       <span id="lc-decision"></span>
@@ -168,14 +169,14 @@
     <div class="view" id="view-chat">
       <div id="chat-toolbar">
         <label class="ct-label" for="model-select">Model</label>
-        <select id="model-select"></select>
+        <select id="model-select" title="Which Claude model answers your messages. Defaults to Sonnet 5; falls back automatically if a model is unavailable."></select>
         <button id="new-chat" type="button" title="Start a fresh conversation (Claude forgets the current thread)">New chat</button>
       </div>
       <div id="log"></div>
       <div id="corrections"></div>
       <form id="composer">
         <textarea id="input" placeholder="Tell PCC what to do" rows="1"></textarea>
-        <button id="send" type="submit">Send</button>
+        <button id="send" type="submit" title="Send this message to Claude Code (Enter also sends; Shift+Enter for a new line).">Send</button>
       </form>
     </div>
 

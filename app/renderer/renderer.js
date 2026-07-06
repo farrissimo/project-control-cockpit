@@ -457,21 +457,41 @@ async function initHeader() {
   } catch (e) { /* header is cosmetic */ }
 }
 
-// Lifecycle bar: where you are, the next action, and a "Decision required"
-// flag - all read from real state. Honest: if there's no next action it says
-// "not set", it never invents one.
+// Lifecycle bar: where you are and the next action - now sourced from the SAME
+// declared lifecycle system as the Lifecycle tab (scripts/lifecycle-status.ps1),
+// not project-state.json's next_expected_action. That field tracks an older,
+// separate governance task track and had gone stale (BUG FOUND by the owner:
+// the bar was showing a leftover pre-app-build task while the Lifecycle tab
+// correctly showed "Milestone"). Honest: if lifecycle isn't set, say "not set",
+// never invent one. "Decision required" still reads task-state's explicit flag
+// (a real flag, not a narrative guess) and only shows when actually present.
 async function loadLifecycle() {
+  const phaseEl = document.getElementById('lc-phase');
+  const nextEl = document.getElementById('lc-next');
+  try {
+    const lc = await window.pcc.lifecycle();
+    if (lc && lc.signal === 'ok' && lc.current) {
+      phaseEl.textContent = lc.current.label;
+      const nexts = (lc.next || []).map((n) => n.label);
+      nextEl.textContent = nexts.length ? nexts.join(' or ') : 'not set';
+      nextEl.title = (lc.next || []).map((n) => n.label + ': ' + n.what_to_do).join('\n') || 'Open the Lifecycle tab for detail.';
+    } else {
+      phaseEl.textContent = 'unknown';
+      nextEl.textContent = 'not set';
+    }
+  } catch (e) {
+    phaseEl.textContent = 'unknown';
+    nextEl.textContent = 'not set';
+  }
   try {
     const s = await window.pcc.getState();
-    const p = s.project || {}, t = s.task || {};
-    document.getElementById('lc-phase').textContent = (p.current_phase || 'unknown') + (t.task_status ? '  ·  ' + t.task_status : '');
-    document.getElementById('lc-next').textContent = p.next_expected_action || 'not set';
+    const t = s.task || {};
     const dec = t.owner_decision_request;
     const q = dec && (dec.question || (typeof dec === 'string' ? dec : ''));
     const el = document.getElementById('lc-decision');
     if (q) { el.style.display = 'inline'; el.textContent = 'Decision required: ' + q; }
     else { el.style.display = 'none'; }
-  } catch (e) { /* state optional */ }
+  } catch (e) { /* decision flag is optional */ }
 }
 
 async function loadProject() {
@@ -628,6 +648,8 @@ document.getElementById('verify-run').addEventListener('click', async () => {
 });
 
 // ---- boot ----
+document.getElementById('lifecycle').addEventListener('click', () => document.querySelector('.nav[data-view="lifecycle"]').click());
+
 renderCorrections();
 initModels();
 initHeader();
