@@ -32,12 +32,12 @@ roadmap grid with progress, ranked by his priority.
 
 ## What's built (branch: feat/cockpit-desktop-app; main untouched)
 Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
-- Chat wired to Claude (`claude -p`), conversation persists across restarts.
+- Chat wired to Claude (`claude -p`), conversation persists across restarts. Model switcher (default Sonnet 5, editable list in .cockpit/state/models.json, auto-fallback so a retired model never crashes the chat) + "New chat" button (starts a fresh Claude thread). Uses the claude.ai login, not a paid API key (DECISION-003).
 - Left sidebar: Chat / Project / Rules / Memory / Signals / Verify.
 - Lifecycle bar (top): "You are here -> Next action -> Decision required", from real state.
 - Live trust strip (top, always visible): On the rails / Backed up / Verified / Rules loaded. Each chip is green only when a real deterministic check says so; "Verified" stays amber unless a fresh independent PASS newer than HEAD exists (never faked).
 - Lifecycle view: the standardized stage map (define → plan → work → verify → phase-close → milestone → handoff → rollover) from .cockpit/state/lifecycle-model.json, with a "you are here" pin (lifecycle-state.json) and only the LEGAL next steps shown (scripts/lifecycle-status.ps1). Never auto-advances.
-- One-click corrections under the chat (Be concise, No cheerleading, Stay in scope, Show evidence, Stop reacting, Copy block).
+- One-click corrections under the chat (Be concise, No cheerleading, Stay in scope, Show evidence, Stop reacting, Push back, Check prior art, Rabbit-hole check, Copy block).
 - Standing rules auto-load from CLAUDE.md; the Rules view shows them.
 - Project memory: this PROJECT.md, editable in the Memory view, auto-read each session. Plus recent-decisions carry-forward — the Project view surfaces the latest agreements from docs/DECISIONS.md (scripts/recent-decisions.ps1), and the handoff embeds the 3 most recent, so settled decisions are never re-derived.
 - New-chat handoff: one-click "Generate handoff" in the Project view (scripts/generate-handoff.ps1) builds a ready-to-paste briefing from real repo truth (git state, phase, honest verification status, standing orders) so a fresh chat never needs re-briefing.
