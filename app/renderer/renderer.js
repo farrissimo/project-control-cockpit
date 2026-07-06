@@ -154,14 +154,23 @@ document.getElementById('new-chat').addEventListener('click', async () => {
   } catch (e) { /* handoff is a bonus; new chat still works without it */ }
 });
 
+// Quick buttons ADD their instruction to your current message instead of firing
+// a separate one (owner feedback: clicking "Be concise" after asking was two
+// separate turns, which felt backwards). Now you type your question, click any
+// modifiers, and Send once - the modifier applies to that same question.
 function renderCorrections() {
   CORRECTIONS.forEach((c) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'corr';
     b.textContent = c.label;
-    b.title = 'Send: ' + c.msg;
-    b.addEventListener('click', () => sendMessage(c.msg));
+    b.title = 'Adds to your message: "' + c.msg + '"';
+    b.addEventListener('click', () => {
+      const cur = input.value.trim();
+      input.value = cur ? (cur + '\n\n' + c.msg) : c.msg;
+      input.focus();
+      input.scrollTop = input.scrollHeight;
+    });
     correctionsBar.appendChild(b);
   });
 }
