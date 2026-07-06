@@ -81,6 +81,17 @@ function runCmd(cmd, timeout) {
   }));
 }
 
+// New-chat handoff: assemble a ready-to-paste briefing from real repo truth so
+// the owner never re-briefs a fresh chat by hand. Deterministic script; the app
+// only displays and copies it.
+ipcMain.handle('pcc:handoff', () => new Promise((resolve) => {
+  exec('pwsh -NoProfile -File scripts/generate-handoff.ps1', { cwd: PROJECT_DIR, maxBuffer: 4 * 1024 * 1024, timeout: 30000, windowsHide: true }, (err, stdout, stderr) => {
+    const out = (stdout || '').trim();
+    if (out) return resolve({ ok: true, text: out });
+    resolve({ ok: false, text: 'Could not generate handoff: ' + (err ? (stderr || err.message) : 'no output') });
+  });
+}));
+
 ipcMain.handle('pcc:hardChecks', async () => {
   const git = await runCmd('git status --short --branch');
   const doctor = await runCmd('pwsh -NoProfile -File scripts/doctor.ps1', 120000);

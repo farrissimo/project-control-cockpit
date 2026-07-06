@@ -349,6 +349,33 @@ async function loadProject() {
   }
 }
 
+// ---- new-chat handoff (roadmap #7) ----
+const handoffOut = document.getElementById('handoff-out');
+const handoffCopy = document.getElementById('handoff-copy');
+
+document.getElementById('handoff-gen').addEventListener('click', async () => {
+  const status = document.getElementById('handoff-status');
+  const btn = document.getElementById('handoff-gen');
+  btn.disabled = true; status.textContent = 'Assembling from repo truth…';
+  try {
+    const r = await window.pcc.handoff();
+    handoffOut.textContent = r && r.text ? r.text : '(no output)';
+    handoffOut.style.display = 'block';
+    handoffCopy.style.display = (r && r.ok) ? 'inline-block' : 'none';
+    status.textContent = (r && r.ok) ? 'Ready — copy and paste into a new chat.' : 'Could not generate.';
+  } catch (e) {
+    handoffOut.textContent = 'Error: ' + e.message; handoffOut.style.display = 'block';
+    status.textContent = '';
+  } finally { btn.disabled = false; }
+});
+
+handoffCopy.addEventListener('click', async () => {
+  const status = document.getElementById('handoff-status');
+  try { await navigator.clipboard.writeText(handoffOut.textContent); status.textContent = 'Copied.'; }
+  catch (e) { status.textContent = 'Copy failed — select the text and copy manually.'; }
+  setTimeout(() => { status.textContent = ''; }, 2500);
+});
+
 // ---- rules view ----
 async function loadRules() {
   const el = document.getElementById('rules-content');

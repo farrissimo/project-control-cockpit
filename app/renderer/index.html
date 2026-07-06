@@ -63,8 +63,9 @@
     padding: 12px 14px; font-family: inherit; font-size: 14px; line-height: 1.6; margin-top: 12px; }
   .memory-box:focus { outline: none; border-color: #3a6bd6; }
   .memory-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
-  #memory-save, #verify-run { background: #2f6bde; color: #fff; border: none; border-radius: 10px;
+  #memory-save, #verify-run, #handoff-gen, #handoff-copy { background: #2f6bde; color: #fff; border: none; border-radius: 10px;
     padding: 8px 18px; font-weight: 500; font-size: 14px; cursor: pointer; }
+  #handoff-copy { background: #1a1d23; border: 1px solid #2b2f37; }
   #verify-run:disabled { opacity: .5; cursor: default; }
 
   .signals-actions { display: flex; align-items: center; gap: 12px; margin: 14px 0 4px; }
@@ -146,6 +147,15 @@
     <div class="view hidden panel" id="view-project">
       <h2>Where the project stands</h2>
       <div id="project-body"><p class="muted">Loading…</p></div>
+
+      <h3 style="font-size:14px; margin:22px 0 2px; color:#8ab4ff; font-weight:500;">Start a fresh chat</h3>
+      <p class="muted">Generates a ready-to-paste briefing from real repo truth, so a new chat starts fully oriented without you re-explaining anything.</p>
+      <div class="signals-actions">
+        <button id="handoff-gen" type="button">Generate handoff</button>
+        <button id="handoff-copy" type="button" style="display:none;">Copy</button>
+        <span id="handoff-status" class="muted"></span>
+      </div>
+      <pre class="rules" id="handoff-out" style="display:none; margin-top:12px;"></pre>
     </div>
 
     <div class="view hidden panel" id="view-rules">
