@@ -21,7 +21,7 @@ Status: [x] Done · [~] In progress / Partial · [ ] Planned
 11. [x] Stale-docs detection — `scripts/detect-stale-docs.ps1` checks a small, explicit, adjustable rule list (.cockpit/state/doc-freshness-map.json): if code matching a rule changed but the doc that should track it did not, it flags an honest 'notice'. Stays QUIET when no rule matches (never guesses); 'unknown' if the map is missing. Starter rules: app change → roadmap; new detector → roadmap; verify-work.ps1 → PROJECT.md + roadmap.
 12. [ ] Agreements-only-in-chat -> flag + capture to truth
 13. [x] Repo-sync discipline — `scripts/detect-repo-sync.ps1` Signals card: is the work actually backed up to the remote? Flags uncommitted changes, untracked files, and committed-but-unpushed commits (and a missing upstream). Pure git, deterministic, zero false positives. Clear only when the tree is clean and the branch is level with its upstream.
-14. [~] Live trust signals (on the rails / independently verified / following your rules)
+14. [x] Live trust signals — always-visible strip above the chat: On the rails (drift + stale-docs clear), Backed up (repo-sync clear), Verified (honest: green only for a fresh PASS newer than HEAD; amber "not verified yet" otherwise — never faked), Rules loaded (CLAUDE.md present). Each chip is green only when a real deterministic check says so; tooltips explain what is and isn't proven.
 
 ## P3 — Medium (honest detections + lifecycle extras)
 15. [ ] Reinventing-the-wheel signal (overlap vs existing, honest)

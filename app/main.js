@@ -109,6 +109,30 @@ ipcMain.handle('pcc:detections', async () => ({
   repoSync: await runDetector('scripts/detect-repo-sync.ps1'),
 }));
 
+// Trust-strip extras: the two honest facts the always-visible strip needs
+// beyond the detectors. "Rules loaded" is just whether CLAUDE.md exists (the
+// rules DO auto-load into every Claude session; this proves they are present,
+// not that the AI obeyed them). Verification is read from the file the
+// scheduled run writes, and is only called fresh if it is newer than HEAD -
+// so the strip never claims "verified" for work committed after the check.
+ipcMain.handle('pcc:trustExtras', () => new Promise((resolve) => {
+  const rulesLoaded = fs.existsSync(path.join(PROJECT_DIR, 'CLAUDE.md'));
+  const vPath = path.join(PROJECT_DIR, 'app', 'last-verification.txt');
+  let verification = { present: false };
+  try {
+    if (fs.existsSync(vPath)) {
+      const st = fs.statSync(vPath);
+      const text = fs.readFileSync(vPath, 'utf8');
+      const m = text.match(/\b(PASS|FAIL|INSUFFICIENT|BLOCKED|OUT_OF_SCOPE)\b/);
+      verification = { present: true, verdict: m ? m[1] : null, mtimeEpoch: Math.floor(st.mtimeMs / 1000) };
+    }
+  } catch (e) { /* leave present:false */ }
+  exec('git log -1 --format=%ct', { cwd: PROJECT_DIR, timeout: 10000, windowsHide: true }, (err, stdout) => {
+    const headEpoch = parseInt((stdout || '').trim(), 10) || 0;
+    resolve({ rulesLoaded, verification, headCommitEpoch: headEpoch });
+  });
+}));
+
 // Send a message to Claude Code non-interactively. The prompt goes in over
 // stdin (so quotes/newlines in the message can never break shell parsing).
 // After the first turn we pass --continue so Claude keeps the conversation.

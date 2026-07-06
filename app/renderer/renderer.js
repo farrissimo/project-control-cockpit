@@ -228,7 +228,74 @@ async function loadSignals() {
   }
 }
 
-document.getElementById('signals-refresh').addEventListener('click', () => loadSignals());
+document.getElementById('signals-refresh').addEventListener('click', () => { loadSignals(); loadTrust(); });
+
+// ---- live trust strip (roadmap #14) ----
+// Always-visible, and honest: each chip is green ONLY when a real deterministic
+// check says so. "Verified" stays amber unless a fresh PASS exists that is
+// newer than the latest commit; it never fakes green.
+function setChip(id, cls, text, title) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'trust-chip ' + cls;
+  el.innerHTML = '<span class="dot"></span>' + escapeHtml(text);
+  el.title = title || '';
+}
+
+function railsFrom(d) {
+  const parts = [d && d.drift, d && d.staleDocs].filter(Boolean);
+  if (!parts.length || parts.some((p) => p.signal === 'unknown')) return 'unknown';
+  return parts.some((p) => p.signal === 'notice') ? 'warn' : 'good';
+}
+
+async function loadTrust() {
+  let d = null, x = null;
+  try { d = await window.pcc.detections(); } catch (e) { /* leave unknown */ }
+  try { x = await window.pcc.trustExtras(); } catch (e) { /* leave unknown */ }
+
+  // On the rails: no drift, no stale docs.
+  const rails = railsFrom(d);
+  setChip('trust-rails',
+    rails === 'good' ? 'good' : rails === 'warn' ? 'warn' : 'unknown',
+    'On the rails',
+    rails === 'good' ? 'No drift and no stale docs detected.'
+      : rails === 'warn' ? 'A drift or stale-docs signal is raised — see the Signals tab.'
+      : 'Could not read the drift/stale-docs signals.');
+
+  // Backed up: repo-sync clear.
+  const rs = d && d.repoSync && d.repoSync.signal;
+  setChip('trust-backup',
+    rs === 'clear' ? 'good' : rs === 'notice' ? 'warn' : 'unknown',
+    'Backed up',
+    rs === 'clear' ? 'Working tree clean and branch level with its remote.'
+      : rs === 'notice' ? 'Work is not fully backed up — see the Signals tab.'
+      : 'Could not read the repo-sync signal.');
+
+  // Verified: honest freshness against HEAD; never fake green.
+  const v = x && x.verification;
+  if (!x) {
+    setChip('trust-verified', 'unknown', 'Verified', 'Could not read verification status.');
+  } else if (!v || !v.present) {
+    setChip('trust-verified', 'warn', 'Not verified yet', 'No independent verification recorded for the current work yet (the scheduled Codex run writes one).');
+  } else if (v.verdict === 'PASS' && v.mtimeEpoch >= (x.headCommitEpoch || 0)) {
+    setChip('trust-verified', 'good', 'Verified (fresh)', 'Independent PASS recorded, newer than the latest commit.');
+  } else if (v.verdict === 'PASS') {
+    setChip('trust-verified', 'warn', 'Verified (stale)', 'Last verdict was PASS but it predates the latest commit — re-verify.');
+  } else if (v.verdict) {
+    setChip('trust-verified', 'bad', 'Verified: ' + v.verdict, 'Last recorded verdict was ' + v.verdict + '.');
+  } else {
+    setChip('trust-verified', 'warn', 'Verification unclear', 'A verification file exists but no clear verdict was found in it.');
+  }
+
+  // Rules loaded: CLAUDE.md present (proves the rules load, not that they were obeyed).
+  const rl = x && x.rulesLoaded;
+  setChip('trust-rules',
+    rl ? 'good' : (x ? 'bad' : 'unknown'),
+    'Rules loaded',
+    rl ? 'CLAUDE.md is present and auto-loads into every Claude session. (Proves the rules load, not that they were obeyed.)'
+      : x ? 'CLAUDE.md not found — standing rules are NOT loading.'
+      : 'Could not read rules status.');
+}
 
 // ---- project view ----
 function row(label, value) {
@@ -338,4 +405,5 @@ document.getElementById('verify-run').addEventListener('click', async () => {
 renderCorrections();
 initHeader();
 loadLifecycle();
+loadTrust();
 loadHistory();

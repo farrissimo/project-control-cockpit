@@ -14,4 +14,5 @@ contextBridge.exposeInMainWorld('pcc', {
   verify: () => ipcRenderer.invoke('pcc:verify'),
   hardChecks: () => ipcRenderer.invoke('pcc:hardChecks'),
   detections: () => ipcRenderer.invoke('pcc:detections'),
+  trustExtras: () => ipcRenderer.invoke('pcc:trustExtras'),
 });

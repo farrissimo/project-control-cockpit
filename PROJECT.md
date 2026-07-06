@@ -33,8 +33,9 @@ roadmap grid with progress, ranked by his priority.
 ## What's built (branch: feat/cockpit-desktop-app; main untouched)
 Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
 - Chat wired to Claude (`claude -p`), conversation persists across restarts.
-- Left sidebar: Chat / Project / Rules / Memory / Verify.
+- Left sidebar: Chat / Project / Rules / Memory / Signals / Verify.
 - Lifecycle bar (top): "You are here -> Next action -> Decision required", from real state.
+- Live trust strip (top, always visible): On the rails / Backed up / Verified / Rules loaded. Each chip is green only when a real deterministic check says so; "Verified" stays amber unless a fresh independent PASS newer than HEAD exists (never faked).
 - One-click corrections under the chat (Be concise, No cheerleading, Stay in scope, Show evidence, Stop reacting, Copy block).
 - Standing rules auto-load from CLAUDE.md; the Rules view shows them.
 - Project memory: this PROJECT.md, editable in the Memory view, auto-read each session.
@@ -61,11 +62,12 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
      stays the primary verifier; this is parked, not being worked.
 2. Continue down docs/COCKPIT_ROADMAP.md by priority. Shipped this session:
    the Signals view + detectors #9 (untracked-files), #8 (chat-rollover), and
-   #10 (out-of-scope/drift), #11 (stale-docs), and #13 (repo-sync "work backed
-   up?"). #12 (agreements-only-in-chat) is deferred: it needs AI judgment, not a
-   deterministic script, so it is parked rather than faked with keyword guesses.
-   Next: #14 live trust signals (aggregate the Signals into an at-a-glance
-   strip), then #12 as a small on-demand LLM check when the owner wants it.
+   #10 (out-of-scope/drift), #11 (stale-docs), #13 (repo-sync "work backed
+   up?"), and #14 (live trust strip). #12 (agreements-only-in-chat) is deferred:
+   it needs AI judgment, not a deterministic script, so it is parked rather than
+   faked with keyword guesses. Next candidates: P1 #6 lifecycle state-machine,
+   P1 #5 deeper memory carry-forward, P2 #7 in-app handoff auto-generation, then
+   #12 as a small on-demand LLM check when the owner wants it.
 
 ## Roadmap status (full list: docs/COCKPIT_ROADMAP.md)
 8 done, 7 in motion, 10 planned. Next priorities: finish P1 verification (#3,

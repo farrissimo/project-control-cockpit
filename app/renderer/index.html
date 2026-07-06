@@ -89,6 +89,21 @@
   .signal-items { margin: 4px 0 0; padding-left: 18px; color: #b8bdc6; font-size: 13px; }
   .signal-items li { margin: 1px 0; font-family: ui-monospace, monospace; }
   .signal-foot { font-size: 11px; color: #5f646c; margin-top: 10px; }
+
+  #trust { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 6px 20px;
+    border-bottom: 1px solid #23262d; background: #0b0d10; flex: 0 0 auto; }
+  .trust-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+    padding: 3px 10px; border-radius: 999px; border: 1px solid #2b2f37; color: #b8bdc6;
+    background: #14171c; cursor: default; }
+  .trust-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #5f646c; flex: 0 0 auto; }
+  .trust-chip.good { color: #cfeeda; border-color: #235c3a; }
+  .trust-chip.good .dot { background: #3f8f5f; }
+  .trust-chip.warn { color: #f0d9a8; border-color: #5c4a1f; }
+  .trust-chip.warn .dot { background: #f0c674; }
+  .trust-chip.bad { color: #e9b3b3; border-color: #5c2a2a; }
+  .trust-chip.bad .dot { background: #c65d5d; }
+  .trust-chip.unknown .dot { background: #5f646c; }
+  #trust .trust-label { font-size: 11px; color: #5f646c; margin-right: 2px; }
 </style>
 </head>
 <body>
@@ -111,6 +126,13 @@
       <span><span class="lc-label">You are here:</span> <span id="lc-phase">…</span></span>
       <span><span class="lc-label">Next:</span> <span id="lc-next">…</span></span>
       <span id="lc-decision"></span>
+    </div>
+    <div id="trust" title="Live trust signals — each is green only when a real deterministic check says so.">
+      <span class="trust-label">Trust:</span>
+      <span class="trust-chip unknown" id="trust-rails"><span class="dot"></span>On the rails</span>
+      <span class="trust-chip unknown" id="trust-backup"><span class="dot"></span>Backed up</span>
+      <span class="trust-chip unknown" id="trust-verified"><span class="dot"></span>Verified</span>
+      <span class="trust-chip unknown" id="trust-rules"><span class="dot"></span>Rules loaded</span>
     </div>
     <div class="view" id="view-chat">
       <div id="log"></div>
