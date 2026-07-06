@@ -2,7 +2,7 @@
   "task_id": "pcc-pathD-002",
   "task_title": "Directive + Verification Panels (Read-Only)",
   "task_objective": "Extend scripts/generate-dashboard.ps1 (pcc-pathD-001, DECISION-089) per docs/PATH_A_PLAN.md section 6, Phase D1, with two more read-only panels: the Directive Panel (current directive, boundaries, required evidence, success criteria, handoff target, from .cockpit/handoff/worker-directive.md) and the Verification Panel (returned evidence, changed files, verdict, missing evidence, next action, from .cockpit/result/worker-result.md and .cockpit/result/verification-result.json). This remains a pure consumer of the .cockpit/ file bridge (DECISION-074/077/087) and the local-first execution discipline (DECISION-088): still plain PowerShell + static HTML, zero LLM dependency, zero external runtime, no new engine-script calls.",
-  "task_status": "returned_for_verification",
+  "task_status": "complete",
   "assigned_worker": "Claude Code",
   "task_safety_class": "A",
   "completion_criteria": [
@@ -49,7 +49,7 @@
   "current_directive_path": ".cockpit/handoff/worker-directive.md",
   "worker_result_path": ".cockpit/result/worker-result.md",
   "verification_result_path": ".cockpit/result/verification-result.json",
-  "verification_verdict": null,
+  "verification_verdict": "PASS",
   "current_blocker": null,
   "owner_decision_request": null,
   "promotion_basis": {
@@ -57,6 +57,6 @@
     "priority_ref": "docs/PATH_A_PLAN.md section 6 (pcc-pathD-002)",
     "justification": "Auto-promoted as the explicit next task named in the already owner-approved Path A plan (DECISION-087); continuation within an approved lane per DECISION-038/039 Safe Next-Task Drafting Rules, not a new direction fork. The owner explicitly said to keep going until told to stop, with verification paused before each cycle per the owner's chosen mode this session."
   },
-  "next_action": "Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.",
-  "updated_at": "2026-07-05T18:40:03-06:00"
+  "next_action": "Task 'pcc-pathD-002' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-05T18:43:24-06:00"
 }

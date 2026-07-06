@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-pathD-002
 * Task Title: Directive + Verification Panels (Read-Only)
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Auto-Promotion Basis
