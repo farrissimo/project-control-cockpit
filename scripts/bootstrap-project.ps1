@@ -16,12 +16,22 @@
 param(
   [Parameter(Mandatory = $true)][string]$Target,
   [Parameter(Mandatory = $true)][string]$Name,
+  [string]$Blueprint,
   [switch]$Force,
   [switch]$NoGit
 )
 
 $ErrorActionPreference = 'Stop'
 $src = Split-Path -Parent $PSScriptRoot
+
+# Optional blueprint (from the chat intake, reusing CCB's wizard shape). When
+# present, the brief and first decision are filled from it instead of the
+# generic template.
+$bp = $null
+if ($Blueprint) {
+  if (-not (Test-Path -LiteralPath $Blueprint -PathType Leaf)) { Write-Error "Blueprint not found: $Blueprint"; exit 1 }
+  try { $bp = Get-Content -Raw -LiteralPath $Blueprint | ConvertFrom-Json } catch { Write-Error "Blueprint is not valid JSON: $($_.Exception.Message)"; exit 1 }
+}
 
 # --- validate target ---
 if (Test-Path -LiteralPath $Target) {
@@ -117,15 +127,35 @@ Set-Content -LiteralPath (Join-Path $Target '.cockpit/state/doc-freshness-map.js
 }
 "@)
 
-# --- 5. starter docs ---
+# --- 5. starter docs (filled from the blueprint when present) ---
 Ensure-Dir (Join-Path $Target 'docs')
+
+function BpList($arr) { if ($arr) { return (($arr | ForEach-Object { "- $_" }) -join "`n") } return '' }
+
+if ($bp -and $bp.project) {
+  $p = $bp.project
+  $whatThis = "$Name — $($p.problem_statement)`n`nFor: $($p.target_user)`n`nDone looks like: $($p.desired_outcome)"
+  if ($p.hard_constraints) { $whatThis += "`n`nHard constraints: $($p.hard_constraints)" }
+  $inScope = BpList $bp.scope.in_scope
+  $outScope = BpList $bp.scope.out_of_scope
+  $riskLines = ''
+  if ($bp.scope.risks) { $riskLines = (($bp.scope.risks | ForEach-Object { "- [$($_.severity)] $($_.description) -> $($_.mitigation)" }) -join "`n") }
+  $scopeBlock = "`n`n## Scope`n**In:**`n$inScope`n`n**Out:**`n$outScope"
+  if ($riskLines) { $scopeBlock += "`n`n**Risks:**`n$riskLines" }
+  $decisionBody = "Project defined via the PCC chat intake. Problem: $($p.problem_statement) Outcome: $($p.desired_outcome) Risk tolerance: $($p.risk_tolerance). Check-in: $($p.preferred_stopping_point)."
+} else {
+  $whatThis = "$Name. (Define the goal and what ""done"" looks like here.)"
+  $scopeBlock = ''
+  $decisionBody = "This project was scaffolded from the PCC reference implementation: cockpit app, deterministic detectors, lifecycle state-machine, and honest-signal design."
+}
+
 Set-Content -LiteralPath (Join-Path $Target 'PROJECT.md') -Encoding utf8 -Value (@"
 # PROJECT.md - current project brief
 
 Read this first. Always-current summary so a new session starts fully oriented.
 
 ## What this is
-$Name. (Define the goal and what "done" looks like here.)
+$whatThis$scopeBlock
 
 ## Owner
 Visionary / product lead. Plain-language, concise, no cheerleading, no fake "done".
@@ -155,12 +185,11 @@ Status: Active / Superseded / Reversed
 
 (Template header - real decisions start at DECISION-001 below.)
 
-## DECISION-001: $Name bootstrapped with the PCC cockpit
+## DECISION-001: $Name defined and bootstrapped with the PCC cockpit
 Date: $stamp
 Status: Active
 
-This project was scaffolded from the PCC reference implementation: cockpit app,
-deterministic detectors, lifecycle state-machine, and honest-signal design.
+$decisionBody
 "@)
 
 # --- 6. git init ---

@@ -17,8 +17,11 @@
     "scripts/generate-handoff.ps1",
     "scripts/recent-decisions.ps1",
     "scripts/bootstrap-project.ps1",
+    "scripts/babysitting-metrics.ps1",
+    "scripts/new-project-intake.ps1",
     "docs/COCKPIT_ROADMAP.md",
     "docs/DECISIONS.md",
+    "docs/BACKUP_POLICY.md",
     "PROJECT.md",
     "AGENTS.md",
     "CLAUDE.md",
@@ -28,7 +31,8 @@
     ".cockpit/state/lifecycle-model.json",
     ".cockpit/state/lifecycle-state.json",
     ".cockpit/state/doc-freshness-map.json",
-    ".cockpit/state/bloat-thresholds.json"
+    ".cockpit/state/bloat-thresholds.json",
+    ".cockpit/state/models.json"
   ],
-  "updated_at": "2026-07-06T14:40:00-06:00"
+  "updated_at": "2026-07-06T16:30:00-06:00"
 }
