@@ -31,11 +31,11 @@ Status: [x] Done · [~] In progress / Partial · [ ] Planned
 19. [x] Honest babysitting-reduction metrics — `scripts/babysitting-metrics.ps1` + a "Babysitting reduction" section in the Project view. Observable proxies ONLY, explicitly labeled NOT a score: automated watch-jobs now run for you (detector scripts + in-app), commits/snapshots, days active, plus this-chat proxies (your messages, correction-clicks needed, messages you repeated). States plainly it does not prove babysitting dropped.
 26. [x] Rabbit-hole warning (owner-added mid-build) — a non-blocking flag that an idea may be disproportionately large/open-ended for its payoff. Honest form (effort estimation is AI judgment): a one-click "Rabbit-hole check" correction button that makes the AI assess it and name the strong signals + rough size, plus a proactive standing rule in CLAUDE.md to flag rabbit holes before diving in. Never refuses; the owner decides.
 27. [x] Chat history + rename (owner-requested, #1 ask) — like Claude Code's Recents: many named conversations, each pinned to its own Claude session id (switching resumes the right thread). "Chats" panel in the chat toolbar lists them (auto-named from the first message), switch/rename/delete; persists across restarts; migrates the old single-chat. New chat now starts clean (no forced handoff dump; use Generate handoff in the Project tab to carry context).
-28. [x] Chat quick-buttons add-to-message (owner feedback) — Be concise/etc. now append to your current message and Send once, instead of firing a separate turn.
+28. [x] Chat quick-buttons apply-and-send (owner feedback) — with a typed question, the modifier is applied to it and sent in one turn; with an empty box, it applies to the last answer (e.g. shortens a long reply). No more separate "Be concise" turn.
 29. [x] Chat copy blocks + no tool-failure narration (owner-found) — fenced ``` blocks render with a working Copy button; the worker is told it's a text-only channel and never narrates interactive-tool failures.
 
 ## P4 — Later / polish
-20. [~] Multi-project switching (switcher stub in place)
+20. [~] Multi-project switching — CREATING a new project is DONE: chat-first guided intake (scripts/new-project-intake.ps1, reusing CCB's wizard logic) + blueprint-driven scaffold (bootstrap-project.ps1 -Blueprint) + a "New project…" button in the Project tab. SWITCHING the app between existing projects (project registry + re-pointing main.js's PROJECT_DIR + a project view like Codex) is PAUSED by owner (2026-07-06) — deliberately deferred; it's a real architectural change and there's only one project today.
 21. [ ] Peek under the hood (optional technical depth, hidden by default)
 22. [x] Desktop launcher / shortcut
 23. [~] UI polish pass (ongoing)

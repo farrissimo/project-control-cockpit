@@ -76,13 +76,20 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
    check when the owner wants it.
 
 ## Roadmap status (full list: docs/COCKPIT_ROADMAP.md)
-20 done, 3 in motion, 2 planned. ALL of P1, P2, and P3 is now done or honestly
-handled: open P1 is #3 verification (awaits the scheduled Codex run); #12
-(agreements-only-in-chat) is deferred (needs AI judgment). Remaining is only P4
-polish: #20 multi-project switching (stub), #21 peek-under-the-hood, #23 UI
-polish. Every detection ships ONLY in the
-"Observed / what it might mean / what's NOT proven / what to do" format —
-never a fake certainty.
+All of P1/P2/P3 done or honestly handled. Also shipped (owner feedback while
+dogfooding): chat history + rename (#27), apply-and-send quick buttons (#28),
+copy blocks + no tool-failure narration (#29), model switcher + fallback,
+conversation-hijack fix (per-chat session ids), mandatory backup policy.
+NEW PROJECT creation is done (#20 pt1): chat-first guided intake (reuses CCB
+wizard logic) + blueprint scaffold + "New project…" button.
+Open / deferred:
+- #3 verification — awaits the scheduled Codex run (2026-07-07 10:05 MT).
+- #20 multi-project SWITCHING — PAUSED by owner (real architectural change; one
+  project today). Creating new projects works; switching the app between them does not.
+- #12 agreements-only-in-chat — deferred (needs AI judgment).
+- #21 peek-under-the-hood, #23 UI polish — optional, not started.
+Every detection ships ONLY in the "Observed / what it might mean / what's NOT
+proven / what to do" format — never a fake certainty.
 
 ## Key decisions
 - DECISION-102: PCC is a chat-centered local-first desktop app driving Claude
