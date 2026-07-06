@@ -2175,3 +2175,29 @@ Process disclosure: built with Codex unavailable (`DECISION-086`), under direct 
 
 Supersedes: None
 Related: DECISION-074, DECISION-077, DECISION-075, DECISION-086, DECISION-087, DECISION-088, docs/PATH_A_PLAN.md, docs/BRR_POLICY.md, scripts/generate-dashboard.ps1
+
+---
+
+## DECISION-090: pcc-pathD-001 Verified INSUFFICIENT (ChatGPT Manual Bridge); DECISION-089's Process Disclosure Corrected; Owner Decision Pending
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+`pcc-pathD-001` was reviewed via the ChatGPT manual bridge (`DECISION-086`, remote read-only repo access at commit `9fe02fe`) and returned **INSUFFICIENT**, not PASS. The reviewer confirmed `scripts/generate-dashboard.ps1` is genuinely read-only, self-contained, and satisfies the extractability contract, and confirmed the reported JSON-null-cast bug and its fix both check out. The verdict is INSUFFICIENT rather than PASS solely because the worker's own Process Disclosure (`.cockpit/result/worker-result.md`) revealed a real missing safeguard: the mandatory pre-task handoff/backup gate (`scripts/enforce-handoff-restart-safety.ps1`) was skipped this cycle — task-state moved directly from drafted to `in_progress` without passing through `ready_for_worker` — so no true pre-task restore point existed before the task's changes were made; the backup taken afterward is retroactive only. Full verdict recorded in `.cockpit/result/verification-result.json`; task-state advanced to `insufficient_evidence` via `scripts/advance-cockpit-state.ps1`.
+
+The reviewer separately flagged that `DECISION-089` as originally written did not mention this gap, so repo truth read cleaner than the actual cycle was. That is corrected here: `DECISION-089`'s "Implications" paragraph asserted this task was accepted via ChatGPT external check without qualifying that the check found a process gap, and its "Process disclosure" line did not name the skipped gate that `worker-result.md` already disclosed. `DECISION-089` is left as-written in history (already committed/pushed) rather than silently edited, consistent with how `DECISION-083`'s overstatement was corrected by `DECISION-084` rather than by rewriting `DECISION-083` itself; this entry is that correction for `DECISION-089`.
+
+Reason:
+
+This keeps repo truth honest by the same standard the project already applies to itself (`DECISION-006`: worker claims are evidence, not truth; the Owner Review Matrix / Task Safety Classification's whole purpose is to catch exactly this kind of process gap before a task is treated as done). The artifact being sound does not make the cycle's process compliant; the two are evaluated separately, and INSUFFICIENT (not FAIL, not BLOCKED) is the correct verdict shape per `docs/VERIFICATION_RESULT_SPEC.md` for "might be correct, but a required safeguard/evidence is missing."
+
+Implications:
+
+`pcc-pathD-001`'s disposition is not decided by this entry. Per the reviewer's own next-action framing, this is now an explicit owner decision (`docs/BRR_POLICY.md` Owner Review Matrix — an unresolved owner-facing tradeoff, not a worker or verifier call): either (a) explicitly override-accept the cycle given the artifact is sound, the gap is fully and voluntarily disclosed, and git history (`f112fda`, the commit immediately before this task's changes) already preserves the true pre-task state as a de facto restore point even though PCC's own `.cockpit/backups/` mechanism was not used as designed; or (b) treat this as a genuine process failure and require the gate to be run properly on a corrective follow-up. `.cockpit/state/task-state.json`'s `owner_decision_request` is populated with this exact choice so a fresh session surfaces it without re-explaining. No script, schema, verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule is changed by this entry.
+
+Process disclosure: this verification was performed via the ChatGPT manual bridge (`DECISION-086`) with remote, read-only repo access only — no local execution, no independent re-run of `scripts/verify-handback-guardrails.ps1` or other local guardrails. Per `docs/VERIFICATION_RESULT_SPEC.md`, this is additive review, not a substitute for local-guardrail-based independent verification.
+
+Supersedes: None (corrects `DECISION-089`'s incomplete process disclosure without rewriting it; see Owner Decision above)
+Related: DECISION-006, DECISION-086, DECISION-089, docs/VERIFICATION_RESULT_SPEC.md, docs/BRR_POLICY.md, .cockpit/result/verification-result.json
