@@ -191,7 +191,7 @@ controls, calls no engine script.
     `.cockpit/` state and against a synthetic malformed-state case (fails clean,
     no mutation).
   - D1-T1.4 — Record decision + evidence; hand back for verification.
-- **`pcc-pathD-002` — Directive + Verification panels** — ✅ **DELIVERED** (`DECISION-092`, pending verification)
+- **`pcc-pathD-002` — Directive + Verification panels** — ✅ **DELIVERED, verified PASS** (`DECISION-092`)
   - D1-T2.1 — Directive Panel: current directive, boundaries, required evidence,
     success criteria, handoff target (from `.cockpit/handoff/worker-directive.md`).
   - D1-T2.2 — Verification Panel: returned evidence, changed files, verdict,
