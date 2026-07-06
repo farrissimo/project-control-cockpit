@@ -15,9 +15,18 @@ Worker
 
 * Task ID: pcc-pathD-001
 * Task Title: Dashboard Skeleton + Owner Control Board Panel (Read-Only)
-* Task Status: complete
+* Task Status: insufficient_evidence
 * Task Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
 
+## Owner Decision Needed
+
+* Question: pcc-pathD-001 was verified INSUFFICIENT (ChatGPT manual bridge, DECISION-090): the delivered script is sound, but the mandatory pre-task handoff/backup gate was skipped, so no true pre-task restore point existed. How should this cycle be resolved?
+* Reason: This is an owner-facing tradeoff (docs/BRR_POLICY.md Owner Review Matrix), not a worker or verifier call: whether a disclosed, artifact-sound process gap is acceptable to override given git history already preserves the true pre-task state (commit f112fda), or whether the missing safeguard requires a proper redo regardless.
+* Options:
+* Override-accept: record an explicit owner override, correct DECISION-089's disclosure, and advance pcc-pathD-001 to complete.
+* Require redo: keep pcc-pathD-001 at insufficient_evidence and open a corrective follow-up that reruns the handoff gate properly.
+* Something else the owner specifies.
+* Blocked until: Owner reviews DECISION-090 and .cockpit/result/verification-result.json and decides.
 ## Auto-Promotion Basis
 
 * Approved lane: Path A / Category D / Phase D1

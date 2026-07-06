@@ -1,0 +1,29 @@
+{
+  "task_id": "pcc-pathD-001",
+  "verdict": "INSUFFICIENT",
+  "verified_at": "2026-07-05T19:20:00-06:00",
+  "completion_criteria_checked": [
+    "scripts/generate-dashboard.ps1 is self-contained and strictly read-only over the .cockpit/ bridge: reads only the two state files by parameter, writes only -OutputPath (default dashboard/index.html), creates only the output's parent directory, calls no other script, and contains no code path that writes into .cockpit/.",
+    "The reported JSON-null-cast rendering bug and its fix were checked against the current script: every rendered value passes through Encode-Html, which now checks [string]::IsNullOrEmpty after the [string] cast rather than checking for $null before it, correctly producing '(none)' for verification_verdict and current_blocker. No other live field in the script remains exposed to the same blank-cell failure.",
+    "The task's own Process Disclosure (worker-result.md) was checked against the mandatory pre-task handoff/backup gate (scripts/enforce-handoff-restart-safety.ps1): confirmed the gate was skipped -- task-state moved directly to in_progress without passing through ready_for_worker -- so no true pre-task backup existed before the task's changes were made. The later backup is retroactive only, not a genuine pre-task restore point."
+  ],
+  "evidence_reviewed": [
+    "scripts/generate-dashboard.ps1 (full file, read via remote repo access)",
+    ".cockpit/result/worker-result.md (full file, including its Process Disclosure section)",
+    "docs/DECISIONS.md (DECISION-089)",
+    ".cockpit/state/task-state.json"
+  ],
+  "missing_evidence": [
+    "A true pre-task backup/restore point taken before this task's changes were made (the mandatory gate that would have produced one, scripts/enforce-handoff-restart-safety.ps1, was not run before work started)."
+  ],
+  "out_of_scope_findings": [],
+  "risks": [
+    "The delivered script is technically sound (read-only, self-contained, no engine-script calls, no .cockpit/ writes) and the reported null-cast bug fix is correct and complete for this script's rendering path.",
+    "The deficiency is process-compliance, not artifact quality: the mandatory pre-task handoff/backup gate (scripts/enforce-handoff-restart-safety.ps1) was skipped this cycle, so no genuine pre-task restore point exists -- only a retroactive, post-hoc backup taken after the changes were already made.",
+    "DECISION-089 as currently recorded does not mention the skipped gate / missing true pre-task backup that worker-result.md discloses; as written, repo truth (the decision log) reads cleaner than the actual cycle was. This should be corrected regardless of how the task itself is resolved.",
+    "This verification was performed via the ChatGPT manual bridge (DECISION-086) with remote, read-only repo access only. It has no local execution and did not independently re-run scripts/verify-handback-guardrails.ps1 or other local guardrails; per docs/VERIFICATION_RESULT_SPEC.md, this is additive review, not a substitute for local-guardrail-based independent verification."
+  ],
+  "summary": "The delivered script (scripts/generate-dashboard.ps1) is genuinely read-only, self-contained, and satisfies the extractability contract; the reported null-cast bug and its fix both check out. However, this is not a clean accept cycle: the worker's own Process Disclosure confirms the mandatory pre-task handoff/backup gate was skipped, so no true pre-task restore point exists, only a retroactive one. That is a real missing safeguard, not merely a caveat, so the cycle is INSUFFICIENT rather than PASS. Separately, DECISION-089 should be corrected to name this gap plainly, since as written it does not disclose what worker-result.md already discloses.",
+  "next_action": "Owner decision required: either (a) explicitly override-accept this cycle given the artifact is sound and the gap is fully disclosed and already partially mitigated by git history preserving the true pre-task state, recording the override plainly in repo truth, or (b) treat this as a genuine process failure requiring the gate to be run properly on a corrective task. Either way, correct DECISION-089 first so it names the skipped gate / missing true pre-task backup rather than omitting it.",
+  "state_update_allowed": false
+}

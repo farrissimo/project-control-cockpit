@@ -188,9 +188,9 @@
     "explicit_uncertainty": true,
     "separate_facts_from_inference": true
   },
-  "current_blocker": "The delivered script (scripts/generate-dashboard.ps1) is genuinely read-only, self-contained, and satisfies the extractability contract; the reported null-cast bug and its fix both check out. However, this is not a clean accept cycle: the worker's own Process Disclosure confirms the mandatory pre-task handoff/backup gate was skipped, so no true pre-task restore point exists, only a retroactive one. That is a real missing safeguard, not merely a caveat, so the cycle is INSUFFICIENT rather than PASS. Separately, DECISION-089 should be corrected to name this gap plainly, since as written it does not disclose what worker-result.md already discloses.",
+  "current_blocker": null,
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-pathC-004-worker-directive.md",
   "last_verification_verdict": "INSUFFICIENT",
-  "next_expected_action": "Owner decision required: either (a) explicitly override-accept this cycle given the artifact is sound and the gap is fully disclosed and already partially mitigated by git history preserving the true pre-task state, recording the override plainly in repo truth, or (b) treat this as a genuine process failure requiring the gate to be run properly on a corrective task. Either way, correct DECISION-089 first so it names the skipped gate / missing true pre-task backup rather than omitting it.",
-  "updated_at": "2026-07-05T19:30:00-06:00"
+  "next_expected_action": "Task 'pcc-pathD-001' is complete via explicit owner override (DECISION-091), despite an INSUFFICIENT verifier verdict on process compliance (DECISION-090). The delivered artifact itself was independently confirmed sound; the override is a narrow, disclosed exception justified by an exact pre-task git commit already preserving the true restore point, and is not a precedent for future tasks. Next: pcc-pathD-002 (Directive + Verification panels) per docs/PATH_A_PLAN.md section 6.",
+  "updated_at": "2026-07-05T19:45:00-06:00"
 }

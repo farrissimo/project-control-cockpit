@@ -2201,3 +2201,33 @@ Process disclosure: this verification was performed via the ChatGPT manual bridg
 
 Supersedes: None (corrects `DECISION-089`'s incomplete process disclosure without rewriting it; see Owner Decision above)
 Related: DECISION-006, DECISION-086, DECISION-089, docs/VERIFICATION_RESULT_SPEC.md, docs/BRR_POLICY.md, .cockpit/result/verification-result.json
+
+---
+
+## DECISION-091: Owner Override — pcc-pathD-001 Accepted Despite INSUFFICIENT Verdict (Narrow Exception, Not Precedent)
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+`pcc-pathD-001` (`scripts/generate-dashboard.ps1`) is accepted and its task advanced to `complete` via explicit owner override, per `DECISION-006`/`184`'s standing rule that state updates require verifier PASS **or** explicit owner override. The verifier verdict itself is not changed: `.cockpit/result/verification-result.json` remains the true, unaltered record of the ChatGPT manual-bridge review's actual finding — INSUFFICIENT, `state_update_allowed: false` — because the artifact was sound but the mandatory pre-task handoff/backup gate (`scripts/enforce-handoff-restart-safety.ps1`) was skipped this cycle (`DECISION-090`). This override supplies the separate owner authority `docs/VERIFICATION_RESULT_SPEC.md` names for exactly this situation ("false for ... INSUFFICIENT ... unless owner override is recorded separately").
+
+The owner obtained an advisory second opinion from the same ChatGPT manual-bridge reviewer before deciding (consistent with `DECISION-086`'s framing of ChatGPT as an available input, not a decision-maker) and adopted its recommendation and its exact framing, recorded here verbatim in substance:
+
+1. This is override-accepted specifically because the delivered artifact is independently confirmed sound (read-only, self-contained, extractability-compliant; the null-cast bug fix checks out), and the gap is a missing safeguard, not an artifact defect.
+2. The override is acceptable in this specific case because an exact, clean pre-task git commit (`f112fda`) already preserves the true pre-task state — the practical recovery risk the skipped `.cockpit/backups/` gate exists to cover is materially reduced here, even though git history is not a full substitute for that mechanism in general (the PCC-native backup carries a task-linked manifest and a simple restore command; the gate is also about process discipline, not only recoverability).
+3. **This is a narrow, one-cycle exception, not a precedent.** It does not relax, waive, or reinterpret the mandatory pre-task handoff/backup gate for any future task. A future task that skips the gate without an equivalently clean pre-task git commit already in hand should not expect the same override.
+
+Reason:
+
+Requiring a full redo of `pcc-pathD-001` purely to recreate the identical artifact under a properly-run gate would add ceremony without adding real safety in this specific case, since the git-history restore point the gate would have produced already exists. Overriding without this reasoning recorded, however, would risk exactly what point 3 exists to prevent: the override being read later as "the gate doesn't really matter." Recording the narrow justification is what makes this an honest exception rather than a quiet precedent.
+
+Implications:
+
+`.cockpit/state/task-state.json` is updated directly (not via `scripts/advance-cockpit-state.ps1`, which only advances state from a PASS `verification-result.json` and would refuse this case): `task_status` -> `complete`, `current_blocker` -> `null`, `owner_decision_request` -> `null` (resolved), `next_action` restated to reflect the override plainly. `verification_verdict` remains `INSUFFICIENT` -- the true verifier finding is preserved, not overwritten, so a future reader sees both the actual verdict and the override that followed it, not a fabricated PASS. `project-state.json`'s `last_verification_verdict` likewise stays `INSUFFICIENT` and `last_verified_handoff` is left pointing at the last genuine PASS (`pcc-pathC-004`'s archive) rather than being redirected to an override-accepted cycle, preserving that field's meaning as "last PASS-verified," not "last accepted." The next Phase D1 task remains `pcc-pathD-002` (Directive + Verification panels) per `docs/PATH_A_PLAN.md` §6. No script, schema, verdict enum, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule is changed by this override.
+
+Process disclosure: decided by the owner directly, with ChatGPT manual-bridge advisory input (`DECISION-086`) obtained and adopted; Codex remains unavailable and did not review this override.
+
+Supersedes: None
+Related: DECISION-006, DECISION-086, DECISION-089, DECISION-090, docs/VERIFICATION_RESULT_SPEC.md, docs/BRR_POLICY.md
