@@ -39,31 +39,34 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
 - Standing rules auto-load from CLAUDE.md; the Rules view shows them.
 - Project memory: this PROJECT.md, editable in the Memory view, auto-read each session.
 - Verify view: Hard checks (git + scripts/doctor.ps1, deterministic, work today) plus independent review (Codex/agy) via scripts/verify-work.ps1.
+- Signals view: the DECISION-102 honest-detection system. Shipped detectors: untracked-files (scripts/detect-untracked.ps1, deterministic, git-only, respects .gitignore) and chat-rollover (turns/time/repeats from the app's own chat history). Every detector uses the "Observed / what it might mean / what's NOT proven / what to do" format; built to grow (one script + one line in main.js per detector).
 - AGENTS.md: verifier verdict format (PASS/FAIL/INSUFFICIENT/BLOCKED/OUT_OF_SCOPE + NOT PROVEN).
 
 ## Pending / immediate next tasks
-1. VERIFICATION not yet confirmed working. Codex was out of usage until ~10am MT
-   on 2026-07-07. A Windows scheduled task "PCC Verify Codex 10am MT" runs
-   `scripts/verify-work.ps1 -WriteFile` at 10:05 MT and writes the verdict to
-   app/last-verification.txt. After 10am: read that file (or use the Verify tab)
-   and confirm a real verdict appears. Do NOT claim verification works until a
-   clean run is observed.
-2. FIX scripts/verify-work.ps1 fallback: it still calls the RETIRED Gemini CLI
-   (`gemini --skip-trust -p`). Gemini CLI was replaced by Antigravity `agy`
-   (v1.0.10, at %LOCALAPPDATA%\agy\bin\agy.exe). TESTED finding: a plain
-   `agy -p "..."` HANGS (waits for an approval prompt that never renders in a
-   non-interactive shell) and gets killed (exit 255). Per Antigravity docs,
-   non-interactive runs need `agy --headless` plus an `--approve` policy (or
-   `--dangerously-skip-permissions`), and it may need `agy auth login` first
-   (interactive; owner must do it). So: ensure auth, then wire the fallback as
-   e.g. `agy --headless --approve <policy> -p "<review prompt>"`, and TEST it
-   actually returns before trusting it. Codex stays the primary verifier.
-3. Continue down docs/COCKPIT_ROADMAP.md by priority.
+1. VERIFICATION not yet confirmed working. A Windows scheduled task
+   "PCC Verify Codex 10am MT" runs `scripts/verify-work.ps1 -WriteFile` at
+   10:05 MT on 2026-07-07 and writes the verdict to app/last-verification.txt.
+   After it runs, read that file (or use the Verify tab) and confirm a real
+   verdict appears. Do NOT claim verification works until a clean run is
+   observed.
+   - DONE this session (commit d89a174): the fallback no longer calls the
+     retired Gemini CLI; it now calls Antigravity `agy -p` with the git diff
+     embedded inline (agy ignores stdin). NOT PROVEN: agy as a reliable
+     verifier — a real-diff run hung ~13 min and returned nothing. The reliable
+     non-interactive agy invocation is still open: a prior handoff note
+     suggested `agy --headless --approve`, but those flags are NOT in the
+     installed v1.0.10 `agy --help` (which lists `-p/--print`, `--sandbox`,
+     `--dangerously-skip-permissions`), so that note is unconfirmed. Codex
+     stays the primary verifier; this is parked, not being worked.
+2. Continue down docs/COCKPIT_ROADMAP.md by priority. Shipped this session:
+   the Signals view + detectors #9 (untracked-files) and #8 (chat-rollover).
+   Next: #10 out-of-scope/drift, #11 stale-docs, #12 agreements-to-truth.
 
 ## Roadmap status (full list: docs/COCKPIT_ROADMAP.md)
-6 done, 7 in motion, 12 planned. Next priorities: finish P1 verification (#3),
-P1 lifecycle state-machine (#6), P1 deeper memory (#5), then P2 handoff /
-rollover / detections. Every detection ships ONLY in the
+8 done, 7 in motion, 10 planned. Next priorities: finish P1 verification (#3,
+awaiting the scheduled run), P1 lifecycle state-machine (#6), P1 deeper memory
+(#5), then more P2 detectors (#10 drift, #11 stale-docs, #12 agreements). Every
+detection ships ONLY in the
 "Observed / what it might mean / what's NOT proven / what to do" format —
 never a fake certainty.
 
