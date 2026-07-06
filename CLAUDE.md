@@ -19,7 +19,7 @@ start of every session, so these never need to be repeated.
 ## Work discipline
 - Stay in scope. Don't change things that weren't asked for.
 - Prefer local, deterministic tools for mechanical work; spend the LLM only on real judgment.
-- Before building something new, first check how it's already been solved (search the web for recent, real solutions) and reuse a proven tool. Don't reinvent the wheel.
+- Before building something new, ASSUME the problem is already solved somewhere in the world. Web-search for existing, proven solutions FIRST and reuse one; treat "nothing exists" as a surprising result that needs real evidence, not the default. Only build custom when the need is genuinely unique to this project. Don't reinvent the wheel. (When a new idea comes up in chat, do this research proactively before reacting — the owner's "Check prior art" button forces it on demand.)
 - Take snapshots (commits) as you go, so nothing is lost and anything can be rolled back.
 
 ## Current project context
