@@ -209,7 +209,7 @@ controls, calls no engine script.
 
 - **`pcc-pathD-004` — Auto-refresh / watch mode** — ✅ **DELIVERED, verified PASS** (`DECISION-094`): poll `.cockpit/` files and
   re-render; remains read-only.
-- **`pcc-pathD-005` — Session/Usage panel (honest-only)** — ✅ **DELIVERED, non-duplicatively** (`DECISION-095`, pending verification): the honest home for
+- **`pcc-pathD-005` — Session/Usage panel (honest-only)** — ✅ **DELIVERED, non-duplicatively, verified PASS** (`DECISION-095`): the honest home for
   original scope §7.17. Shows only truthfully-derivable facts — current route
   (from `classify-routing.ps1`), routing history — and explicitly **not** any
   fabricated usage/pressure number (`DECISION-008`).
