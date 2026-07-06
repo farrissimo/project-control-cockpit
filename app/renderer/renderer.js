@@ -90,12 +90,29 @@ async function initModels() {
 
 document.getElementById('new-chat').addEventListener('click', async () => {
   if (busy) return;
-  if (!confirm('Start a new chat? Claude will forget the current thread (your project, rules, and files stay).')) return;
+  if (!confirm('Start a new chat? Claude forgets the current thread (your project, rules, and files stay). The handoff briefing will be loaded into the message box so you can orient the fresh chat with one Send.')) return;
   try { await window.pcc.newChat(); } catch (e) { /* best effort */ }
   history = []; save();
   log.innerHTML = '';
   showWelcome();
   loadTrust();
+  // Connect the loop: rollover signal -> New chat -> handoff, in one flow. Load
+  // the fresh handoff into the composer so the new chat can be oriented by
+  // sending it as the first message. The user reviews/edits, then hits Send.
+  try {
+    const r = await window.pcc.handoff();
+    if (r && r.ok && r.text) {
+      input.value = r.text;
+      input.focus();
+      const w = log.querySelector('.welcome');
+      if (w) {
+        const hint = document.createElement('div');
+        hint.style.cssText = 'margin-top:14px;font-size:12px;color:#8ab4ff;';
+        hint.textContent = 'Fresh chat ready — a handoff briefing is loaded in the box below. Hit Send to orient this new chat, or edit it first.';
+        w.appendChild(hint);
+      }
+    }
+  } catch (e) { /* handoff is a bonus; new chat still works without it */ }
 });
 
 function renderCorrections() {
@@ -272,7 +289,7 @@ function computeChatSignal() {
       : 'This chat is still short and shows no repeated messages - no reason to roll over yet.',
     not_proven: 'Token usage and whether context has actually degraded are NOT measurable from here. Whether a fresh chat is warranted is a judgment; these are just observable counts. Messages from before this update have no timestamp, so the time span may undercount.',
     what_to_do: notice
-      ? 'If it feels like you are repeating yourself or the chat is drifting, start a new chat and paste the handoff block / PROJECT.md brief (roadmap #7). Otherwise keep going.'
+      ? 'If it feels like you are repeating yourself or the chat is drifting, hit the "New chat" button (top of the chat) - it starts a fresh thread and loads the handoff briefing for you to send. Otherwise keep going.'
       : 'Nothing needed.',
   };
 }
