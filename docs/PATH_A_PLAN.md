@@ -199,7 +199,7 @@ controls, calls no engine script.
     `verification-result.json`).
   - D1-T2.3 — Functionally test against a real completed cycle's archived
     artifacts.
-- **`pcc-pathD-003` — Routing / Local Tools read-only panel** — ✅ **DELIVERED** (`DECISION-093`, pending verification)
+- **`pcc-pathD-003` — Routing / Local Tools read-only panel** — ✅ **DELIVERED, verified PASS** (`DECISION-093`)
   - D1-T3.1 — Local Tools Panel: suggested local route + command preview, shown
     as **display-only** (the panel never executes anything), sourced from
     `classify-routing.ps1` output captured as data.
