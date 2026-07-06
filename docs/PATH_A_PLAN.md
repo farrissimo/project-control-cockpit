@@ -132,7 +132,7 @@ the same technology — the read-only board is grown, not thrown away.
 | B — Behavior & Tooling Controls | 2 (pre-checkpoint) | ✅ Done — `DECISION-076` (`pcc-pathB-001`) |
 | C — Metrics & Evidence Depth | 3 (pre-checkpoint) | ✅ Done — `DECISION-081` (`pcc-pathC-001..004`) |
 | **Maturity Checkpoint** | Milestone | ✅ Reached — `DECISION-084`; frozen `DECISION-085` |
-| **D — Product Surface (UI)** | Post-checkpoint | 🔶 In progress — Phase D2 complete (`pcc-pathD-004..006`); next is Phase D3, owner-gated (§6) |
+| **D — Product Surface (UI)** | Post-checkpoint | 🔶 Phase D3's currently-named scope complete (`pcc-pathD-007..009`); no further Category D task is currently named in this plan (§6) |
 | E — Multi-Model/Multi-Agent | Deferred | Path-B / CCB-domain scope |
 | F — Knowledge & Memory | Deferred | Gated on proven need |
 
@@ -232,7 +232,7 @@ initiate actions), not just a view.
   surface.
 - **`pcc-pathD-008` — Rollover/handoff controls** — ✅ **DELIVERED, command-to-copy design, verified PASS** (`DECISION-099`): drop a rollover-request file;
   the existing safe-stop/handoff path picks it up.
-- **`pcc-pathD-009` — Tone/Behavior controls:** update `communication_prefs`
+- **`pcc-pathD-009` — Tone/Behavior controls** — ✅ **DELIVERED, first request-driven state mutation** (`DECISION-100`, pending verification): update `communication_prefs`
   (Category B) via a request-file → existing state-update path, never a direct
   edit from the UI.
 

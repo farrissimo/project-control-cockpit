@@ -287,6 +287,7 @@ $routingHistoryHtml
       <tr><th>Latest Clean Handoff</th><td>$(Encode-Html $latestCleanHandoff)</td></tr>
       <tr><th>Rollover-Trigger Warnings</th><td>$(Encode-Html $rolloverWarningsText)</td></tr>
       <tr><th>Request a Rollover</th><td>Run in a terminal: <code>pwsh -File scripts/request-rollover.ps1</code></td></tr>
+      <tr><th>Update Tone/Behavior</th><td>Run in a terminal, e.g.: <code>pwsh -File scripts/request-communication-prefs-update.ps1 -Chattiness concise</code></td></tr>
   </table>
 
   <p class="meta">Generated $generatedAt from canonical .cockpit/ state. Read-only: this page never writes to .cockpit/. Re-run scripts/generate-dashboard.ps1 to refresh.</p>

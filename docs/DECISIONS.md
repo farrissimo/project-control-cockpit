@@ -2447,3 +2447,29 @@ Process disclosure: built with Codex unavailable (`DECISION-086`), under direct 
 
 Supersedes: None
 Related: DECISION-074, DECISION-086, DECISION-087, DECISION-097, DECISION-098, docs/PATH_A_PLAN.md, scripts/request-rollover.ps1, scripts/process-rollover-requests.ps1, scripts/safe-stop.ps1
+
+---
+
+## DECISION-100: Tone/Behavior Controls Delivered — First Request-Driven Canonical State Mutation (pcc-pathD-009); Phase D3's Currently-Named Scope Complete
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+`docs/PATH_A_PLAN.md` §6 Phase D3's final named task is delivered: `scripts/request-communication-prefs-update.ps1` (producer) and `scripts/process-communication-prefs-requests.ps1` (consumer), plus a new display-only command-example line in the dashboard's Handoff/Rollover panel. This is the first request-file consumer that mutates canonical `.cockpit/state/project-state.json` -- `pcc-pathD-008`'s consumer only ran a read-only check and never touched canonical state.
+
+Reason:
+
+Per `DECISION-015` ("state consistency must be checked with a local deterministic validator before state updates are treated as complete"), the consumer validates the **full proposed** `project-state.json` object against `schemas/project-state.schema.json` (via `Test-Json`) **before writing anything to disk**. An invalid request (an out-of-enum value, an unrecognized field name) is rejected outright -- no file is touched, the request is marked `rejected` with a clear reason, and moved to `.cockpit/request/rejected/`. Only a request that passes this pre-write check is ever applied; a post-write call to the existing `scripts/validate-cockpit-state.ps1` cross-checks the result, and if that surprising case ever failed, the script rolls the file back to its pre-write bytes immediately rather than leaving unchecked state on disk. Only `communication_prefs` and `updated_at` are ever touched by this pathway -- no other `project-state.json` field.
+
+Functionally tested (not read-through only) against the **real** `project-state.json`, protected by the mandatory pre-task backup: (1) a valid update (`chattiness: concise` -> `balanced`) applied correctly, `validate-cockpit-state.ps1` passed afterward, moved to `processed/`; (2) an out-of-enum value (`tone: aggressive`) rejected outright, confirmed via file hash that `project-state.json` was byte-identical before and after, moved to `rejected/` with the exact failing schema path named; (3) an unrecognized field name (`not_a_real_field`) also rejected with zero state mutation, confirmed by hash; (4) an empty inbox produced a clean no-op. The test-induced `chattiness` change was then reverted back to its original value (`concise`) **through the same real pathway** (a second valid request), rather than a raw manual edit -- proving the round-trip and leaving `communication_prefs` exactly as it was before testing began.
+
+Implications:
+
+No existing script was modified except `scripts/generate-dashboard.ps1`'s one added display-only line; no schema was modified. `.cockpit/request/processed/` and `.cockpit/request/rejected/` now contain real artifacts from this task's own functional testing, left in place as honest evidence, consistent with `pcc-pathD-008`'s precedent. This task is Task Safety Class B, same as its Phase D3 predecessors; per the owner's stated mode this session, it is handed back for verification rather than self-closed. **This completes Phase D3's currently-named scope** (`pcc-pathD-007`/`008`/`009`), and with it, `docs/PATH_A_PLAN.md`'s entire currently-specified Category D roadmap.
+
+Process disclosure: built with Codex unavailable (`DECISION-086`), under direct owner direction; self-checked with PCC's local guardrails; the mandatory pre-task handoff/backup gate was run correctly before work began (genuine backup `20260705-200745`) -- particularly load-bearing this cycle since this is the first task able to mutate canonical state through the new pathway.
+
+Supersedes: None
+Related: DECISION-008, DECISION-015, DECISION-074, DECISION-086, DECISION-087, DECISION-097, DECISION-098, DECISION-099, docs/PATH_A_PLAN.md, schemas/project-state.schema.json, scripts/request-communication-prefs-update.ps1, scripts/process-communication-prefs-requests.ps1, scripts/validate-cockpit-state.ps1

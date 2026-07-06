@@ -1,0 +1,13 @@
+{
+  "request_id": "commprefs-test-badfield",
+  "request_type": "communication_prefs_update",
+  "created_at": "2026-07-05T20:10:00-06:00",
+  "source": "owner-cli",
+  "status": "rejected",
+  "payload": {
+    "fields": {
+      "not_a_real_field": "whatever"
+    },
+    "rejection_reason": "Unrecognized communication_prefs field name(s): not_a_real_field."
+  }
+}

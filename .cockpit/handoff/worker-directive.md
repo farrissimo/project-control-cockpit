@@ -13,16 +13,16 @@ Worker
 
 ## Current Task
 
-* Task ID: pcc-pathD-008
-* Task Title: Rollover/Handoff Controls (First Producer + Consumer, Command-to-Copy Design)
-* Task Status: complete
+* Task ID: pcc-pathD-009
+* Task Title: Tone/Behavior Controls (communication_prefs, First Request-Driven State Mutation)
+* Task Status: returned_for_verification
 * Task Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Auto-Promotion Basis
 
 * Approved lane: Path A / Category D / Phase D3
-* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-008)
-* Justification (continuation, not a fork): Continuation of the owner-authorized Phase D3 (DECISION-097). Design fork (command-to-copy vs. local server) was explicitly re-confirmed with the owner before drafting; command-to-copy was chosen to preserve the existing static-file architecture, per the owner's own stated reasoning.
+* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-009)
+* Justification (continuation, not a fork): Final task in the owner-authorized Phase D3 scope (DECISION-097). Last task named in the current plan for Category D; completes the plan's currently-specified Phase D3.
 ## Objective
 
 Read this directive from `.cockpit/handoff/worker-directive.md`, complete the bounded task below, and return your result to `.cockpit/result/worker-result.md` using the required evidence format.
@@ -55,31 +55,30 @@ The owner's standing communication preferences (apply these without being asked;
 * Separate facts from inference: True
 ## Exact Next Action
 
-Deliver docs/PATH_A_PLAN.md section 6 Phase D3's second task: the first real producer and consumer for the .cockpit/request/ inbox contract defined in pcc-pathD-007. DESIGN DECISION (owner-confirmed): the dashboard remains a static HTML file with no server; a rollover 'control' cannot be a live clickable button that writes a file from the browser. Instead, this delivers (a) scripts/request-rollover.ps1, a small producer script the owner runs from a terminal that writes a properly-shaped rollover request file into .cockpit/request/; (b) scripts/process-rollover-requests.ps1, a consumer that detects pending rollover requests and runs the existing scripts/safe-stop.ps1 (unmodified, already read-only and always-exit-0) as its response, capturing the report into the request and moving it to .cockpit/request/processed/ or .cockpit/request/rejected/; (c) a small addition to the dashboard's Handoff/Rollover panel showing the exact command to run to request a rollover, matching the existing Local Tools Panel's command-preview pattern from the original scope. This does NOT invent any new automated rollover/reset behavior -- the 'existing safe-stop/handoff path' is exactly scripts/safe-stop.ps1's existing advisory check, run in response to the request, not a new irreversible action.
+Deliver docs/PATH_A_PLAN.md section 6 Phase D3's final named task: update project-state.json's communication_prefs via a request-file -> existing state-update path, never a direct edit from the UI. This is the first task where a request-file consumer actually mutates canonical .cockpit/state/project-state.json (pcc-pathD-008's consumer only ran the existing read-only safe-stop.ps1 check and never touched canonical state). Deliver scripts/request-communication-prefs-update.ps1 (producer: a CLI script the owner runs, accepting one optional named parameter per communication_prefs field, writing a communication_prefs_update request containing only the fields to change) and scripts/process-communication-prefs-requests.ps1 (consumer: detects pending requests, builds the proposed merged communication_prefs object, validates the FULL proposed project-state.json against schemas/project-state.schema.json BEFORE writing anything -- rejecting, not writing, if invalid -- then writes it, re-runs scripts/validate-cockpit-state.ps1 as a post-write cross-check, and marks the request processed/rejected accordingly). No direct UI edit of communication_prefs exists or is created; the dashboard only displays the command to run.
 
 ## Allowed Scope
 
 The worker may:
 
-* Create scripts/request-rollover.ps1 (new producer script).
-* Create scripts/process-rollover-requests.ps1 (new consumer script, invoking only scripts/safe-stop.ps1 as a subprocess).
-* Edit scripts/generate-dashboard.ps1 to add the one new display-only command line to the Handoff/Rollover panel.
-* Write and move real files within .cockpit/request/ (including creating .cockpit/request/processed/ and/or .cockpit/request/rejected/ subdirectories as needed) as part of normal functional testing and operation -- this is the designed write surface for this exact purpose (DECISION-098).
+* Create scripts/request-communication-prefs-update.ps1 (new producer script).
+* Create scripts/process-communication-prefs-requests.ps1 (new consumer script, invoking only scripts/validate-cockpit-state.ps1 as a post-write cross-check).
+* Edit scripts/generate-dashboard.ps1 to add one new display-only command-example line.
+* Write, mutate (only communication_prefs and updated_at within project-state.json, via the consumer's own validated path), and move real files within .cockpit/request/ and .cockpit/state/project-state.json as part of normal functional testing and operation.
 * Edit docs/DECISIONS.md to record the new decision.
-* Edit docs/PATH_A_PLAN.md only to mark pcc-pathD-008 as delivered, not to change its scope or spec.
+* Edit docs/PATH_A_PLAN.md to mark pcc-pathD-009 delivered and note Phase D3's current scope is complete.
 
 ## Forbidden Scope
 
 The worker must not:
 
-* Do not introduce a local web server, HTTP listener, or any live browser-to-filesystem bridge -- the owner explicitly rejected this design for this task.
-* Do not modify scripts/safe-stop.ps1 or any other existing script besides scripts/generate-dashboard.ps1 (display-only addition).
-* Do not modify schemas/request.schema.json or any other schema.
-* Do not invent any new automated rollover/reset/rotation behavior beyond running the existing scripts/safe-stop.ps1 check.
+* Do not create any direct UI edit path for communication_prefs; the dashboard only displays an example command.
+* Do not modify scripts/validate-cockpit-state.ps1, scripts/check-schemas.ps1, or any other existing script besides scripts/generate-dashboard.ps1 (one display-only line).
+* Do not modify schemas/request.schema.json, schemas/project-state.schema.json, or any other schema.
+* Do not let the consumer write project-state.json before validating the FULL proposed object against schemas/project-state.schema.json -- invalid input must never touch disk, even transiently.
+* Do not update any project-state.json field other than communication_prefs and updated_at from this pathway.
 * Do not add any new log event type or write to routing-log.jsonl.
-* Do not mutate any canonical .cockpit/ file (state/handoff/result) from either new script; all writes stay within .cockpit/request/.
 * Do not change any verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule.
-* Do not build pcc-pathD-009's tone/behavior controls in this task.
 * Do not manually invoke 'codex exec' or otherwise self-issue a verification verdict for this task in this cycle.
 * Do not skip the mandatory pre-task handoff/backup gate; it must be run while task_status is 'ready_for_worker', before any code change.
 
@@ -87,14 +86,14 @@ The worker must not:
 
 The task is complete only if:
 
-* scripts/request-rollover.ps1 (new): writes exactly one new file into .cockpit/request/ matching schemas/request.schema.json (request_type: 'rollover', status: 'pending', source identifying it as owner/CLI-initiated, a generated request_id, created_at timestamp, and an optional -Reason parameter stored in payload.reason, defaulting to a generic value if omitted). Writes nothing else; calls no other script.
-* scripts/process-rollover-requests.ps1 (new): scans .cockpit/request/ (top level only, not its processed/rejected subdirectories) for files with request_type 'rollover' and status 'pending'; for each, performs a lightweight structural validation (required fields present, request_type/status as expected) and skips (leaves in place, does not crash the batch) any file that fails it; for each valid pending rollover request, invokes scripts/safe-stop.ps1 as an explicit subprocess (unmodified, already read-only, always-exit-0), captures its full stdout, records it into the request (e.g. payload.safe_stop_report), sets status to 'processed', and moves the file to .cockpit/request/processed/. Malformed or unreadable files are left in place with a clear console warning, not silently discarded and not crash-inducing for other valid requests in the same batch.
-* scripts/generate-dashboard.ps1's Handoff/Rollover panel gains one new display-only line showing the exact copy-paste command to request a rollover (e.g. 'pwsh -File scripts/request-rollover.ps1'). This is static text: no new file read, no new subprocess call, no change to the dashboard's read-only contract.
-* Neither new script invokes any script other than scripts/safe-stop.ps1 (by process-rollover-requests.ps1 only); no existing script is modified; no schema is modified.
-* Functionally tested (not read-through only), against the real .cockpit/request/ inbox (this is the intended integration surface, unlike pcc-pathD-007's contract-only phase): run scripts/request-rollover.ps1 to create a real pending rollover request; run scripts/process-rollover-requests.ps1 and confirm it is detected, safe-stop.ps1's real report is captured into it, and the file is moved to .cockpit/request/processed/; run scripts/process-rollover-requests.ps1 again with the inbox empty and confirm a clean, graceful no-op; place one malformed JSON file directly in .cockpit/request/ and confirm it is skipped with a clear warning, not crashing the batch or being silently deleted.
-* A new decision is recorded in docs/DECISIONS.md documenting the delivery, the command-to-copy design choice and why a local server was rejected (per the owner's confirmed reasoning), and the fact that no new automated rollover action was invented -- only the existing safe-stop.ps1 check is composed. docs/PATH_A_PLAN.md is updated only to mark pcc-pathD-008 as delivered, not to change its scope.
-* No new log event type is added; the two new scripts do not call scripts/log-event.ps1.
-* The mandatory pre-task handoff/backup gate is run correctly before any code change, continuing the standing expectation from pcc-pathD-002 onward.
+* scripts/request-communication-prefs-update.ps1 (new): a CLI script with one optional parameter per communication_prefs field (Tone, LanguageLevel, Chattiness, NoCheerleading, ConciseByDefault, ExplicitUncertainty, SeparateFactsFromInference), writing a request file matching schemas/request.schema.json (request_type: 'communication_prefs_update', status: 'pending') whose payload.fields contains ONLY the parameters actually supplied (partial update, not a full communication_prefs object). Fails cleanly with a clear error if no field parameters are supplied at all (nothing to request). Writes nothing else; calls no other script.
+* scripts/process-communication-prefs-requests.ps1 (new): scans .cockpit/request/ (top level only) for files with request_type 'communication_prefs_update' and status 'pending'; for each, reads the live .cockpit/state/project-state.json, builds a proposed communication_prefs object by merging payload.fields onto the current values (unrecognized field names in payload.fields cause the request to be rejected, not silently ignored), and validates the FULL proposed project-state.json object against schemas/project-state.schema.json (via Test-Json) BEFORE writing anything to disk. If invalid (e.g. an out-of-enum value, an unrecognized field), the request is rejected: no file on disk is changed, the request is marked 'rejected' with a clear reason recorded in its payload, and moved to .cockpit/request/rejected/. If valid, .cockpit/state/project-state.json is written with the updated communication_prefs and a bumped updated_at, scripts/validate-cockpit-state.ps1 is run as a post-write cross-check (Fail loudly if it does not pass -- this must never happen if the pre-write schema validation was done correctly, but is checked anyway per DECISION-015's discipline), and the request is marked 'processed' and moved to .cockpit/request/processed/.
+* scripts/generate-dashboard.ps1's Session/Usage or Handoff/Rollover panel (whichever fits better on inspection) gains one new display-only line showing an example command to request a tone/behavior change (e.g. 'pwsh -File scripts/request-communication-prefs-update.ps1 -Chattiness concise'). Static text only: no new file read, no new subprocess call, no change to the dashboard's own read-only contract.
+* Neither new script invokes any script other than scripts/validate-cockpit-state.ps1 (by the consumer, post-write only); no existing script is modified except the one display-only dashboard line; no schema is modified.
+* Functionally tested (not read-through only), against the real project-state.json (with a full pre-task backup already taken by the mandatory gate, so this is safe): (a) a valid request changing one recognized field to a valid enum value -- confirm it is applied, validate-cockpit-state.ps1 passes afterward, and the request is moved to processed/ with the change reflected in .cockpit/state/project-state.json; (b) a request with an out-of-enum value (e.g. tone: 'aggressive') -- confirm it is rejected, project-state.json is NOT changed at all, and the request is moved to rejected/ with a clear reason; (c) a request naming an unrecognized field -- confirm it is also rejected without writing state; (d) the empty-inbox no-op case; (e) confirm project-state.json is restored to its pre-test values after testing (or that the test change itself is an acceptable, intentional, disclosed real update, decided explicitly, not left as an accidental side effect).
+* A new decision is recorded in docs/DECISIONS.md documenting the delivery, explicitly naming this as the first request-consumer that mutates canonical state and how the pre-write schema validation prevents ever writing invalid state to disk. docs/PATH_A_PLAN.md is updated to mark pcc-pathD-009 as delivered and to note that Phase D3's currently-named scope (pcc-pathD-007/008/009) is now complete.
+* No new log event type is added; neither new script calls scripts/log-event.ps1.
+* The mandatory pre-task handoff/backup gate is run correctly before any code change, continuing the standing expectation from pcc-pathD-002 onward -- especially important this cycle since this is the first task that can mutate project-state.json through this new pathway.
 * The task is handed back through the normal worker path for verification; it is not self-closed in this cycle (owner's stated preference remains: pause before each verification), and no verification verdict is written by the worker.
 
 ## Required Evidence
@@ -104,10 +103,10 @@ Return the following evidence:
 * Files created or changed.
 * Summary of changes.
 * Commands run, including confirmation the pre-task handoff gate ran before work began.
-* Command/test results, including the real end-to-end producer->consumer test, the empty-inbox no-op test, and the malformed-file tolerance test.
+* Command/test results, including the valid-update, invalid-enum-rejection, unrecognized-field-rejection, and empty-inbox test cases, and explicit confirmation of project-state.json's final state after testing.
 * Known risks.
 * Unresolved assumptions.
-* Confirmation that forbidden scope was not touched, including that no server/live-bridge was introduced and no new automated rollover action was invented beyond composing scripts/safe-stop.ps1.
+* Confirmation that forbidden scope was not touched, including that invalid input never touched project-state.json on disk and that only communication_prefs/updated_at were ever changed by this pathway.
 
 ## Expected Return Format
 

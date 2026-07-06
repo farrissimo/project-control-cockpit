@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-05T20:04:48-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-05T20:12:34-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -10,17 +10,17 @@ Current phase: post-brr
 
 ## Active Task
 
-* Task ID: pcc-pathD-008
-* Title: Rollover/Handoff Controls (First Producer + Consumer, Command-to-Copy Design)
-* Status: complete
+* Task ID: pcc-pathD-009
+* Title: Tone/Behavior Controls (communication_prefs, First Request-Driven State Mutation)
+* Status: returned_for_verification
 * Safety Class: B (see docs/BRR_POLICY.md "Task Safety Classification")
-* Objective: Deliver docs/PATH_A_PLAN.md section 6 Phase D3's second task: the first real producer and consumer for the .cockpit/request/ inbox contract defined in pcc-pathD-007. DESIGN DECISION (owner-confirmed): the dashboard remains a static HTML file with no server; a rollover 'control' cannot be a live clickable button that writes a file from the browser. Instead, this delivers (a) scripts/request-rollover.ps1, a small producer script the owner runs from a terminal that writes a properly-shaped rollover request file into .cockpit/request/; (b) scripts/process-rollover-requests.ps1, a consumer that detects pending rollover requests and runs the existing scripts/safe-stop.ps1 (unmodified, already read-only and always-exit-0) as its response, capturing the report into the request and moving it to .cockpit/request/processed/ or .cockpit/request/rejected/; (c) a small addition to the dashboard's Handoff/Rollover panel showing the exact command to run to request a rollover, matching the existing Local Tools Panel's command-preview pattern from the original scope. This does NOT invent any new automated rollover/reset behavior -- the 'existing safe-stop/handoff path' is exactly scripts/safe-stop.ps1's existing advisory check, run in response to the request, not a new irreversible action.
+* Objective: Deliver docs/PATH_A_PLAN.md section 6 Phase D3's final named task: update project-state.json's communication_prefs via a request-file -> existing state-update path, never a direct edit from the UI. This is the first task where a request-file consumer actually mutates canonical .cockpit/state/project-state.json (pcc-pathD-008's consumer only ran the existing read-only safe-stop.ps1 check and never touched canonical state). Deliver scripts/request-communication-prefs-update.ps1 (producer: a CLI script the owner runs, accepting one optional named parameter per communication_prefs field, writing a communication_prefs_update request containing only the fields to change) and scripts/process-communication-prefs-requests.ps1 (consumer: detects pending requests, builds the proposed merged communication_prefs object, validates the FULL proposed project-state.json against schemas/project-state.schema.json BEFORE writing anything -- rejecting, not writing, if invalid -- then writes it, re-runs scripts/validate-cockpit-state.ps1 as a post-write cross-check, and marks the request processed/rejected accordingly). No direct UI edit of communication_prefs exists or is created; the dashboard only displays the command to run.
 
 ## Auto-Promotion Basis
 
 * Approved lane: Path A / Category D / Phase D3
-* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-008)
-* Justification (continuation, not a fork): Continuation of the owner-authorized Phase D3 (DECISION-097). Design fork (command-to-copy vs. local server) was explicitly re-confirmed with the owner before drafting; command-to-copy was chosen to preserve the existing static-file architecture, per the owner's own stated reasoning.
+* Priority / plan reference: docs/PATH_A_PLAN.md section 6 (pcc-pathD-009)
+* Justification (continuation, not a fork): Final task in the owner-authorized Phase D3 scope (DECISION-097). Last task named in the current plan for Category D; completes the plan's currently-specified Phase D3.
 ## Last Verified
 
 * Verdict: PASS for task 'pcc-pathD-008', verified at 2026-07-05T23:05:00-06:00
@@ -44,5 +44,5 @@ Current phase: post-brr
 
 ## What Happens Next
 
-* Task-level: Task 'pcc-pathD-008' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-pathD-008' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Task-level: Worker evidence is in .cockpit/result/worker-result.md. Codex reviews evidence and issues a verification verdict per docs/VERIFICATION_RESULT_SPEC.md.
+* Project-level: Worker evidence for task 'pcc-pathD-009' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict.
