@@ -62,13 +62,29 @@ ipcMain.handle('pcc:saveMemory', (_e, text) => {
 ipcMain.handle('pcc:verify', () => new Promise((resolve) => {
   const prompt = 'Independently verify the most recent work in this repository following the review guidelines in AGENTS.md. Do not make any changes.';
   const cmd = 'codex exec --sandbox read-only "' + prompt + '"';
-  exec(cmd, { cwd: PROJECT_DIR, maxBuffer: 12 * 1024 * 1024, timeout: 300000, windowsHide: true }, (err, stdout, stderr) => {
+  exec(cmd, { cwd: PROJECT_DIR, maxBuffer: 12 * 1024 * 1024, timeout: 150000, windowsHide: true }, (err, stdout, stderr) => {
     const out = (stdout || '').trim();
     if (out) return resolve({ ok: true, text: out });
-    if (err) return resolve({ ok: false, text: 'Verifier could not run: ' + (err.killed ? 'timed out after 5 min' : (stderr || err.message)) });
+    if (err) return resolve({ ok: false, text: 'Codex review unavailable (out of usage, not signed in, or timed out): ' + (err.killed ? 'timed out' : (stderr || err.message)) });
     resolve({ ok: true, text: (stderr || '(no output)').trim() });
   });
 }));
+
+// Hard checks - deterministic facts, no LLM, always available: PCC's own
+// health check plus the git working-tree/scope facts.
+function runCmd(cmd, timeout) {
+  return new Promise((res) => exec(cmd, { cwd: PROJECT_DIR, maxBuffer: 8 * 1024 * 1024, timeout: timeout || 60000, windowsHide: true }, (e, so, se) => {
+    let out = ((so || '') + (se ? ('\n' + se) : '')).trim();
+    out = out.replace(/\x1b\[[0-9;]*m/g, ''); // strip terminal color codes
+    res(out || (e ? e.message : '(no output)'));
+  }));
+}
+
+ipcMain.handle('pcc:hardChecks', async () => {
+  const git = await runCmd('git status --short --branch');
+  const doctor = await runCmd('pwsh -NoProfile -File scripts/doctor.ps1', 120000);
+  return { git, doctor };
+});
 
 // Send a message to Claude Code non-interactively. The prompt goes in over
 // stdin (so quotes/newlines in the message can never break shell parsing).

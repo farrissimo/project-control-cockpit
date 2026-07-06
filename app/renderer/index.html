@@ -107,9 +107,16 @@
 
     <div class="view hidden panel" id="view-verify">
       <h2>Verify the work</h2>
-      <p class="muted">Runs Codex as an independent checker of the latest changes — real checks, not the worker grading itself. It can take a minute.</p>
-      <div class="memory-actions"><button id="verify-run" type="button">Run verification</button><span id="verify-status" class="muted"></span></div>
-      <pre class="rules" id="verify-result" style="margin-top:16px; display:none;"></pre>
+      <p class="muted">Two layers: hard checks (facts, always available) and an independent Codex review (judgment, needs Codex usage).</p>
+
+      <h3 style="font-size:14px; margin:16px 0 2px; color:#8ab4ff; font-weight:500;">Hard checks — facts</h3>
+      <p class="muted">What actually changed, and PCC's own health check. No AI, no opinion.</p>
+      <pre class="rules" id="verify-checks">Running…</pre>
+
+      <h3 style="font-size:14px; margin:22px 0 2px; color:#8ab4ff; font-weight:500;">Independent review — Codex</h3>
+      <p class="muted">A separate agent judges the work. Needs Codex usage available.</p>
+      <div class="memory-actions"><button id="verify-run" type="button">Run Codex review</button><span id="verify-status" class="muted"></span></div>
+      <pre class="rules" id="verify-result" style="margin-top:12px; display:none;"></pre>
     </div>
   </section>
   <script src="renderer.js"></script>

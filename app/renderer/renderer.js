@@ -112,7 +112,7 @@ const views = {
   memory: document.getElementById('view-memory'),
   verify: document.getElementById('view-verify'),
 };
-let loadedProject = false, loadedRules = false, loadedMemory = false;
+let loadedProject = false, loadedRules = false, loadedMemory = false, loadedVerify = false;
 
 document.querySelectorAll('.nav').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -123,8 +123,19 @@ document.querySelectorAll('.nav').forEach((btn) => {
     if (v === 'project' && !loadedProject) { loadProject(); loadedProject = true; }
     if (v === 'rules' && !loadedRules) { loadRules(); loadedRules = true; }
     if (v === 'memory' && !loadedMemory) { loadMemory(); loadedMemory = true; }
+    if (v === 'verify' && !loadedVerify) { runHardChecks(); loadedVerify = true; }
   });
 });
+
+async function runHardChecks() {
+  const el = document.getElementById('verify-checks');
+  try {
+    const r = await window.pcc.hardChecks();
+    el.textContent = 'GIT — what changed:\n' + (r.git || '(clean)') + '\n\nPCC HEALTH CHECK:\n' + (r.doctor || '(no output)');
+  } catch (e) {
+    el.textContent = 'Could not run hard checks: ' + e.message;
+  }
+}
 
 // ---- project view ----
 function row(label, value) {
@@ -197,7 +208,7 @@ document.getElementById('verify-run').addEventListener('click', async () => {
   const result = document.getElementById('verify-result');
   const btn = document.getElementById('verify-run');
   btn.disabled = true;
-  status.textContent = 'Codex is verifying… this can take a minute.';
+  status.textContent = 'Codex is reviewing… (needs usage available; can take a minute)';
   result.style.display = 'none';
   try {
     const r = await window.pcc.verify();
