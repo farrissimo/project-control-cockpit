@@ -435,6 +435,40 @@ async function loadProject() {
     body.innerHTML = '<p class="muted">Could not read project state.</p>';
   }
   loadDecisions();
+  loadMetrics();
+}
+
+// Babysitting-reduction metrics (roadmap #19): repo-side proxies from the script
+// combined with this chat's own proxies. Honest - labeled proxies, not a score.
+async function loadMetrics() {
+  const el = document.getElementById('metrics-body');
+  if (!el) return;
+  let m = null;
+  try { m = await window.pcc.metrics(); } catch (e) { /* leave null */ }
+
+  // Chat-side proxies from history.
+  const userMsgs = history.filter((x) => x.cls === 'user');
+  const correctionSet = new Set(CORRECTIONS.map((c) => c.msg));
+  const corrections = userMsgs.filter((x) => correctionSet.has((x.text || '').trim())).length;
+  const norm = (t) => (t || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const counts = {};
+  userMsgs.forEach((x) => { const k = norm(x.text); if (k) counts[k] = (counts[k] || 0) + 1; });
+  const repeats = Object.values(counts).filter((n) => n >= 2).length;
+
+  const rows = [];
+  if (m) {
+    rows.push(['Automated watch-jobs now run for you', m.watchers + '  (' + m.detector_scripts + ' scripts + ' + m.in_app_watchers + ' in-app)']);
+    rows.push(['Snapshots (commits) so nothing is lost', m.commits_total + ' total · ' + m.commits_this_branch + ' on this branch']);
+    rows.push(['Days active (first→last commit)', String(m.days_active)]);
+  }
+  rows.push(['This chat: your messages', String(userMsgs.length)]);
+  rows.push(['This chat: correction-clicks needed', String(corrections)]);
+  rows.push(['This chat: messages you repeated', String(repeats)]);
+
+  el.innerHTML = '<table class="state">'
+    + rows.map((r) => '<tr><th>' + escapeHtml(r[0]) + '</th><td>' + escapeHtml(r[1]) + '</td></tr>').join('')
+    + '</table>'
+    + '<p class="muted" style="margin-top:8px;">' + escapeHtml((m && m.note) || 'Observable proxies only — not proof babysitting dropped.') + '</p>';
 }
 
 // Recent decisions carry-forward (roadmap #5): surfaced from docs/DECISIONS.md.

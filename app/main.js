@@ -122,6 +122,14 @@ function runDetector(script) {
   });
 }
 
+// Babysitting-reduction metrics: observable proxies only (never a fake score).
+ipcMain.handle('pcc:metrics', () => new Promise((resolve) => {
+  exec('pwsh -NoProfile -File scripts/babysitting-metrics.ps1 -Json', { cwd: PROJECT_DIR, maxBuffer: 4 * 1024 * 1024, timeout: 20000, windowsHide: true }, (err, stdout) => {
+    try { resolve(JSON.parse((stdout || '').trim())); }
+    catch (e) { resolve(null); }
+  });
+}));
+
 // Recent decisions: carry-forward memory so "what did we decide?" is one click
 // away, read straight from the canonical log (docs/DECISIONS.md).
 ipcMain.handle('pcc:recentDecisions', () => new Promise((resolve) => {

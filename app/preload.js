@@ -18,4 +18,5 @@ contextBridge.exposeInMainWorld('pcc', {
   handoff: () => ipcRenderer.invoke('pcc:handoff'),
   lifecycle: () => ipcRenderer.invoke('pcc:lifecycle'),
   recentDecisions: () => ipcRenderer.invoke('pcc:recentDecisions'),
+  metrics: () => ipcRenderer.invoke('pcc:metrics'),
 });

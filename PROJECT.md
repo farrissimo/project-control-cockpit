@@ -75,11 +75,11 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
    check when the owner wants it.
 
 ## Roadmap status (full list: docs/COCKPIT_ROADMAP.md)
-15 done, 3 in motion, 7 planned. ALL of P1 and P2 is now done or honestly
-handled: the only open P1 is #3 verification, which awaits the scheduled Codex
-run (wiring + fallback done). #12 (agreements-only-in-chat) is deferred (needs AI
-judgment). Everything remaining is P3/P4 (extra honest detections, bootstrap,
-metrics, multi-project, polish) — a new phase. Every detection ships ONLY in the
+20 done, 3 in motion, 2 planned. ALL of P1, P2, and P3 is now done or honestly
+handled: open P1 is #3 verification (awaits the scheduled Codex run); #12
+(agreements-only-in-chat) is deferred (needs AI judgment). Remaining is only P4
+polish: #20 multi-project switching (stub), #21 peek-under-the-hood, #23 UI
+polish. Every detection ships ONLY in the
 "Observed / what it might mean / what's NOT proven / what to do" format —
 never a fake certainty.
 
