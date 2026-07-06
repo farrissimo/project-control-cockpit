@@ -13,6 +13,10 @@
     "app/**",
     "scripts/detect-*.ps1",
     "scripts/verify-work.ps1",
+    "scripts/lifecycle-status.ps1",
+    "scripts/generate-handoff.ps1",
+    "scripts/recent-decisions.ps1",
+    "scripts/bootstrap-project.ps1",
     "docs/COCKPIT_ROADMAP.md",
     "docs/DECISIONS.md",
     "PROJECT.md",
@@ -20,7 +24,11 @@
     "CLAUDE.md",
     ".gitignore",
     ".cockpit/result/detections/**",
-    ".cockpit/state/app-build-scope.json"
+    ".cockpit/state/app-build-scope.json",
+    ".cockpit/state/lifecycle-model.json",
+    ".cockpit/state/lifecycle-state.json",
+    ".cockpit/state/doc-freshness-map.json",
+    ".cockpit/state/bloat-thresholds.json"
   ],
-  "updated_at": "2026-07-06T13:10:00-06:00"
+  "updated_at": "2026-07-06T14:40:00-06:00"
 }
