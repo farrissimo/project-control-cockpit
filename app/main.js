@@ -175,12 +175,35 @@ ipcMain.handle('pcc:trustExtras', () => new Promise((resolve) => {
   });
 }));
 
+// Model config: an editable list + default + fallback chain, so the app never
+// hard-codes models. If the chosen model is retired/unavailable, Claude Code's
+// --fallback-model quietly tries the chain instead of crashing.
+function readModels() {
+  const fallback = { default: 'claude-sonnet-5', fallback_chain: 'claude-sonnet-5',
+    models: [{ id: 'claude-sonnet-5', label: 'Sonnet 5 (default)' }] };
+  try {
+    const cfg = JSON.parse(fs.readFileSync(path.join(COCKPIT, 'state', 'models.json'), 'utf8'));
+    return { default: cfg.default || fallback.default, fallback_chain: cfg.fallback_chain || cfg.default || fallback.fallback_chain, models: cfg.models || fallback.models };
+  } catch (e) { return fallback; }
+}
+
+ipcMain.handle('pcc:getModels', () => readModels());
+
+// Start a fresh chat: drop the --continue thread so the next message begins a
+// new Claude conversation. (The renderer also clears its own history.)
+ipcMain.handle('pcc:newChat', () => { conversationStarted = false; return { ok: true }; });
+
 // Send a message to Claude Code non-interactively. The prompt goes in over
 // stdin (so quotes/newlines in the message can never break shell parsing).
 // After the first turn we pass --continue so Claude keeps the conversation.
-function askClaude(message) {
+// --model picks the chosen model; --fallback-model makes an unavailable model
+// fall back gracefully instead of crashing the chat.
+function askClaude(message, model) {
   return new Promise((resolve) => {
-    const args = ['-p'];
+    const cfg = readModels();
+    const chosen = model || cfg.default;
+    const args = ['-p', '--model', chosen];
+    if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
     if (conversationStarted) args.push('--continue');
     let out = '';
     let err = '';
@@ -203,7 +226,7 @@ function askClaude(message) {
   });
 }
 
-ipcMain.handle('pcc:send', (_e, message) => askClaude(message));
+ipcMain.handle('pcc:send', (_e, message, model) => askClaude(message, model));
 
 function createWindow() {
   const win = new BrowserWindow({

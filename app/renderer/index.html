@@ -37,6 +37,13 @@
   .bubble.assistant { align-self: flex-start; background: #1a1d23; border: 1px solid #23262d; }
   .bubble.thinking { align-self: flex-start; color: #8a8f97; font-style: italic; }
   .bubble.error { align-self: flex-start; background: #3a1c1c; color: #f0b0b0; border: 1px solid #5a2a2a; }
+  #chat-toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 20px 0; }
+  #chat-toolbar .ct-label { font-size: 11px; color: #7a7f87; text-transform: uppercase; letter-spacing: .04em; }
+  #model-select { background: #1a1d23; color: #e8eaed; border: 1px solid #2b2f37; border-radius: 8px;
+    padding: 4px 8px; font-size: 12px; font-family: inherit; }
+  #new-chat { margin-left: auto; background: #14171c; color: #aeb4bd; border: 1px solid #2b2f37;
+    border-radius: 8px; padding: 4px 12px; font-size: 12px; cursor: pointer; }
+  #new-chat:hover { background: #1d2230; color: #dbe8ff; }
   #corrections { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 20px 0; }
   .corr { background: #14171c; border: 1px solid #2b2f37; color: #aeb4bd; font-size: 12px;
     padding: 5px 10px; border-radius: 999px; cursor: pointer; }
@@ -159,6 +166,11 @@
       <span class="trust-chip unknown" id="trust-rules"><span class="dot"></span>Rules loaded</span>
     </div>
     <div class="view" id="view-chat">
+      <div id="chat-toolbar">
+        <label class="ct-label" for="model-select">Model</label>
+        <select id="model-select"></select>
+        <button id="new-chat" type="button" title="Start a fresh conversation (Claude forgets the current thread)">New chat</button>
+      </div>
       <div id="log"></div>
       <div id="corrections"></div>
       <form id="composer">

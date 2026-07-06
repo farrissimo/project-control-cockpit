@@ -7,7 +7,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('pcc', {
   getState: () => ipcRenderer.invoke('pcc:getState'),
-  send: (message) => ipcRenderer.invoke('pcc:send', message),
+  send: (message, model) => ipcRenderer.invoke('pcc:send', message, model),
+  getModels: () => ipcRenderer.invoke('pcc:getModels'),
+  newChat: () => ipcRenderer.invoke('pcc:newChat'),
   getRules: () => ipcRenderer.invoke('pcc:getRules'),
   getMemory: () => ipcRenderer.invoke('pcc:getMemory'),
   saveMemory: (text) => ipcRenderer.invoke('pcc:saveMemory', text),

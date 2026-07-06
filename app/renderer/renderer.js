@@ -46,7 +46,7 @@ async function sendMessage(text) {
   busy = true; sendBtn.disabled = true;
   const thinking = addBubble('assistant thinking', 'Claude is working…', false);
   try {
-    const res = await window.pcc.send(msg);
+    const res = await window.pcc.send(msg, getSelectedModel());
     thinking.remove();
     addBubble(res.ok ? 'assistant' : 'assistant error', res.text || '(no output)', true);
   } catch (err) {
@@ -56,6 +56,46 @@ async function sendMessage(text) {
     busy = false; sendBtn.disabled = false; input.focus();
   }
 }
+
+// ---- model switcher + new chat ----
+const MODEL_KEY = 'pcc.model';
+function getSelectedModel() {
+  const sel = document.getElementById('model-select');
+  return (sel && sel.value) || localStorage.getItem(MODEL_KEY) || undefined;
+}
+
+async function initModels() {
+  const sel = document.getElementById('model-select');
+  if (!sel) return;
+  let cfg = null;
+  try { cfg = await window.pcc.getModels(); } catch (e) { /* leave empty */ }
+  const models = (cfg && cfg.models) || [];
+  const saved = localStorage.getItem(MODEL_KEY);
+  const wanted = saved || (cfg && cfg.default);
+  sel.innerHTML = '';
+  models.forEach((m) => {
+    const o = document.createElement('option');
+    o.value = m.id; o.textContent = m.label || m.id;
+    if (m.id === wanted) o.selected = true;
+    sel.appendChild(o);
+  });
+  // If the saved model is no longer in the list, fall back to the default
+  // (never leave a stale/unavailable model selected).
+  if (saved && !models.some((m) => m.id === saved) && cfg && cfg.default) {
+    sel.value = cfg.default; localStorage.setItem(MODEL_KEY, cfg.default);
+  }
+  sel.addEventListener('change', () => localStorage.setItem(MODEL_KEY, sel.value));
+}
+
+document.getElementById('new-chat').addEventListener('click', async () => {
+  if (busy) return;
+  if (!confirm('Start a new chat? Claude will forget the current thread (your project, rules, and files stay).')) return;
+  try { await window.pcc.newChat(); } catch (e) { /* best effort */ }
+  history = []; save();
+  log.innerHTML = '';
+  showWelcome();
+  loadTrust();
+});
 
 function renderCorrections() {
   CORRECTIONS.forEach((c) => {
@@ -571,6 +611,7 @@ document.getElementById('verify-run').addEventListener('click', async () => {
 
 // ---- boot ----
 renderCorrections();
+initModels();
 initHeader();
 loadLifecycle();
 loadTrust();
