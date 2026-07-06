@@ -13,7 +13,7 @@ DECISION-102 (supersedes DECISION-087's read-only web dashboard). Full ranked
 feature plan and status: docs/COCKPIT_ROADMAP.md.
 
 ## Owner
-Visionary / product lead, NOT a coder. Plain-language, concise, no cheerleading,
+Visionary / product lead, NOT a coder or an engineer. Plain-language, concise, no cheerleading,
 no fake "done", never make him repeat himself. Standing rules are in CLAUDE.md.
 Standing orders: keep going by default (stop only when genuinely unsure or at a
 real milestone); research the web for existing solutions before building (don't
@@ -33,7 +33,8 @@ roadmap grid with progress, ranked by his priority.
 ## What's built (branch: feat/cockpit-desktop-app; main untouched)
 Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
 - Chat wired to Claude (`claude -p`), conversation persists across restarts. Model switcher (default Sonnet 5, editable list in .cockpit/state/models.json, auto-fallback so a retired model never crashes the chat) + "New chat" button (starts a fresh Claude thread). Uses the claude.ai login, not a paid API key (DECISION-003).
-- Left sidebar: Chat / Project / Rules / Memory / Signals / Verify.
+- Left sidebar: Chat / Project / Rules / Memory / Lifecycle / Signals / Verify.
+- Chat renders copy blocks (fenced ``` code) with a working Copy button; the worker is told it's a text-only channel (no interactive AskUserQuestion picker) and not to narrate tool failures.
 - Lifecycle bar (top): "You are here -> Next action -> Decision required", from real state.
 - Live trust strip (top, always visible): On the rails / Backed up / Verified / Rules loaded. Each chip is green only when a real deterministic check says so; "Verified" stays amber unless a fresh independent PASS newer than HEAD exists (never faked).
 - Lifecycle view: the standardized stage map (define → plan → work → verify → phase-close → milestone → handoff → rollover) from .cockpit/state/lifecycle-model.json, with a "you are here" pin (lifecycle-state.json) and only the LEGAL next steps shown (scripts/lifecycle-status.ps1). Never auto-advances.

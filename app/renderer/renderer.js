@@ -28,15 +28,54 @@ function scrollDown() { log.scrollTop = log.scrollHeight; }
 function save() { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); }
 function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
+// Render an assistant message with working copy blocks. Fenced ```code``` blocks
+// become a styled block with a real Copy button; `inline code` is styled; the
+// rest is escaped plain text (newlines preserved by CSS pre-wrap). Everything is
+// HTML-escaped first, so this is safe against injection. (Owner-found bug: copy
+// blocks the worker produced were showing as raw backticks with no way to copy.)
+function renderAssistant(text) {
+  const parts = String(text).split('```');
+  let html = '';
+  for (let i = 0; i < parts.length; i++) {
+    if (i % 2 === 1) {
+      // Inside a fence. If the first line is a bare language tag (one word, no
+      // spaces), drop it; the rest is the code.
+      let seg = parts[i];
+      const firstNl = seg.indexOf('\n');
+      if (firstNl >= 0) {
+        const firstLine = seg.slice(0, firstNl).trim();
+        if (firstLine && !/\s/.test(firstLine) && firstLine.length < 20) seg = seg.slice(firstNl + 1);
+      }
+      html += '<div class="codeblock"><button class="cb-copy" type="button">Copy</button><pre class="cb-code">' + escapeHtml(seg.replace(/^\n/, '').replace(/\n$/, '')) + '</pre></div>';
+    } else {
+      html += escapeHtml(parts[i]).replace(/`([^`\n]+)`/g, '<code class="inline">$1</code>');
+    }
+  }
+  return html;
+}
+
 function addBubble(cls, text, persist) {
   const el = document.createElement('div');
   el.className = 'bubble ' + cls;
-  el.textContent = text;
+  const isAssistant = cls.indexOf('assistant') !== -1 && cls.indexOf('thinking') === -1;
+  if (isAssistant && String(text).indexOf('```') !== -1) { el.innerHTML = renderAssistant(text); }
+  else { el.textContent = text; }
   log.appendChild(el);
   scrollDown();
   if (persist) { history.push({ cls, text, ts: Date.now() }); save(); }
   return el;
 }
+
+// Delegated copy handler for code blocks in assistant bubbles.
+log.addEventListener('click', (e) => {
+  const btn = e.target.closest && e.target.closest('.cb-copy');
+  if (!btn) return;
+  const pre = btn.parentElement.querySelector('.cb-code');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.textContent).then(() => {
+    const prev = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = prev; }, 1500);
+  }).catch(() => { btn.textContent = 'Copy failed'; });
+});
 
 async function sendMessage(text) {
   const msg = (text || '').trim();

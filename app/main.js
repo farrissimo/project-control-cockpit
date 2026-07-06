@@ -205,6 +205,14 @@ ipcMain.handle('pcc:getModels', () => readModels());
 // history.)
 ipcMain.handle('pcc:newChat', () => { sessionId = null; return { ok: true }; });
 
+// The chat panel is text-only (no interactive pickers). Tell the worker so it
+// answers in plain text and never narrates internal tool failures. BUG FOUND by
+// owner: the worker sometimes called the interactive AskUserQuestion tool, which
+// can't render here, then replied "The question prompt isn't working in this
+// session..." - a confusing non-answer. We both disallow that tool and instruct
+// against the behavior. Kept constant so it doesn't bust the prompt cache.
+const CHANNEL_PROMPT = 'You are replying inside PCC\'s text-only chat panel: there is no interactive UI, no clickable pickers or buttons you can present. Never use interactive tools such as AskUserQuestion; if you need to ask the owner something, ask it as plain text with the options listed inline. Never narrate internal tool, prompt, or mechanism failures to the owner (e.g. do not say a tool "isn\'t working") - just answer or ask plainly. The owner is a non-coder product lead: be concise and plain-language.';
+
 // Send a message to Claude Code non-interactively. The prompt goes in over
 // stdin (so quotes/newlines in the message can never break shell parsing).
 // The conversation is pinned to a UUID (see the note above sessionId) so it
@@ -215,7 +223,7 @@ function askClaude(message, model) {
   return new Promise((resolve) => {
     const cfg = readModels();
     const chosen = model || cfg.default;
-    const args = ['-p', '--model', chosen];
+    const args = ['-p', '--model', chosen, '--disallowedTools', 'AskUserQuestion', '--append-system-prompt', CHANNEL_PROMPT];
     if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
     const isNewSession = !sessionId;
     if (isNewSession) sessionId = crypto.randomUUID();
