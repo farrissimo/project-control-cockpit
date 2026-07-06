@@ -39,7 +39,8 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
 - Standing rules auto-load from CLAUDE.md; the Rules view shows them.
 - Project memory: this PROJECT.md, editable in the Memory view, auto-read each session.
 - Verify view: Hard checks (git + scripts/doctor.ps1, deterministic, work today) plus independent review (Codex/agy) via scripts/verify-work.ps1.
-- Signals view: the DECISION-102 honest-detection system. Shipped detectors: untracked-files (scripts/detect-untracked.ps1, deterministic, git-only, respects .gitignore) and chat-rollover (turns/time/repeats from the app's own chat history). Every detector uses the "Observed / what it might mean / what's NOT proven / what to do" format; built to grow (one script + one line in main.js per detector).
+- Signals view: the DECISION-102 honest-detection system. Shipped detectors: untracked-files (scripts/detect-untracked.ps1, git-only, respects .gitignore), chat-rollover (turns/time/repeats from the app's own chat history), and out-of-scope/drift (scripts/detect-drift.ps1, compares branch changes vs the declared boundary in .cockpit/state/app-build-scope.json). Every detector uses the "Observed / what it might mean / what's NOT proven / what to do" format; built to grow (one script + one line in main.js per detector).
+- Scope boundary: .cockpit/state/app-build-scope.json — the honest, machine-checkable list of what the DECISION-102 app-build lane is allowed to change (with a plain-language section). It is what the drift signal checks against, so drift never guesses. Update its allowed_globs deliberately when the work legitimately grows.
 - AGENTS.md: verifier verdict format (PASS/FAIL/INSUFFICIENT/BLOCKED/OUT_OF_SCOPE + NOT PROVEN).
 
 ## Pending / immediate next tasks
@@ -59,8 +60,10 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
      `--dangerously-skip-permissions`), so that note is unconfirmed. Codex
      stays the primary verifier; this is parked, not being worked.
 2. Continue down docs/COCKPIT_ROADMAP.md by priority. Shipped this session:
-   the Signals view + detectors #9 (untracked-files) and #8 (chat-rollover).
-   Next: #10 out-of-scope/drift, #11 stale-docs, #12 agreements-to-truth.
+   the Signals view + detectors #9 (untracked-files), #8 (chat-rollover), and
+   #10 (out-of-scope/drift, with its .cockpit/state/app-build-scope.json
+   boundary). Next: #11 stale-docs, #12 agreements-to-truth, #13 repo-sync
+   "work not backed up yet".
 
 ## Roadmap status (full list: docs/COCKPIT_ROADMAP.md)
 8 done, 7 in motion, 10 planned. Next priorities: finish P1 verification (#3,

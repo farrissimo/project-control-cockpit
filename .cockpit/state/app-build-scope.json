@@ -1,0 +1,26 @@
+{
+  "scope_id": "app-build-decision-102",
+  "title": "PCC desktop app build (DECISION-102)",
+  "authorized_by": "DECISION-102",
+  "plain_language": {
+    "what_this_is": "The multi-session job of building PCC's desktop app and its Signals detectors, authorized by DECISION-102. This file is the honest, machine-checkable list of what that job is allowed to change, so the drift signal has a real boundary to check against instead of guessing.",
+    "allowed_to_change": "The app itself (app/), the detector scripts and the verification script the app calls, the roadmap/brief/decisions docs that track this work, and the app's own ignore/verifier-format config.",
+    "must_not_change": "PCC's core governance engine: the schemas, the state-validation and handoff-gate scripts, and the canonical project/task state files. If this work ever genuinely needs to touch those, that is a separate owner decision, not part of this lane -- and the drift signal is meant to catch it if it happens by accident.",
+    "if_the_signal_fires": "It means a file was changed that is not on the allowed list below. That is either real drift (fix or revert it) OR the allowed list is out of date because the work legitimately grew (then update this file, on purpose). It is never treated as automatic proof of a mistake."
+  },
+  "compare_baseline": "main",
+  "allowed_globs": [
+    "app/**",
+    "scripts/detect-*.ps1",
+    "scripts/verify-work.ps1",
+    "docs/COCKPIT_ROADMAP.md",
+    "docs/DECISIONS.md",
+    "PROJECT.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    ".gitignore",
+    ".cockpit/result/detections/**",
+    ".cockpit/state/app-build-scope.json"
+  ],
+  "updated_at": "2026-07-06T13:10:00-06:00"
+}

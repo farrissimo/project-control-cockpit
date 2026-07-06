@@ -104,6 +104,7 @@ function runDetector(script) {
 
 ipcMain.handle('pcc:detections', async () => ({
   untracked: await runDetector('scripts/detect-untracked.ps1'),
+  drift: await runDetector('scripts/detect-drift.ps1'),
 }));
 
 // Send a message to Claude Code non-interactively. The prompt goes in over

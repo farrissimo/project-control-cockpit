@@ -17,7 +17,7 @@ Status: [x] Done · [~] In progress / Partial · [ ] Planned
 7. [~] Clean new-chat handoff — PROJECT.md brief + handoff paste block proven (first slice done; in-app auto-generation pending)
 8. [x] Chat end-of-usefulness / rollover trigger — Signals card from this chat's own history: turn count, time span, and repeated-message detection (normalized). Tokens/true context-degradation are NOT app-observable, so they are surfaced honestly under "NOT proven" rather than faked.
 9. [x] Untracked-files detection — deterministic `scripts/detect-untracked.ps1` (git-only, no LLM, respects .gitignore) + new Signals view rendering the honest 4-part format. CLI-first (works with app/ deleted); writes truth to .cockpit/result/detections/ with -WriteFile.
-10. [ ] Out-of-scope / drift detection (changed files vs task scope)
+10. [x] Out-of-scope / drift detection — `scripts/detect-drift.ps1` compares files changed on the branch against a REAL declared boundary (.cockpit/state/app-build-scope.json allowed_globs), not a guess. Clear when work stays in scope; honest 'notice' when a changed file is outside it (revert, or update the boundary on purpose). Reports 'unknown' (never guesses) if the boundary file is missing.
 11. [ ] Stale-docs detection (narrow, honest: changed code but required doc untouched)
 12. [ ] Agreements-only-in-chat -> flag + capture to truth
 13. [~] Repo-sync discipline (surface when to commit/sync)
