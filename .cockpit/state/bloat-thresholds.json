@@ -1,0 +1,21 @@
+{
+  "thresholds_id": "bloat-v1",
+  "title": "Project-bloat thresholds (objective, adjustable)",
+  "plain_language": {
+    "what_this_is": "Objective, threshold-based signs of project bloat, grounded in real-world software research: large source files and too many dependencies. Deliberately narrow -- it flags size/count facts, it does NOT judge whether the growth is bad (that's your call).",
+    "why_these": "Web research on code/project bloat points to large files, duplicated code, dead code, and dependency bloat as the objective signals. Duplication and dead code need language-specific tooling and produce false alarms, so this starter measures only the two we can read cleanly and honestly here: file size and dependency count.",
+    "adjustable": "Raise/lower the numbers as the project grows; add source globs as new code areas appear."
+  },
+  "compare_baseline": "main",
+  "max_source_file_lines": 600,
+  "max_dependencies": 20,
+  "source_globs": [
+    "app/*.js",
+    "app/renderer/*.js",
+    "scripts/*.ps1"
+  ],
+  "dependency_manifests": [
+    "app/package.json"
+  ],
+  "updated_at": "2026-07-06T14:35:00-06:00"
+}

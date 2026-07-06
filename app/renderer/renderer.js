@@ -144,7 +144,7 @@ async function runHardChecks() {
 // ---- signals view ----
 // Renders each detector in the honest four-part format. The renderer only
 // displays what the deterministic scripts report; it never invents a verdict.
-const SIGNAL_TITLES = { 'untracked-files': 'Untracked files', 'scope-drift': 'Out-of-scope / drift', 'stale-docs': 'Stale docs', 'repo-sync': 'Work backed up? (repo sync)', 'chat-rollover': 'Chat health / rollover' };
+const SIGNAL_TITLES = { 'untracked-files': 'Untracked files', 'scope-drift': 'Out-of-scope / drift', 'stale-docs': 'Stale docs', 'repo-sync': 'Work backed up? (repo sync)', 'bloat': 'Project bloat', 'chat-rollover': 'Chat health / rollover' };
 
 // Chat rollover signal (roadmap #8). Computed from THIS chat's own history in
 // localStorage - the only honest data the app actually has. Named thresholds,

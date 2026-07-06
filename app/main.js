@@ -140,6 +140,7 @@ ipcMain.handle('pcc:detections', async () => ({
   drift: await runDetector('scripts/detect-drift.ps1'),
   staleDocs: await runDetector('scripts/detect-stale-docs.ps1'),
   repoSync: await runDetector('scripts/detect-repo-sync.ps1'),
+  bloat: await runDetector('scripts/detect-bloat.ps1'),
 }));
 
 // Trust-strip extras: the two honest facts the always-visible strip needs

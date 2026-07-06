@@ -25,7 +25,7 @@ Status: [x] Done · [~] In progress / Partial · [ ] Planned
 
 ## P3 — Medium (honest detections + lifecycle extras)
 15. [ ] Reinventing-the-wheel signal (overlap vs existing, honest)
-16. [ ] Project-bloat signal (threshold-based, not mind-reading)
+16. [x] Project-bloat signal — `scripts/detect-bloat.ps1` flags objective, threshold-based bloat (large source files + dependency count) against a declared, adjustable `.cockpit/state/bloat-thresholds.json`. Grounded in real-world bloat research; deliberately skips duplication/dead-code (need language tooling, would false-alarm). Reports facts, not verdicts.
 17. [ ] "Never says no" / sycophancy signal (missing risk/opposition section)
 18. [ ] Standardized new-project bootstrap (every project starts the same way)
 19. [ ] Honest babysitting-reduction metrics
