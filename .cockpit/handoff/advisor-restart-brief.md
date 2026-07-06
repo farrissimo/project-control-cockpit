@@ -1,6 +1,6 @@
 # Advisor Restart Brief
 
-Generated 2026-07-05T20:22:27-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
+Generated 2026-07-05T20:35:18-06:00 from canonical repo truth. This brief is disposable context, not authority — if it ever disagrees with the files it points to, the files win (see Truth Source Priority in docs/STATE_MODEL.md).
 
 ## What This Project Is
 
@@ -45,4 +45,4 @@ Current phase: post-brr
 ## What Happens Next
 
 * Task-level: Task 'pcc-pathD-009' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
-* Project-level: Task 'pcc-pathD-009' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.
+* Project-level: Path A's currently-named Category D scope (pcc-pathD-001..009) is complete and verified, but the original project scope (archive/PCC Original Project Scope.md) is NOT fully built out (DECISION-101). The next task to draft is IDEA-015 (backlog/IDEAS.md): log routing decisions to routing-log.jsonl, closing the section 7.22 gap found in DECISION-101's audit. Owner has directed that PCC continue working rather than stop, since the original scope is not fully delivered.

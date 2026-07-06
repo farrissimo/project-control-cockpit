@@ -2473,3 +2473,35 @@ Process disclosure: built with Codex unavailable (`DECISION-086`), under direct 
 
 Supersedes: None
 Related: DECISION-008, DECISION-015, DECISION-074, DECISION-086, DECISION-087, DECISION-097, DECISION-098, DECISION-099, docs/PATH_A_PLAN.md, schemas/project-state.schema.json, scripts/request-communication-prefs-update.ps1, scripts/process-communication-prefs-requests.ps1, scripts/validate-cockpit-state.ps1
+
+---
+
+## DECISION-101: Original-Scope Audit Against Path A's Completed Build; New Gap Found (§7.22 Routing-Decision Logging); One Carried-Forward BRR Item Now Arguably Demonstrated
+
+Date: 2026-07-05
+Status: Active
+
+Owner Decision:
+
+Following the owner's direct question ("is PCC fine as originally scoped?") after Path A's Category D build-out completed, `archive/PCC Original Project Scope.md` §7 was re-checked section-by-section against repo truth, rather than assuming the completed plan meant the original scope was fully covered. Findings recorded here so a fresh session does not have to re-derive them.
+
+Findings:
+
+1. **§7.19 (Narrow Suggested-Tools Feature) — declined on purpose, already disclosed.** `DECISION-076` already recorded this as declined ("low-value and overlapping with `scripts/classify-routing.ps1`"). Not a gap; a standing decision.
+2. **§7.22 (Routing / Decision Logs) — a real, previously-undisclosed gap, found by this audit.** The original scope asked that every routing decision (local tool vs. model, with reason, escalation request, owner approval/denial) be written to the permanent log. `scripts/classify-routing.ps1`'s classification is printed to stdout and the dashboard's Local Tools Panel, but is never written to `.cockpit/logs/routing-log.jsonl` -- no event type exists for it. `routing-log.jsonl` today logs workflow-role routing (`worker`/`verifier`/`advisor_verifier`) and verification/stop-condition events, not the local-vs-model routing decision itself. This was not previously named as a gap anywhere in `docs/DECISIONS.md` or `backlog/IDEAS.md`.
+3. **§7.20 (Structural Warning Signals) — partially covered.** `scripts/check-stop-conditions.ps1` covers owner-decision-pending, attention-needed status, doctor issues, and lane-recognition. Several of the original scope's own listed examples were never built: revision-count tracking, turn-count-since-last-update, unresolved-assumption accumulation, and approach-repetition detection. These map onto the BRR Metrics / Failure Review Loop items already carried forward at `DECISION-069` and not previously connected to §7.20 explicitly.
+4. **§7.23 (Babysitting-Reduction Metrics) — remains undelivered, as already disclosed at `DECISION-069`.** `IDEA-008`'s append-only log (`stop_condition_fired`/`gate_blocked`/`retry_attempted` events) was recorded as enabling this later, not delivering it. Still an open, disclosed backlog item; this audit adds no new information here beyond reconfirming it.
+5. **`DECISION-069`'s carried-forward item "chaining beyond two cycles untested" is now arguably demonstrated**, though not formally recorded as closed until now: this session ran nine consecutive bounded task cycles (`pcc-pathD-001` through `pcc-pathD-009`) with real state transitions, real functional testing, and real (ChatGPT manual-bridge) verification at each step, without owner re-briefing between cycles. This is a materially stronger chaining proof than the "two cycles" the item names, though it happened under a different fallback (`DECISION-086`) than Codex's own chaining would use.
+
+Reason:
+
+The owner's instinct to check rather than accept a summary answer surfaced a real, previously-unknown gap (finding 2) that a less careful audit would have missed. Recording it now, rather than letting "Path A is done" imply "the original scope is done," keeps `docs/PATH_A_PLAN.md`'s completion claims honest and scoped to what it actually covers (Categories A-D as that plan defined them) rather than the full original V1 scope.
+
+Implications:
+
+Owner has directed that PCC does not stop here since the original scope is not fully built. The next task to draft is closing finding 2 (§7.22 routing-decision logging): add a new log event type capturing `classify-routing.ps1`'s classification (route, keywords matched, recommendation) to `routing-log.jsonl` whenever a task's routing is checked, satisfying the original scope's actual ask. This is recorded in `backlog/IDEAS.md` as `IDEA-015` for a fresh session to pick up directly. Findings 3/4 (BRR Metrics / Failure Review Loop / structural warning signals) remain open backlog, not newly urgent, and are not re-prioritized by this decision. Finding 5 is recorded as evidence, not as formally closing `DECISION-069`'s item -- that formal closure, if wanted, is a separate small owner-reviewable step.
+
+No script, schema, verdict, task status enum, Task Safety Class definition, Owner Review Matrix row, Stop-Instead-of-Guess trigger, or Acceptance Boundary Rule is changed by this decision. It is an accounting/audit record only.
+
+Supersedes: None
+Related: DECISION-069, DECISION-074, DECISION-075, DECISION-076, DECISION-087, archive/PCC Original Project Scope.md, backlog/IDEAS.md (IDEA-008, IDEA-015), docs/PATH_A_PLAN.md

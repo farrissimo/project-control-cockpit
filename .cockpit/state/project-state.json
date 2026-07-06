@@ -197,6 +197,6 @@
   "current_blocker": null,
   "last_verified_handoff": ".cockpit/handoff/archive/pcc-pathD-009-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Task 'pcc-pathD-009' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
-  "updated_at": "2026-07-05T20:22:26-06:00"
+  "next_expected_action": "Path A's currently-named Category D scope (pcc-pathD-001..009) is complete and verified, but the original project scope (archive/PCC Original Project Scope.md) is NOT fully built out (DECISION-101). The next task to draft is IDEA-015 (backlog/IDEAS.md): log routing decisions to routing-log.jsonl, closing the section 7.22 gap found in DECISION-101's audit. Owner has directed that PCC continue working rather than stop, since the original scope is not fully delivered.",
+  "updated_at": "2026-07-05T23:45:00-06:00"
 }
