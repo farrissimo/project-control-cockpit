@@ -1,0 +1,6 @@
+{
+  "lane": "app-build-decision-102",
+  "current_stage": "work",
+  "note": "Building features down COCKPIT_ROADMAP.md by priority. Set deliberately; not inferred. Update this when the lane genuinely moves stages.",
+  "updated_at": "2026-07-06T14:05:00-06:00"
+}

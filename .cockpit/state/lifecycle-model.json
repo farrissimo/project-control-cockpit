@@ -1,0 +1,76 @@
+{
+  "model_id": "pcc-lifecycle-v1",
+  "title": "PCC standardized project lifecycle (DECISION-102)",
+  "plain_language": {
+    "what_this_is": "The fixed set of stages a project moves through, so neither the owner nor the AI ever has to guess the next action. Each stage has a known entry, a known 'what to do now', a known way to exit, and only certain legal next stages. This is the map; lifecycle-state.json is the 'you are here' pin.",
+    "how_it_reads": "The system shows the current stage's 'what to do now' and only the LEGAL next stages. It never invents a next step outside this map, and it never auto-advances -- moving stages is a deliberate, recorded choice.",
+    "adjustable": "Stages/transitions can be refined, but keep them few and explicit."
+  },
+  "stages": [
+    {
+      "id": "define",
+      "label": "Define",
+      "description": "Decide what this project or feature actually is and why.",
+      "what_to_do": "Write the goal and the rough scope in plain language (PROJECT.md / a decision).",
+      "exit_criteria": "The goal and scope are recorded in repo truth.",
+      "next": ["plan"]
+    },
+    {
+      "id": "plan",
+      "label": "Plan",
+      "description": "Turn the goal into a ranked list of bounded pieces of work.",
+      "what_to_do": "Rank the work (COCKPIT_ROADMAP.md) and pick the single next bounded task.",
+      "exit_criteria": "One bounded next task is chosen, with a clear allowed scope.",
+      "next": ["work"]
+    },
+    {
+      "id": "work",
+      "label": "Work a task",
+      "description": "Build one bounded task, staying inside its declared scope.",
+      "what_to_do": "Implement the chosen task; snapshot (commit) as you go; stay in scope.",
+      "exit_criteria": "The task is built, tested, and committed.",
+      "next": ["verify"]
+    },
+    {
+      "id": "verify",
+      "label": "Verify",
+      "description": "Independently check the work before it counts as done.",
+      "what_to_do": "Run the checks / independent review; record an honest verdict.",
+      "exit_criteria": "A verdict exists: PASS advances; FAIL/INSUFFICIENT sends it back to Work.",
+      "next": ["work", "phase_close"]
+    },
+    {
+      "id": "phase_close",
+      "label": "Close a phase",
+      "description": "A group of related tasks is finished and verified.",
+      "what_to_do": "Confirm the phase's tasks are all done and truth surfaces are current.",
+      "exit_criteria": "The phase is complete and recorded; decide whether to plan the next phase or mark a milestone.",
+      "next": ["plan", "milestone"]
+    },
+    {
+      "id": "milestone",
+      "label": "Milestone",
+      "description": "A meaningful, showable point worth marking.",
+      "what_to_do": "Summarize what's done and its impact; snapshot; show the roadmap grid.",
+      "exit_criteria": "The milestone is recorded; decide whether to hand off or plan more work.",
+      "next": ["handoff", "plan"]
+    },
+    {
+      "id": "handoff",
+      "label": "Hand off",
+      "description": "Prepare to continue in a fresh chat without re-briefing.",
+      "what_to_do": "Generate the new-chat handoff (Project view) and make sure work is backed up.",
+      "exit_criteria": "A ready-to-paste handoff exists and the repo is synced.",
+      "next": ["rollover"]
+    },
+    {
+      "id": "rollover",
+      "label": "Roll over",
+      "description": "A fresh chat picks up from repo truth.",
+      "what_to_do": "Start the new chat, paste the handoff, orient from PROJECT.md.",
+      "exit_criteria": "The new chat is oriented and ready to work.",
+      "next": ["work"]
+    }
+  ],
+  "updated_at": "2026-07-06T14:05:00-06:00"
+}

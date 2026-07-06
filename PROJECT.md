@@ -36,6 +36,7 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
 - Left sidebar: Chat / Project / Rules / Memory / Signals / Verify.
 - Lifecycle bar (top): "You are here -> Next action -> Decision required", from real state.
 - Live trust strip (top, always visible): On the rails / Backed up / Verified / Rules loaded. Each chip is green only when a real deterministic check says so; "Verified" stays amber unless a fresh independent PASS newer than HEAD exists (never faked).
+- Lifecycle view: the standardized stage map (define → plan → work → verify → phase-close → milestone → handoff → rollover) from .cockpit/state/lifecycle-model.json, with a "you are here" pin (lifecycle-state.json) and only the LEGAL next steps shown (scripts/lifecycle-status.ps1). Never auto-advances.
 - One-click corrections under the chat (Be concise, No cheerleading, Stay in scope, Show evidence, Stop reacting, Copy block).
 - Standing rules auto-load from CLAUDE.md; the Rules view shows them.
 - Project memory: this PROJECT.md, editable in the Memory view, auto-read each session.
@@ -71,11 +72,11 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
    carry-forward, then #12 as a small on-demand LLM check when the owner wants it.
 
 ## Roadmap status (full list: docs/COCKPIT_ROADMAP.md)
-13 done, 5 in motion, 7 planned. The whole P2 governed-loop/detection block is
-done (5 detectors + trust strip + handoff); #12 is deferred (needs AI judgment).
-Next priorities: P1 lifecycle state-machine (#6), P1 deeper memory carry-forward
-(#5); P1 verification (#3) awaits the scheduled run. Every detection ships ONLY
-in the
+14 done, 4 in motion, 7 planned. All of P1 and P2 is now done or honestly
+handled except: P1 verification (#3) awaits the scheduled Codex run, and P1
+deeper memory carry-forward (#5) remains. #12 (agreements-only-in-chat) is
+deferred (needs AI judgment). Remaining is mostly P3/P4 (extra honest detections,
+bootstrap, metrics, multi-project, polish). Every detection ships ONLY in the
 "Observed / what it might mean / what's NOT proven / what to do" format —
 never a fake certainty.
 

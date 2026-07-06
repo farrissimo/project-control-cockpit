@@ -105,6 +105,22 @@
   .trust-chip.bad .dot { background: #c65d5d; }
   .trust-chip.unknown .dot { background: #5f646c; }
   #trust .trust-label { font-size: 11px; color: #5f646c; margin-right: 2px; }
+
+  .lc-map { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 16px 0 8px; }
+  .lc-stage { font-size: 12px; padding: 5px 11px; border-radius: 999px; border: 1px solid #2b2f37;
+    color: #9098a1; background: #14171c; }
+  .lc-stage.current { color: #dbe8ff; background: #1c2637; border-color: #3a6bd6; font-weight: 600; }
+  .lc-arrow { color: #4a4f57; font-size: 12px; }
+  .lc-card { max-width: 760px; background: #0e1014; border: 1px solid #23262d; border-left: 3px solid #3a6bd6;
+    border-radius: 10px; padding: 14px 16px; margin-top: 14px; }
+  .lc-card .k { color: #8ab4ff; font-weight: 500; display: block; font-size: 11px;
+    text-transform: uppercase; letter-spacing: .04em; margin: 8px 0 1px; }
+  .lc-card .v { font-size: 14px; color: #cdd2d9; line-height: 1.5; }
+  .lc-next { max-width: 760px; margin-top: 14px; }
+  .lc-next h3 { font-size: 13px; color: #8ab4ff; font-weight: 500; margin: 0 0 6px; }
+  .lc-next-item { border: 1px solid #23262d; border-radius: 8px; padding: 9px 12px; margin-top: 6px; background: #14171c; }
+  .lc-next-item .lbl { font-weight: 600; font-size: 13px; color: #dbe8ff; }
+  .lc-next-item .do { font-size: 13px; color: #b8bdc6; margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -116,6 +132,7 @@
       <button class="nav" data-view="project">Project</button>
       <button class="nav" data-view="rules">Rules</button>
       <button class="nav" data-view="memory">Memory</button>
+      <button class="nav" data-view="lifecycle">Lifecycle</button>
       <button class="nav" data-view="signals">Signals</button>
       <button class="nav" data-view="verify">Verify</button>
     </nav>
@@ -169,6 +186,13 @@
       <p class="muted">The always-current brief for this project. Claude reads it at the start of every session, so a new chat never starts from zero. Edit it and hit Save.</p>
       <textarea id="memory-text" class="memory-box" placeholder="What this project is, where you are, what's next…"></textarea>
       <div class="memory-actions"><button id="memory-save" type="button">Save</button><span id="memory-status" class="muted"></span></div>
+    </div>
+
+    <div class="view hidden panel" id="view-lifecycle">
+      <h2>Lifecycle</h2>
+      <p class="muted">The fixed set of stages this project moves through, so the next action is never a guess. You are highlighted below, with only the legal next steps. Nothing auto-advances.</p>
+      <div id="lifecycle-map" class="lc-map"></div>
+      <div id="lifecycle-detail"></div>
     </div>
 
     <div class="view hidden panel" id="view-signals">

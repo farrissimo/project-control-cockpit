@@ -11,7 +11,7 @@ Status: [x] Done · [~] In progress / Partial · [ ] Planned
 3. [~] Independent verification — Codex primary, Antigravity `agy` fallback (Gemini retired; wiring done). BLOCKED on a proven verdict: Codex out of usage; agy hung ~13 min headless on a real diff and returned nothing. Reliable headless verifier still unproven.
 4. [x] Hard-checks layer — git facts + PCC health check (deterministic, no LLM)
 5. [~] Project memory / brief — no Groundhog Day (editable brief + auto-load done; deeper carry-forward pending)
-6. [~] Standardized lifecycle — lifecycle bar shows current state, next action, and "Decision required" (done); full state-machine of legal transitions pending
+6. [x] Standardized lifecycle — declared stage model (.cockpit/state/lifecycle-model.json: define → plan → work → verify → phase-close → milestone → handoff → rollover, each with entry/what-to-do/exit/legal-next) + a "you are here" pin (.cockpit/state/lifecycle-state.json) + `scripts/lifecycle-status.ps1` + a Lifecycle view showing the map, current stage, and only the LEGAL next steps. Deliberately never auto-advances (moving stages is a recorded choice). Top lifecycle bar (current/next/decision) shipped earlier.
 
 ## P2 — High (the "huge" wounds; the governed loop)
 7. [x] Clean new-chat handoff — `scripts/generate-handoff.ps1` assembles a ready-to-paste briefing from real repo truth (identity, live git state/sync, phase, honest verification status, standing orders, orient-from-these-files). One-click "Generate handoff" + Copy in the Project view. Sources "next" from PROJECT.md and verification from the app-build's own file, deliberately NOT the stale governance next_expected_action.

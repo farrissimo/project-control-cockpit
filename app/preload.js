@@ -16,4 +16,5 @@ contextBridge.exposeInMainWorld('pcc', {
   detections: () => ipcRenderer.invoke('pcc:detections'),
   trustExtras: () => ipcRenderer.invoke('pcc:trustExtras'),
   handoff: () => ipcRenderer.invoke('pcc:handoff'),
+  lifecycle: () => ipcRenderer.invoke('pcc:lifecycle'),
 });

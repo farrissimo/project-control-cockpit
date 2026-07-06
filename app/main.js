@@ -113,6 +113,10 @@ function runDetector(script) {
   });
 }
 
+// Lifecycle: the declared stage map + where you are + the legal next stages.
+// Read-only consumer of the same deterministic script the CLI uses.
+ipcMain.handle('pcc:lifecycle', async () => runDetector('scripts/lifecycle-status.ps1'));
+
 ipcMain.handle('pcc:detections', async () => ({
   untracked: await runDetector('scripts/detect-untracked.ps1'),
   drift: await runDetector('scripts/detect-drift.ps1'),

@@ -110,10 +110,11 @@ const views = {
   project: document.getElementById('view-project'),
   rules: document.getElementById('view-rules'),
   memory: document.getElementById('view-memory'),
+  lifecycle: document.getElementById('view-lifecycle'),
   signals: document.getElementById('view-signals'),
   verify: document.getElementById('view-verify'),
 };
-let loadedProject = false, loadedRules = false, loadedMemory = false, loadedSignals = false, loadedVerify = false;
+let loadedProject = false, loadedRules = false, loadedMemory = false, loadedLifecycle = false, loadedSignals = false, loadedVerify = false;
 
 document.querySelectorAll('.nav').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -124,6 +125,7 @@ document.querySelectorAll('.nav').forEach((btn) => {
     if (v === 'project' && !loadedProject) { loadProject(); loadedProject = true; }
     if (v === 'rules' && !loadedRules) { loadRules(); loadedRules = true; }
     if (v === 'memory' && !loadedMemory) { loadMemory(); loadedMemory = true; }
+    if (v === 'lifecycle' && !loadedLifecycle) { loadLifecycleView(); loadedLifecycle = true; }
     if (v === 'signals' && !loadedSignals) { loadSignals(); loadedSignals = true; }
     if (v === 'verify' && !loadedVerify) { runHardChecks(); loadedVerify = true; }
   });
@@ -229,6 +231,48 @@ async function loadSignals() {
 }
 
 document.getElementById('signals-refresh').addEventListener('click', () => { loadSignals(); loadTrust(); });
+
+// ---- lifecycle view (roadmap #6) ----
+// Renders the declared stage map (current highlighted) and only the legal next
+// stages, straight from the deterministic script. Never invents a next step.
+async function loadLifecycleView() {
+  const map = document.getElementById('lifecycle-map');
+  const detail = document.getElementById('lifecycle-detail');
+  map.innerHTML = ''; detail.innerHTML = '<p class="muted">Loading…</p>';
+  let r = null;
+  try { r = await window.pcc.lifecycle(); } catch (e) { detail.innerHTML = '<p class="muted">Could not read lifecycle: ' + escapeHtml(e.message) + '</p>'; return; }
+
+  if (!r || r.signal !== 'ok') {
+    detail.innerHTML = '<p class="muted">' + escapeHtml((r && r.observed) || 'Lifecycle not set.') + '</p>';
+    (r && r.all_stages ? r.all_stages : []).forEach((s, i) => {
+      if (i) map.appendChild(Object.assign(document.createElement('span'), { className: 'lc-arrow', textContent: '→' }));
+      const el = document.createElement('span'); el.className = 'lc-stage'; el.textContent = s.label; map.appendChild(el);
+    });
+    return;
+  }
+
+  (r.all_stages || []).forEach((s, i) => {
+    if (i) map.appendChild(Object.assign(document.createElement('span'), { className: 'lc-arrow', textContent: '→' }));
+    const el = document.createElement('span');
+    el.className = 'lc-stage' + (s.is_current ? ' current' : '');
+    el.textContent = s.label;
+    map.appendChild(el);
+  });
+
+  const c = r.current;
+  let html = '<div class="lc-card">'
+    + '<div class="v" style="font-weight:600;color:#dbe8ff;">You are here: ' + escapeHtml(c.label) + '</div>'
+    + '<span class="k">What this stage is</span><div class="v">' + escapeHtml(c.description) + '</div>'
+    + '<span class="k">What to do now</span><div class="v">' + escapeHtml(c.what_to_do) + '</div>'
+    + '<span class="k">Exit this stage when</span><div class="v">' + escapeHtml(c.exit_criteria) + '</div>'
+    + '</div>';
+  html += '<div class="lc-next"><h3>Legal next steps</h3>';
+  (r.next || []).forEach((n) => {
+    html += '<div class="lc-next-item"><div class="lbl">→ ' + escapeHtml(n.label) + '</div><div class="do">' + escapeHtml(n.what_to_do) + '</div></div>';
+  });
+  html += '</div>';
+  detail.innerHTML = html;
+}
 
 // ---- live trust strip (roadmap #14) ----
 // Always-visible, and honest: each chip is green ONLY when a real deterministic
