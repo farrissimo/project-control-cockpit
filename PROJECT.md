@@ -32,7 +32,7 @@ roadmap grid with progress, ranked by his priority.
 
 ## What's built (branch: feat/cockpit-desktop-app; main untouched)
 Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
-- Chat wired to Claude (`claude -p`), conversation persists across restarts. Model switcher (default Sonnet 5, editable list in .cockpit/state/models.json, auto-fallback so a retired model never crashes the chat) + "New chat" button (starts a fresh Claude thread). Uses the claude.ai login, not a paid API key (DECISION-003).
+- Chat wired to Claude (`claude -p`), conversation persists across restarts. Chat history: many named chats ("Chats" panel — switch/rename/delete), each pinned to its own Claude session id so switching resumes the right thread and no background claude call can hijack it. Model switcher (default Sonnet 5, editable list in .cockpit/state/models.json, auto-fallback so a retired model never crashes the chat) + "New chat" (clean start). Quick buttons add to your message (send once). Copy blocks render with a Copy button. Uses the claude.ai login, not a paid API key (DECISION-003).
 - Left sidebar: Chat / Project / Rules / Memory / Lifecycle / Signals / Verify.
 - Chat renders copy blocks (fenced ``` code) with a working Copy button; the worker is told it's a text-only channel (no interactive AskUserQuestion picker) and not to narrate tool failures.
 - Lifecycle bar (top): "You are here -> Next action -> Decision required", from real state.

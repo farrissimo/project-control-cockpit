@@ -51,9 +51,23 @@
   #chat-toolbar .ct-label { font-size: 11px; color: #7a7f87; text-transform: uppercase; letter-spacing: .04em; }
   #model-select { background: #1a1d23; color: #e8eaed; border: 1px solid #2b2f37; border-radius: 8px;
     padding: 4px 8px; font-size: 12px; font-family: inherit; }
-  #new-chat { margin-left: auto; background: #14171c; color: #aeb4bd; border: 1px solid #2b2f37;
+  .chats-wrap { margin-left: auto; position: relative; }
+  #chats-btn, #new-chat { background: #14171c; color: #aeb4bd; border: 1px solid #2b2f37;
     border-radius: 8px; padding: 4px 12px; font-size: 12px; cursor: pointer; }
-  #new-chat:hover { background: #1d2230; color: #dbe8ff; }
+  #chats-btn:hover, #new-chat:hover { background: #1d2230; color: #dbe8ff; }
+  #chats-panel { position: absolute; top: 30px; right: 0; width: 320px; max-height: 380px; overflow-y: auto;
+    background: #0e1014; border: 1px solid #2b2f37; border-radius: 10px; padding: 6px; z-index: 50;
+    box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+  #chats-panel.hidden { display: none; }
+  .chat-row { display: flex; align-items: center; gap: 4px; border-radius: 8px; padding: 2px; }
+  .chat-row:hover { background: #14171c; }
+  .chat-row.active { background: #1c2637; }
+  .chat-row-main { flex: 1; min-width: 0; padding: 6px 8px; cursor: pointer; }
+  .chat-name { font-size: 13px; color: #dbe8ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-when { font-size: 11px; color: #7a7f87; }
+  .chat-mini { background: transparent; border: none; color: #7a7f87; cursor: pointer; font-size: 13px;
+    padding: 4px 6px; border-radius: 6px; }
+  .chat-mini:hover { background: #23262d; color: #dbe8ff; }
   #corrections { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 20px 0; }
   .corr { background: #14171c; border: 1px solid #2b2f37; color: #aeb4bd; font-size: 12px;
     padding: 5px 10px; border-radius: 999px; cursor: pointer; }
@@ -179,7 +193,11 @@
       <div id="chat-toolbar">
         <label class="ct-label" for="model-select">Model</label>
         <select id="model-select" title="Which Claude model answers your messages. Defaults to Sonnet 5; falls back automatically if a model is unavailable."></select>
-        <button id="new-chat" type="button" title="Start a fresh conversation (Claude forgets the current thread)">New chat</button>
+        <div class="chats-wrap">
+          <button id="chats-btn" type="button" title="Your saved chats — switch, rename, or delete.">Chats</button>
+          <div id="chats-panel" class="hidden"></div>
+        </div>
+        <button id="new-chat" type="button" title="Start a fresh conversation (a new saved chat).">New chat</button>
       </div>
       <div id="log"></div>
       <div id="corrections"></div>

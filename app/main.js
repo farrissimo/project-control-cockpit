@@ -215,18 +215,22 @@ const CHANNEL_PROMPT = 'You are replying inside PCC\'s text-only chat panel: the
 
 // Send a message to Claude Code non-interactively. The prompt goes in over
 // stdin (so quotes/newlines in the message can never break shell parsing).
-// The conversation is pinned to a UUID (see the note above sessionId) so it
-// can never be hijacked by an unrelated `claude -p` call in this directory.
+// Each chat is pinned to its own UUID owned by the renderer (chat history), so
+// switching between saved chats resumes the right Claude session and no
+// unrelated `claude -p` call in this directory can hijack it. The renderer
+// passes the chat's id and whether this is its first turn; if it doesn't
+// (older callers), we fall back to a locally-generated pinned id.
 // --model picks the chosen model; --fallback-model makes an unavailable model
 // fall back gracefully instead of crashing the chat.
-function askClaude(message, model) {
+function askClaude(message, model, chatId, isFirstTurn) {
   return new Promise((resolve) => {
     const cfg = readModels();
     const chosen = model || cfg.default;
     const args = ['-p', '--model', chosen, '--disallowedTools', 'AskUserQuestion', '--append-system-prompt', CHANNEL_PROMPT];
     if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
-    const isNewSession = !sessionId;
-    if (isNewSession) sessionId = crypto.randomUUID();
+    let isNewSession;
+    if (chatId) { sessionId = chatId; isNewSession = !!isFirstTurn; }
+    else { isNewSession = !sessionId; if (isNewSession) sessionId = crypto.randomUUID(); }
     args.push(isNewSession ? '--session-id' : '--resume', sessionId);
     let out = '';
     let err = '';
@@ -242,10 +246,10 @@ function askClaude(message, model) {
     child.on('close', (code) => {
       if (code === 0) resolve({ ok: true, text: out.trim() });
       else {
-        // A failed FIRST turn means no session actually exists at that id -
-        // reset so the next attempt starts a genuinely fresh one rather than
-        // trying to --resume a session that was never created.
-        if (isNewSession) sessionId = null;
+        // A failed FIRST turn means no session actually exists at that id. When
+        // the renderer owns the id it tracks that (keeps the chat "not started"
+        // so it retries with --session-id); for the local fallback, reset here.
+        if (isNewSession && !chatId) sessionId = null;
         resolve({ ok: false, text: (err || out || ('Claude exited with code ' + code)).trim() });
       }
     });
@@ -254,7 +258,7 @@ function askClaude(message, model) {
   });
 }
 
-ipcMain.handle('pcc:send', (_e, message, model) => askClaude(message, model));
+ipcMain.handle('pcc:send', (_e, message, model, chatId, isFirstTurn) => askClaude(message, model, chatId, isFirstTurn));
 
 function createWindow() {
   const win = new BrowserWindow({

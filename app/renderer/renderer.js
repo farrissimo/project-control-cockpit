@@ -8,9 +8,22 @@ const form = document.getElementById('composer');
 const sendBtn = document.getElementById('send');
 const correctionsBar = document.getElementById('corrections');
 
-const HISTORY_KEY = 'pcc.chat.history';
+// Chat history: many named conversations, each pinned to its own id (which is
+// also the Claude session id, so switching resumes the right thread). `history`
+// stays as a live reference to the ACTIVE chat's messages, so the existing
+// signal code (rollover/sycophancy/metrics) that reads `history` keeps working.
+const CHATS_KEY = 'pcc.chats.v2';
+const ACTIVE_KEY = 'pcc.activeChat.v2';
+const OLD_HISTORY_KEY = 'pcc.chat.history';
+let chats = [];
+let activeId = null;
 let history = [];
 let busy = false;
+
+function uuid() { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'c-' + Date.now() + '-' + Math.random().toString(16).slice(2); }
+function activeChat() { return chats.find((c) => c.id === activeId) || null; }
+function newChatObj() { return { id: uuid(), name: 'New chat', started: false, messages: [], createdAt: Date.now(), updatedAt: Date.now() }; }
+function persistChats() { localStorage.setItem(CHATS_KEY, JSON.stringify(chats)); localStorage.setItem(ACTIVE_KEY, activeId || ''); }
 
 const CORRECTIONS = [
   { label: 'Be concise', msg: 'Be concise.' },
@@ -25,7 +38,7 @@ const CORRECTIONS = [
 ];
 
 function scrollDown() { log.scrollTop = log.scrollHeight; }
-function save() { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); }
+function save() { const c = activeChat(); if (c) c.updatedAt = Date.now(); persistChats(); }
 function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 // Render an assistant message with working copy blocks. Fenced ```code``` blocks
@@ -80,14 +93,22 @@ log.addEventListener('click', (e) => {
 async function sendMessage(text) {
   const msg = (text || '').trim();
   if (!msg || busy) return;
+  const chat = activeChat();
+  if (!chat) return;
   const welcome = log.querySelector('.welcome');
   if (welcome) welcome.remove();
+  // Auto-name a fresh chat from its first message (like Claude Code's Recents).
+  if (chat.name === 'New chat' && chat.messages.filter((m) => m.cls === 'user').length === 0) {
+    chat.name = msg.replace(/\s+/g, ' ').slice(0, 40) + (msg.length > 40 ? '…' : '');
+    renderChatList();
+  }
   addBubble('user', msg, true);
   busy = true; sendBtn.disabled = true;
   const thinking = addBubble('assistant thinking', 'Claude is working…', false);
   try {
-    const res = await window.pcc.send(msg, getSelectedModel());
+    const res = await window.pcc.send(msg, getSelectedModel(), chat.id, !chat.started);
     thinking.remove();
+    if (res.ok) { chat.started = true; save(); }
     addBubble(res.ok ? 'assistant' : 'assistant error', res.text || '(no output)', true);
   } catch (err) {
     thinking.remove();
@@ -127,32 +148,24 @@ async function initModels() {
   sel.addEventListener('change', () => localStorage.setItem(MODEL_KEY, sel.value));
 }
 
-document.getElementById('new-chat').addEventListener('click', async () => {
+// Start a new chat: create a fresh named conversation and switch to it. Clean
+// start (no auto handoff dump) - with real chat history this is a frequent
+// action, like Claude Code's new chat. To carry context into a fresh chat, use
+// "Generate handoff" in the Project tab.
+function startNewChat() {
   if (busy) return;
-  if (!confirm('Start a new chat? Claude forgets the current thread (your project, rules, and files stay). The handoff briefing will be loaded into the message box so you can orient the fresh chat with one Send.')) return;
-  try { await window.pcc.newChat(); } catch (e) { /* best effort */ }
-  history = []; save();
-  log.innerHTML = '';
-  showWelcome();
+  const c = newChatObj();
+  chats.unshift(c);
+  activeId = c.id;
+  history = c.messages;
+  persistChats();
+  renderActiveChat();
+  renderChatList();
   loadTrust();
-  // Connect the loop: rollover signal -> New chat -> handoff, in one flow. Load
-  // the fresh handoff into the composer so the new chat can be oriented by
-  // sending it as the first message. The user reviews/edits, then hits Send.
-  try {
-    const r = await window.pcc.handoff();
-    if (r && r.ok && r.text) {
-      input.value = r.text;
-      input.focus();
-      const w = log.querySelector('.welcome');
-      if (w) {
-        const hint = document.createElement('div');
-        hint.style.cssText = 'margin-top:14px;font-size:12px;color:#8ab4ff;';
-        hint.textContent = 'Fresh chat ready — a handoff briefing is loaded in the box below. Hit Send to orient this new chat, or edit it first.';
-        w.appendChild(hint);
-      }
-    }
-  } catch (e) { /* handoff is a bonus; new chat still works without it */ }
-});
+  input.value = '';
+  input.focus();
+}
+document.getElementById('new-chat').addEventListener('click', startNewChat);
 
 // Quick buttons ADD their instruction to your current message instead of firing
 // a separate one (owner feedback: clicking "Be concise" after asking was two
@@ -201,13 +214,117 @@ function showWelcome() {
   log.appendChild(wrap);
 }
 
-function loadHistory() {
-  try { history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
-  catch (e) { history = []; }
-  if (history.length === 0) { showWelcome(); return; }
-  history.forEach((m) => addBubble(m.cls, m.text, false));
+// Render the active chat's messages (or the welcome screen if empty).
+function renderActiveChat() {
+  log.innerHTML = '';
+  const c = activeChat();
+  if (!c || c.messages.length === 0) { showWelcome(); return; }
+  c.messages.forEach((m) => addBubble(m.cls, m.text, false));
   scrollDown();
 }
+
+function loadChats() {
+  try { chats = JSON.parse(localStorage.getItem(CHATS_KEY)) || []; } catch (e) { chats = []; }
+  if (!Array.isArray(chats)) chats = [];
+  // One-time migration: fold a pre-history single conversation into one chat.
+  if (chats.length === 0) {
+    let old = [];
+    try { old = JSON.parse(localStorage.getItem(OLD_HISTORY_KEY)) || []; } catch (e) { old = []; }
+    if (old.length) {
+      const first = old.find((m) => m.cls === 'user');
+      const nm = first ? first.text.replace(/\s+/g, ' ').slice(0, 40) : 'Imported chat';
+      chats.push({ id: uuid(), name: nm, started: true, messages: old, createdAt: Date.now(), updatedAt: Date.now() });
+      localStorage.removeItem(OLD_HISTORY_KEY);
+    }
+  }
+  if (chats.length === 0) chats.push(newChatObj());
+  const savedActive = localStorage.getItem(ACTIVE_KEY);
+  activeId = (savedActive && chats.some((c) => c.id === savedActive)) ? savedActive : chats[0].id;
+  history = activeChat().messages;
+  persistChats();
+  renderActiveChat();
+  renderChatList();
+}
+
+function switchChat(id) {
+  if (busy || id === activeId) { closeChatsPanel(); return; }
+  const c = chats.find((x) => x.id === id);
+  if (!c) return;
+  activeId = id;
+  history = c.messages;
+  persistChats();
+  renderActiveChat();
+  renderChatList();
+  loadTrust();
+  closeChatsPanel();
+}
+
+function renameChat(id) {
+  const c = chats.find((x) => x.id === id);
+  if (!c) return;
+  const name = prompt('Rename this chat:', c.name);
+  if (name && name.trim()) { c.name = name.trim().slice(0, 60); persistChats(); renderChatList(); }
+}
+
+function deleteChat(id) {
+  const c = chats.find((x) => x.id === id);
+  if (!c) return;
+  if (!confirm('Delete "' + c.name + '"? This removes it from the list (Claude may still have the session on disk).')) return;
+  chats = chats.filter((x) => x.id !== id);
+  if (chats.length === 0) chats.push(newChatObj());
+  if (id === activeId) { activeId = chats[0].id; history = activeChat().messages; renderActiveChat(); loadTrust(); }
+  persistChats();
+  renderChatList();
+}
+
+function relTime(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return Math.floor(s / 86400) + 'd ago';
+}
+
+function closeChatsPanel() { const p = document.getElementById('chats-panel'); if (p) p.classList.add('hidden'); }
+
+function renderChatList() {
+  const panel = document.getElementById('chats-panel');
+  const btn = document.getElementById('chats-btn');
+  if (btn) btn.textContent = 'Chats (' + chats.length + ')';
+  if (!panel) return;
+  const ordered = chats.slice().sort((a, b) => b.updatedAt - a.updatedAt);
+  panel.innerHTML = ordered.map((c) =>
+    '<div class="chat-row' + (c.id === activeId ? ' active' : '') + '" data-id="' + c.id + '">'
+    + '<div class="chat-row-main" data-act="switch" data-id="' + c.id + '">'
+    + '<div class="chat-name">' + escapeHtml(c.name) + '</div>'
+    + '<div class="chat-when">' + relTime(c.updatedAt) + '</div></div>'
+    + '<button class="chat-mini" data-act="rename" data-id="' + c.id + '" title="Rename">✎</button>'
+    + '<button class="chat-mini" data-act="delete" data-id="' + c.id + '" title="Delete">🗑</button>'
+    + '</div>'
+  ).join('') || '<div class="chat-when" style="padding:8px;">No chats yet.</div>';
+}
+
+// Delegated actions for the chats panel + toggle button.
+document.getElementById('chats-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const p = document.getElementById('chats-panel');
+  p.classList.toggle('hidden');
+  if (!p.classList.contains('hidden')) renderChatList();
+});
+document.getElementById('chats-panel').addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const id = el.dataset.id, act = el.dataset.act;
+  if (act === 'switch') switchChat(id);
+  else if (act === 'rename') renameChat(id);
+  else if (act === 'delete') deleteChat(id);
+});
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('chats-panel');
+  if (!panel || panel.classList.contains('hidden')) return;
+  if (e.target.closest('#chats-panel') || e.target.closest('#chats-btn')) return;
+  closeChatsPanel();
+});
 
 form.addEventListener('submit', (e) => { e.preventDefault(); const t = input.value; input.value = ''; sendMessage(t); });
 input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
@@ -703,4 +820,4 @@ initModels();
 initHeader();
 loadLifecycle();
 loadTrust();
-loadHistory();
+loadChats();
