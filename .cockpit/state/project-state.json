@@ -189,8 +189,8 @@
     "separate_facts_from_inference": true
   },
   "current_blocker": null,
-  "last_verified_handoff": ".cockpit/handoff/archive/pcc-pathD-002-worker-directive.md",
+  "last_verified_handoff": ".cockpit/handoff/archive/pcc-pathD-003-worker-directive.md",
   "last_verification_verdict": "PASS",
-  "next_expected_action": "Worker evidence for task 'pcc-pathD-003' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict.",
-  "updated_at": "2026-07-05T18:49:28-06:00"
+  "next_expected_action": "Task 'pcc-pathD-003' is complete and verified PASS. Owner/advisor selects and drafts the next bounded task.",
+  "updated_at": "2026-07-05T18:55:34-06:00"
 }

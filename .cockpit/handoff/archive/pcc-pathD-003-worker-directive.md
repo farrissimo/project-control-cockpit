@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-pathD-003
 * Task Title: Routing / Local Tools Read-Only Panel
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Auto-Promotion Basis
