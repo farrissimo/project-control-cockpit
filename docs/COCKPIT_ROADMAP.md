@@ -8,7 +8,7 @@ Status: [x] Done · [~] In progress / Partial · [ ] Planned
 ## P1 — Critical (the owner hammered these)
 1. [x] Desktop app with chat wired to Claude Code
 2. [x] Standing rules persist (CLAUDE.md) + one-click corrections (no repeating yourself)
-3. [~] Independent verification — Codex primary, Gemini/Antigravity fallback (plumbing done; first real run scheduled 10:05 MT / via Antigravity today)
+3. [~] Independent verification — Codex primary, Antigravity `agy` fallback (Gemini retired; wiring done). BLOCKED on a proven verdict: Codex out of usage; agy hung ~13 min headless on a real diff and returned nothing. Reliable headless verifier still unproven.
 4. [x] Hard-checks layer — git facts + PCC health check (deterministic, no LLM)
 5. [~] Project memory / brief — no Groundhog Day (editable brief + auto-load done; deeper carry-forward pending)
 6. [~] Standardized lifecycle — lifecycle bar shows current state, next action, and "Decision required" (done); full state-machine of legal transitions pending
