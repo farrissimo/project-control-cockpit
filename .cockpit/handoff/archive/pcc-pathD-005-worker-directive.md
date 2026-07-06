@@ -15,7 +15,7 @@ Worker
 
 * Task ID: pcc-pathD-005
 * Task Title: Session/Usage Panel, Honest-Only (No Duplication of Existing Panels)
-* Task Status: complete
+* Task Status: returned_for_verification
 * Task Safety Class: A (see docs/BRR_POLICY.md "Task Safety Classification")
 
 ## Auto-Promotion Basis
