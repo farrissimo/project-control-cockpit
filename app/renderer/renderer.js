@@ -152,6 +152,23 @@ async function initHeader() {
   } catch (e) { /* header is cosmetic */ }
 }
 
+// Lifecycle bar: where you are, the next action, and a "Decision required"
+// flag - all read from real state. Honest: if there's no next action it says
+// "not set", it never invents one.
+async function loadLifecycle() {
+  try {
+    const s = await window.pcc.getState();
+    const p = s.project || {}, t = s.task || {};
+    document.getElementById('lc-phase').textContent = (p.current_phase || 'unknown') + (t.task_status ? '  ·  ' + t.task_status : '');
+    document.getElementById('lc-next').textContent = p.next_expected_action || 'not set';
+    const dec = t.owner_decision_request;
+    const q = dec && (dec.question || (typeof dec === 'string' ? dec : ''));
+    const el = document.getElementById('lc-decision');
+    if (q) { el.style.display = 'inline'; el.textContent = 'Decision required: ' + q; }
+    else { el.style.display = 'none'; }
+  } catch (e) { /* state optional */ }
+}
+
 async function loadProject() {
   const body = document.getElementById('project-body');
   try {
@@ -227,4 +244,5 @@ document.getElementById('verify-run').addEventListener('click', async () => {
 // ---- boot ----
 renderCorrections();
 initHeader();
+loadLifecycle();
 loadHistory();

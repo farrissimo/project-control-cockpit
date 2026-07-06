@@ -11,7 +11,7 @@ Status: [x] Done · [~] In progress / Partial · [ ] Planned
 3. [~] Independent verification — Codex primary, Gemini/Antigravity fallback (plumbing done; first real run scheduled 10:05 MT / via Antigravity today)
 4. [x] Hard-checks layer — git facts + PCC health check (deterministic, no LLM)
 5. [~] Project memory / brief — no Groundhog Day (editable brief + auto-load done; deeper carry-forward pending)
-6. [ ] Standardized lifecycle — always shows current state, the legal next move, and a first-class "Decision required" state
+6. [~] Standardized lifecycle — lifecycle bar shows current state, next action, and "Decision required" (done); full state-machine of legal transitions pending
 
 ## P2 — High (the "huge" wounds; the governed loop)
 7. [ ] Clean new-chat handoff generation (compact, from verified state only)
