@@ -288,7 +288,31 @@ ipcMain.handle('pcc:newChat', () => { sessionId = null; return { ok: true }; });
 // renderer also reloads its per-project chat history.
 function projectEntry(p) { return { path: p, name: projectName(p), isHome: p === HOME_DIR }; }
 
+// File-bridge import: scripts/bootstrap-project.ps1 drops freshly-scaffolded
+// project paths into .cockpit/state/scaffolded-inbox.json of the repo it ran in
+// (the active project). Import any valid, not-yet-registered ones, then clear the
+// inbox — so a project created via "New project" shows up in the switcher with no
+// manual "Open existing" step.
+function importScaffoldedInbox() {
+  const inboxPath = path.join(projectDir, '.cockpit', 'state', 'scaffolded-inbox.json');
+  let added = 0;
+  try {
+    if (!fs.existsSync(inboxPath)) return 0;
+    let list = JSON.parse(fs.readFileSync(inboxPath, 'utf8'));
+    if (typeof list === 'string') list = [list];
+    if (!Array.isArray(list)) return 0;
+    const reg = readRegistry();
+    for (const p of list) {
+      if (typeof p === 'string' && fs.existsSync(p) && isPccProject(p) && !reg.projects.includes(p)) { reg.projects.push(p); added++; }
+    }
+    if (added) writeRegistry(reg);
+    fs.writeFileSync(inboxPath, '[]', 'utf8'); // consumed
+  } catch (e) { /* ignore a malformed inbox */ }
+  return added;
+}
+
 ipcMain.handle('pcc:listProjects', () => {
+  importScaffoldedInbox(); // pick up anything "New project" just scaffolded
   const reg = readRegistry();
   return { active: reg.active, projects: reg.projects.map(projectEntry) };
 });

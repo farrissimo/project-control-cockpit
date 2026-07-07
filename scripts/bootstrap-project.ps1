@@ -204,9 +204,21 @@ if (-not $NoGit) {
   Pop-Location
 }
 
+# --- register with the home cockpit (file bridge) ---
+# Drop the new project's path into an inbox in the repo this script was launched
+# from, so the running cockpit auto-imports it into its project switcher (the app
+# clears the inbox after reading). This is what makes "New project" appear in the
+# switcher without a manual "Open existing project" step.
+try {
+  $inboxPath = Join-Path $src '.cockpit/state/scaffolded-inbox.json'
+  $inbox = @()
+  if (Test-Path -LiteralPath $inboxPath) { try { $inbox = @(Get-Content -Raw -LiteralPath $inboxPath | ConvertFrom-Json) } catch { $inbox = @() } }
+  if ($inbox -notcontains $Target) { $inbox += $Target }
+  ($inbox | ConvertTo-Json -AsArray) | Out-File -FilePath $inboxPath -Encoding utf8
+} catch { }
+
 Write-Output ''
 Write-Output "Done. Next steps:"
-Write-Output "  1. cd `"$Target`""
-Write-Output "  2. npm install --prefix app"
-Write-Output "  3. npm start --prefix app"
-Write-Output "  4. Fill in PROJECT.md's goal, then use the Lifecycle tab to move from 'define' to 'plan'."
+Write-Output "  1. Back in the cockpit, open the project switcher — '$Name' will be there."
+Write-Output "  2. Or from a terminal: npm start --prefix `"$Target\app`"."
+Write-Output "  3. Fill in PROJECT.md's goal, then use the Lifecycle tab to move from 'define' to 'plan'."

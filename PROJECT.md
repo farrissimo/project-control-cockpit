@@ -87,9 +87,11 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
    folders via a sidebar switcher. Registry lives at the app level (Electron
    userData), each project is validated (own .cockpit/scripts/CLAUDE.md), chat
    history is namespaced per project, and switching reloads onto the chosen
-   project. Proven by tests/e2e/multiproject.spec.js. Follow-ups: auto-register
-   a project the New-project intake scaffolds (today use "Open existing
-   project"); optionally stop the scaffolder copying app/ into each project.
+   project. Proven by tests/e2e/multiproject.spec.js. New projects created via
+   the intake now AUTO-REGISTER in the switcher (bootstrap drops the path into
+   .cockpit/state/scaffolded-inbox.json; the app imports + clears it —
+   tests/e2e/autoregister.spec.js). Optional remaining: stop the scaffolder
+   copying app/ into each project (unneeded in the home-cockpit model).
    #21 (peek under the hood) and #23 (UI polish) are optional and unstarted.
    Boundary fixtures (down payment on the #1 test-hardening gap): the fakes can
    now replay ugly real-world shapes (worker failure/auth/empty; verifier

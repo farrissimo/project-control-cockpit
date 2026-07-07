@@ -2566,7 +2566,7 @@ Implications:
 - The cross-project registry lives at the machine/app level (Electron userData/projects.json), not inside any repo, so it is independent of which project is active — no "which copy is home?" ambiguity. HOME is always a registered project.
 - Chat history is namespaced per active project (localStorage key pcc.chats.v2::<projectPath>); the pre-multi-project global chats migrate once into the home namespace. Switching does a full reload so every view and the correct chats load.
 - New channels: listProjects, getActiveProject, setActiveProject, addProject, pickFolder. Covered by tests/e2e/multiproject.spec.js (register/switch re-points reads, invalid folders refused, chat isolation).
-- Not yet done (follow-ups): auto-registering a project the New-project intake scaffolds (the worker creates the folder mid-chat, so the app can't yet detect it — use "Open existing project" for now); optionally dropping the now-unnecessary app/ copy from the scaffolder.
+- Follow-up DONE (2026-07-07): New-project auto-registers. bootstrap-project.ps1 drops the new project's path into the launching repo's .cockpit/state/scaffolded-inbox.json, and the app imports it into the switcher on listProjects, then clears the inbox — no manual "Open existing project" step. (Still optional: dropping the now-unnecessary app/ copy from the scaffolder.)
 
 Supersedes: None (delivers DECISION-102 stage S6)
 Related: DECISION-102, DECISION-074, DECISION-077 (extractability), DECISION-088 (local-first), scripts/bootstrap-project.ps1, app/main.js, app/renderer/renderer.js

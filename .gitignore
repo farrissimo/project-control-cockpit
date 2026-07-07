@@ -6,6 +6,10 @@
 # Not project truth; recreated/cleared automatically each cycle.
 .cockpit/state/codex-watcher.lock
 
+# Transient hand-off inbox: bootstrap-project.ps1 drops new project paths here and
+# the app consumes+clears them. Runtime bridge, not project truth.
+.cockpit/state/scaffolded-inbox.json
+
 # Generated Owner Control Board dashboard (scripts/generate-dashboard.ps1,
 # pcc-pathD-001). Derived output regenerated from .cockpit/ state; not source.
 dashboard/index.html
