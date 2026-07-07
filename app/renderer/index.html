@@ -252,12 +252,39 @@
   .pcc-modal-actions button { border-radius: 8px; padding: 8px 14px; font-size: 13px;
     cursor: pointer; border: 1px solid var(--border-2); background: var(--surface-2); color: var(--text-2); }
   .pcc-modal-actions button.primary { background: #2f6bde; border-color: #2f6bde; color: #fff; }
+
+  /* Project switcher (sidebar). One home cockpit, many projects. */
+  .proj-switch { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left;
+    background: var(--surface-2); border: 1px solid var(--border-2); color: var(--text-2);
+    border-radius: 8px; padding: 7px 9px; margin: 2px 0 10px; cursor: pointer; font-size: 13px; }
+  .proj-switch:hover { background: #1d2230; color: var(--text); }
+  .proj-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .proj-caret { color: var(--muted); font-size: 11px; }
+  .proj-panel { position: absolute; z-index: 900; margin: -6px 0 0 0; width: 300px;
+    background: var(--panel); border: 1px solid var(--border-2); border-radius: 10px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.5); padding: 6px; max-height: 60vh; overflow: auto; }
+  .proj-panel.hidden { display: none; }
+  .proj-row { padding: 8px 9px; border-radius: 7px; cursor: pointer; }
+  .proj-row:hover { background: var(--surface-2); }
+  .proj-row.active { background: #1c2637; }
+  .proj-row-name { font-size: 13px; color: var(--text); font-weight: 600; }
+  .proj-home { font-size: 10px; color: var(--info); border: 1px solid var(--info-strong);
+    border-radius: 4px; padding: 0 4px; margin-left: 6px; font-weight: 500; }
+  .proj-row-path { display: block; font-size: 11px; color: var(--muted); overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+  .proj-open { padding: 9px; margin-top: 4px; border-top: 1px solid var(--border);
+    color: var(--info); font-size: 13px; cursor: pointer; }
+  .proj-open:hover { color: #dbe8ff; }
+  .proj-status { padding: 8px 9px; color: var(--danger-text); font-size: 12px; }
 </style>
 </head>
 <body>
   <aside>
     <div class="brand">PCC</div>
-    <div class="project" id="project"></div>
+    <button class="proj-switch" id="proj-switch" type="button" title="Switch between your projects, or open an existing one.">
+      <span id="proj-name" class="proj-name">…</span><span class="proj-caret">▾</span>
+    </button>
+    <div id="proj-panel" class="proj-panel hidden"></div>
     <nav>
       <button class="nav active" data-view="chat" title="Talk to Claude Code about this project.">Chat</button>
       <button class="nav" data-view="project" title="Current project state, decisions, babysitting-reduction metrics, and the new-chat handoff generator.">Project</button>

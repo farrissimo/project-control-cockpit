@@ -7,14 +7,62 @@
 // reads CLAUDE.md from the project directory on its own; nothing is injected
 // into the prompt stream, so we don't bust Claude's prompt cache.
 
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { spawn, exec } = require('child_process');
 
-const PROJECT_DIR = path.join(__dirname, '..');
-const COCKPIT = path.join(PROJECT_DIR, '.cockpit');
+// This app is the single "home" cockpit. It opens PROJECTS (self-contained
+// folders each with their own .cockpit + engine scripts + CLAUDE.md, exactly
+// what scripts/bootstrap-project.ps1 scaffolds) and points every read, script,
+// chat, and worker call at whichever one is active. HOME_DIR is this repo — it
+// is always a registered project and the default active one.
+const HOME_DIR = path.join(__dirname, '..');
+let projectDir = HOME_DIR;               // active project root (switchable)
+const cockpitDir = () => path.join(projectDir, '.cockpit');
+const memoryPath = () => path.join(projectDir, 'PROJECT.md');
+
+// The cross-project registry is machine/app-level (Electron userData), NOT
+// inside any repo — so it is independent of which project is active and there
+// is no "which copy is home?" ambiguity. Shape: { active, projects: [path...] }.
+function registryPath() { return path.join(app.getPath('userData'), 'projects.json'); }
+
+// A folder is a valid PCC project only if it has the engine the app drives:
+// its own .cockpit, scripts/, and CLAUDE.md. Switching to a non-PCC folder
+// would break the detectors (scripts resolve their own location), so we refuse
+// it up front rather than silently half-work (declare the boundary, don't guess).
+function isPccProject(dir) {
+  try {
+    return fs.existsSync(path.join(dir, '.cockpit'))
+      && fs.existsSync(path.join(dir, 'scripts'))
+      && fs.existsSync(path.join(dir, 'CLAUDE.md'));
+  } catch (e) { return false; }
+}
+
+function projectName(dir) {
+  try {
+    const st = JSON.parse(fs.readFileSync(path.join(dir, '.cockpit', 'state', 'project-state.json'), 'utf8'));
+    if (st && st.project_name) return st.project_name;
+  } catch (e) { /* fall through to folder name */ }
+  return path.basename(dir);
+}
+
+function readRegistry() {
+  let reg = { active: null, projects: [] };
+  try { reg = JSON.parse(fs.readFileSync(registryPath(), 'utf8')) || reg; } catch (e) { /* first run */ }
+  if (!Array.isArray(reg.projects)) reg.projects = [];
+  // HOME is always present, first, and de-duplicated.
+  reg.projects = reg.projects.filter((p) => typeof p === 'string' && p !== HOME_DIR && fs.existsSync(p));
+  reg.projects.unshift(HOME_DIR);
+  reg.projects = [...new Set(reg.projects)];
+  if (!reg.active || !reg.projects.includes(reg.active)) reg.active = HOME_DIR;
+  return reg;
+}
+
+function writeRegistry(reg) {
+  try { fs.writeFileSync(registryPath(), JSON.stringify(reg, null, 2), 'utf8'); } catch (e) { /* best effort */ }
+}
 
 // PCC drives Claude Code through the owner's claude.ai LOGIN, not a paid API key
 // (DECISION-003: no paid-API dependency). If ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN
@@ -39,7 +87,7 @@ let sessionId = null;
 
 function readJson(...rel) {
   try {
-    return JSON.parse(fs.readFileSync(path.join(COCKPIT, ...rel), 'utf8'));
+    return JSON.parse(fs.readFileSync(path.join(cockpitDir(), ...rel), 'utf8'));
   } catch (e) {
     return { _error: e.message };
   }
@@ -54,7 +102,7 @@ ipcMain.handle('pcc:getState', () => ({
 // loads into every Claude session. Read-only.
 ipcMain.handle('pcc:getRules', () => {
   try {
-    return { ok: true, text: fs.readFileSync(path.join(PROJECT_DIR, 'CLAUDE.md'), 'utf8') };
+    return { ok: true, text: fs.readFileSync(path.join(projectDir, 'CLAUDE.md'), 'utf8') };
   } catch (e) {
     return { ok: false, text: null };
   }
@@ -62,11 +110,10 @@ ipcMain.handle('pcc:getRules', () => {
 
 // Project memory: a plain-text brief (PROJECT.md) the owner curates and Claude
 // reads at the start of every session (CLAUDE.md points to it). No fake
-// auto-extraction - it is exactly what is written here, nothing more.
-const MEMORY_PATH = path.join(PROJECT_DIR, 'PROJECT.md');
-
+// auto-extraction - it is exactly what is written here, nothing more. Path is
+// resolved per-call against the ACTIVE project so switching projects works.
 ipcMain.handle('pcc:getMemory', () => {
-  try { return { ok: true, text: fs.readFileSync(MEMORY_PATH, 'utf8') }; }
+  try { return { ok: true, text: fs.readFileSync(memoryPath(), 'utf8') }; }
   catch (e) { return { ok: true, text: '' }; }
 });
 
@@ -74,7 +121,7 @@ ipcMain.handle('pcc:saveMemory', (_e, text) => {
   // Reject non-strings: a stray null/undefined must never overwrite PROJECT.md
   // with the literal "null"/"undefined" (the old String(text) coercion would).
   if (typeof text !== 'string') return { ok: false, error: 'saveMemory expects a string' };
-  try { fs.writeFileSync(MEMORY_PATH, text, 'utf8'); return { ok: true }; }
+  try { fs.writeFileSync(memoryPath(), text, 'utf8'); return { ok: true }; }
   catch (e) { return { ok: false, error: e.message }; }
 });
 
@@ -86,7 +133,7 @@ ipcMain.handle('pcc:saveMemory', (_e, text) => {
 // verify-work.ps1): Codex primary, Antigravity/agy fallback. The app button and
 // scheduled after-10am-MT test both call it, so there is one source of truth.
 ipcMain.handle('pcc:verify', () => new Promise((resolve) => {
-  exec('pwsh -NoProfile -File scripts/verify-work.ps1', { cwd: PROJECT_DIR, maxBuffer: 12 * 1024 * 1024, timeout: 200000, windowsHide: true }, (err, stdout, stderr) => {
+  exec('pwsh -NoProfile -File scripts/verify-work.ps1', { cwd: projectDir, maxBuffer: 12 * 1024 * 1024, timeout: 200000, windowsHide: true }, (err, stdout, stderr) => {
     const out = (stdout || '').trim();
     if (out) return resolve({ ok: true, text: out });
     if (err) return resolve({ ok: false, text: 'Verification could not run: ' + (err.killed ? 'timed out' : (stderr || err.message)) });
@@ -97,7 +144,7 @@ ipcMain.handle('pcc:verify', () => new Promise((resolve) => {
 // Hard checks - deterministic facts, no LLM, always available: PCC's own
 // health check plus the git working-tree/scope facts.
 function runCmd(cmd, timeout) {
-  return new Promise((res) => exec(cmd, { cwd: PROJECT_DIR, maxBuffer: 8 * 1024 * 1024, timeout: timeout || 60000, windowsHide: true }, (e, so, se) => {
+  return new Promise((res) => exec(cmd, { cwd: projectDir, maxBuffer: 8 * 1024 * 1024, timeout: timeout || 60000, windowsHide: true }, (e, so, se) => {
     let out = ((so || '') + (se ? ('\n' + se) : '')).trim();
     out = out.replace(/\x1b\[[0-9;]*m/g, ''); // strip terminal color codes
     res(out || (e ? e.message : '(no output)'));
@@ -108,7 +155,7 @@ function runCmd(cmd, timeout) {
 // the owner never re-briefs a fresh chat by hand. Deterministic script; the app
 // only displays and copies it.
 ipcMain.handle('pcc:handoff', () => new Promise((resolve) => {
-  exec('pwsh -NoProfile -File scripts/generate-handoff.ps1', { cwd: PROJECT_DIR, maxBuffer: 4 * 1024 * 1024, timeout: 30000, windowsHide: true }, (err, stdout, stderr) => {
+  exec('pwsh -NoProfile -File scripts/generate-handoff.ps1', { cwd: projectDir, maxBuffer: 4 * 1024 * 1024, timeout: 30000, windowsHide: true }, (err, stdout, stderr) => {
     const out = (stdout || '').trim();
     if (out) return resolve({ ok: true, text: out });
     resolve({ ok: false, text: 'Could not generate handoff: ' + (err ? (stderr || err.message) : 'no output') });
@@ -128,7 +175,7 @@ ipcMain.handle('pcc:hardChecks', async () => {
 // Add new detectors here as their scripts land; the CLI works without app/.
 function runDetector(script) {
   return new Promise((resolve) => {
-    exec('pwsh -NoProfile -File ' + script + ' -Json', { cwd: PROJECT_DIR, maxBuffer: 8 * 1024 * 1024, timeout: 30000, windowsHide: true }, (err, stdout) => {
+    exec('pwsh -NoProfile -File ' + script + ' -Json', { cwd: projectDir, maxBuffer: 8 * 1024 * 1024, timeout: 30000, windowsHide: true }, (err, stdout) => {
       const out = (stdout || '').trim();
       try { resolve(JSON.parse(out)); }
       catch (e) { resolve({ detector: script, signal: 'unknown', observed: 'Detector could not run: ' + (err ? err.message : 'no output'), might_mean: '', not_proven: '', what_to_do: '', items: [] }); }
@@ -138,7 +185,7 @@ function runDetector(script) {
 
 // Babysitting-reduction metrics: observable proxies only (never a fake score).
 ipcMain.handle('pcc:metrics', () => new Promise((resolve) => {
-  exec('pwsh -NoProfile -File scripts/babysitting-metrics.ps1 -Json', { cwd: PROJECT_DIR, maxBuffer: 4 * 1024 * 1024, timeout: 20000, windowsHide: true }, (err, stdout) => {
+  exec('pwsh -NoProfile -File scripts/babysitting-metrics.ps1 -Json', { cwd: projectDir, maxBuffer: 4 * 1024 * 1024, timeout: 20000, windowsHide: true }, (err, stdout) => {
     try { resolve(JSON.parse((stdout || '').trim())); }
     catch (e) { resolve(null); }
   });
@@ -147,7 +194,7 @@ ipcMain.handle('pcc:metrics', () => new Promise((resolve) => {
 // Recent decisions: carry-forward memory so "what did we decide?" is one click
 // away, read straight from the canonical log (docs/DECISIONS.md).
 ipcMain.handle('pcc:recentDecisions', () => new Promise((resolve) => {
-  exec('pwsh -NoProfile -File scripts/recent-decisions.ps1 -Json -Count 6', { cwd: PROJECT_DIR, maxBuffer: 4 * 1024 * 1024, timeout: 20000, windowsHide: true }, (err, stdout) => {
+  exec('pwsh -NoProfile -File scripts/recent-decisions.ps1 -Json -Count 6', { cwd: projectDir, maxBuffer: 4 * 1024 * 1024, timeout: 20000, windowsHide: true }, (err, stdout) => {
     try { resolve(JSON.parse((stdout || '').trim())); }
     catch (e) { resolve({ decisions: [], found: 0, showing: 0 }); }
   });
@@ -172,8 +219,8 @@ ipcMain.handle('pcc:detections', async () => ({
 // scheduled run writes, and is only called fresh if it is newer than HEAD -
 // so the strip never claims "verified" for work committed after the check.
 ipcMain.handle('pcc:trustExtras', () => new Promise((resolve) => {
-  const rulesLoaded = fs.existsSync(path.join(PROJECT_DIR, 'CLAUDE.md'));
-  const vPath = path.join(PROJECT_DIR, 'app', 'last-verification.txt');
+  const rulesLoaded = fs.existsSync(path.join(projectDir, 'CLAUDE.md'));
+  const vPath = path.join(projectDir, 'app', 'last-verification.txt');
   let verification = { present: false };
   try {
     if (fs.existsSync(vPath)) {
@@ -183,7 +230,7 @@ ipcMain.handle('pcc:trustExtras', () => new Promise((resolve) => {
       verification = { present: true, verdict: m ? m[1] : null, mtimeEpoch: Math.floor(st.mtimeMs / 1000) };
     }
   } catch (e) { /* leave present:false */ }
-  exec('git log -1 --format=%ct', { cwd: PROJECT_DIR, timeout: 10000, windowsHide: true }, (err, stdout) => {
+  exec('git log -1 --format=%ct', { cwd: projectDir, timeout: 10000, windowsHide: true }, (err, stdout) => {
     const headEpoch = parseInt((stdout || '').trim(), 10) || 0;
     resolve({ rulesLoaded, verification, headCommitEpoch: headEpoch });
   });
@@ -196,7 +243,7 @@ function readModels() {
   const fallback = { default: 'claude-sonnet-5', fallback_chain: 'claude-sonnet-5',
     models: [{ id: 'claude-sonnet-5', label: 'Sonnet 5 (default)' }] };
   try {
-    const cfg = JSON.parse(fs.readFileSync(path.join(COCKPIT, 'state', 'models.json'), 'utf8'));
+    const cfg = JSON.parse(fs.readFileSync(path.join(cockpitDir(), 'state', 'models.json'), 'utf8'));
     return { default: cfg.default || fallback.default, fallback_chain: cfg.fallback_chain || cfg.default || fallback.fallback_chain, models: cfg.models || fallback.models };
   } catch (e) { return fallback; }
 }
@@ -207,6 +254,49 @@ ipcMain.handle('pcc:getModels', () => readModels());
 // message starts an isolated conversation. (The renderer also clears its own
 // history.)
 ipcMain.handle('pcc:newChat', () => { sessionId = null; return { ok: true }; });
+
+// ---- multi-project switching ----
+// The home cockpit points at one active project at a time. These handlers list
+// the registered projects, switch the active one (re-pointing every read/script/
+// worker call at it), add an existing folder, and register a freshly-scaffolded
+// one. HOME is always present. Switching resets the local session fallback; the
+// renderer also reloads its per-project chat history.
+function projectEntry(p) { return { path: p, name: projectName(p), isHome: p === HOME_DIR }; }
+
+ipcMain.handle('pcc:listProjects', () => {
+  const reg = readRegistry();
+  return { active: reg.active, projects: reg.projects.map(projectEntry) };
+});
+
+ipcMain.handle('pcc:getActiveProject', () => projectEntry(projectDir));
+
+ipcMain.handle('pcc:setActiveProject', (_e, dir) => {
+  const reg = readRegistry();
+  if (typeof dir !== 'string' || !reg.projects.includes(dir)) return { ok: false, error: 'Unknown project.' };
+  if (!isPccProject(dir)) return { ok: false, error: 'Not a PCC project (missing .cockpit / scripts / CLAUDE.md).' };
+  projectDir = dir;
+  sessionId = null;                 // don't carry a worker session across projects
+  reg.active = dir; writeRegistry(reg);
+  return { ok: true, active: projectEntry(dir) };
+});
+
+// Add an already-existing folder as a project (must be a valid PCC project).
+ipcMain.handle('pcc:addProject', (_e, dir) => {
+  if (typeof dir !== 'string' || !dir) return { ok: false, error: 'No folder given.' };
+  if (!fs.existsSync(dir)) return { ok: false, error: 'Folder does not exist.' };
+  if (!isPccProject(dir)) return { ok: false, error: 'Not a PCC project. A project needs its own .cockpit, scripts/, and CLAUDE.md (create one with "New project").' };
+  const reg = readRegistry();
+  if (!reg.projects.includes(dir)) reg.projects.push(dir);
+  writeRegistry(reg);
+  return { ok: true, project: projectEntry(dir) };
+});
+
+// Native folder picker for "Open existing project".
+ipcMain.handle('pcc:pickFolder', async () => {
+  const r = await dialog.showOpenDialog({ properties: ['openDirectory'], title: 'Open an existing PCC project' });
+  if (r.canceled || !r.filePaths || !r.filePaths.length) return { path: null };
+  return { path: r.filePaths[0] };
+});
 
 // The chat panel is text-only (no interactive pickers). Tell the worker so it
 // answers in plain text and never narrates internal tool failures. BUG FOUND by
@@ -243,7 +333,7 @@ function askClaude(message, model, chatId, isFirstTurn) {
     let err = '';
     let child;
     try {
-      child = spawn('claude', args, { cwd: PROJECT_DIR, shell: true });
+      child = spawn('claude', args, { cwd: projectDir, shell: true });
     } catch (e) {
       return resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message });
     }
@@ -283,6 +373,12 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Restore the last-active project (registry needs app.getPath, so read it here).
+  try {
+    const reg = readRegistry();
+    if (reg.active && isPccProject(reg.active)) projectDir = reg.active;
+    writeRegistry(reg); // normalizes (ensures HOME present) on first run
+  } catch (e) { /* stay on HOME_DIR */ }
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

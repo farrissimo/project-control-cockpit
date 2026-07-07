@@ -2544,3 +2544,29 @@ Process disclosure: this direction was set by the owner directly this session an
 
 Supersedes: DECISION-087 (finished-UI form only; DECISION-087's file-bridge-consumer architecture is retained)
 Related: DECISION-002, DECISION-003, DECISION-074, DECISION-077, DECISION-086, DECISION-087, DECISION-088, DECISION-089, archive/PCC Original Project Scope.md (§5, §7, §10, §11), docs/PATH_A_PLAN.md, docs/CCB_PCC_RELATIONSHIP.md, C:\CommandCenterCCB (.ccb/governance/FAILURE_CLASS_MATRIX.md, GOVERNANCE_FRICTION_PATTERNS.md)
+
+---
+
+## DECISION-103: Multi-Project Switching Is One Home Cockpit Over Self-Contained Projects (delivers DECISION-102 stage S6)
+
+Date: 2026-07-07
+Status: Active
+
+Owner Decision:
+
+Multi-project switching (the last DECISION-102 build stage, S6) is delivered as a single "home" cockpit that opens and switches between self-contained project folders — NOT as one app copy frozen per project. The owner's instruction was "whichever is most scalable and long-term."
+
+Reason:
+
+Each project scaffolded by scripts/bootstrap-project.ps1 is already self-contained (its own .cockpit + engine scripts + CLAUDE.md), so the app only needs to re-point at the chosen one. The rejected alternative — a separate app copy per project — freezes the cockpit into every project and re-creates the drift/maintenance problem PCC exists to kill (a cockpit improvement would never reach older projects). One home cockpit avoids that entirely.
+
+Implications:
+
+- The app resolves an ACTIVE project at runtime (main.js: projectDir, default = HOME_DIR = this repo); every read/script/worker call points at it. A folder is accepted as a project only if it has its own .cockpit + scripts/ + CLAUDE.md (isPccProject), so switching never half-works against a non-PCC folder.
+- The cross-project registry lives at the machine/app level (Electron userData/projects.json), not inside any repo, so it is independent of which project is active — no "which copy is home?" ambiguity. HOME is always a registered project.
+- Chat history is namespaced per active project (localStorage key pcc.chats.v2::<projectPath>); the pre-multi-project global chats migrate once into the home namespace. Switching does a full reload so every view and the correct chats load.
+- New channels: listProjects, getActiveProject, setActiveProject, addProject, pickFolder. Covered by tests/e2e/multiproject.spec.js (register/switch re-points reads, invalid folders refused, chat isolation).
+- Not yet done (follow-ups): auto-registering a project the New-project intake scaffolds (the worker creates the folder mid-chat, so the app can't yet detect it — use "Open existing project" for now); optionally dropping the now-unnecessary app/ copy from the scaffolder.
+
+Supersedes: None (delivers DECISION-102 stage S6)
+Related: DECISION-102, DECISION-074, DECISION-077 (extractability), DECISION-088 (local-first), scripts/bootstrap-project.ps1, app/main.js, app/renderer/renderer.js

@@ -12,9 +12,15 @@ const correctionsBar = document.getElementById('corrections');
 // also the Claude session id, so switching resumes the right thread). `history`
 // stays as a live reference to the ACTIVE chat's messages, so the existing
 // signal code (rollover/sycophancy/metrics) that reads `history` keeps working.
-const CHATS_KEY = 'pcc.chats.v2';
-const ACTIVE_KEY = 'pcc.activeChat.v2';
+// Chat history is namespaced per ACTIVE project so switching projects never
+// bleeds one project's chats into another. activeProjectPath is set at boot from
+// the main process (the active project in the registry).
+const LEGACY_CHATS_KEY = 'pcc.chats.v2';        // pre-multi-project global key (migrated once)
+const LEGACY_ACTIVE_KEY = 'pcc.activeChat.v2';
 const OLD_HISTORY_KEY = 'pcc.chat.history';
+let activeProjectPath = null;
+function chatsKey() { return LEGACY_CHATS_KEY + '::' + (activeProjectPath || 'home'); }
+function activeChatKey() { return LEGACY_ACTIVE_KEY + '::' + (activeProjectPath || 'home'); }
 let chats = [];
 let activeId = null;
 let history = [];
@@ -23,7 +29,7 @@ let busy = false;
 function uuid() { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'c-' + Date.now() + '-' + Math.random().toString(16).slice(2); }
 function activeChat() { return chats.find((c) => c.id === activeId) || null; }
 function newChatObj() { return { id: uuid(), name: 'New chat', started: false, messages: [], createdAt: Date.now(), updatedAt: Date.now() }; }
-function persistChats() { localStorage.setItem(CHATS_KEY, JSON.stringify(chats)); localStorage.setItem(ACTIVE_KEY, activeId || ''); }
+function persistChats() { localStorage.setItem(chatsKey(), JSON.stringify(chats)); localStorage.setItem(activeChatKey(), activeId || ''); }
 
 const CORRECTIONS = [
   { label: 'Be concise', msg: 'Be concise.' },
@@ -342,8 +348,19 @@ function renderActiveChat() {
 }
 
 function loadChats() {
-  try { chats = JSON.parse(localStorage.getItem(CHATS_KEY)) || []; } catch (e) { chats = []; }
+  try { chats = JSON.parse(localStorage.getItem(chatsKey())) || []; } catch (e) { chats = []; }
   if (!Array.isArray(chats)) chats = [];
+  // One-time migration: adopt the pre-multi-project GLOBAL chats into this
+  // (home) project's namespace, then drop the global key.
+  if (chats.length === 0) {
+    let legacy = [];
+    try { legacy = JSON.parse(localStorage.getItem(LEGACY_CHATS_KEY)) || []; } catch (e) { legacy = []; }
+    if (Array.isArray(legacy) && legacy.length) {
+      chats = legacy;
+      localStorage.removeItem(LEGACY_CHATS_KEY);
+      localStorage.removeItem(LEGACY_ACTIVE_KEY);
+    }
+  }
   // One-time migration: fold a pre-history single conversation into one chat.
   if (chats.length === 0) {
     let old = [];
@@ -356,7 +373,7 @@ function loadChats() {
     }
   }
   if (chats.length === 0) chats.push(newChatObj());
-  const savedActive = localStorage.getItem(ACTIVE_KEY);
+  const savedActive = localStorage.getItem(activeChatKey());
   activeId = (savedActive && chats.some((c) => c.id === savedActive)) ? savedActive : chats[0].id;
   history = activeChat().messages;
   persistChats();
@@ -797,10 +814,13 @@ function row(label, value) {
 }
 
 async function initHeader() {
+  // The active project's name is shown by the project switcher (loadProjectSwitcher);
+  // fall back to project-state here only if the switcher name is still a placeholder.
   try {
     const s = await window.pcc.getState();
     const p = s.project || {};
-    if (p.project_name) document.getElementById('project').textContent = p.project_name;
+    const el = document.getElementById('proj-name');
+    if (el && p.project_name && (!el.textContent || el.textContent === '…')) el.textContent = p.project_name;
   } catch (e) { /* header is cosmetic */ }
 }
 
@@ -1060,12 +1080,86 @@ document.getElementById('verify-run').addEventListener('click', async () => {
   }
 });
 
+// ---- project switcher (multi-project) ----
+// The home cockpit points at one active project at a time. This panel lists the
+// registered projects, switches the active one (a full reload re-points every
+// view + loads that project's own chats), and opens an existing PCC folder.
+function closeProjPanel() { const p = document.getElementById('proj-panel'); if (p) p.classList.add('hidden'); }
+
+async function loadProjectSwitcher() {
+  const nameEl = document.getElementById('proj-name');
+  const panel = document.getElementById('proj-panel');
+  if (!panel) return;
+  let data = null;
+  try { data = await window.pcc.listProjects(); } catch (e) { return; }
+  const projects = data.projects || [];
+  const active = data.active;
+  const activeEntry = projects.find((p) => p.path === active) || projects[0];
+  if (nameEl && activeEntry) nameEl.textContent = activeEntry.name;
+  panel.innerHTML = projects.map((p) =>
+    '<div class="proj-row' + (p.path === active ? ' active' : '') + '" data-path="' + encodeURIComponent(p.path) + '">'
+    + '<span class="proj-row-name">' + escapeHtml(p.name) + (p.isHome ? '<span class="proj-home">home</span>' : '') + '</span>'
+    + '<span class="proj-row-path">' + escapeHtml(p.path) + '</span></div>'
+  ).join('') + '<div class="proj-open" data-act="open">＋ Open existing project…</div>';
+}
+
+function showProjError(msg) {
+  const panel = document.getElementById('proj-panel');
+  if (!panel) return;
+  const old = panel.querySelector('.proj-status'); if (old) old.remove();
+  const el = document.createElement('div'); el.className = 'proj-status'; el.textContent = msg;
+  panel.insertBefore(el, panel.firstChild);
+}
+
+async function switchProject(pathEnc) {
+  const target = decodeURIComponent(pathEnc);
+  if (target === activeProjectPath) { closeProjPanel(); return; }
+  const r = await window.pcc.setActiveProject(target);
+  if (r && r.ok) { location.reload(); }
+  else { showProjError((r && r.error) || 'Could not switch project.'); }
+}
+
+async function openExistingProject() {
+  let pick = null;
+  try { pick = await window.pcc.pickFolder(); } catch (e) { return; }
+  if (!pick || !pick.path) return;
+  const add = await window.pcc.addProject(pick.path);
+  if (!add || !add.ok) { showProjError((add && add.error) || 'Could not add project.'); return; }
+  const sw = await window.pcc.setActiveProject(pick.path);
+  if (sw && sw.ok) location.reload();
+  else showProjError((sw && sw.error) || 'Could not switch to the project.');
+}
+
+document.getElementById('proj-switch').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const p = document.getElementById('proj-panel');
+  p.classList.toggle('hidden');
+  if (!p.classList.contains('hidden')) loadProjectSwitcher();
+});
+document.getElementById('proj-panel').addEventListener('click', (e) => {
+  if (e.target.closest('[data-act="open"]')) { openExistingProject(); return; }
+  const row = e.target.closest('.proj-row');
+  if (row) switchProject(row.dataset.path);
+});
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('proj-panel');
+  if (!panel || panel.classList.contains('hidden')) return;
+  if (e.target.closest('#proj-panel') || e.target.closest('#proj-switch')) return;
+  closeProjPanel();
+});
+
 // ---- boot ----
 document.getElementById('lifecycle').addEventListener('click', () => document.querySelector('.nav[data-view="lifecycle"]').click());
 
-renderCorrections();
-initModels();
-initHeader();
-loadLifecycle();
-loadTrust();
-loadChats();
+async function boot() {
+  // Resolve the active project first so chat history loads from its namespace.
+  try { const a = await window.pcc.getActiveProject(); activeProjectPath = a && a.path; } catch (e) { /* default namespace */ }
+  renderCorrections();
+  initModels();
+  loadProjectSwitcher();
+  initHeader();
+  loadLifecycle();
+  loadTrust();
+  loadChats();
+}
+boot();

@@ -68,12 +68,16 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
    Claude/Codex boundary behavior remain NOT PROVEN by execution. The automated
    runtime half still wants a Codex `verify-work.ps1` run when usage is back
    (agy fallback is wired but NOT PROVEN reliable — a real-diff run hung ~13 min).
-2. No other task is required right now. #20 (multi-project switching) is
-   PAUSED by owner choice (creating projects works; switching the app between
-   them does not — a real architectural change, deliberately deferred). #12
-   (agreements-only-in-chat) is deferred (needs AI judgment, not a script).
+2. MULTI-PROJECT SWITCHING (#20 / DECISION-102 stage S6) is now DONE
+   (DECISION-103): one "home" cockpit switches between self-contained project
+   folders via a sidebar switcher. Registry lives at the app level (Electron
+   userData), each project is validated (own .cockpit/scripts/CLAUDE.md), chat
+   history is namespaced per project, and switching reloads onto the chosen
+   project. Proven by tests/e2e/multiproject.spec.js. Follow-ups: auto-register
+   a project the New-project intake scaffolds (today use "Open existing
+   project"); optionally stop the scaffolder copying app/ into each project.
    #21 (peek under the hood) and #23 (UI polish) are optional and unstarted.
-   Everything else in P1/P2/P3 is done. Next real work is the owner's call.
+   Recorded-real-run verifier fixtures remain the #1 test-hardening gap.
 
 ## Roadmap status (full list: docs/COCKPIT_ROADMAP.md)
 All of P1/P2/P3 done or honestly handled. Also shipped (owner feedback while
@@ -91,8 +95,9 @@ Open / deferred:
 - #3 verification — independent GPT PASS recorded 2026-07-07 (code review only);
   runtime re-execution by Codex still pending usage. Recorded-real-run fixtures
   (real worker/verifier success/failure/auth/timeout) is the #1 remaining test gap.
-- #20 multi-project SWITCHING — PAUSED by owner (real architectural change; one
-  project today). Creating new projects works; switching the app between them does not.
+- #20 multi-project SWITCHING — DONE (DECISION-103): one home cockpit over
+  self-contained projects, with a sidebar switcher, per-project chat history, and
+  an app-level registry. Switching between existing PCC projects works today.
 - #21 peek-under-the-hood, #23 UI polish — optional, not started.
 Every detection ships ONLY in the "Observed / what it might mean / what's NOT
 proven / what to do" format — never a fake certainty.
