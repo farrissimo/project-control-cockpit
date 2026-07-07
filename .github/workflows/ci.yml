@@ -1,0 +1,43 @@
+name: CI
+
+# Independent clean-machine proof (PCC assurance layer). On every push, a fresh
+# GitHub-hosted machine installs the app from the lockfile and runs the full test
+# suite + a dependency audit. This is the EXECUTION proof that a code review (GPT/
+# Codex reading the diff) structurally cannot give — see DECISION-105.
+#
+# Deliberately NARROW (no releases, packaging, coverage dashboards, badges, or
+# matrix builds): the point is honest proof the software runs, not a CI project.
+# Runner is windows-latest on purpose — it matches the dev OS and the PowerShell
+# (pwsh) script-contract tests, and lets Electron run without a virtual-display
+# workaround. The worker/verifier are faked in tests (offline, deterministic), so
+# no network, API key, or Claude/Codex usage is needed.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install from lockfile (clean)
+        run: npm ci
+
+      - name: Run the full test suite (Electron E2E + IPC + PowerShell scripts)
+        run: npm test
+
+      - name: Dependency vulnerability audit (fail only on high/critical)
+        run: npm audit --audit-level=high
