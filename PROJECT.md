@@ -46,6 +46,18 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
 - Signals view: the DECISION-102 honest-detection system. Shipped detectors: untracked-files (scripts/detect-untracked.ps1, git-only, respects .gitignore), chat-rollover (turns/time/repeats from the app's own chat history), out-of-scope/drift (scripts/detect-drift.ps1, branch changes vs the declared boundary), stale-docs (scripts/detect-stale-docs.ps1, changed code vs a declared doc-freshness rule list), and repo-sync (scripts/detect-repo-sync.ps1, is the work backed up to the remote — uncommitted/untracked/unpushed). Every detector uses the "Observed / what it might mean / what's NOT proven / what to do" format; built to grow (one script + one line in main.js per detector).
 - Declared boundaries (so detectors never guess): .cockpit/state/app-build-scope.json (what the app-build lane is allowed to change — drift checks this) and .cockpit/state/doc-freshness-map.json (a small, adjustable "if this code changes, this doc should too" list — stale-docs checks this). Both have plain-language sections; update them deliberately as the work grows. If a boundary is missing, its detector reports "unknown" rather than guessing.
 - AGENTS.md: verifier verdict format (PASS/FAIL/INSUFFICIENT/BLOCKED/OUT_OF_SCOPE + NOT PROVEN).
+- Automated test suite (app/tests/, `npm test` from app/): one runner
+  (@playwright/test), three layers — E2E that launches the real Electron app and
+  clicks every button, IPC-handler contract for all 15 window.pcc.* channels, and
+  PowerShell script-contract tests for the detectors. The worker/verifier are
+  faked (offline, free, deterministic); local detectors run for real. 44 tests.
+  Auto-runs on commit via .githooks/pre-commit when app/ or scripts/ changes are
+  staged (bypass: git commit --no-verify). Details: app/tests/README.md.
+  Two real bugs it caught and fixed: (1) New-project + rename buttons were dead —
+  Electron doesn't support window.prompt(); replaced with an in-app modal.
+  (2) The Project page's Recent-decisions panel silently blanked whenever a
+  decision title held a non-ASCII char (§) — PowerShell emitted OEM-codepage
+  bytes over the pipe, making the JSON invalid; JSON scripts now force UTF-8.
 
 ## Pending / immediate next tasks
 1. VERIFICATION (#3): self-resolving. A Windows scheduled task "PCC Verify
