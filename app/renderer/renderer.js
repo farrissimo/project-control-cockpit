@@ -986,7 +986,67 @@ async function loadProject() {
   }
   loadDecisions();
   loadMetrics();
+  loadSync();
 }
+
+// ---- back up & sync (in-app git) ----
+// One-click backup (commit + push) and get-latest (pull), so the owner never
+// drops to a terminal to save or sync work. Honest status + honest failures.
+async function loadSync() {
+  const statusEl = document.getElementById('sync-status');
+  if (!statusEl) return;
+  statusEl.className = 'sync-status muted'; statusEl.textContent = 'Checking…';
+  let s = null;
+  try { s = await window.pcc.syncStatus(); } catch (e) { statusEl.textContent = 'Could not read git status.'; return; }
+  let cls = 'good', msg;
+  if (s.clean && s.behind === 0) {
+    msg = 'On ' + s.branch + ' — everything is backed up' + (s.hasUpstream ? '' : ' (no remote set yet)') + '.';
+  } else {
+    const parts = [];
+    if (s.dirty) parts.push(s.dirty + ' uncommitted change' + (s.dirty > 1 ? 's' : ''));
+    if (s.untracked) parts.push(s.untracked + ' new file' + (s.untracked > 1 ? 's' : ''));
+    if (s.ahead) parts.push(s.ahead + ' commit' + (s.ahead > 1 ? 's' : '') + ' not pushed');
+    if (s.behind) parts.push(s.behind + ' new on the remote');
+    msg = 'On ' + s.branch + ' — ' + (parts.join(', ') || 'changes to review') + '.';
+    cls = (s.dirty || s.untracked || s.ahead || s.behind) ? 'warn' : 'good';
+  }
+  statusEl.className = 'sync-status ' + cls;
+  statusEl.textContent = msg;
+}
+
+function setSyncBusy(b) {
+  ['sync-backup', 'sync-pull', 'sync-refresh'].forEach((id) => { const el = document.getElementById(id); if (el) el.disabled = b; });
+}
+
+async function doBackup() {
+  const result = document.getElementById('sync-result');
+  const msgEl = document.getElementById('sync-msg');
+  setSyncBusy(true);
+  result.className = 'sync-result'; result.textContent = 'Backing up…';
+  try {
+    const r = await window.pcc.backup(msgEl ? msgEl.value : '');
+    result.className = 'sync-result ' + (r.ok ? 'good' : 'bad');
+    result.textContent = r.text || (r.ok ? 'Done.' : 'Failed.');
+    if (r.ok && msgEl) msgEl.value = '';
+  } catch (e) { result.className = 'sync-result bad'; result.textContent = 'Backup failed: ' + e.message; }
+  finally { setSyncBusy(false); loadSync(); loadTrust(); }
+}
+
+async function doPull() {
+  const result = document.getElementById('sync-result');
+  setSyncBusy(true);
+  result.className = 'sync-result'; result.textContent = 'Getting latest…';
+  try {
+    const r = await window.pcc.pull();
+    result.className = 'sync-result ' + (r.ok ? 'good' : 'bad');
+    result.textContent = r.text || (r.ok ? 'Up to date.' : 'Failed.');
+  } catch (e) { result.className = 'sync-result bad'; result.textContent = 'Get latest failed: ' + e.message; }
+  finally { setSyncBusy(false); loadSync(); loadTrust(); }
+}
+
+document.getElementById('sync-backup').addEventListener('click', doBackup);
+document.getElementById('sync-pull').addEventListener('click', doPull);
+document.getElementById('sync-refresh').addEventListener('click', loadSync);
 
 // Babysitting-reduction metrics (roadmap #19): repo-side proxies from the script
 // combined with this chat's own proxies. Honest - labeled proxies, not a score.

@@ -16,10 +16,10 @@ const call = (method, ...args) =>
 test('bridge exposes exactly the expected channels', async () => {
   const keys = await page.evaluate(() => Object.keys(window.pcc).sort());
   expect(keys).toEqual([
-    'addProject', 'detections', 'getActiveProject', 'getMemory', 'getModels',
+    'addProject', 'backup', 'detections', 'getActiveProject', 'getMemory', 'getModels',
     'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'listProjects',
-    'metrics', 'newChat', 'pickFolder', 'recentDecisions', 'saveMemory',
-    'secondOpinion', 'send', 'setActiveProject', 'trustExtras', 'verify',
+    'metrics', 'newChat', 'pickFolder', 'pull', 'recentDecisions', 'saveMemory',
+    'secondOpinion', 'send', 'setActiveProject', 'syncStatus', 'trustExtras', 'verify',
   ]);
 });
 

@@ -282,6 +282,25 @@
   .bubble.codex { border-left: 3px solid var(--info); background: #12203a; }
   .bubble.codex::before { content: "Codex cross-check"; display: block; font-size: 10px;
     letter-spacing: .04em; text-transform: uppercase; color: var(--info); margin-bottom: 6px; font-weight: 600; }
+
+  /* Back up & sync card (Project view). */
+  .sync-card { background: var(--surface-2); border: 1px solid var(--border-2); border-radius: 10px; padding: 12px; margin-top: 8px; }
+  .sync-status { font-size: 13px; margin-bottom: 10px; }
+  .sync-status.good { color: var(--success-text); }
+  .sync-status.warn { color: var(--warning-text); }
+  .sync-status.bad { color: var(--danger-text); }
+  .sync-msg { width: 100%; box-sizing: border-box; background: var(--surface); border: 1px solid var(--border-2);
+    color: var(--text); border-radius: 8px; padding: 8px 10px; font-size: 13px; outline: none; margin-bottom: 8px; }
+  .sync-msg:focus { border-color: var(--info-strong); }
+  .sync-actions { display: flex; gap: 8px; align-items: center; }
+  .sync-btn { border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+    border: 1px solid var(--border-2); background: var(--panel); color: var(--text-2); }
+  .sync-btn.primary { background: #2f6bde; border-color: #2f6bde; color: #fff; }
+  .sync-btn.ghost { padding: 8px 11px; }
+  .sync-btn:disabled { opacity: .5; cursor: default; }
+  .sync-result { font-size: 12px; margin-top: 10px; white-space: pre-wrap; color: var(--text-2); }
+  .sync-result.good { color: var(--success-text); }
+  .sync-result.bad { color: var(--danger-text); }
 </style>
 </head>
 <body>
@@ -342,6 +361,20 @@
         <summary style="cursor:pointer; color:var(--muted); font-size:13px;">Full state (details)</summary>
         <div id="project-body"><p class="muted">Loading…</p></div>
       </details>
+
+      <h3 style="font-size:14px; margin:22px 0 2px; color:#8ab4ff; font-weight:500;">Back up &amp; sync</h3>
+      <p class="muted">Save your work without leaving the app. "Back up now" commits everything and pushes it to the remote. "Get latest" pulls new commits (fast-forward only).</p>
+      <div class="sync-card">
+        <div id="sync-status" class="sync-status muted">Checking…</div>
+        <input id="sync-msg" class="sync-msg" type="text" placeholder="Optional message (blank = timestamped snapshot)" />
+        <div class="sync-actions">
+          <button id="sync-backup" type="button" class="sync-btn primary">Back up now</button>
+          <button id="sync-pull" type="button" class="sync-btn">Get latest</button>
+          <button id="sync-refresh" type="button" class="sync-btn ghost" title="Re-check status">↻</button>
+        </div>
+        <div id="sync-result" class="sync-result"></div>
+        <div class="muted" style="font-size:11px; margin-top:6px;">Backups are quick snapshots (not test-gated), so you can always save work-in-progress.</div>
+      </div>
 
       <h3 style="font-size:14px; margin:22px 0 2px; color:#8ab4ff; font-weight:500;">Start a new project</h3>
       <p class="muted">Begins a guided, plain-language interview in the chat (no forms, no jargon). At the end it scaffolds a fresh project — its own cockpit, brief, and first commit — from your answers.</p>

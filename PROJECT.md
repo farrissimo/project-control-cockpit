@@ -46,6 +46,13 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
 - Signals view: the DECISION-102 honest-detection system. Shipped detectors: untracked-files (scripts/detect-untracked.ps1, git-only, respects .gitignore), chat-rollover (turns/time/repeats from the app's own chat history), out-of-scope/drift (scripts/detect-drift.ps1, branch changes vs the declared boundary), stale-docs (scripts/detect-stale-docs.ps1, changed code vs a declared doc-freshness rule list), repo-sync (scripts/detect-repo-sync.ps1, is the work backed up to the remote — uncommitted/untracked/unpushed), and high-stakes (scripts/detect-high-stakes.ps1, flags when the branch touches declared high-stakes files — decisions, rules, scope/lifecycle boundaries, backups, git hooks, or any deletion — and suggests a Codex second opinion). Every detector uses the "Observed / what it might mean / what's NOT proven / what to do" format; built to grow (one script + one line in main.js per detector).
 - Declared boundaries (so detectors never guess): .cockpit/state/app-build-scope.json (what the app-build lane is allowed to change — drift checks this) and .cockpit/state/doc-freshness-map.json (a small, adjustable "if this code changes, this doc should too" list — stale-docs checks this). Both have plain-language sections; update them deliberately as the work grows. If a boundary is missing, its detector reports "unknown" rather than guessing.
 - AGENTS.md: verifier verdict format (PASS/FAIL/INSUFFICIENT/BLOCKED/OUT_OF_SCOPE + NOT PROVEN).
+- Back up & sync (in-app git, Project view): "Back up now" stages + commits +
+  pushes in one click (--no-verify, so a WIP snapshot is never blocked by the test
+  hook); "Get latest" pulls fast-forward-only and refuses to silently merge a
+  diverged branch. Honest status line (uncommitted / new / unpushed / behind) and
+  honest failure surfacing. So the owner never drops to a terminal to save work.
+  Runs against the ACTIVE project. IPC: syncStatus/backup/pull; tested for real
+  against a throwaway local remote (app/tests/e2e/sync.spec.js).
 - Claude<->Codex cross-check: a "Second opinion" button in the chat sends the last
   answer to Codex (a DIFFERENT model, read-only sandbox via scripts/second-opinion.ps1)
   and renders its independent take in a distinct "Codex cross-check" bubble; Codex

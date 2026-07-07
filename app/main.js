@@ -11,7 +11,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const { spawn, exec } = require('child_process');
+const { spawn, exec, execFile } = require('child_process');
 
 // This app is the single "home" cockpit. It opens PROJECTS (self-contained
 // folders each with their own .cockpit + engine scripts + CLAUDE.md, exactly
@@ -381,6 +381,81 @@ ipcMain.handle('pcc:secondOpinion', (_e, prompt) => new Promise((resolve) => {
   child.stdin.write(prompt);
   child.stdin.end();
 }));
+
+// ---- in-app git backup / sync ----
+// One-click "back up" (commit + push) and "get latest" (pull), so the owner never
+// drops to a terminal to save or sync work. execFile('git', [...]) — no shell, so
+// messages/paths can't break parsing. Runs against the ACTIVE project.
+function git(args, timeout) {
+  return new Promise((resolve) => {
+    execFile('git', args, { cwd: projectDir, timeout: timeout || 30000, windowsHide: true, maxBuffer: 8 * 1024 * 1024 }, (err, so, se) => {
+      resolve({ failed: !!err, out: (so || '').trim(), err: (se || '').trim() });
+    });
+  });
+}
+
+ipcMain.handle('pcc:syncStatus', async () => {
+  const branch = (await git(['rev-parse', '--abbrev-ref', 'HEAD'])).out;
+  const porcelain = await git(['status', '--porcelain']);
+  const lines = porcelain.out ? porcelain.out.split('\n') : [];
+  const untracked = lines.filter((l) => l.startsWith('??')).length;
+  const dirty = lines.filter((l) => l && !l.startsWith('??')).length;
+  let ahead = 0, behind = 0, hasUpstream = false, upstream = null;
+  const up = await git(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
+  if (!up.failed) {
+    hasUpstream = true; upstream = up.out;
+    const counts = await git(['rev-list', '--left-right', '--count', '@{u}...HEAD']);
+    if (!counts.failed) { const [b, a] = counts.out.split(/\s+/).map((n) => parseInt(n, 10) || 0); behind = b; ahead = a; }
+  }
+  const clean = untracked === 0 && dirty === 0 && ahead === 0;
+  return { branch, untracked, dirty, ahead, behind, hasUpstream, upstream, clean };
+});
+
+// Back up = stage all + commit (if there are changes) + push. --no-verify: a
+// backup is a "don't lose my work" snapshot, NOT a verified checkpoint, so it must
+// never be blocked by the test hook (you may want to snapshot broken WIP). An
+// optional message is used verbatim; otherwise a timestamped default.
+ipcMain.handle('pcc:backup', async (_e, message) => {
+  const status = await git(['status', '--porcelain']);
+  const steps = [];
+  if (status.out) {
+    const add = await git(['add', '-A']);
+    if (add.failed) return { ok: false, text: 'Staging failed: ' + (add.err || 'unknown') };
+    const msg = (typeof message === 'string' && message.trim())
+      ? message.trim()
+      : 'PCC backup ' + new Date().toISOString().slice(0, 16).replace('T', ' ');
+    const commit = await git(['commit', '--no-verify', '-m', msg], 60000);
+    if (commit.failed && !/nothing to commit/i.test(commit.out + commit.err)) {
+      return { ok: false, text: 'Commit failed: ' + (commit.err || commit.out) };
+    }
+    steps.push('Committed your changes');
+  } else {
+    steps.push('No new changes to commit');
+  }
+  const up = await git(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
+  let push;
+  if (up.failed) {
+    const branch = (await git(['rev-parse', '--abbrev-ref', 'HEAD'])).out;
+    push = await git(['push', '-u', 'origin', branch], 120000);
+  } else {
+    push = await git(['push'], 120000);
+  }
+  if (push.failed) return { ok: false, text: steps.join('. ') + '. Push FAILED: ' + (push.err || push.out || 'unknown') };
+  steps.push('Pushed to the remote (backed up)');
+  return { ok: true, text: steps.join('. ') + '.' };
+});
+
+// Get latest = pull, fast-forward ONLY. If the branch has diverged we refuse and
+// say so (surface the conflict honestly rather than create a silent merge).
+ipcMain.handle('pcc:pull', async () => {
+  const up = await git(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
+  if (up.failed) return { ok: false, text: 'No upstream branch is set yet — back up first, then you can pull.' };
+  const pull = await git(['pull', '--ff-only'], 120000);
+  if (pull.failed) {
+    return { ok: false, text: 'Could not fast-forward — your branch and the remote have diverged, or you have uncommitted changes. This needs a manual merge (ask Claude in chat). Details: ' + (pull.err || pull.out) };
+  }
+  return { ok: true, text: pull.out || 'Already up to date.' };
+});
 
 function createWindow() {
   const win = new BrowserWindow({
