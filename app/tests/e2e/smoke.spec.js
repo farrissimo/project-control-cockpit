@@ -1,11 +1,11 @@
 // Smoke test: proves Playwright can launch the real PCC Electron app, the
 // window loads, and the shell renders. If this fails, nothing else can run.
 const { test, expect } = require('@playwright/test');
-const { launchApp } = require('../helpers/launch');
+const { launchApp, closeApp } = require('../helpers/launch');
 
 let app, page;
 test.beforeAll(async () => { ({ app, page } = await launchApp()); });
-test.afterAll(async () => { await app.close(); });
+test.afterAll(async () => { await closeApp(app); });
 
 test('app window opens and shows the chat composer', async () => {
   await expect(page.locator('#composer')).toBeVisible();
