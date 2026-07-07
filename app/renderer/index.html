@@ -174,6 +174,31 @@
   .ch-tile.unknown .ch-dot { background: var(--neutral); }
   .ch-tile .ch-status { color: var(--muted); text-transform: capitalize; }
 
+  /* Project "at a glance" dashboard (roadmap #23) — the visual hero of the
+     Project page. All from real data: lifecycle position, live signals, metrics. */
+  #project-glance { display: flex; flex-direction: column; gap: 12px; max-width: 760px; margin-top: 14px; }
+  .glance-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .glance-title { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--info); margin-bottom: 10px; }
+  .glance-sub { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .glance-sub b { color: var(--info); font-weight: 600; }
+  .pg-steps { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .pg-step { font-size: 11px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border-2);
+    color: var(--muted); background: var(--surface-2); }
+  .pg-step.done { color: var(--success-text); border-color: var(--success-border); }
+  .pg-step.done::before { content: "\2713 "; color: var(--success); }
+  .pg-step.now { color: #dbe8ff; background: #1c2637; border-color: var(--info-strong); font-weight: 600; }
+  .glance-flex { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .glance-flex .gauge { width: 120px; }
+  .glance-health { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; }
+  .glance-headline { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+  .glance-headline.clear { color: var(--success-text); }
+  .glance-headline.notice { color: var(--warning-text); }
+  .glance-headline.unknown { color: var(--danger-text); }
+  .pg-stats { display: flex; gap: 12px; flex-wrap: wrap; }
+  .pg-stat { flex: 1 1 130px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .pg-num { font-size: 26px; font-weight: 700; color: var(--text); line-height: 1; }
+  .pg-cap { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
   #trust { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 6px 20px;
     border-bottom: 1px solid #23262d; background: #0b0d10; flex: 0 0 auto; }
   .trust-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
@@ -262,7 +287,11 @@
 
     <div class="view hidden panel" id="view-project">
       <h2>Where the project stands</h2>
-      <div id="project-body"><p class="muted">Loading…</p></div>
+      <div id="project-glance"><p class="muted">Loading…</p></div>
+      <details id="project-detail" style="margin-top:14px;">
+        <summary style="cursor:pointer; color:var(--muted); font-size:13px;">Full state (details)</summary>
+        <div id="project-body"><p class="muted">Loading…</p></div>
+      </details>
 
       <h3 style="font-size:14px; margin:22px 0 2px; color:#8ab4ff; font-weight:500;">Start a new project</h3>
       <p class="muted">Begins a guided, plain-language interview in the chat (no forms, no jargon). At the end it scaffolds a fresh project — its own cockpit, brief, and first commit — from your answers.</p>

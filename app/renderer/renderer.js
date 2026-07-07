@@ -798,8 +798,73 @@ async function loadLifecycle() {
   } catch (e) { /* decision flag is optional */ }
 }
 
+// Project "at a glance" dashboard (roadmap #23): the visual hero of the Project
+// page. Real data only — lifecycle position, live signals (+ chat gauge), and
+// metrics. Consolidated health takes the highest-attention color (any red > any
+// amber > green), shown as a word + color, never color alone.
+async function loadProjectGlance() {
+  const el = document.getElementById('project-glance');
+  if (!el) return;
+  let lc = null, det = null, m = null;
+  try { lc = await window.pcc.lifecycle(); } catch (e) { /* optional */ }
+  try { det = await window.pcc.detections(); } catch (e) { /* optional */ }
+  try { m = await window.pcc.metrics(); } catch (e) { /* optional */ }
+
+  let html = '';
+
+  // 1. Lifecycle stepper.
+  if (lc && lc.signal === 'ok' && Array.isArray(lc.all_stages)) {
+    const curIdx = lc.all_stages.findIndex((s) => s.is_current);
+    const steps = lc.all_stages.map((s, i) => {
+      const cls = s.is_current ? 'now' : (curIdx >= 0 && i < curIdx ? 'done' : '');
+      return '<span class="pg-step ' + cls + '">' + escapeHtml(s.label) + '</span>';
+    }).join('');
+    const nexts = (lc.next || []).map((n) => n.label).join(' or ') || 'not set';
+    html += '<div class="glance-card"><div class="glance-title">Where you are</div>'
+      + '<div class="pg-steps">' + steps + '</div>'
+      + '<div class="glance-sub">Next: <b>' + escapeHtml(nexts) + '</b></div></div>';
+  }
+
+  // 2. Signals health (+ chat gauge). Reuses the same signal objects the Signals
+  //    tab renders, plus the two app-side ones.
+  const signals = Object.values(det || {});
+  try { signals.push(computeSycophancySignal()); } catch (e) { /* optional */ }
+  const chatSig = (() => { try { return computeChatSignal(); } catch (e) { return null; } })();
+  if (chatSig) signals.push(chatSig);
+  if (signals.length) {
+    const nClear = signals.filter((s) => s && s.signal === 'clear').length;
+    const nNotice = signals.filter((s) => s && s.signal === 'notice').length;
+    const nUnknown = signals.filter((s) => s && s.signal === 'unknown').length;
+    const headCls = nUnknown ? 'unknown' : (nNotice ? 'notice' : 'clear');
+    const headTxt = nUnknown ? (nUnknown + ' need a look') : (nNotice ? (nNotice + ' to review · ' + nClear + ' clear') : (nClear + ' all clear'));
+    const tiles = signals.map((s) => {
+      const sig = (s && s.signal) || 'unknown';
+      const cls = (sig === 'clear' || sig === 'notice') ? sig : 'unknown';
+      const label = CH_LABELS[s && s.detector] || (s && s.detector) || 'Signal';
+      return '<span class="ch-tile ' + cls + '"><span class="ch-dot"></span>' + escapeHtml(label)
+        + '<span class="ch-status">' + escapeHtml(sig) + '</span></span>';
+    }).join('');
+    const gaugeHtml = (chatSig && chatSig.gauge) ? gaugeSVG(chatSig.gauge.value, chatSig.gauge.label) : '';
+    html += '<div class="glance-card"><div class="glance-title">Health</div>'
+      + '<div class="glance-headline ' + headCls + '">' + escapeHtml(headTxt) + '</div>'
+      + '<div class="glance-flex">' + gaugeHtml + '<div class="glance-health">' + tiles + '</div></div></div>';
+  }
+
+  // 3. Metrics as stat cards.
+  if (m) {
+    html += '<div class="pg-stats">'
+      + '<div class="pg-stat"><div class="pg-num">' + (m.watchers != null ? m.watchers : '—') + '</div><div class="pg-cap">watch-jobs automated for you</div></div>'
+      + '<div class="pg-stat"><div class="pg-num">' + (m.commits_total != null ? m.commits_total : '—') + '</div><div class="pg-cap">commits (snapshots)</div></div>'
+      + '<div class="pg-stat"><div class="pg-num">' + (m.days_active != null ? m.days_active : '—') + '</div><div class="pg-cap">days active</div></div>'
+      + '</div>';
+  }
+
+  el.innerHTML = html || '<p class="muted">No project data yet.</p>';
+}
+
 async function loadProject() {
   const body = document.getElementById('project-body');
+  loadProjectGlance();
   try {
     const s = await window.pcc.getState();
     const p = s.project || {}, t = s.task || {};
@@ -837,10 +902,11 @@ async function loadMetrics() {
   userMsgs.forEach((x) => { const k = norm(x.text); if (k) counts[k] = (counts[k] || 0) + 1; });
   const repeats = Object.values(counts).filter((n) => n >= 2).length;
 
+  const nn = (v) => (v == null ? '—' : v);
   const rows = [];
   if (m) {
-    rows.push(['Automated watch-jobs now run for you', m.watchers + '  (' + m.detector_scripts + ' scripts + ' + m.in_app_watchers + ' in-app)']);
-    rows.push(['Snapshots (commits) so nothing is lost', m.commits_total + ' total · ' + m.commits_this_branch + ' on this branch']);
+    rows.push(['Automated watch-jobs now run for you', nn(m.watchers) + '  (' + nn(m.detector_scripts) + ' scripts + ' + nn(m.in_app_watchers) + ' in-app)']);
+    rows.push(['Snapshots (commits) so nothing is lost', nn(m.commits_total) + ' total · ' + nn(m.commits_this_branch) + ' on this branch']);
     rows.push(['Days active (first→last commit)', String(m.days_active)]);
   }
   rows.push(['This chat: your messages', String(userMsgs.length)]);
