@@ -705,6 +705,45 @@ async function loadTrust() {
     rl ? 'CLAUDE.md is present and auto-loads into every Claude session. (Proves the rules load, not that they were obeyed.)'
       : x ? 'CLAUDE.md not found — standing rules are NOT loading.'
       : 'Could not read rules status.');
+
+  renderChatHealth(d); // keep the chat-screen health strip in sync (reuses `d`)
+}
+
+// Project-health strip on the chat screen (roadmap #23). Surfaces the same
+// signals as the Signals tab — including the chat-length gauge — at a glance,
+// where the owner actually spends time. Each tile is a shortcut into the full
+// Signals tab. Reuses the detections result `d` that loadTrust already fetched
+// (no extra IPC), plus the two app-side signals. Honest: status is shown as a
+// word and a colored dot, never color alone.
+const CH_LABELS = { 'untracked-files': 'Untracked', 'scope-drift': 'Drift', 'stale-docs': 'Stale docs',
+  'repo-sync': 'Backed up', 'bloat': 'Bloat', 'sycophancy': 'Never says no?', 'chat-rollover': 'Chat length' };
+function renderChatHealth(d) {
+  const el = document.getElementById('chat-health');
+  if (!el) return;
+  const signals = Object.values(d || {});
+  try { signals.push(computeSycophancySignal()); } catch (e) { /* app-side, optional */ }
+  try { signals.push(computeChatSignal()); } catch (e) { /* app-side, optional */ }
+  if (!signals.length) { el.innerHTML = ''; return; }
+
+  const openSignals = () => { const n = document.querySelector('.nav[data-view="signals"]'); if (n) n.click(); };
+
+  // The one gauge we have today (chat length) gets its own prominent box.
+  let gaugeHtml = '';
+  const withGauge = signals.find((s) => s && s.gauge);
+  if (withGauge) gaugeHtml = '<div class="ch-gauge" title="Click for detail in the Signals tab.">'
+    + gaugeSVG(withGauge.gauge.value, withGauge.gauge.label || '') + '</div>';
+
+  const tiles = signals.map((s) => {
+    const sig = (s && s.signal) || 'unknown';
+    const cls = (sig === 'clear' || sig === 'notice') ? sig : 'unknown';
+    const label = CH_LABELS[s && s.detector] || (s && s.detector) || 'Signal';
+    return '<span class="ch-tile ' + cls + '" data-open="1">'
+      + '<span class="ch-dot"></span>' + escapeHtml(label)
+      + '<span class="ch-status">' + escapeHtml(sig) + '</span></span>';
+  }).join('');
+
+  el.innerHTML = gaugeHtml + '<div class="ch-tiles">' + tiles + '</div>';
+  el.querySelectorAll('[data-open], .ch-gauge').forEach((t) => t.addEventListener('click', openSignals));
 }
 
 // ---- project view ----

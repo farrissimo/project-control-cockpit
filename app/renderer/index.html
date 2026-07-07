@@ -150,6 +150,30 @@
   .gauge-val { fill: var(--text); font-size: 16px; font-weight: 700; font-family: system-ui, sans-serif; }
   .gauge-cap { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
 
+  /* Project-health strip on the chat screen (roadmap #23): key metrics/signals
+     at a glance where the owner actually is, each a shortcut into the Signals
+     tab. Status is shown as text + color, never color alone. */
+  #chat-health { display: flex; align-items: stretch; gap: 8px; flex-wrap: wrap;
+    padding: 8px 20px; border-bottom: 1px solid #23262d; background: #0b0d10; flex: 0 0 auto; }
+  #chat-health:empty { display: none; }
+  #chat-health .gauge { width: 96px; }
+  #chat-health .gauge-wrap { margin: 0; }
+  .ch-gauge { display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 2px 10px 4px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  .ch-tiles { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ch-tile { display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    padding: 6px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+    font-size: 12px; color: var(--text); border-left-width: 3px; }
+  .ch-tile:hover { border-color: #3a4150; }
+  .ch-tile .ch-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+  .ch-tile.clear  { border-left-color: var(--success); }
+  .ch-tile.clear  .ch-dot { background: var(--success); }
+  .ch-tile.notice { border-left-color: var(--warning); }
+  .ch-tile.notice .ch-dot { background: var(--warning); }
+  .ch-tile.unknown { border-left-color: var(--neutral); }
+  .ch-tile.unknown .ch-dot { background: var(--neutral); }
+  .ch-tile .ch-status { color: var(--muted); text-transform: capitalize; }
+
   #trust { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 6px 20px;
     border-bottom: 1px solid #23262d; background: #0b0d10; flex: 0 0 auto; }
   .trust-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
@@ -227,6 +251,7 @@
         </div>
         <button id="new-chat" type="button" title="Start a fresh conversation (a new saved chat).">New chat</button>
       </div>
+      <div id="chat-health" title="Project health at a glance. Click any tile to open the full detail in the Signals tab."></div>
       <div id="log"></div>
       <div id="corrections"></div>
       <form id="composer">
