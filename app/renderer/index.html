@@ -235,6 +235,23 @@
   .decision-item .d-head { font-size: 12px; color: #8ab4ff; font-weight: 600; }
   .decision-item .d-status { font-size: 11px; color: #7fd6a0; }
   .decision-item .d-title { font-size: 13px; color: #cdd2d9; margin-top: 2px; line-height: 1.45; }
+
+  /* In-app prompt modal. Electron does not support window.prompt() (it throws),
+     so text-input dialogs must be app-drawn. Matches the design tokens. */
+  .pcc-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55);
+    display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .pcc-modal { background: var(--panel); border: 1px solid var(--border-2);
+    border-radius: 12px; padding: 18px; width: 420px; max-width: calc(100vw - 40px);
+    box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+  .pcc-modal-msg { color: var(--text); font-size: 14px; margin-bottom: 12px; }
+  .pcc-modal input { width: 100%; box-sizing: border-box; background: var(--surface-2);
+    border: 1px solid var(--border-2); color: var(--text); border-radius: 8px;
+    padding: 9px 11px; font-size: 14px; outline: none; }
+  .pcc-modal input:focus { border-color: var(--info-strong); }
+  .pcc-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  .pcc-modal-actions button { border-radius: 8px; padding: 8px 14px; font-size: 13px;
+    cursor: pointer; border: 1px solid var(--border-2); background: var(--surface-2); color: var(--text-2); }
+  .pcc-modal-actions button.primary { background: #2f6bde; border-color: #2f6bde; color: #fff; }
 </style>
 </head>
 <body>

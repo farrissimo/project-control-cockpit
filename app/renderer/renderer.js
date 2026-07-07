@@ -41,6 +41,49 @@ function scrollDown() { log.scrollTop = log.scrollHeight; }
 function save() { const c = activeChat(); if (c) c.updatedAt = Date.now(); persistChats(); }
 function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
+// In-app replacement for window.prompt(). Electron does NOT support prompt() —
+// it throws "prompt() is not supported.", which silently killed the New-project
+// and rename buttons (found by the E2E test suite). Returns a Promise resolving
+// to the entered string, or null if cancelled. Enter = OK, Escape/backdrop = Cancel.
+function pccPrompt(message, defaultValue) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'pcc-modal-overlay';
+    overlay.setAttribute('data-testid', 'prompt-overlay');
+    const modal = document.createElement('div');
+    modal.className = 'pcc-modal';
+    const msg = document.createElement('div');
+    msg.className = 'pcc-modal-msg';
+    msg.textContent = message || '';
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.value = defaultValue != null ? String(defaultValue) : '';
+    inp.setAttribute('data-testid', 'prompt-input');
+    const actions = document.createElement('div');
+    actions.className = 'pcc-modal-actions';
+    const cancel = document.createElement('button');
+    cancel.type = 'button'; cancel.textContent = 'Cancel';
+    cancel.setAttribute('data-testid', 'prompt-cancel');
+    const ok = document.createElement('button');
+    ok.type = 'button'; ok.className = 'primary'; ok.textContent = 'OK';
+    ok.setAttribute('data-testid', 'prompt-ok');
+    actions.appendChild(cancel); actions.appendChild(ok);
+    modal.appendChild(msg); modal.appendChild(inp); modal.appendChild(actions);
+    overlay.appendChild(modal);
+    let done = false;
+    const close = (val) => { if (done) return; done = true; overlay.remove(); resolve(val); };
+    ok.addEventListener('click', () => close(inp.value));
+    cancel.addEventListener('click', () => close(null));
+    overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(null); });
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); close(inp.value); }
+      else if (e.key === 'Escape') { e.preventDefault(); close(null); }
+    });
+    document.body.appendChild(overlay);
+    inp.focus(); inp.select();
+  });
+}
+
 // Render an assistant message with working copy blocks. Fenced ```code``` blocks
 // become a styled block with a real Copy button; `inline code` is styled; the
 // rest is escaped plain text (newlines preserved by CSS pre-wrap). Everything is
@@ -177,9 +220,9 @@ document.getElementById('new-chat').addEventListener('click', startNewChat);
 // scripts/new-project-intake.ps1). Opens a fresh named chat and kicks off the
 // interview; the worker runs the protocol, interviews in plain language, and
 // scaffolds via bootstrap-project.ps1 when the owner approves.
-document.getElementById('new-project').addEventListener('click', () => {
+document.getElementById('new-project').addEventListener('click', async () => {
   if (busy) return;
-  const name = prompt('What would you like to call the new project?');
+  const name = await pccPrompt('What would you like to call the new project?');
   if (!name || !name.trim()) return;
   const nm = name.trim();
   document.querySelector('.nav[data-view="chat"]').click();
@@ -334,10 +377,10 @@ function switchChat(id) {
   closeChatsPanel();
 }
 
-function renameChat(id) {
+async function renameChat(id) {
   const c = chats.find((x) => x.id === id);
   if (!c) return;
-  const name = prompt('Rename this chat:', c.name);
+  const name = await pccPrompt('Rename this chat:', c.name);
   if (name && name.trim()) { c.name = name.trim().slice(0, 60); persistChats(); renderChatList(); }
 }
 
