@@ -62,9 +62,10 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
   .cockpit/state/high-stakes-rules.json (missing -> "unknown", never a guess).
 - Automated test suite (app/tests/, `npm test` from app/): one runner
   (@playwright/test), three layers — E2E that launches the real Electron app and
-  clicks every button, IPC-handler contract for all 15 window.pcc.* channels, and
-  PowerShell script-contract tests for the detectors. The worker/verifier are
-  faked (offline, free, deterministic); local detectors run for real. 44 tests.
+  clicks every button, IPC-handler contract for every window.pcc.* channel, and
+  PowerShell script-contract tests for the detectors/scripts (plus security,
+  robustness, and boundary-fixture specs). The worker/verifier are faked (offline,
+  free, deterministic); local detectors run for real. 96 tests green.
   Auto-runs on commit via .githooks/pre-commit when app/ or scripts/ changes are
   staged (bypass: git commit --no-verify). Details: app/tests/README.md.
   Two real bugs it caught and fixed: (1) New-project + rename buttons were dead —
@@ -78,7 +79,8 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
    returned VERDICT: PASS on 2026-07-07 (Codex was out of usage; GPT still works
    via the GitHub repo connector). Recorded in app/last-verification.txt, so the
    "Verified" strip is green. HONEST LIMIT: GPT reviewed the CODE as pushed and
-   could NOT run anything — so "62 tests green", npm audit, and the real
+   could NOT run anything — so the "tests green" claim (62 at that time; 96 now),
+   npm audit, and the real
    Claude/Codex boundary behavior remain NOT PROVEN by execution. The automated
    runtime half still wants a Codex `verify-work.ps1` run when usage is back.
    agy fallback is now PROVEN working (real PASS on the 10:05 scheduled run; live
