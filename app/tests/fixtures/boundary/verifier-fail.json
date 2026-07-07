@@ -1,0 +1,1 @@
+{ "stdout": "VERIFIER: Codex\n\nVERDICT: FAIL\nEVIDENCE:\n- A test asserts the button is disabled while busy, but the handler never sets disabled.\n- Two exported functions are referenced but not defined.\nNOT PROVEN: runtime behavior; I did not execute the app.\n", "exitCode": 0 }

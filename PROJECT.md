@@ -91,7 +91,13 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
    a project the New-project intake scaffolds (today use "Open existing
    project"); optionally stop the scaffolder copying app/ into each project.
    #21 (peek under the hood) and #23 (UI polish) are optional and unstarted.
-   Recorded-real-run verifier fixtures remain the #1 test-hardening gap.
+   Boundary fixtures (down payment on the #1 test-hardening gap): the fakes can
+   now replay ugly real-world shapes (worker failure/auth/empty; verifier
+   FAIL/INSUFFICIENT/malformed/out-of-usage) via PCC_FAKE_*_FIXTURE, and
+   app/tests/e2e/boundary.spec.js proves the app surfaces failures, shows
+   "(no output)" not a silent blank, and never turns a non-PASS into a fake PASS.
+   REMAINING: swap the hand-authored fixtures for real, secret-redacted captures
+   from actual Claude/Codex runs (the replay mechanism is already in place).
 
 ## Roadmap status (full list: docs/COCKPIT_ROADMAP.md)
 All of P1/P2/P3 done or honestly handled. Also shipped (owner feedback while

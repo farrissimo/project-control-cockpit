@@ -223,14 +223,19 @@ ipcMain.handle('pcc:lifecycleAdvance', (_e, toStageId) => new Promise((resolve) 
     });
 }));
 
-ipcMain.handle('pcc:detections', async () => ({
-  untracked: await runDetector('scripts/detect-untracked.ps1'),
-  drift: await runDetector('scripts/detect-drift.ps1'),
-  staleDocs: await runDetector('scripts/detect-stale-docs.ps1'),
-  repoSync: await runDetector('scripts/detect-repo-sync.ps1'),
-  bloat: await runDetector('scripts/detect-bloat.ps1'),
-  highStakes: await runDetector('scripts/detect-high-stakes.ps1'),
-}));
+// Run the detectors in PARALLEL (they're independent read-only scripts), so the
+// Signals tab / trust strip stay snappy as more detectors are added.
+ipcMain.handle('pcc:detections', async () => {
+  const [untracked, drift, staleDocs, repoSync, bloat, highStakes] = await Promise.all([
+    runDetector('scripts/detect-untracked.ps1'),
+    runDetector('scripts/detect-drift.ps1'),
+    runDetector('scripts/detect-stale-docs.ps1'),
+    runDetector('scripts/detect-repo-sync.ps1'),
+    runDetector('scripts/detect-bloat.ps1'),
+    runDetector('scripts/detect-high-stakes.ps1'),
+  ]);
+  return { untracked, drift, staleDocs, repoSync, bloat, highStakes };
+});
 
 // Trust-strip extras: the two honest facts the always-visible strip needs
 // beyond the detectors. "Rules loaded" is just whether CLAUDE.md exists (the

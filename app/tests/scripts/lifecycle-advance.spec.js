@@ -36,6 +36,9 @@ function advance(dir, to) {
 function recordVerdict(dir, verdict) {
   fs.writeFileSync(path.join(dir, 'app', 'last-verification.txt'), 'VERIFIER: test\n\nVERDICT: ' + verdict + '\n');
 }
+function recordRaw(dir, text) {
+  fs.writeFileSync(path.join(dir, 'app', 'last-verification.txt'), text);
+}
 function currentStage(dir) {
   return JSON.parse(fs.readFileSync(path.join(dir, '.cockpit', 'state', 'lifecycle-state.json'), 'utf8')).current_stage;
 }
@@ -77,6 +80,28 @@ test('refuses an illegal transition regardless of verdict', () => {
     const r = advance(dir, 'milestone'); // verify -> milestone is not in the model
     expect(r.ok).toBe(false);
     expect(r.reason).toBe('illegal_transition');
+    expect(currentStage(dir)).toBe('verify');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('gate BLOCKS on INSUFFICIENT (not a PASS)', () => {
+  const dir = makeProject();
+  try {
+    recordVerdict(dir, 'INSUFFICIENT');
+    const r = advance(dir, 'phase_close');
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('needs_verification');
+    expect(currentStage(dir)).toBe('verify');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('gate BLOCKS on a malformed verdict (no recognizable token)', () => {
+  const dir = makeProject();
+  try {
+    recordRaw(dir, 'I looked and it seems fine, but here is no structured verdict line at all.');
+    const r = advance(dir, 'phase_close');
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('needs_verification'); // malformed is NEVER treated as PASS
     expect(currentStage(dir)).toBe('verify');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

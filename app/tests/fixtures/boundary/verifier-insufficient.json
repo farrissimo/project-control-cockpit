@@ -1,0 +1,1 @@
+{ "stdout": "VERIFIER: Codex\n\nVERDICT: INSUFFICIENT\nEVIDENCE:\n- The diff references scripts not present in what I could see, so I cannot confirm behavior.\nNOT PROVEN: whether the work is correct.\n", "exitCode": 0 }
