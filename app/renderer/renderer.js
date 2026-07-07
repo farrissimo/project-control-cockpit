@@ -1037,7 +1037,7 @@ async function loadProject() {
     if (trust && trust.verification && trust.verification.present) {
       const v = trust.verification;
       if (v.verdict === 'PASS') {
-        const fresh = v.mtimeEpoch > (trust.headCommitEpoch || 0);
+        const fresh = v.mtimeEpoch >= (trust.headCommitEpoch || 0); // exact parity with the trust strip (line ~835)
         verified = fresh ? 'PASS (fresh — matches current code)' : 'PASS (stale — code changed since)';
       } else {
         verified = v.verdict || 'unknown';
