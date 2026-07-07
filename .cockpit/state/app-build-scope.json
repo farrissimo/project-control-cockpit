@@ -19,6 +19,8 @@
     "scripts/bootstrap-project.ps1",
     "scripts/babysitting-metrics.ps1",
     "scripts/new-project-intake.ps1",
+    "scripts/lifecycle-advance.ps1",
+    "scripts/second-opinion.ps1",
     "docs/COCKPIT_ROADMAP.md",
     "docs/DECISIONS.md",
     "docs/BACKUP_POLICY.md",
@@ -32,7 +34,9 @@
     ".cockpit/state/lifecycle-state.json",
     ".cockpit/state/doc-freshness-map.json",
     ".cockpit/state/bloat-thresholds.json",
-    ".cockpit/state/models.json"
+    ".cockpit/state/models.json",
+    ".cockpit/state/high-stakes-rules.json",
+    ".githooks/**"
   ],
-  "updated_at": "2026-07-06T16:30:00-06:00"
+  "updated_at": "2026-07-07T11:15:00-06:00"
 }
