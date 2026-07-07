@@ -171,10 +171,19 @@ ipcMain.handle('pcc:handoff', () => new Promise((resolve) => {
   });
 }));
 
-ipcMain.handle('pcc:hardChecks', async () => {
-  const git = await runCmd('git status --short --branch');
-  const doctor = await runCmd('pwsh -NoProfile -File scripts/doctor.ps1', 120000);
-  return { git, doctor };
+// Coalesced: doctor.ps1 is a ~16s run, so overlapping calls (impatient re-clicks)
+// would stack expensive work. While one is in flight, every caller gets that run.
+let hardChecksInFlight = null;
+ipcMain.handle('pcc:hardChecks', () => {
+  if (hardChecksInFlight) return hardChecksInFlight;
+  const run = (async () => {
+    const git = await runCmd('git status --short --branch');
+    const doctor = await runCmd('pwsh -NoProfile -File scripts/doctor.ps1', 120000);
+    return { git, doctor };
+  })();
+  hardChecksInFlight = run;
+  run.finally(() => { if (hardChecksInFlight === run) hardChecksInFlight = null; });
+  return run;
 });
 
 // Detections - the "human smoke alarm" jobs from DECISION-102, each a
@@ -230,16 +239,28 @@ ipcMain.handle('pcc:lifecycleAdvance', (_e, toStageId) => new Promise((resolve) 
 
 // Run the detectors in PARALLEL (they're independent read-only scripts), so the
 // Signals tab / trust strip stay snappy as more detectors are added.
-ipcMain.handle('pcc:detections', async () => {
-  const [untracked, drift, staleDocs, repoSync, bloat, highStakes] = await Promise.all([
-    runDetector('scripts/detect-untracked.ps1'),
-    runDetector('scripts/detect-drift.ps1'),
-    runDetector('scripts/detect-stale-docs.ps1'),
-    runDetector('scripts/detect-repo-sync.ps1'),
-    runDetector('scripts/detect-bloat.ps1'),
-    runDetector('scripts/detect-high-stakes.ps1'),
-  ]);
-  return { untracked, drift, staleDocs, repoSync, bloat, highStakes };
+// COALESCED (soak finding W3): each call spawns 6 pwsh processes, and a soak showed
+// 12 rapid "Refresh" clicks spawning 129 concurrent pwsh. While a batch is in
+// flight, every caller (incl. the Project page's two callers) gets the SAME run,
+// so impatience can no longer storm the machine. A fresh click AFTER it finishes
+// still re-runs, so an explicit refresh is never stale.
+let detectionsInFlight = null;
+ipcMain.handle('pcc:detections', () => {
+  if (detectionsInFlight) return detectionsInFlight;
+  const run = (async () => {
+    const [untracked, drift, staleDocs, repoSync, bloat, highStakes] = await Promise.all([
+      runDetector('scripts/detect-untracked.ps1'),
+      runDetector('scripts/detect-drift.ps1'),
+      runDetector('scripts/detect-stale-docs.ps1'),
+      runDetector('scripts/detect-repo-sync.ps1'),
+      runDetector('scripts/detect-bloat.ps1'),
+      runDetector('scripts/detect-high-stakes.ps1'),
+    ]);
+    return { untracked, drift, staleDocs, repoSync, bloat, highStakes };
+  })();
+  detectionsInFlight = run;
+  run.finally(() => { if (detectionsInFlight === run) detectionsInFlight = null; });
+  return run;
 });
 
 // Trust-strip extras: the two honest facts the always-visible strip needs

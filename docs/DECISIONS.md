@@ -2663,3 +2663,31 @@ Implications:
 
 Supersedes: None
 Related: DECISION-104 (retired task-state), DECISION-105 (proof taxonomy), DECISION-106 (born bulletproof), app/renderer/overview-logic.js, .cockpit/state/vision-promises.json, schemas/vision-promises.schema.json, scripts/bootstrap-project.ps1
+
+## DECISION-108: Soak Test Findings — Fundamentals Solid; Concurrent Detector Runs Are Coalesced
+
+Date: 2026-07-07
+Status: Active
+
+Owner Decision:
+
+A real soak test (sustained, repeated hammering of the app's buttons while measuring for leaks, drift, and errors) is a standing way we harden PCC. The first soak's headline fix: concurrent detector/hard-check runs are now COALESCED so impatient re-clicking can never storm the machine.
+
+Reason:
+
+Tests prove first-click correctness; they don't prove the app survives sustained, impatient real use. The soak drove ~130 operations (35 view-switches, 15+15 Refresh clicks, 12 rapid no-wait "spam" clicks) and measured PowerShell-process count, main-process memory, error count, and response time.
+
+Findings:
+
+- PASSED (fundamentals): zero console/page errors across ~130 ops; NO memory growth (main process flat/down); NO permanent process leak (pwsh drained back to baseline between phases — detectors exit cleanly); NO response-time drift (Signals refresh held ~1.7s start to finish); app fully functional after the beating.
+- W3 (FIXED): no in-flight guard — 12 rapid "Refresh" clicks spawned 129 concurrent pwsh processes. Because each detector run is 6 pwsh spawns and nothing coalesced concurrent calls, impatience (made worse by W1's slow feel) became a process storm that could choke a weaker machine.
+- W2 (FIXED by the same change): the Project page called detections() twice per visit (Owner Overview + the glance hero), doubling the spawn cost.
+- W1 (DEFERRED): the detector/hard-check views show a bare "Loading… / Checking… / Running…" with no spinner; the ~16s hard-checks especially reads as "broken" to a paranoid owner. Perceived-slowness, not a functional bug. Follow-up: a working-spinner affordance.
+
+Implications:
+
+- app/main.js: pcc:detections and pcc:hardChecks are promise-coalesced — while a run is in flight, every caller (incl. rapid re-clicks and the Project page's two callers) gets that SAME run; a fresh click AFTER it completes still re-runs, so an explicit Refresh is never stale. Rapid-spam peak dropped from 129 pwsh to ~baseline (measured), with detections/hardChecks/overview still correct (tests green).
+- app/tests/e2e/soak-lite.spec.js guards it: rapid Refresh spam and rapid view-switching must not error and must still render (process counts aren't asserted — they're OS-flaky in CI — so we assert the observable behaviour).
+
+Supersedes: None
+Related: DECISION-102, app/main.js, app/tests/e2e/soak-lite.spec.js
