@@ -55,6 +55,14 @@ test('saveMemory round-trips without changing the file', async () => {
   expect(after).toBe(before);
 });
 
+test('saveMemory rejects a non-string without touching the file (negative)', async () => {
+  const before = (await call('getMemory')).text;
+  const res = await page.evaluate(() => window.pcc.saveMemory(null));
+  expect(res.ok).toBe(false);
+  const after = (await call('getMemory')).text;
+  expect(after).toBe(before); // PROJECT.md was NOT overwritten with "null"
+});
+
 test('newChat resets the pinned session', async () => {
   const res = await call('newChat');
   expect(res.ok).toBe(true);

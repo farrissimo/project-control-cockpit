@@ -71,7 +71,10 @@ ipcMain.handle('pcc:getMemory', () => {
 });
 
 ipcMain.handle('pcc:saveMemory', (_e, text) => {
-  try { fs.writeFileSync(MEMORY_PATH, String(text), 'utf8'); return { ok: true }; }
+  // Reject non-strings: a stray null/undefined must never overwrite PROJECT.md
+  // with the literal "null"/"undefined" (the old String(text) coercion would).
+  if (typeof text !== 'string') return { ok: false, error: 'saveMemory expects a string' };
+  try { fs.writeFileSync(MEMORY_PATH, text, 'utf8'); return { ok: true }; }
   catch (e) { return { ok: false, error: e.message }; }
 });
 
