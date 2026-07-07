@@ -22,6 +22,7 @@ const DETECTORS = [
   'scripts/detect-stale-docs.ps1',
   'scripts/detect-repo-sync.ps1',
   'scripts/detect-bloat.ps1',
+  'scripts/detect-high-stakes.ps1',
 ];
 
 for (const script of DETECTORS) {

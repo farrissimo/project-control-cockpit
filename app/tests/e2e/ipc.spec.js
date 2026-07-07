@@ -18,8 +18,8 @@ test('bridge exposes exactly the expected channels', async () => {
   expect(keys).toEqual([
     'addProject', 'detections', 'getActiveProject', 'getMemory', 'getModels',
     'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'listProjects',
-    'metrics', 'newChat', 'pickFolder', 'recentDecisions', 'saveMemory', 'send',
-    'setActiveProject', 'trustExtras', 'verify',
+    'metrics', 'newChat', 'pickFolder', 'recentDecisions', 'saveMemory',
+    'secondOpinion', 'send', 'setActiveProject', 'trustExtras', 'verify',
   ]);
 });
 
@@ -77,7 +77,7 @@ test('send routes to the faked worker and returns its reply', async () => {
 
 test('detections returns all five detector results in four-part format', async () => {
   const d = await call('detections');
-  for (const key of ['untracked', 'drift', 'staleDocs', 'repoSync', 'bloat']) {
+  for (const key of ['untracked', 'drift', 'staleDocs', 'repoSync', 'bloat', 'highStakes']) {
     expect(d, 'missing detector: ' + key).toHaveProperty(key);
     expect(d[key]).toHaveProperty('signal');
     expect(d[key]).toHaveProperty('observed');
@@ -123,4 +123,15 @@ test('verify drives the faked verifier to a verdict', async () => {
   const r = await call('verify');
   expect(r.ok).toBe(true);
   expect(r.text).toContain('PASS');
+});
+
+test('secondOpinion routes a prompt to the (faked) Codex cross-check', async () => {
+  const r = await call('secondOpinion', 'QUESTION: is X right?\nANSWER: yes.');
+  expect(r.ok).toBe(true);
+  expect(r.text).toContain('FAKE-CODEX-REPLY');
+});
+
+test('secondOpinion rejects an empty prompt', async () => {
+  const r = await call('secondOpinion', '   ');
+  expect(r.ok).toBe(false);
 });

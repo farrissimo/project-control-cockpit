@@ -276,6 +276,12 @@
     color: var(--info); font-size: 13px; cursor: pointer; }
   .proj-open:hover { color: #dbe8ff; }
   .proj-status { padding: 8px 9px; color: var(--danger-text); font-size: 12px; }
+
+  /* Codex second-opinion bubble — visually distinct from Claude's answers so a
+     cross-check is never mistaken for the worker's own reply. */
+  .bubble.codex { border-left: 3px solid var(--info); background: #12203a; }
+  .bubble.codex::before { content: "Codex cross-check"; display: block; font-size: 10px;
+    letter-spacing: .04em; text-transform: uppercase; color: var(--info); margin-bottom: 6px; font-weight: 600; }
 </style>
 </head>
 <body>

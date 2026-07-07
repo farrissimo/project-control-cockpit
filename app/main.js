@@ -210,6 +210,7 @@ ipcMain.handle('pcc:detections', async () => ({
   staleDocs: await runDetector('scripts/detect-stale-docs.ps1'),
   repoSync: await runDetector('scripts/detect-repo-sync.ps1'),
   bloat: await runDetector('scripts/detect-bloat.ps1'),
+  highStakes: await runDetector('scripts/detect-high-stakes.ps1'),
 }));
 
 // Trust-strip extras: the two honest facts the always-visible strip needs
@@ -356,6 +357,30 @@ function askClaude(message, model, chatId, isFirstTurn) {
 }
 
 ipcMain.handle('pcc:send', (_e, message, model, chatId, isFirstTurn) => askClaude(message, model, chatId, isFirstTurn));
+
+// Second opinion: hand a composed prompt to Codex (a DIFFERENT model) over stdin
+// and return its independent take. The worker (Claude) never grades itself; this
+// is the cross-check. Read-only sandbox — Codex inspects but changes nothing.
+ipcMain.handle('pcc:secondOpinion', (_e, prompt) => new Promise((resolve) => {
+  if (typeof prompt !== 'string' || !prompt.trim()) return resolve({ ok: false, text: 'Nothing to review yet.' });
+  let child;
+  try {
+    child = spawn('pwsh', ['-NoProfile', '-File', 'scripts/second-opinion.ps1'], { cwd: projectDir, shell: true });
+  } catch (e) {
+    return resolve({ ok: false, text: 'Could not run second opinion: ' + e.message });
+  }
+  let out = '', err = '';
+  child.on('error', (e) => resolve({ ok: false, text: 'Could not run second opinion: ' + e.message }));
+  child.stdout.on('data', (d) => { out += d.toString(); });
+  child.stderr.on('data', (d) => { err += d.toString(); });
+  child.on('close', (code) => {
+    const t = out.trim();
+    if (t) resolve({ ok: true, text: t });
+    else resolve({ ok: false, text: (err.trim() || ('Codex second opinion exited with code ' + code)) });
+  });
+  child.stdin.write(prompt);
+  child.stdin.end();
+}));
 
 function createWindow() {
   const win = new BrowserWindow({

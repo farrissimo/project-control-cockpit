@@ -262,6 +262,46 @@ function renderCorrections() {
     correctionsBar.appendChild(b);
   });
   correctionsBar.appendChild(makeCaptureDecisionsButton());
+  correctionsBar.appendChild(makeSecondOpinionButton());
+}
+
+// ---- second opinion (Claude<->Codex cross-check) ----
+// Has Codex (a DIFFERENT model) independently review Claude's latest answer. Codex
+// self-declares AGREE / PARTIALLY AGREE / DISAGREE — we never fake an agreement
+// verdict by comparing two free-text answers; the second model states its own stance.
+function makeSecondOpinionButton() {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'corr';
+  b.textContent = 'Second opinion';
+  b.title = "Have Codex (a different model) independently review Claude's latest answer — a real cross-check, not self-agreement.";
+  b.addEventListener('click', async () => {
+    if (busy) return;
+    const assistants = history.filter((m) => m.cls === 'assistant');
+    const lastA = assistants.length ? assistants[assistants.length - 1] : null;
+    if (!lastA || !(lastA.text || '').trim()) { addBubble('assistant error', 'No answer to review yet — ask something first.', true); return; }
+    const idx = history.lastIndexOf(lastA);
+    let question = '';
+    for (let i = idx - 1; i >= 0; i--) { if (history[i].cls === 'user') { question = history[i].text; break; } }
+    const answer = (lastA.text || '').slice(0, 6000);
+    const prompt = "You are Codex, giving an INDEPENDENT second opinion on another assistant (Claude)'s answer. Be willing to disagree; do not just agree.\n"
+      + 'Begin your reply with EXACTLY one of: AGREE / PARTIALLY AGREE / DISAGREE.\n'
+      + 'Then give: your reasoning, any risk/downside or error Claude missed, and whether this warrants closer scrutiny.\n\n'
+      + '=== QUESTION ===\n' + (question || '(not captured)') + "\n\n=== CLAUDE'S ANSWER ===\n" + answer;
+    busy = true; sendBtn.disabled = true;
+    const thinking = addBubble('assistant thinking', 'Codex is reviewing…', false);
+    try {
+      const res = await window.pcc.secondOpinion(prompt);
+      thinking.remove();
+      addBubble(res.ok ? 'assistant codex' : 'assistant error', (res.ok ? 'Codex second opinion:\n\n' : '') + (res.text || '(no output)'), true);
+    } catch (e) {
+      thinking.remove();
+      addBubble('assistant error', 'Second opinion failed: ' + e.message, true);
+    } finally {
+      busy = false; sendBtn.disabled = false;
+    }
+  });
+  return b;
 }
 
 // ---- Capture decisions (roadmap #12) ----
@@ -504,7 +544,7 @@ async function runHardChecks() {
 // ---- signals view ----
 // Renders each detector in the honest four-part format. The renderer only
 // displays what the deterministic scripts report; it never invents a verdict.
-const SIGNAL_TITLES = { 'untracked-files': 'Untracked files', 'scope-drift': 'Out-of-scope / drift', 'stale-docs': 'Stale docs', 'repo-sync': 'Work backed up? (repo sync)', 'bloat': 'Project bloat', 'sycophancy': 'Never says no?', 'chat-rollover': 'Chat health / rollover' };
+const SIGNAL_TITLES = { 'untracked-files': 'Untracked files', 'scope-drift': 'Out-of-scope / drift', 'stale-docs': 'Stale docs', 'repo-sync': 'Work backed up? (repo sync)', 'bloat': 'Project bloat', 'high-stakes': 'High-stakes change — second opinion?', 'sycophancy': 'Never says no?', 'chat-rollover': 'Chat health / rollover' };
 
 // Sycophancy / never-says-no nudge (roadmap #17). Honest and light: it checks
 // whether the most recent substantive AI answer used ANY risk/pushback language.
@@ -776,7 +816,7 @@ async function loadTrust() {
 // (no extra IPC), plus the two app-side signals. Honest: status is shown as a
 // word and a colored dot, never color alone.
 const CH_LABELS = { 'untracked-files': 'Untracked', 'scope-drift': 'Drift', 'stale-docs': 'Stale docs',
-  'repo-sync': 'Backed up', 'bloat': 'Bloat', 'sycophancy': 'Never says no?', 'chat-rollover': 'Chat length' };
+  'repo-sync': 'Backed up', 'bloat': 'Bloat', 'high-stakes': 'High-stakes', 'sycophancy': 'Never says no?', 'chat-rollover': 'Chat length' };
 function renderChatHealth(d) {
   const el = document.getElementById('chat-health');
   if (!el) return;

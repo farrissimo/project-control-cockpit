@@ -1,0 +1,17 @@
+{
+  "_plain_language": "A DECLARED list of changes important enough that a second opinion (Codex cross-check) is worth considering before you rely on them. A match raises a 'consider a second opinion' notice in Signals; it never blocks anything. Edit this list deliberately — the detector checks against exactly what is here, and reports 'unknown' rather than guessing if it is missing.",
+  "compare_baseline": "main",
+  "high_stakes_globs": [
+    "docs/DECISIONS.md",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "PROJECT.md",
+    ".cockpit/state/app-build-scope.json",
+    ".cockpit/state/doc-freshness-map.json",
+    ".cockpit/state/lifecycle-model.json",
+    ".cockpit/state/high-stakes-rules.json",
+    "scripts/backup-protected-files.ps1",
+    ".githooks/**"
+  ],
+  "flag_deletions": true
+}

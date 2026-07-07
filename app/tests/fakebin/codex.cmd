@@ -1,7 +1,9 @@
 @echo off
-REM Fake `codex` verifier. Ignores args/prompt; prints a deterministic PASS
-REM verdict so verify-work.ps1 returns a real-looking verdict without calling
-REM the real Codex CLI (which costs usage and is non-deterministic).
+REM Fake `codex` for tests. Ignores args/prompt; prints deterministic output that
+REM serves BOTH consumers: verify-work.ps1 (needs a VERDICT line) and
+REM second-opinion.ps1 (needs a recognizable reply). Never calls real Codex.
+echo AGREE
+echo FAKE-CODEX-REPLY: deterministic stub for verify + second-opinion
 echo VERDICT: PASS
 echo EVIDENCE:
 echo - fake verifier: deterministic test output
