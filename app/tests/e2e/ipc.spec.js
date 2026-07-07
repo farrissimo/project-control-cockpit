@@ -20,6 +20,7 @@ test('bridge exposes exactly the expected channels', async () => {
     'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
     'listProjects', 'metrics', 'newChat', 'pickFolder', 'pull', 'recentDecisions', 'saveMemory',
     'secondOpinion', 'send', 'setActiveProject', 'syncStatus', 'trustExtras', 'verify',
+    'visionPromises',
   ]);
 });
 

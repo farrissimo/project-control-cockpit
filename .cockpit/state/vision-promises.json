@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "project": "Project Control Cockpit",
+  "last_reviewed": "2026-07-07",
+  "review_status": "reviewed",
+  "note": "Owner-declared self-assessment of whether PCC is still becoming what it was meant to be. This is NOT machine proof — declared_status is the owner's judgment; the Proof Card (deterministic, from the verification taxonomy) is separate and must not be confused with these. v1 enum caps at 'built'; locally_proven/independently_proven wait for the evidence-status step.",
+  "promises": [
+    {
+      "id": "reduce-babysitting",
+      "label": "Reduce owner babysitting",
+      "declared_status": "in_progress",
+      "evidence": "Signals, generated handoff, lifecycle, verification taxonomy, in-app backup, and project switching remove repeated owner control work.",
+      "not_proven": "Longer real-project soak still needed to prove babysitting actually dropped."
+    },
+    {
+      "id": "no-fake-done",
+      "label": "Never fake completion",
+      "declared_status": "built",
+      "evidence": "Proof taxonomy (review vs executed), lifecycle phase-close gate, honest stale/NOT-PROVEN language, and CI as independent execution proof.",
+      "not_proven": "Real Claude/Codex boundary captures still pending."
+    },
+    {
+      "id": "survive-dead-chats",
+      "label": "Survive dead chats",
+      "declared_status": "built",
+      "evidence": "PROJECT.md memory, generated handoff, recent-decisions carry-forward, per-chat session ids.",
+      "not_proven": "Needs more repeated real rollover use."
+    },
+    {
+      "id": "next-action-obvious",
+      "label": "Make the next action obvious",
+      "declared_status": "in_progress",
+      "evidence": "Lifecycle bar shows the current stage and only the legal next steps; the Owner Overview now surfaces one next best move.",
+      "not_proven": "Needs real use to confirm it reliably points to the right move."
+    },
+    {
+      "id": "owner-clarity",
+      "label": "Give a non-coder owner clear project confidence",
+      "declared_status": "in_progress",
+      "evidence": "The Owner/Visionary Overview translates deterministic truth into condition, needs-owner, next move, and proof.",
+      "not_proven": "Just built; not yet proven in real daily use."
+    },
+    {
+      "id": "local-first",
+      "label": "Stay local-first and use no paid API",
+      "declared_status": "built",
+      "evidence": "Electron app over local files/scripts; Claude CLI login path; deterministic zero-LLM runtime; CI needs no API key.",
+      "not_proven": "Ongoing dependency discipline still required."
+    }
+  ]
+}

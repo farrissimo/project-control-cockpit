@@ -98,6 +98,11 @@ ipcMain.handle('pcc:getState', () => ({
   task: readJson('state', 'task-state.json'),
 }));
 
+// Owner-approved vision promises (declared project intent), read for the Owner
+// Overview. Returns { _error } on missing/malformed so the UI degrades gracefully
+// into a "needs owner review" placeholder rather than breaking.
+ipcMain.handle('pcc:visionPromises', () => readJson('state', 'vision-promises.json'));
+
 // Read the standing rules (CLAUDE.md) so the Rules view can show exactly what
 // loads into every Claude session. Read-only.
 ipcMain.handle('pcc:getRules', () => {

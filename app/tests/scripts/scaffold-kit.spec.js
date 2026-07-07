@@ -48,7 +48,9 @@ const KIT = [
   'scripts/validate-cockpit-state.ps1', // doctor dependency
   'scripts/check-schemas.ps1',          // doctor dependency
   'schemas/project-state.schema.json',  // schema doctor/validate need
+  'schemas/vision-promises.schema.json',// vision-promises schema
   'app/main.js',                        // the app (carries the proof taxonomy)
+  'app/renderer/overview-logic.js',     // Owner Overview deterministic logic
 ];
 
 for (const rel of KIT) {
@@ -56,6 +58,24 @@ for (const rel of KIT) {
     expect(fs.existsSync(path.join(target, rel))).toBe(true);
   });
 }
+
+// The Owner Overview needs a FRESH, project-specific vision-promises.json — never
+// PCC's own promises copied in (DECISION-107). It must be a clearly-incomplete
+// placeholder marked for owner review.
+test('new project gets a fresh vision-promises.json (placeholder, not PCC\'s)', () => {
+  const p = path.join(target, '.cockpit', 'state', 'vision-promises.json');
+  expect(fs.existsSync(p)).toBe(true);
+  const vp = JSON.parse(fs.readFileSync(p, 'utf8'));
+  expect(vp.review_status).toBe('needs_owner_review'); // must ask the owner to confirm
+  expect(vp.last_reviewed).toBeNull();
+  const ids = (vp.promises || []).map((x) => x.id);
+  // none of PCC's own promise ids may have leaked into the new project
+  for (const pccId of ['reduce-babysitting', 'no-fake-done', 'survive-dead-chats', 'local-first']) {
+    expect(ids).not.toContain(pccId);
+  }
+  // declared_status, not "status" — it must not read as machine proof
+  expect(vp.promises[0]).toHaveProperty('declared_status');
+});
 
 // Anti-drift guard: EVERY scripts/*.ps1 the app invokes must travel, so no button
 // is dead in a scaffolded project. Derived from main.js, not a hand-maintained list.

@@ -34,6 +34,17 @@ roadmap grid with progress, ranked by his priority.
 Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
 - Chat wired to Claude (`claude -p`), conversation persists across restarts. Chat history: many named chats ("Chats" panel — switch/rename/delete), each pinned to its own Claude session id so switching resumes the right thread and no background claude call can hijack it. Model switcher (default Sonnet 5, editable list in .cockpit/state/models.json, auto-fallback so a retired model never crashes the chat) + "New chat" (clean start). Quick buttons add to your message (send once). Copy blocks render with a Copy button. Uses the claude.ai login, not a paid API key (DECISION-003).
 - Left sidebar: Chat / Project / Rules / Memory / Lifecycle / Signals / Verify.
+- Owner/Visionary Overview (DECISION-107): the Project page now LEADS with a
+  deterministic meaning layer — overall condition (Healthy / Needs proof / Needs
+  attention / Blocked / Unknown), a "needs you" card, one next best move, a journey
+  strip rendered from the REAL lifecycle (no second model), vision-promise cards
+  (declared owner intent, shown as declared self-assessment — visually distinct
+  from proof), and an honest proof card (review-only vs executed; CI "runs on
+  GitHub, not yet surfaced in-app"). Logic is a pure, unit-tested function
+  (app/renderer/overview-logic.js); zero-LLM. Existing tabs/sections remain as
+  evidence/drill-down. Every new project is born with the Overview and a fresh
+  placeholder .cockpit/state/vision-promises.json (needs owner review; never
+  PCC's own promises).
 - Chat renders copy blocks (fenced ``` code) with a working Copy button; the worker is told it's a text-only channel (no interactive AskUserQuestion picker) and not to narrate tool failures.
 - Lifecycle bar (top): "You are here -> Next action -> Decision required", from real state.
 - Live trust strip (top, always visible): On the rails / Backed up / Verified / Rules loaded. Each chip is green only when a real deterministic check says so; "Verified" stays amber unless a fresh independent PASS newer than HEAD exists (never faked).

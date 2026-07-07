@@ -2639,3 +2639,27 @@ Implications:
 
 Supersedes: None
 Related: DECISION-103 (home-cockpit model), DECISION-105 (CI + proof taxonomy), DECISION-088, scripts/bootstrap-project.ps1, app/tests/scripts/scaffold-kit.spec.js
+
+## DECISION-107: Owner/Visionary Overview Is the Default Meaning Layer Over PCC Truth — and Every Project Is Born With It
+
+Date: 2026-07-07
+Status: Active
+
+Owner Decision:
+
+The Project page now LEADS with an Owner/Visionary Overview: a deterministic presentation layer that translates existing PCC truth into the answers a non-coder owner actually needs — overall condition, what needs the owner, the one next best move, a vision-alignment view, and an honest proof status. The existing tabs/sections remain as evidence/drill-down. Every new project PCC scaffolds is born with this same surface plus a fresh, project-specific vision-promises artifact.
+
+Reason:
+
+PCC had a strong truth engine but a system-facing app: header → explanation → raw card → owner interprets. The owner (a non-coder visionary) had to read detector output, lifecycle internals, and state files just to know if the project was okay and still aligned with the original intent. This adds no new AI and no new truth — it is deterministic interpretation of facts PCC already produces, so the owner sees confidence / next move / proof instead of raw evidence.
+
+Implications:
+
+- The decision logic is a PURE, unit-tested function (app/renderer/overview-logic.js, computeOverview) split from rendering, so it stays deterministic (zero-LLM) and every rule is provable with crafted inputs. app/renderer/renderer.js only renders the returned view-model.
+- HARD GUARDRAILS encoded and tested: (a) NO second lifecycle — the Journey strip and Next Best Move defer to the real lifecycle system; only urgent items (backup/proof/drift/high-stakes) override the lifecycle's next step. (b) "Owner decision needed" is NOT a driver — there is no live source outside the retired task-state.json (DECISION-104), so it never sets condition/next-move; the card says so honestly. (c) Proof is honest — CI "runs on GitHub; live CI status not yet wired into PCC"; a review_only PASS never reads as executed (DECISION-105). (d) NO health percentage, NO NIST rubric, NO AI analyzer, NO chart library, NO giant scorecard.
+- Vision Promises are a small declared artifact (.cockpit/state/vision-promises.json, schema in schemas/): owner-approved plain-language intent. The field is declared_status (self-assessment), rendered in visually softer/dashed styling and explicitly labelled "declared" so it can NEVER compete with the deterministic Proof card. v1 enum caps at 'built'; locally_proven/independently_proven wait for the evidence-status step. Missing/malformed files degrade to a "needs owner review" placeholder, never a crash.
+- STANDARDIZATION (born-by-default, extends DECISION-106): the Overview travels as app capability (in app/). The scaffolder GENERATES a fresh, project-specific vision-promises.json — a clearly-incomplete placeholder marked review_status=needs_owner_review — and NEVER copies PCC's own promises. Blueprint-supplied owner-approved promises are used if present; Claude never invents final promises silently.
+- Tests: unit (overview-logic rules incl. review-only≠executed, journey-follows-lifecycle, urgent-overrides, graceful-missing-promises), e2e (Project leads with the overview; honest proof language; declared-not-proof), and scaffold (fresh promises, not PCC's). Count 108 -> 123.
+
+Supersedes: None
+Related: DECISION-104 (retired task-state), DECISION-105 (proof taxonomy), DECISION-106 (born bulletproof), app/renderer/overview-logic.js, .cockpit/state/vision-promises.json, schemas/vision-promises.schema.json, scripts/bootstrap-project.ps1

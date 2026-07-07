@@ -143,6 +143,27 @@ Set-Content -LiteralPath (Join-Path $Target '.cockpit/state/doc-freshness-map.js
 }
 "@)
 
+# --- vision promises (owner intent for the Owner Overview, DECISION-107). NEVER
+#     copy PCC's own promises; generate FRESH per project. Use blueprint promises
+#     only if the intake supplied owner-approved ones; otherwise a clearly-incomplete
+#     placeholder that says it needs owner review. We never invent final promises. ---
+$promises = $null
+if ($bp -and $bp.vision_promises) { $promises = @($bp.vision_promises) }
+if (-not $promises -or $promises.Count -eq 0) {
+  $promises = @(
+    [ordered]@{ id = 'primary-outcome'; label = "(Define $Name's primary outcome)"; declared_status = 'needs_owner_review'; evidence = ''; not_proven = 'Vision promises have not been reviewed by the owner yet.' }
+  )
+}
+$visionObj = [ordered]@{
+  version       = 1
+  project       = $Name
+  last_reviewed = $null
+  review_status = 'needs_owner_review'
+  note          = 'Owner-declared project intent, shown as cards in the Owner Overview. PLACEHOLDER until the owner reviews/replaces them. declared_status is self-assessment, not machine proof.'
+  promises      = $promises
+}
+Set-Content -LiteralPath (Join-Path $Target '.cockpit/state/vision-promises.json') -Encoding utf8 -Value ($visionObj | ConvertTo-Json -Depth 6)
+
 # --- 5. starter docs (filled from the blueprint when present) ---
 Ensure-Dir (Join-Path $Target 'docs')
 

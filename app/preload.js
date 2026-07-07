@@ -7,6 +7,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('pcc', {
   getState: () => ipcRenderer.invoke('pcc:getState'),
+  visionPromises: () => ipcRenderer.invoke('pcc:visionPromises'),
   send: (message, model, chatId, isFirstTurn) => ipcRenderer.invoke('pcc:send', message, model, chatId, isFirstTurn),
   secondOpinion: (prompt) => ipcRenderer.invoke('pcc:secondOpinion', prompt),
   getModels: () => ipcRenderer.invoke('pcc:getModels'),

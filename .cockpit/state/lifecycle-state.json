@@ -1,7 +1,7 @@
 {
   "lane": "app-build-decision-102",
   "current_stage": "work",
-  "active_task": "Born-bulletproof-by-default (DECISION-106): the full assurance kit (CI, pre-commit gate, lifecycle gate, taxonomy, backups, all engine scripts) now travels into every new project via the scaffolder, proven by scaffold-kit.spec.js + an anti-drift guard. Owner directive: STOP and assess next steps after this. Owner flagged one glaring issue re: a visionary dashboard/view to raise next.",
-  "note": "Set 2026-07-07. DECISION-105 (CI+taxonomy) done; DECISION-106 (kit travels) done. Next: owner-led assessment; a dashboard/view issue is queued. Deferred: real boundary captures, evidence-status file, changed-files view, lean file-attach.",
-  "updated_at": "2026-07-07T13:35:00-06:00"
+  "active_task": "Owner/Visionary Overview (DECISION-107) DONE: Project page leads with a deterministic meaning layer (condition, needs-owner, next move, journey-from-lifecycle, vision promises, honest proof), and every new project is born with it + a fresh vision-promises.json. Owner directive: STOP and assess next steps now.",
+  "note": "Set 2026-07-07. Done: DECISION-105 (CI+taxonomy), 106 (kit travels), 107 (owner overview + standardization). Next: owner-led assessment. Deferred queue: real boundary captures, evidence-status/live-CI-in-app (turns proof card green), changed-files view, lean file-attach.",
+  "updated_at": "2026-07-07T14:30:00-06:00"
 }

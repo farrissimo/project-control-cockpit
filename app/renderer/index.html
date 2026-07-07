@@ -199,6 +199,55 @@
   .pg-num { font-size: 26px; font-weight: 700; color: var(--text); line-height: 1; }
   .pg-cap { font-size: 11px; color: var(--muted); margin-top: 5px; }
 
+  /* Owner/Visionary Overview (DECISION-107): the meaning layer. One dominant
+     status, then needs-owner / next-move, journey (from the real lifecycle),
+     vision promises, and a proof card. Colors carry meaning; declared promise
+     status is visually softer (dashed) than deterministic proof, on purpose. */
+  #owner-overview { display: flex; flex-direction: column; gap: 14px; max-width: 820px; }
+  .ov-status { border-radius: 14px; padding: 18px 20px; border: 1px solid var(--border); background: var(--surface); }
+  .ov-status.good { border-color: var(--success-border); }
+  .ov-status.warn { border-color: var(--warning-border); }
+  .ov-status.bad  { border-color: var(--danger-border); }
+  .ov-proj { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; }
+  .ov-condition { font-size: 24px; font-weight: 700; line-height: 1.1; color: var(--text); }
+  .ov-status.good .ov-condition { color: var(--success-text); }
+  .ov-status.warn .ov-condition { color: var(--warning-text); }
+  .ov-status.bad  .ov-condition { color: var(--danger-text); }
+  .ov-why { font-size: 13px; color: var(--text); margin-top: 8px; }
+  .ov-safe { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .ov-safe b { color: var(--info); font-weight: 600; }
+
+  .ov-grid { display: flex; gap: 14px; flex-wrap: wrap; }
+  .ov-card { flex: 1 1 240px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .ov-card.attention { border-color: var(--warning-border); }
+  .ov-card-title { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--info); margin-bottom: 8px; }
+  .ov-card-main { font-size: 15px; font-weight: 600; color: var(--text); }
+  .ov-card.attention .ov-card-main { color: var(--warning-text); }
+  .ov-card-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  .ov-section-title { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--info); margin: 6px 0 -2px; }
+  .ov-journey { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .ov-step { font-size: 12px; color: var(--muted); padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; }
+  .ov-step.done { color: var(--success-text); border-color: var(--success-border); }
+  .ov-step.now { color: var(--info); border-color: var(--info); font-weight: 600; background: rgba(138,180,255,.08); }
+
+  .ov-review-banner { font-size: 12px; color: var(--warning-text); background: var(--warning-bg); border: 1px solid var(--warning-border); border-radius: 10px; padding: 8px 12px; }
+  .ov-promises { display: flex; flex-wrap: wrap; gap: 10px; }
+  .ov-promise { flex: 1 1 240px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .ov-promise-label { font-size: 13px; font-weight: 600; color: var(--text); }
+  /* Declared status: dashed + muted on purpose — this is owner self-assessment,
+     NOT machine proof, and must not visually compete with the Proof card. */
+  .ov-declared { display: inline-block; font-size: 10px; text-transform: uppercase; letter-spacing: .04em;
+    padding: 2px 8px; border-radius: 999px; margin-top: 8px; color: var(--muted);
+    background: rgba(255,255,255,.03); border: 1px dashed var(--border); }
+  .ov-declared.built { color: var(--success-text); border-color: var(--success-border); }
+  .ov-declared.in_progress { color: var(--info); border-color: var(--info); }
+  .ov-declared.at_risk { color: var(--danger-text); border-color: var(--danger-border); }
+  .ov-declared.needs_owner_review { color: var(--warning-text); border-color: var(--warning-border); }
+  .ov-promise-note { font-size: 11px; color: var(--muted); margin-top: 8px; }
+  .ov-promise-note b { color: #9aa0aa; font-weight: 600; }
+  .ov-declared-hint { font-size: 11px; color: var(--muted); font-style: italic; }
+
   #trust { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 6px 20px;
     border-bottom: 1px solid #23262d; background: #0b0d10; flex: 0 0 auto; }
   .trust-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
@@ -364,11 +413,15 @@
     </div>
 
     <div class="view hidden panel" id="view-project">
-      <h2>Where the project stands</h2>
-      <div id="project-glance"><p class="muted">Loading…</p></div>
-      <details id="project-detail" style="margin-top:14px;">
-        <summary style="cursor:pointer; color:var(--muted); font-size:13px;">Full state (details)</summary>
-        <div id="project-body"><p class="muted">Loading…</p></div>
+      <!-- Owner/Visionary Overview (DECISION-107): the meaning layer. Deterministic
+           translation of existing truth into condition / needs-owner / next move /
+           vision alignment / proof. Everything below is evidence/drill-down. -->
+      <div id="owner-overview"><p class="muted">Loading…</p></div>
+
+      <details id="project-evidence" style="margin-top:22px;">
+        <summary style="cursor:pointer; color:var(--muted); font-size:13px;">Signals, metrics &amp; full state (evidence)</summary>
+        <div id="project-glance" style="margin-top:12px;"><p class="muted">Loading…</p></div>
+        <div id="project-body" style="margin-top:12px;"><p class="muted">Loading…</p></div>
       </details>
 
       <h3 style="font-size:14px; margin:22px 0 2px; color:#8ab4ff; font-weight:500;">Back up &amp; sync</h3>
@@ -448,6 +501,7 @@
       <pre class="rules" id="verify-result" style="margin-top:12px; display:none;"></pre>
     </div>
   </section>
+  <script src="overview-logic.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

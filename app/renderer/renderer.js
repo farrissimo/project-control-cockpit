@@ -960,25 +960,15 @@ async function loadLifecycle() {
 async function loadProjectGlance() {
   const el = document.getElementById('project-glance');
   if (!el) return;
-  let lc = null, det = null, m = null;
-  try { lc = await window.pcc.lifecycle(); } catch (e) { /* optional */ }
+  let det = null, m = null;
   try { det = await window.pcc.detections(); } catch (e) { /* optional */ }
   try { m = await window.pcc.metrics(); } catch (e) { /* optional */ }
 
   let html = '';
 
-  // 1. Lifecycle stepper.
-  if (lc && lc.signal === 'ok' && Array.isArray(lc.all_stages)) {
-    const curIdx = lc.all_stages.findIndex((s) => s.is_current);
-    const steps = lc.all_stages.map((s, i) => {
-      const cls = s.is_current ? 'now' : (curIdx >= 0 && i < curIdx ? 'done' : '');
-      return '<span class="pg-step ' + cls + '">' + escapeHtml(s.label) + '</span>';
-    }).join('');
-    const nexts = (lc.next || []).map((n) => n.label).join(' or ') || 'not set';
-    html += '<div class="glance-card"><div class="glance-title">Where you are</div>'
-      + '<div class="pg-steps">' + steps + '</div>'
-      + '<div class="glance-sub">Next: <b>' + escapeHtml(nexts) + '</b></div></div>';
-  }
+  // (The lifecycle stepper moved to the Owner Overview's Journey strip — DECISION-107
+  //  — so there's a single "where are we" source. This hero is now evidence: the
+  //  signal health tiles + metrics, under the "evidence" fold.)
 
   // 2. Signals health (+ chat gauge). Reuses the same signal objects the Signals
   //    tab renders, plus the two app-side ones.
@@ -1017,8 +1007,82 @@ async function loadProjectGlance() {
   el.innerHTML = html || '<p class="muted">No project data yet.</p>';
 }
 
+// Owner/Visionary Overview (DECISION-107): the meaning layer. Deterministic
+// translation of EXISTING truth (lifecycle, detections, verification taxonomy,
+// sync) into owner-facing answers: condition, needs-owner, next best move, journey
+// (rendered from the REAL lifecycle — never a second model), vision promises
+// (declared self-assessment, kept visually distinct from proof), and an honest
+// proof card. Zero LLM; every value is fact-derived. Guardrails per the spec:
+//  - "owner decision needed" is NOT a driver yet: no live source outside the
+//    retired task-state.json (DECISION-104). We never read stale task-state here.
+//  - Next Best Move and the Journey strip defer to the lifecycle, so there is no
+//    second source of truth for "where are we / what's next".
+async function loadOwnerOverview() {
+  const el = document.getElementById('owner-overview');
+  if (!el) return;
+  // Fetch every fact in parallel — detections alone spawns several PowerShell
+  // detectors, so sequential awaits would leave the overview on "Loading…" for
+  // seconds. Each failure degrades to null (computeOverview handles nulls).
+  const [lc, det, x, sync, state, vp] = await Promise.all([
+    window.pcc.lifecycle().catch(() => null),
+    window.pcc.detections().catch(() => null),
+    window.pcc.trustExtras().catch(() => null),
+    window.pcc.syncStatus().catch(() => null),
+    window.pcc.getState().catch(() => null),
+    window.pcc.visionPromises().catch(() => null),
+  ]);
+  const data = { lc, det, x, sync, state, vp };
+
+  let m;
+  try { m = PCCOverview.computeOverview(data); }
+  catch (e) { el.innerHTML = '<p class="muted">Could not build the overview.</p>'; return; }
+
+  const journeyHtml = m.journey.length
+    ? m.journey.map((s) => '<span class="ov-step ' + s.cls + '">' + escapeHtml(s.label) + '</span>').join('<span style="color:var(--muted)">›</span>')
+    : '<span class="ov-step">lifecycle not set</span>';
+
+  let reviewBanner = '', promisesHtml, promisesFoot = '';
+  if (m.vision.status === 'missing') {
+    promisesHtml = '<p class="ov-declared-hint">No vision promises set for this project yet. Add .cockpit/state/vision-promises.json (owner-approved intent) so “is it still the thing I meant to build?” can be answered here.</p>';
+  } else {
+    if (m.vision.needsReview) reviewBanner = '<div class="ov-review-banner">These vision promises need your review — they haven’t been confirmed as this project’s real intent yet.</div>';
+    promisesHtml = '<div class="ov-promises">' + m.vision.cards.map((c) => {
+      const note = (c.notProven ? '<div class="ov-promise-note"><b>Not proven:</b> ' + escapeHtml(c.notProven) + '</div>' : '')
+        + (c.evidence ? '<div class="ov-promise-note">' + escapeHtml(c.evidence) + '</div>' : '');
+      return '<div class="ov-promise"><div class="ov-promise-label">' + escapeHtml(c.label) + '</div>'
+        + '<span class="ov-declared ' + c.statusCls + '">declared: ' + escapeHtml(c.status.replace(/_/g, ' ')) + '</span>' + note + '</div>';
+    }).join('') + '</div>';
+    promisesFoot = '<p class="ov-declared-hint">Declared = the owner’s self-assessment, not machine proof (see the Proof card). '
+      + (m.vision.lastReviewed ? 'Owner-reviewed ' + escapeHtml(m.vision.lastReviewed) + '.' : 'Not yet owner-reviewed.') + '</p>';
+  }
+
+  el.innerHTML =
+    '<div class="ov-status ' + m.cond.cls + '">'
+    + '<div class="ov-proj">' + escapeHtml(m.projName) + '</div>'
+    + '<div class="ov-condition">' + escapeHtml(m.cond.label) + '</div>'
+    + '<div class="ov-why">' + escapeHtml(m.cond.why) + '</div>'
+    + '<div class="ov-safe">Safe to continue: <b>' + escapeHtml(m.cond.safe) + '</b></div>'
+    + '</div>'
+    + '<div class="ov-grid">'
+    + '<div class="ov-card' + (m.needs.attn ? ' attention' : '') + '"><div class="ov-card-title">Needs you</div>'
+    + '<div class="ov-card-main">' + escapeHtml(m.needs.main) + '</div>'
+    + (m.needs.sub ? '<div class="ov-card-sub">' + escapeHtml(m.needs.sub) + '</div>' : '') + '</div>'
+    + '<div class="ov-card"><div class="ov-card-title">Next best move</div>'
+    + '<div class="ov-card-main">' + escapeHtml(m.move.main) + '</div>'
+    + (m.move.sub ? '<div class="ov-card-sub">' + escapeHtml(m.move.sub) + '</div>' : '') + '</div>'
+    + '</div>'
+    + '<div class="ov-section-title">Project journey</div><div class="ov-journey">' + journeyHtml + '</div>'
+    + '<div class="ov-section-title">Vision alignment</div>' + reviewBanner + promisesHtml + promisesFoot
+    + '<div class="ov-card"><div class="ov-card-title">Proof</div>'
+    + '<div class="ov-card-sub">Independent review: <b style="color:var(--text)">' + escapeHtml(m.proof.review) + '</b></div>'
+    + '<div class="ov-card-sub">Executed proof in app: <b style="color:var(--text)">' + escapeHtml(m.proof.exec) + '</b></div>'
+    + '<div class="ov-card-sub">CI: runs on GitHub every push; live CI status is not yet wired into PCC.</div>'
+    + '<div class="ov-card-sub">Real Claude/Codex boundary behavior: not proven yet.</div></div>';
+}
+
 async function loadProject() {
   const body = document.getElementById('project-body');
+  loadOwnerOverview();
   loadProjectGlance();
   try {
     const s = await window.pcc.getState();

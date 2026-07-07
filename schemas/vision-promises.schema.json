@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PCC vision-promises",
+  "description": "Owner-approved, plain-language promises capturing a project's original intent, shown as visual cards in the Owner/Visionary Overview. Declared self-assessment, NOT machine proof — declared_status must never be presented as proof (the deterministic Proof Card is separate).",
+  "type": "object",
+  "required": ["version", "project", "review_status", "promises"],
+  "additionalProperties": true,
+  "properties": {
+    "version": { "type": "integer", "enum": [1] },
+    "project": { "type": "string" },
+    "last_reviewed": { "type": ["string", "null"], "description": "Date the owner last reviewed these promises; null = never reviewed." },
+    "review_status": { "type": "string", "enum": ["needs_owner_review", "reviewed"] },
+    "note": { "type": "string" },
+    "promises": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "declared_status"],
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "declared_status": {
+            "type": "string",
+            "description": "Owner's declared self-assessment. v1 caps at 'built'; locally_proven/independently_proven are reserved for when the evidence-status step ties a promise to a real proof source.",
+            "enum": ["needs_owner_review", "not_started", "in_progress", "built", "at_risk", "locally_proven", "independently_proven"]
+          },
+          "evidence": { "type": "string" },
+          "not_proven": { "type": "string" }
+        }
+      }
+    }
+  }
+}
