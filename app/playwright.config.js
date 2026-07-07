@@ -1,3 +1,6 @@
+// Run all: `npm test`. Subsets: `npm run test:e2e`, `npm run test:scripts`.
+// A pre-commit hook (.githooks/pre-commit) runs this whenever app/ or scripts/
+// changes are staged, so a broken button/script can't be committed as working.
 // Playwright config — one unified runner for all three test layers:
 //   tests/unit/*     pure-JS logic (no Electron)
 //   tests/scripts/*  PowerShell detector CLI contract (spawns pwsh)

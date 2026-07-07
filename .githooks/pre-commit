@@ -1,0 +1,33 @@
+#!/bin/sh
+# PCC pre-commit — run the automated test suite before a commit lands, so a
+# broken button or a broken script can't be snapshotted as "working".
+# Owner chose auto-run-on-commit as the safety net (2026-07-07).
+#
+# Scope: only runs when files the suite actually covers (app/ or scripts/) are
+# staged — editing docs/PROJECT.md won't trigger a 45s Electron run. This keeps
+# the net taut without training you to bypass it.
+#
+# Bypass in a genuine emergency:
+#   PCC_SKIP_TESTS=1 git commit ...        (or)   git commit --no-verify
+
+if [ "$PCC_SKIP_TESTS" = "1" ]; then
+  echo "[pcc] PCC_SKIP_TESTS=1 set — skipping tests for this commit."
+  exit 0
+fi
+
+changed=$(git diff --cached --name-only)
+if ! echo "$changed" | grep -qE '^(app/|scripts/)'; then
+  echo "[pcc] No app/ or scripts/ changes staged — skipping tests."
+  exit 0
+fi
+
+echo "[pcc] app/ or scripts/ changed — running test suite (npm test)…"
+npm test --prefix app
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "[pcc] TESTS FAILED — commit blocked."
+  echo "      Fix the failures, or bypass with: git commit --no-verify"
+  exit 1
+fi
+echo "[pcc] Tests passed — proceeding with commit."
+exit 0
