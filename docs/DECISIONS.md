@@ -2617,3 +2617,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-088 (local-deterministic, minimize LLM — CI is zero-LLM and deterministic), DECISION-102, DECISION-104, .github/workflows/ci.yml, app/main.js, app/renderer/renderer.js, app/last-verification.txt
+
+## DECISION-106: Every Project PCC Builds Is Born Bulletproof-by-Default — the Whole Assurance Kit Travels
+
+Date: 2026-07-07
+Status: Active
+
+Owner Decision:
+
+The new-project scaffolder now copies the FULL cockpit engine and every assurance guardrail into each new project, so a project created via PCC is born with the same protection PCC has: clean-machine CI, the pre-commit test gate, the lifecycle phase-close gate, the proof taxonomy, backups, and the health/detector scripts — not a hand-picked subset.
+
+Reason:
+
+The scaffolder had copied a hand-maintained LIST of ~10 scripts. That list silently drifted: as the app grew, new scripts it calls (the lifecycle-advance phase-close gate, high-stakes, doctor, second-opinion, babysitting-metrics) and the newer guardrails (the CI workflow, the .githooks pre-commit gate, the backup script + policy) never got added. A scaffolded project therefore had dead buttons and NO test gate — the opposite of "born bulletproof." Worse, the pre-commit hook's installer travelled while the hook itself did not, so the gate silently pointed at a missing path. The owner's standing goal is "every project PCC builds should be born bulletproof-by-default"; a per-item copy list structurally cannot deliver that.
+
+Implications:
+
+- scripts/bootstrap-project.ps1 now copies whole engine directories WHOLESALE — scripts/, schemas/, .github/, .githooks/ — plus docs/BACKUP_POLICY.md. Any FUTURE script/guardrail travels automatically; there is no list to keep in sync (the drift's root cause). app/ is copied excluding node_modules (excluded up front now, not copy-then-delete, so bootstrap stays fast) and excluding the dev repo's local verification record. The scaffold's own first commit uses --no-verify (the gate can't run before the new project's npm install).
+- The proof taxonomy (DECISION-105) already travelled inside app/; CI + the pre-commit gate + backups now travel too. HONEST LIMIT: a scaffolded project's CI file is present and ready, but it only actually RUNS once that project is pushed to its own GitHub repo with Actions enabled — "born with it," not "already executed."
+- app/tests/scripts/scaffold-kit.spec.js runs the real scaffolder into a temp dir and asserts the kit landed. Its last test is an ANTI-DRIFT GUARD: it derives the app-invoked scripts from main.js and fails if any does not travel — so this exact drift cannot silently return. (Test count 96 -> 108.)
+
+Supersedes: None
+Related: DECISION-103 (home-cockpit model), DECISION-105 (CI + proof taxonomy), DECISION-088, scripts/bootstrap-project.ps1, app/tests/scripts/scaffold-kit.spec.js

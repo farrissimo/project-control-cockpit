@@ -97,8 +97,17 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
    project. Proven by tests/e2e/multiproject.spec.js. New projects created via
    the intake now AUTO-REGISTER in the switcher (bootstrap drops the path into
    .cockpit/state/scaffolded-inbox.json; the app imports + clears it —
-   tests/e2e/autoregister.spec.js). Optional remaining: stop the scaffolder
-   copying app/ into each project (unneeded in the home-cockpit model).
+   tests/e2e/autoregister.spec.js).
+   BORN BULLETPROOF-BY-DEFAULT (DECISION-106): the scaffolder now copies the FULL
+   cockpit engine + every guardrail into each new project — clean-machine CI, the
+   pre-commit test gate, the lifecycle phase-close gate, the proof taxonomy,
+   backups, and all engine scripts — WHOLESALE (whole scripts/, schemas/, .github/,
+   .githooks/ dirs), not a hand-picked list that drifted. Proven by
+   tests/scripts/scaffold-kit.spec.js, whose last test is an anti-drift guard
+   (derives app-invoked scripts from main.js; fails if any doesn't travel). Honest
+   limit: a new project's CI file is present and ready but only RUNS once that
+   project is pushed to its own GitHub repo. Open for assessment: in the home-cockpit
+   model, whether each project needs its own app/ copy vs. sharing the home app.
    #21 (peek under the hood) and #23 (UI polish) are optional and unstarted.
    Boundary fixtures (down payment on the #1 test-hardening gap): the fakes can
    now replay ugly real-world shapes (worker failure/auth/empty; verifier

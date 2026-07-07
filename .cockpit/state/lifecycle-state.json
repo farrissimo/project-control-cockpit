@@ -1,7 +1,7 @@
 {
   "lane": "app-build-decision-102",
   "current_stage": "work",
-  "active_task": "Assurance hardening (DECISION-105): clean-machine CI + proof taxonomy DONE and proven green. NEXT: replace the hand-authored boundary fixtures with real, secret-redacted captures from actual Claude/Codex runs (replay deterministically after). Then a tiny evidence-status facts file that surfaces live CI status in-app.",
-  "note": "Set 2026-07-07 by owner approval, GPT no-bloat review aligned. Order: CI+taxonomy (done) -> real boundary captures -> evidence-status file -> changed-files view -> lean file-attach last.",
-  "updated_at": "2026-07-07T13:20:00-06:00"
+  "active_task": "Born-bulletproof-by-default (DECISION-106): the full assurance kit (CI, pre-commit gate, lifecycle gate, taxonomy, backups, all engine scripts) now travels into every new project via the scaffolder, proven by scaffold-kit.spec.js + an anti-drift guard. Owner directive: STOP and assess next steps after this. Owner flagged one glaring issue re: a visionary dashboard/view to raise next.",
+  "note": "Set 2026-07-07. DECISION-105 (CI+taxonomy) done; DECISION-106 (kit travels) done. Next: owner-led assessment; a dashboard/view issue is queued. Deferred: real boundary captures, evidence-status file, changed-files view, lean file-attach.",
+  "updated_at": "2026-07-07T13:35:00-06:00"
 }

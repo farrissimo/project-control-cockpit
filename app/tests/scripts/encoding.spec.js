@@ -37,10 +37,13 @@ test('hostile non-ASCII round-trips through pwsh JSON output', () => {
 });
 
 test('real § decision title parses end-to-end (recent-decisions)', () => {
-  const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/recent-decisions.ps1', '-Json', '-Count', '5'],
+  // Ask for a generous window so this stays robust as new decisions accrue — the
+  // point is that the real § title (DECISION-101) parses end-to-end, not that it
+  // sits in the newest N. (Was -Count 5; broke the moment DECISION-104..106 landed.)
+  const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/recent-decisions.ps1', '-Json', '-Count', '200'],
     { cwd: REPO, encoding: 'utf8', timeout: 20000, windowsHide: true });
   const obj = JSON.parse(r.stdout);
   const d101 = obj.decisions.find((d) => d.num === 101);
-  expect(d101, 'DECISION-101 not in the latest 5 — adjust the count').toBeTruthy();
+  expect(d101, 'DECISION-101 (the § title) not returned — is it still in DECISIONS.md?').toBeTruthy();
   expect(d101.title).toContain('§');
 });
