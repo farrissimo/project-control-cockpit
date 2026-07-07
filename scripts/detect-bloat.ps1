@@ -21,6 +21,9 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
+# Emit UTF-8 so non-ASCII survives a redirected pipe (else PowerShell writes
+# OEM-codepage bytes that make the JSON invalid and the app silently drops it).
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 

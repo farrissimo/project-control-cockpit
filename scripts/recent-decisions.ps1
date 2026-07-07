@@ -14,6 +14,10 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
+# Emit UTF-8 so non-ASCII (e.g. the section sign in a decision title) survives a
+# redirected pipe. Without this, PowerShell writes those bytes in the OEM
+# codepage, producing invalid JSON that the app silently drops (found by tests).
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 
