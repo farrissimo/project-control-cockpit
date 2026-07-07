@@ -359,6 +359,14 @@
   .lc-advance-status.good { color: var(--success-text); }
   .lc-advance-status.warn { color: var(--warning-text); }
   .lc-advance-status.bad { color: var(--danger-text); }
+
+  /* Working spinner (soak finding W1): slow detector/hard-check views showed a
+     bare "Loading…/Running…" that read as broken during long waits (~16s for the
+     health check). A visible animated spinner says "working," not "dead". */
+  .spinner { display: inline-block; width: 12px; height: 12px; margin-right: 7px;
+    border: 2px solid var(--border); border-top-color: var(--info); border-radius: 50%;
+    vertical-align: -2px; animation: pcc-spin 0.7s linear infinite; }
+  @keyframes pcc-spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>

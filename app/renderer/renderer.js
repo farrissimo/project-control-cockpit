@@ -533,6 +533,7 @@ document.querySelectorAll('.nav').forEach((btn) => {
 
 async function runHardChecks() {
   const el = document.getElementById('verify-checks');
+  el.innerHTML = '<span class="spinner"></span>Running the health check (git + doctor.ps1) — this can take ~15 seconds…';
   try {
     const r = await window.pcc.hardChecks();
     el.textContent = 'GIT — what changed:\n' + (r.git || '(clean)') + '\n\nPCC HEALTH CHECK:\n' + (r.doctor || '(no output)');
@@ -681,7 +682,7 @@ function signalCard(d) {
 async function loadSignals() {
   const list = document.getElementById('signals-list');
   const status = document.getElementById('signals-status');
-  status.textContent = 'Checking…';
+  status.innerHTML = '<span class="spinner"></span>Checking…';
   list.innerHTML = '';
   try {
     const r = await window.pcc.detections();
@@ -704,7 +705,7 @@ document.getElementById('signals-refresh').addEventListener('click', () => { loa
 async function loadLifecycleView() {
   const map = document.getElementById('lifecycle-map');
   const detail = document.getElementById('lifecycle-detail');
-  map.innerHTML = ''; detail.innerHTML = '<p class="muted">Loading…</p>';
+  map.innerHTML = ''; detail.innerHTML = '<p class="muted"><span class="spinner"></span>Loading the stage map…</p>';
   let r = null;
   try { r = await window.pcc.lifecycle(); } catch (e) { detail.innerHTML = '<p class="muted">Could not read lifecycle: ' + escapeHtml(e.message) + '</p>'; return; }
 
@@ -1020,6 +1021,7 @@ async function loadProjectGlance() {
 async function loadOwnerOverview() {
   const el = document.getElementById('owner-overview');
   if (!el) return;
+  el.innerHTML = '<p class="muted"><span class="spinner"></span>Reading the project…</p>';
   // Fetch every fact in parallel — detections alone spawns several PowerShell
   // detectors, so sequential awaits would leave the overview on "Loading…" for
   // seconds. Each failure degrades to null (computeOverview handles nulls).

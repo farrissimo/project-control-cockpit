@@ -2682,7 +2682,7 @@ Findings:
 - PASSED (fundamentals): zero console/page errors across ~130 ops; NO memory growth (main process flat/down); NO permanent process leak (pwsh drained back to baseline between phases — detectors exit cleanly); NO response-time drift (Signals refresh held ~1.7s start to finish); app fully functional after the beating.
 - W3 (FIXED): no in-flight guard — 12 rapid "Refresh" clicks spawned 129 concurrent pwsh processes. Because each detector run is 6 pwsh spawns and nothing coalesced concurrent calls, impatience (made worse by W1's slow feel) became a process storm that could choke a weaker machine.
 - W2 (FIXED by the same change): the Project page called detections() twice per visit (Owner Overview + the glance hero), doubling the spawn cost.
-- W1 (DEFERRED): the detector/hard-check views show a bare "Loading… / Checking… / Running…" with no spinner; the ~16s hard-checks especially reads as "broken" to a paranoid owner. Perceived-slowness, not a functional bug. Follow-up: a working-spinner affordance.
+- W1 (FIXED, follow-up commit): the detector/hard-check views showed a bare "Loading… / Checking… / Running…" with no spinner; the ~16s hard-checks especially read as "broken" to a paranoid owner. Fixed with a visible animated spinner on the slow loads (Verify hard-checks, Signals, Lifecycle stage-map, and the Owner Overview landing) so they say "working," not "dead". Perceived-slowness only; never was a functional bug.
 
 Implications:
 
