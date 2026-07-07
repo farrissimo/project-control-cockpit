@@ -4,7 +4,10 @@
   "description": "PCC - local-first project control cockpit (desktop app). Consumes the .cockpit/ file bridge; drives Claude Code as the worker.",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "test": "playwright test",
+    "test:e2e": "playwright test tests/e2e",
+    "test:scripts": "playwright test tests/scripts"
   },
   "license": "UNLICENSED",
   "private": true,
