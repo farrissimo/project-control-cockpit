@@ -11,6 +11,7 @@ const { defineConfig } = require('@playwright/test');
 
 module.exports = defineConfig({
   testDir: './tests',
+  testIgnore: '**/tests/external/**', // opt-in real-boundary smoke; runs via its own config
   fullyParallel: false,
   workers: 1,
   timeout: 60_000,

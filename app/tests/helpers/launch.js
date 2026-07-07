@@ -14,7 +14,7 @@ const { _electron: electron } = require('@playwright/test');
 const APP_DIR = path.join(__dirname, '..', '..');            // app/
 const FAKEBIN = path.join(__dirname, '..', 'fakebin');       // app/tests/fakebin
 
-async function launchApp() {
+async function launchApp(extraEnv = {}) {
   const sep = process.platform === 'win32' ? ';' : ':';
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-test-'));
   const env = {
@@ -22,6 +22,7 @@ async function launchApp() {
     PATH: FAKEBIN + sep + (process.env.PATH || ''),
     Path: FAKEBIN + sep + (process.env.Path || ''),          // Windows env var casing
     PCC_TEST_MODE: '1',
+    ...extraEnv,
   };
   const app = await electron.launch({
     args: [APP_DIR, '--user-data-dir=' + userDataDir],

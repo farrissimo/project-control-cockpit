@@ -7,7 +7,9 @@
     "start": "electron .",
     "test": "playwright test",
     "test:e2e": "playwright test tests/e2e",
-    "test:scripts": "playwright test tests/scripts"
+    "test:scripts": "playwright test tests/scripts",
+    "test:external-smoke": "playwright test -c playwright.external.config.js",
+    "postinstall": "node tools/install-git-hooks.js"
   },
   "license": "UNLICENSED",
   "private": true,
