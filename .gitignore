@@ -15,3 +15,8 @@ app/node_modules/
 
 # Generated verification output written by scripts/verify-work.ps1 (-WriteFile). Not source.
 app/last-verification.txt
+
+# Test tooling
+app/node_modules/
+app/test-results/
+app/playwright-report/

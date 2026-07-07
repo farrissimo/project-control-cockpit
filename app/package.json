@@ -9,6 +9,7 @@
   "license": "UNLICENSED",
   "private": true,
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "electron": "^33.2.0"
   }
 }
