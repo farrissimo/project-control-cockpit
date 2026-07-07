@@ -80,8 +80,11 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
    "Verified" strip is green. HONEST LIMIT: GPT reviewed the CODE as pushed and
    could NOT run anything — so "62 tests green", npm audit, and the real
    Claude/Codex boundary behavior remain NOT PROVEN by execution. The automated
-   runtime half still wants a Codex `verify-work.ps1` run when usage is back
-   (agy fallback is wired but NOT PROVEN reliable — a real-diff run hung ~13 min).
+   runtime half still wants a Codex `verify-work.ps1` run when usage is back.
+   agy fallback is now PROVEN working (real PASS on the 10:05 scheduled run; live
+   smoke ~61s) but is slow, text-only, and sees only the last commit's diff (20 KB
+   cap) — a weak-but-real fallback. When Codex is out (e.g. a couple of days),
+   ChatGPT via the repo connector is the stronger stand-in (whole pushed branch).
 2. MULTI-PROJECT SWITCHING (#20 / DECISION-102 stage S6) is now DONE
    (DECISION-103): one "home" cockpit switches between self-contained project
    folders via a sidebar switcher. Registry lives at the app level (Electron
