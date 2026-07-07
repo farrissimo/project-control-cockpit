@@ -15,7 +15,7 @@ const FIXTURE = path.join(__dirname, '..', 'fixtures', 'emit-nonascii.ps1');
 // char corrupts the pipe and the app silently drops the data.
 const JSON_SCRIPTS = [
   'detect-untracked', 'detect-drift', 'detect-stale-docs', 'detect-repo-sync',
-  'detect-bloat', 'detect-high-stakes', 'lifecycle-status', 'babysitting-metrics', 'recent-decisions',
+  'detect-bloat', 'detect-high-stakes', 'lifecycle-status', 'lifecycle-advance', 'babysitting-metrics', 'recent-decisions',
 ];
 
 for (const name of JSON_SCRIPTS) {

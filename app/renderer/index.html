@@ -301,6 +301,15 @@
   .sync-result { font-size: 12px; margin-top: 10px; white-space: pre-wrap; color: var(--text-2); }
   .sync-result.good { color: var(--success-text); }
   .sync-result.bad { color: var(--danger-text); }
+
+  /* Lifecycle advance (actionable stage moves, gated on a fresh PASS). */
+  .lc-advance { margin-top: 8px; border-radius: 8px; padding: 7px 12px; font-size: 13px; cursor: pointer;
+    border: 1px solid var(--info-strong); background: #1c2637; color: #dbe8ff; }
+  .lc-advance:hover { background: #24304a; }
+  .lc-advance-status { margin-top: 12px; font-size: 13px; white-space: pre-wrap; }
+  .lc-advance-status.good { color: var(--success-text); }
+  .lc-advance-status.warn { color: var(--warning-text); }
+  .lc-advance-status.bad { color: var(--danger-text); }
 </style>
 </head>
 <body>

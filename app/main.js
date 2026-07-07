@@ -132,8 +132,12 @@ ipcMain.handle('pcc:saveMemory', (_e, text) => {
 // Independent verification runs through one reusable script (scripts/
 // verify-work.ps1): Codex primary, Antigravity/agy fallback. The app button and
 // scheduled after-10am-MT test both call it, so there is one source of truth.
-ipcMain.handle('pcc:verify', () => new Promise((resolve) => {
-  exec('pwsh -NoProfile -File scripts/verify-work.ps1', { cwd: projectDir, maxBuffer: 12 * 1024 * 1024, timeout: 200000, windowsHide: true }, (err, stdout, stderr) => {
+ipcMain.handle('pcc:verify', (_e, record) => new Promise((resolve) => {
+  // record=true also writes app/last-verification.txt (-WriteFile), so an in-app
+  // verify updates the trust strip AND satisfies the lifecycle PASS gate. The
+  // plain Verify-tab button passes nothing (display only), preserving old behavior.
+  const cmd = 'pwsh -NoProfile -File scripts/verify-work.ps1' + (record ? ' -WriteFile' : '');
+  exec(cmd, { cwd: projectDir, maxBuffer: 12 * 1024 * 1024, timeout: 200000, windowsHide: true }, (err, stdout, stderr) => {
     const out = (stdout || '').trim();
     if (out) return resolve({ ok: true, text: out });
     if (err) return resolve({ ok: false, text: 'Verification could not run: ' + (err.killed ? 'timed out' : (stderr || err.message)) });
@@ -203,6 +207,21 @@ ipcMain.handle('pcc:recentDecisions', () => new Promise((resolve) => {
 // Lifecycle: the declared stage map + where you are + the legal next stages.
 // Read-only consumer of the same deterministic script the CLI uses.
 ipcMain.handle('pcc:lifecycle', async () => runDetector('scripts/lifecycle-status.ps1'));
+
+// Advance the lifecycle pin. The script enforces the model's legal transitions
+// AND the entry gate (phase_close needs a fresh independent PASS), so the app
+// can't move state past verification. execFile — the stage id is validated and
+// passed as an argument, never through a shell.
+ipcMain.handle('pcc:lifecycleAdvance', (_e, toStageId) => new Promise((resolve) => {
+  if (typeof toStageId !== 'string' || !/^[a-z_]+$/.test(toStageId)) {
+    return resolve({ ok: false, reason: 'bad_input', message: 'Invalid stage id.' });
+  }
+  execFile('pwsh', ['-NoProfile', '-File', 'scripts/lifecycle-advance.ps1', '-To', toStageId, '-Json'],
+    { cwd: projectDir, timeout: 20000, windowsHide: true, maxBuffer: 4 * 1024 * 1024 }, (err, stdout) => {
+      try { resolve(JSON.parse((stdout || '').trim())); }
+      catch (e) { resolve({ ok: false, reason: 'error', message: 'Advance could not run: ' + (err ? err.message : 'no output') }); }
+    });
+}));
 
 ipcMain.handle('pcc:detections', async () => ({
   untracked: await runDetector('scripts/detect-untracked.ps1'),

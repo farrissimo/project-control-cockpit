@@ -732,12 +732,57 @@ async function loadLifecycleView() {
     + '<span class="k">What to do now</span><div class="v">' + escapeHtml(c.what_to_do) + '</div>'
     + '<span class="k">Exit this stage when</span><div class="v">' + escapeHtml(c.exit_criteria) + '</div>'
     + '</div>';
-  html += '<div class="lc-next"><h3>Legal next steps</h3>';
+  html += '<div class="lc-next"><h3>Advance to the next stage</h3>';
   (r.next || []).forEach((n) => {
-    html += '<div class="lc-next-item"><div class="lbl">→ ' + escapeHtml(n.label) + '</div><div class="do">' + escapeHtml(n.what_to_do) + '</div></div>';
+    html += '<div class="lc-next-item"><div class="lbl">→ ' + escapeHtml(n.label) + '</div><div class="do">' + escapeHtml(n.what_to_do) + '</div>'
+      + '<button class="lc-advance" data-to="' + escapeHtml(n.id) + '">Advance to ' + escapeHtml(n.label) + '</button></div>';
   });
-  html += '</div>';
+  html += '</div><div id="lc-advance-status" class="lc-advance-status"></div>';
   detail.innerHTML = html;
+  detail.querySelectorAll('.lc-advance').forEach((b) => b.addEventListener('click', () => advanceStage(b.dataset.to)));
+}
+
+// Advance the pin. The main process enforces legal transitions + the PASS gate;
+// the renderer just reacts honestly. If the gate blocks (needs_verification), it
+// offers a one-click "Verify now & advance" that runs the real verifier, records
+// the verdict, and only advances on a fresh PASS — the auto-verify + gating loop.
+async function advanceStage(toId) {
+  const status = document.getElementById('lc-advance-status');
+  if (!status) return;
+  status.className = 'lc-advance-status'; status.textContent = 'Advancing…';
+  let r;
+  try { r = await window.pcc.lifecycleAdvance(toId); } catch (e) { status.className = 'lc-advance-status bad'; status.textContent = 'Advance failed: ' + e.message; return; }
+  if (r.ok) { status.className = 'lc-advance-status good'; status.textContent = r.message || 'Advanced.'; loadLifecycleView(); loadLifecycle(); return; }
+  if (r.reason === 'needs_verification') {
+    status.className = 'lc-advance-status warn';
+    status.textContent = (r.message || 'A fresh independent PASS is required first.') + ' ';
+    const btn = document.createElement('button');
+    btn.className = 'lc-advance';
+    btn.textContent = 'Verify now & advance';
+    btn.addEventListener('click', () => verifyThenAdvance(toId));
+    status.appendChild(btn);
+    return;
+  }
+  status.className = 'lc-advance-status bad';
+  status.textContent = r.message || ('Could not advance (' + (r.reason || 'error') + ').');
+}
+
+async function verifyThenAdvance(toId) {
+  const status = document.getElementById('lc-advance-status');
+  status.className = 'lc-advance-status'; status.textContent = 'Running independent verification (records the verdict; can take a minute)…';
+  let v;
+  try { v = await window.pcc.verify(true); } catch (e) { status.className = 'lc-advance-status bad'; status.textContent = 'Verification failed: ' + e.message; return; }
+  const m = ((v && v.text) || '').match(/\b(PASS|FAIL|INSUFFICIENT|BLOCKED|OUT_OF_SCOPE)\b/);
+  loadTrust();
+  if (!m || m[1] !== 'PASS') {
+    status.className = 'lc-advance-status bad';
+    status.textContent = 'Verifier verdict: ' + (m ? m[1] : 'unclear') + '. Not advancing — see the Verify tab.';
+    return;
+  }
+  status.textContent = 'Independent PASS recorded — advancing…';
+  const r = await window.pcc.lifecycleAdvance(toId);
+  if (r.ok) { status.className = 'lc-advance-status good'; status.textContent = r.message || 'Advanced.'; loadLifecycleView(); loadLifecycle(); }
+  else { status.className = 'lc-advance-status bad'; status.textContent = r.message || 'Still could not advance.'; }
 }
 
 // ---- live trust strip (roadmap #14) ----

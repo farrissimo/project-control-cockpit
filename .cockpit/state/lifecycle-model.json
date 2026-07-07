@@ -45,6 +45,8 @@
       "description": "A group of related tasks is finished and verified.",
       "what_to_do": "Confirm the phase's tasks are all done and truth surfaces are current.",
       "exit_criteria": "The phase is complete and recorded; decide whether to plan the next phase or mark a milestone.",
+      "entry_gate": "fresh_verification_pass",
+      "entry_gate_reason": "Work only counts as done after an independent PASS newer than the latest commit (DECISION-012). Advancing here from Verify requires that fresh PASS.",
       "next": ["plan", "milestone"]
     },
     {
