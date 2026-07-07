@@ -49,3 +49,18 @@ test('a non-PCC path in the inbox is ignored, not registered', async () => {
     expect(r.projects.map((p) => p.path)).not.toContain(bad);
   } finally { fs.rmSync(bad, { recursive: true, force: true }); }
 });
+
+// W4 regression: a scaffold path that isn't valid YET (e.g. still being written, or
+// a transient miss) must be KEPT in the inbox for retry — never silently consumed.
+// The old code cleared the whole inbox unconditionally, which lost Tax Prep Cockpit
+// from the switcher while the worker claimed it was registered.
+test('a not-yet-valid scaffold path is kept for retry, not silently lost', async () => {
+  await call('setActiveProject', home);
+  const notYet = path.join(os.tmpdir(), 'pcc-notyet-' + Date.now()); // does not exist yet
+  writeInbox(home, [notYet]);
+  const r = await call('listProjects');
+  expect(r.projects.map((p) => p.path)).not.toContain(notYet); // not registered (invalid)
+  // ...but it MUST still be in the inbox so a later listProjects can pick it up.
+  const inbox = JSON.parse(fs.readFileSync(path.join(home, '.cockpit', 'state', 'scaffolded-inbox.json'), 'utf8'));
+  expect(inbox).toContain(notYet);
+});

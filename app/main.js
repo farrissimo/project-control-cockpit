@@ -334,11 +334,21 @@ function importScaffoldedInbox() {
     if (typeof list === 'string') list = [list];
     if (!Array.isArray(list)) return 0;
     const reg = readRegistry();
+    // BUG FIX (W4, found by soak-building a real project): only DROP entries we
+    // actually handle — a registered project, or one already in the registry.
+    // Anything not-yet-valid (e.g. a scaffold still being written, or a path that
+    // momentarily failed the check) STAYS for retry, so a real project can never be
+    // silently lost from the switcher the way Tax Prep Cockpit was. The old code
+    // cleared the whole inbox unconditionally, consuming drops it never registered.
+    const remaining = [];
     for (const p of list) {
-      if (typeof p === 'string' && fs.existsSync(p) && isPccProject(p) && !reg.projects.includes(p)) { reg.projects.push(p); added++; }
+      if (typeof p !== 'string') continue;                 // junk → drop
+      if (reg.projects.includes(p)) continue;              // already registered → drop
+      if (fs.existsSync(p) && isPccProject(p)) { reg.projects.push(p); added++; } // registered → drop
+      else remaining.push(p);                              // not yet valid → KEEP for retry
     }
     if (added) writeRegistry(reg);
-    fs.writeFileSync(inboxPath, '[]', 'utf8'); // consumed
+    fs.writeFileSync(inboxPath, JSON.stringify(remaining), 'utf8'); // consume only what we handled
   } catch (e) { /* ignore a malformed inbox */ }
   return added;
 }

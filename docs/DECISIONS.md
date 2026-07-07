@@ -2691,3 +2691,25 @@ Implications:
 
 Supersedes: None
 Related: DECISION-102, app/main.js, app/tests/e2e/soak-lite.spec.js
+
+## DECISION-109: Pass-3 Soak (Building a Real Non-PCC Project) Found + Fixed a Silent Project-Loss Bug (W4)
+
+Date: 2026-07-07
+Status: Active
+
+Owner Decision:
+
+The first real end-to-end soak — using PCC to build a DIFFERENT project (a personal tax-prep app) rather than PCC itself — is the true test of the product. Its first run found a genuine fake-completion bug in PCC's own plumbing, now fixed.
+
+Reason:
+
+PCC drove the real Sonnet 5 worker through a full guided intake and scaffolded the new project (independently verified: the assurance kit AND a fresh needs-review vision-promises.json both travelled, and PROJECT.md carried the real blueprint). But the project did NOT appear in the project switcher — while the worker claimed "it's already registered." That is exactly the fake-completion failure mode PCC exists to prevent, sitting in PCC's own auto-register.
+
+Findings + fix:
+
+- Root cause (W4): app/main.js importScaffoldedInbox() cleared the entire scaffolded-inbox unconditionally after its import pass. Any entry it did not register in that pass — a scaffold not yet valid, or any transient miss — was silently consumed with no retry, so the project was lost from the switcher forever.
+- Fix: only drop entries that were actually handled (registered, or already in the registry); anything not-yet-valid STAYS in the inbox for a later retry. Guarded by a new regression test in app/tests/e2e/autoregister.spec.js ("a not-yet-valid scaffold path is kept for retry, not silently lost").
+- Significance: this only surfaced by actually USING PCC to build something that isn't PCC — the exact self-validation gap flagged earlier. It is the strongest argument yet for continuing the real-project soak rather than adding more features.
+
+Supersedes: None
+Related: DECISION-103 (auto-register), DECISION-108 (soak), app/main.js, app/tests/e2e/autoregister.spec.js
