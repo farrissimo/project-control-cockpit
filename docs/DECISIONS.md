@@ -2570,3 +2570,26 @@ Implications:
 
 Supersedes: None (delivers DECISION-102 stage S6)
 Related: DECISION-102, DECISION-074, DECISION-077 (extractability), DECISION-088 (local-first), scripts/bootstrap-project.ps1, app/main.js, app/renderer/renderer.js
+
+## DECISION-104: The App's Project "Details" Table Reads Live Truth, Not the Retired CLI Governance Track
+
+Date: 2026-07-07
+Status: Active
+
+Owner Decision:
+
+The Project page's "Full state (details)" table now sources Phase / Current task / Verified / Next action from the live lifecycle system and the real verification record — the same sources the lifecycle bar and the "at a glance" hero already trust — instead of project-state.json / task-state.json.
+
+Reason:
+
+project-state.json and task-state.json are the pre-desktop-app CLI governance track. The DECISION-102/103 app work stopped maintaining them, so anything still reading them froze on their last update (2026-07-05: phase "post-brr", task "pcc-pathD-009", a next-action pointing at IDEA-015/DECISION-101). The owner had ALREADY caught this exact class of bug once — the lifecycle bar was showing a leftover pre-app-build task and was re-sourced to live truth (see the comment at app/renderer/renderer.js loadLifecycle). That fix was surface-level: it patched the bar and missed the details table below it, which kept showing the stale July-5 snapshot. The owner caught the second instance. Hand-editing the stale JSON would only re-stale; the root fix is to stop presenting the retired track as current.
+
+Implications:
+
+- scripts/lifecycle-status.ps1 now passes through the pin's human-readable active_task, so the app can show the current task without touching task-state.json.
+- app/renderer/renderer.js loadProject() rebuilds the table from window.pcc.lifecycle() (Phase, Current task, Next action) and window.pcc.trustExtras() (Verified). "Verified" mirrors the trust strip exactly: a PASS counts as current only if the verification file is newer than HEAD, else it reads "PASS (stale — code changed since)". Redundant/retired rows (Task status, Current blocker) were dropped.
+- .cockpit/state/lifecycle-state.json's pin was itself stale ("#23 UI polish", delivered) and was updated to the real current task (real-capture boundary-fixture hardening).
+- HONEST REMAINING BOUNDARY: the retired track still exists and still feeds scripts/doctor.ps1's advisory output (it reports the old pcc-pathD-009 task and an "active_branch: main" branch-hygiene warning). Fully retiring or reconciling project-state.json / task-state.json is a separate, larger decision (many scripts read them) and is deferred, not silently done here.
+
+Supersedes: None
+Related: DECISION-102, DECISION-103, DECISION-014 (truth surfaces stay current), app/renderer/renderer.js, scripts/lifecycle-status.ps1, .cockpit/state/lifecycle-state.json

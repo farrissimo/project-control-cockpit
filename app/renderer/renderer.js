@@ -1015,16 +1015,41 @@ async function loadProject() {
   loadProjectGlance();
   try {
     const s = await window.pcc.getState();
-    const p = s.project || {}, t = s.task || {};
+    const p = s.project || {};
     if (p._error) { body.innerHTML = '<p class="muted">No project state found yet.</p>'; return; }
+    // Details come from LIVE truth — the same lifecycle system the bar/hero use,
+    // plus the real verification record — NOT project-state.json/task-state.json.
+    // Those are the retired CLI governance track and go stale (owner caught the
+    // bar showing a leftover pre-app-build task; that fix missed this table too,
+    // so it kept showing the July-5 post-brr/pcc-pathD-009 snapshot). See
+    // DECISION-104. Project name is identity, not stale, so it stays from state.
+    let lc = null, trust = null;
+    try { lc = await window.pcc.lifecycle(); } catch (e) { /* optional */ }
+    try { trust = await window.pcc.trustExtras(); } catch (e) { /* optional */ }
+
+    const phase = (lc && lc.signal === 'ok' && lc.current) ? lc.current.label : 'not set';
+    const task = (lc && lc.active_task) ? lc.active_task : '—';
+    const nexts = (lc && Array.isArray(lc.next)) ? (lc.next.map((n) => n.label).join(' or ') || 'not set') : 'not set';
+
+    // Verified: mirror the trust strip exactly — a PASS only counts as current if
+    // the verification file is newer than HEAD; otherwise the code moved past it.
+    let verified = '—';
+    if (trust && trust.verification && trust.verification.present) {
+      const v = trust.verification;
+      if (v.verdict === 'PASS') {
+        const fresh = v.mtimeEpoch > (trust.headCommitEpoch || 0);
+        verified = fresh ? 'PASS (fresh — matches current code)' : 'PASS (stale — code changed since)';
+      } else {
+        verified = v.verdict || 'unknown';
+      }
+    }
+
     body.innerHTML = '<table class="state">'
       + row('Project', (p.project_name || '') + (p.project_id ? '  (' + p.project_id + ')' : ''))
-      + row('Phase', p.current_phase)
-      + row('Current task', t.task_id ? (t.task_id + ' — ' + (t.task_title || '')) : '')
-      + row('Task status', t.task_status)
-      + row('Last verdict', t.verification_verdict)
-      + row('Current blocker', t.current_blocker)
-      + row('Next action', p.next_expected_action)
+      + row('Phase', phase)
+      + row('Current task', task)
+      + row('Verified', verified)
+      + row('Next action', nexts)
       + '</table>';
   } catch (e) {
     body.innerHTML = '<p class="muted">Could not read project state.</p>';

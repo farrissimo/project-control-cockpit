@@ -26,13 +26,14 @@ $checkedAt = (Get-Date).ToString('yyyy-MM-ddTHH:mm:sszzz')
 $modelPath = '.cockpit/state/lifecycle-model.json'
 $statePath = '.cockpit/state/lifecycle-state.json'
 
-function New-Result([string]$signal, [string]$observed, $stage, $nextStages, $allStages) {
+function New-Result([string]$signal, [string]$observed, $stage, $nextStages, $allStages, $activeTask) {
   [ordered]@{
     detector    = 'lifecycle'
     roadmap     = 'P1 #6'
     checked_at  = $checkedAt
     signal      = $signal          # ok | unknown
     observed    = $observed
+    active_task = $activeTask       # the human-readable current task, if the pin declares one
     current     = $stage
     next        = $nextStages
     all_stages  = $allStages
@@ -44,11 +45,11 @@ if (Test-Path -LiteralPath $modelPath -PathType Leaf) { try { $model = Get-Conte
 if (Test-Path -LiteralPath $statePath -PathType Leaf) { try { $state = Get-Content -Raw -LiteralPath $statePath | ConvertFrom-Json } catch { } }
 
 if (-not $model -or -not $model.stages) {
-  $r = New-Result 'unknown' "No lifecycle model found at $modelPath." $null @() @()
+  $r = New-Result 'unknown' "No lifecycle model found at $modelPath." $null @() @() $null
 } elseif (-not $state -or -not $state.current_stage) {
   $r = New-Result 'unknown' "No current stage recorded in $statePath." $null @() @(
     $model.stages | ForEach-Object { [ordered]@{ id = $_.id; label = $_.label } }
-  )
+  ) $state.active_task
 } else {
   $stagesById = @{}
   foreach ($s in $model.stages) { $stagesById[$s.id] = $s }
@@ -60,7 +61,7 @@ if (-not $model -or -not $model.stages) {
   }
 
   if (-not $cur) {
-    $r = New-Result 'unknown' "Current stage '$curId' is not in the model." $null @() $allStages
+    $r = New-Result 'unknown' "Current stage '$curId' is not in the model." $null @() $allStages $state.active_task
   } else {
     $nextStages = @()
     foreach ($nid in @($cur.next)) {
@@ -72,7 +73,7 @@ if (-not $model -or -not $model.stages) {
       what_to_do = $cur.what_to_do; exit_criteria = $cur.exit_criteria
     }
     $observed = "You are at: $($cur.label). $($cur.what_to_do)"
-    $r = New-Result 'ok' $observed $stageOut $nextStages $allStages
+    $r = New-Result 'ok' $observed $stageOut $nextStages $allStages $state.active_task
   }
 }
 
