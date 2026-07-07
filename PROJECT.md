@@ -60,13 +60,14 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
   bytes over the pipe, making the JSON invalid; JSON scripts now force UTF-8.
 
 ## Pending / immediate next tasks
-1. VERIFICATION (#3): self-resolving. A Windows scheduled task "PCC Verify
-   Codex 10am MT" runs `scripts/verify-work.ps1 -WriteFile` at 10:05 MT on
-   2026-07-07 and writes the verdict to app/last-verification.txt. After it
-   runs, read that file (or use the Verify tab) and confirm a real verdict
-   appears — do NOT claim verification works until then. Fallback (agy) is
-   wired but NOT PROVEN reliable (a real-diff run hung ~13 min); Codex stays
-   primary and this is parked, not being worked.
+1. VERIFICATION (#3): an independent GPT (ChatGPT) review of the pushed branch
+   returned VERDICT: PASS on 2026-07-07 (Codex was out of usage; GPT still works
+   via the GitHub repo connector). Recorded in app/last-verification.txt, so the
+   "Verified" strip is green. HONEST LIMIT: GPT reviewed the CODE as pushed and
+   could NOT run anything — so "62 tests green", npm audit, and the real
+   Claude/Codex boundary behavior remain NOT PROVEN by execution. The automated
+   runtime half still wants a Codex `verify-work.ps1` run when usage is back
+   (agy fallback is wired but NOT PROVEN reliable — a real-diff run hung ~13 min).
 2. No other task is required right now. #20 (multi-project switching) is
    PAUSED by owner choice (creating projects works; switching the app between
    them does not — a real architectural change, deliberately deferred). #12
@@ -87,7 +88,9 @@ memory) and proposes quoted candidates for owner confirmation before writing to
 docs/DECISIONS.md. Honest limit: only sees this one chat's history.
 
 Open / deferred:
-- #3 verification — awaits the scheduled Codex run (2026-07-07 10:05 MT).
+- #3 verification — independent GPT PASS recorded 2026-07-07 (code review only);
+  runtime re-execution by Codex still pending usage. Recorded-real-run fixtures
+  (real worker/verifier success/failure/auth/timeout) is the #1 remaining test gap.
 - #20 multi-project SWITCHING — PAUSED by owner (real architectural change; one
   project today). Creating new projects works; switching the app between them does not.
 - #21 peek-under-the-hood, #23 UI polish — optional, not started.
