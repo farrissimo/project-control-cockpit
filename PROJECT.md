@@ -75,18 +75,20 @@ Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
   bytes over the pipe, making the JSON invalid; JSON scripts now force UTF-8.
 
 ## Pending / immediate next tasks
-1. VERIFICATION (#3): an independent GPT (ChatGPT) review of the pushed branch
-   returned VERDICT: PASS on 2026-07-07 (Codex was out of usage; GPT still works
-   via the GitHub repo connector). Recorded in app/last-verification.txt, so the
-   "Verified" strip is green. HONEST LIMIT: GPT reviewed the CODE as pushed and
-   could NOT run anything — so the "tests green" claim (62 at that time; 96 now),
-   npm audit, and the real
-   Claude/Codex boundary behavior remain NOT PROVEN by execution. The automated
-   runtime half still wants a Codex `verify-work.ps1` run when usage is back.
-   agy fallback is now PROVEN working (real PASS on the 10:05 scheduled run; live
-   smoke ~61s) but is slow, text-only, and sees only the last commit's diff (20 KB
-   cap) — a weak-but-real fallback. When Codex is out (e.g. a couple of days),
-   ChatGPT via the repo connector is the stronger stand-in (whole pushed branch).
+1. VERIFICATION (#3): NOW HAS EXECUTION PROOF. A narrow GitHub Actions CI
+   (.github/workflows/ci.yml, DECISION-105) runs the full test suite + npm audit
+   on a clean windows-latest machine on every push. First run (commit 5d5e314)
+   went green — every step incl. the full 96-test suite and the audit ran and
+   passed, confirmed via the public Actions API. So "tests green / audit clean" is
+   proven by EXECUTION, independent of Codex usage. Paired proof taxonomy: records
+   declare TYPE (review_only | ci_execution | live_boundary); the app only shows
+   green "Verified (executed)" for an executed proof, and a code-review-only PASS
+   reads amber "Reviewed, not run" — so a GPT/Codex read can never fake execution.
+   The independent GPT/Codex code review is kept as a labeled fallback (review_only),
+   never execution proof. STILL OPEN: real Claude/Codex boundary behavior remains
+   NOT PROVEN (that's the boundary-capture task, next); and surfacing live CI status
+   INTO the app's chip is the coming evidence-status step (until then the chip
+   honestly under-claims as "Reviewed, not run" while CI's green lives on GitHub).
 2. MULTI-PROJECT SWITCHING (#20 / DECISION-102 stage S6) is now DONE
    (DECISION-103): one "home" cockpit switches between self-contained project
    folders via a sidebar switcher. Registry lives at the app level (Electron

@@ -2593,3 +2593,27 @@ Implications:
 
 Supersedes: None
 Related: DECISION-102, DECISION-103, DECISION-014 (truth surfaces stay current), app/renderer/renderer.js, scripts/lifecycle-status.ps1, .cockpit/state/lifecycle-state.json
+
+## DECISION-105: Clean-Machine CI + a Proof Taxonomy (Execution Proof vs Code Review Never Wear the Same Green)
+
+Date: 2026-07-07
+Status: Active
+
+Owner Decision:
+
+Added a narrow GitHub Actions CI that, on every push, installs the app from the lockfile on a clean machine and runs the full test suite + a dependency audit — the independent EXECUTION proof a code review structurally cannot give. Paired with it, introduced a proof taxonomy: every verification record declares its TYPE (review_only | ci_execution | live_boundary), and the app only shows the strong green "Verified (executed)" for an executed proof; a fresh code-review-only PASS shows amber "Reviewed, not run".
+
+Reason:
+
+The standing #1 gap was that "96 tests green / npm audit clean" was never proven by EXECUTION — the only independent verifier available (GPT/Codex reading the diff via the GitHub connector) reads code but runs nothing, and the runtime path was gated on Codex usage. CI closes that with free, deterministic, independent execution that needs no LLM and no Codex. A skeptical no-bloat review by GPT (requested by the owner) confirmed CI as the right first move AND flagged the critical risk: if a code-review PASS turns the same "Verified" chip green as a real execution, PCC recreates the exact fake-green it exists to prevent, just with nicer wording. The taxonomy is the fix.
+
+Implications:
+
+- .github/workflows/ci.yml: deliberately NARROW — no releases, packaging, coverage dashboards, badges, or matrix builds (that would be bloat and alert-management babysitting). Runner is windows-latest on purpose: it matches the dev OS and the pwsh script-contract tests, and runs Electron without a virtual-display workaround. Tests fake the worker/verifier (offline, deterministic), so no network/API key/Codex usage is needed. PROVEN: the first run (commit 5d5e314) went green — every step, including the full suite and the audit, ran and passed on a clean GitHub machine (confirmed via the public Actions API, not assumed).
+- app/main.js trustExtras parses a TYPE line (default review_only — the conservative honest assumption). app/renderer/renderer.js trust strip and the Project "Verified" row now distinguish reviewed-from-executed; only ci_execution/live_boundary earn green. All current GPT/Codex records are review_only, so the chip honestly reads "Reviewed, not run" until an executed proof exists.
+- The GPT/Codex code review is KEPT but demoted to a labeled fallback (review_only), never execution proof.
+- Agreed next order (GPT-aligned): (1) this — done; (2) replace hand-authored boundary fixtures with real redacted captures, replayed deterministically; (3) a tiny evidence-status facts file that surfaces live CI status in-app (where ci_execution will turn the chip green); (4) a simple "what changed" view; (5) a lean file-attach last, only if lack of it proves to cause babysitting.
+- REJECTED as bloat right now (explicitly, so it is not silently revived): a full NIST-style assurance rubric, a manually maintained red/yellow/green scorecard, CodeQL, a custom in-app diff viewer, any release/installer/signing work, and CI coverage dashboards.
+
+Supersedes: None
+Related: DECISION-088 (local-deterministic, minimize LLM — CI is zero-LLM and deterministic), DECISION-102, DECISION-104, .github/workflows/ci.yml, app/main.js, app/renderer/renderer.js, app/last-verification.txt

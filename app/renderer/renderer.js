@@ -826,14 +826,21 @@ async function loadTrust() {
       : rs === 'notice' ? 'Work is not fully backed up — see the Signals tab.'
       : 'Could not read the repo-sync signal.');
 
-  // Verified: honest freshness against HEAD; never fake green.
+  // Verified: honest freshness against HEAD AND honest about the KIND of proof
+  // (DECISION-105 proof taxonomy). A code review that ran nothing must never wear
+  // the same green as a real execution — otherwise PCC recreates fake-green with
+  // nicer wording. Only an executed proof (ci_execution / live_boundary) earns
+  // green; a fresh review_only PASS is amber "Reviewed, not run".
   const v = x && x.verification;
+  const executed = v && (v.type === 'ci_execution' || v.type === 'live_boundary');
   if (!x) {
     setChip('trust-verified', 'unknown', 'Verified', 'Could not read verification status.');
   } else if (!v || !v.present) {
-    setChip('trust-verified', 'warn', 'Not verified yet', 'No independent verification recorded for the current work yet (the scheduled Codex run writes one).');
+    setChip('trust-verified', 'warn', 'Not verified yet', 'No independent verification recorded for the current work yet.');
+  } else if (v.verdict === 'PASS' && v.mtimeEpoch >= (x.headCommitEpoch || 0) && executed) {
+    setChip('trust-verified', 'good', 'Verified (executed)', 'Independent PASS that actually ran the code (' + v.type + '), newer than the latest commit.');
   } else if (v.verdict === 'PASS' && v.mtimeEpoch >= (x.headCommitEpoch || 0)) {
-    setChip('trust-verified', 'good', 'Verified (fresh)', 'Independent PASS recorded, newer than the latest commit.');
+    setChip('trust-verified', 'warn', 'Reviewed, not run', 'A reviewer read the code and found no problems, but nothing was executed — that is not proof it runs. Execution proof comes from CI/tests.');
   } else if (v.verdict === 'PASS') {
     setChip('trust-verified', 'warn', 'Verified (stale)', 'Last verdict was PASS but it predates the latest commit — re-verify.');
   } else if (v.verdict) {
@@ -1038,7 +1045,10 @@ async function loadProject() {
       const v = trust.verification;
       if (v.verdict === 'PASS') {
         const fresh = v.mtimeEpoch >= (trust.headCommitEpoch || 0); // exact parity with the trust strip (line ~835)
-        verified = fresh ? 'PASS (fresh — matches current code)' : 'PASS (stale — code changed since)';
+        const executed = v.type === 'ci_execution' || v.type === 'live_boundary'; // proof taxonomy (DECISION-105)
+        if (!fresh) verified = 'PASS (stale — code changed since)';
+        else if (executed) verified = 'PASS (executed — matches current code)';
+        else verified = 'PASS (review only — code read, not run)';
       } else {
         verified = v.verdict || 'unknown';
       }

@@ -1,7 +1,7 @@
 {
   "lane": "app-build-decision-102",
   "current_stage": "work",
-  "active_task": "Test-hardening #1 gap: replace the hand-authored boundary fixtures with real, secret-redacted captures from actual Claude/Codex runs (replay mechanism already built). Gated in part on live Claude/verifier runs (Codex usage).",
-  "note": "Set 2026-07-07 by owner approval. #23 UI polish (at-a-glance hero) is delivered; prior '#23' pin was stale. GPT is the interim verifier while Codex usage is out.",
-  "updated_at": "2026-07-07T12:15:00-06:00"
+  "active_task": "Assurance hardening (DECISION-105): clean-machine CI + proof taxonomy DONE and proven green. NEXT: replace the hand-authored boundary fixtures with real, secret-redacted captures from actual Claude/Codex runs (replay deterministically after). Then a tiny evidence-status facts file that surfaces live CI status in-app.",
+  "note": "Set 2026-07-07 by owner approval, GPT no-bloat review aligned. Order: CI+taxonomy (done) -> real boundary captures -> evidence-status file -> changed-files view -> lean file-attach last.",
+  "updated_at": "2026-07-07T13:20:00-06:00"
 }
