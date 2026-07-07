@@ -16,7 +16,7 @@ app/node_modules/
 # Generated verification output written by scripts/verify-work.ps1 (-WriteFile). Not source.
 app/last-verification.txt
 
-# Test tooling
+# Test tooling — Playwright artifacts (match at repo root or under app/).
 app/node_modules/
-app/test-results/
-app/playwright-report/
+test-results/
+playwright-report/
