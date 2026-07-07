@@ -64,3 +64,21 @@ test('a not-yet-valid scaffold path is kept for retry, not silently lost', async
   const inbox = JSON.parse(fs.readFileSync(path.join(home, '.cockpit', 'state', 'scaffolded-inbox.json'), 'utf8'));
   expect(inbox).toContain(notYet);
 });
+
+// W5 regression: a scaffolded project has no project-state.json, so the switcher
+// must show the owner's chosen name from vision-promises.json — not the folder base.
+test('switcher shows the chosen name from vision-promises when there is no project-state', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-w5-'));
+  fs.mkdirSync(path.join(dir, '.cockpit', 'state'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'CLAUDE.md'), '# Rules\n');
+  // No project-state.json (like a real scaffold); the chosen name lives here:
+  fs.writeFileSync(path.join(dir, '.cockpit', 'state', 'vision-promises.json'), JSON.stringify({ project: 'My Friendly Name', promises: [] }));
+  try {
+    expect((await call('addProject', dir)).ok).toBe(true);
+    const r = await call('listProjects');
+    const entry = r.projects.find((p) => p.path === dir);
+    expect(entry).toBeTruthy();
+    expect(entry.name).toBe('My Friendly Name');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

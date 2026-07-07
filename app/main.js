@@ -44,6 +44,13 @@ function projectName(dir) {
   try {
     const st = JSON.parse(fs.readFileSync(path.join(dir, '.cockpit', 'state', 'project-state.json'), 'utf8'));
     if (st && st.project_name) return st.project_name;
+  } catch (e) { /* fall through */ }
+  // W5 fix: scaffolded projects have no project-state.json (the retired track), so
+  // the owner's chosen name lived only in vision-promises.json — the switcher was
+  // showing the folder basename ("TaxPrepCockpit") instead of "Tax Prep Cockpit".
+  try {
+    const vp = JSON.parse(fs.readFileSync(path.join(dir, '.cockpit', 'state', 'vision-promises.json'), 'utf8'));
+    if (vp && vp.project) return vp.project;
   } catch (e) { /* fall through to folder name */ }
   return path.basename(dir);
 }

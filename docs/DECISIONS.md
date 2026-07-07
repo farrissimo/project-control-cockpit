@@ -2692,24 +2692,27 @@ Implications:
 Supersedes: None
 Related: DECISION-102, app/main.js, app/tests/e2e/soak-lite.spec.js
 
-## DECISION-109: Pass-3 Soak (Building a Real Non-PCC Project) Found + Fixed a Silent Project-Loss Bug (W4)
+## DECISION-109: Pass-3 Soak (Building a Real Non-PCC Project) — Honest Findings (W4 latent-fix, W5 name bug); an Over-Claim Corrected
 
 Date: 2026-07-07
 Status: Active
 
 Owner Decision:
 
-The first real end-to-end soak — using PCC to build a DIFFERENT project (a personal tax-prep app) rather than PCC itself — is the true test of the product. Its first run found a genuine fake-completion bug in PCC's own plumbing, now fixed.
+The first real end-to-end soak — using PCC to build a DIFFERENT project (a personal tax-prep app) rather than PCC itself — is the true test of the product. This entry records its findings honestly, INCLUDING correcting an over-claim made mid-soak.
 
-Reason:
+What actually happened:
 
-PCC drove the real Sonnet 5 worker through a full guided intake and scaffolded the new project (independently verified: the assurance kit AND a fresh needs-review vision-promises.json both travelled, and PROJECT.md carried the real blueprint). But the project did NOT appear in the project switcher — while the worker claimed "it's already registered." That is exactly the fake-completion failure mode PCC exists to prevent, sitting in PCC's own auto-register.
+PCC drove the real Sonnet 5 worker through a full guided intake and scaffolded the new project. Independently verified GOOD: the assurance kit AND a fresh needs-review vision-promises.json both travelled, and PROJECT.md carried the real blueprint. The scaffolded project IS registered and appears in the switcher (confirmed via listProjects).
 
-Findings + fix:
+Correction of an over-claim: mid-soak this was reported as "the exact fake-completion failure mode in PCC's plumbing — the project was silently lost from the switcher." That was INFLATED. The soak driver searched the switcher for the display name "Tax Prep Cockpit" (with spaces) while the row actually reads "TaxPrepCockpit" (folder basename) — a bug in the TEST HARNESS, not PCC. The project was registered the whole time. Catching this over-claim in myself is the same discipline as catching the worker's fake "done"; leaving the inflated version stand would itself be a fake finding.
 
-- Root cause (W4): app/main.js importScaffoldedInbox() cleared the entire scaffolded-inbox unconditionally after its import pass. Any entry it did not register in that pass — a scaffold not yet valid, or any transient miss — was silently consumed with no retry, so the project was lost from the switcher forever.
-- Fix: only drop entries that were actually handled (registered, or already in the registry); anything not-yet-valid STAYS in the inbox for a later retry. Guarded by a new regression test in app/tests/e2e/autoregister.spec.js ("a not-yet-valid scaffold path is kept for retry, not silently lost").
-- Significance: this only surfaced by actually USING PCC to build something that isn't PCC — the exact self-validation gap flagged earlier. It is the strongest argument yet for continuing the real-project soak rather than adding more features.
+Findings that ARE real:
+
+- W4 (real latent defect, fixed defensively — cause-in-this-case UNCONFIRMED): app/main.js importScaffoldedInbox() cleared the whole scaffolded-inbox unconditionally, so any entry not registered in that pass (a scaffold not yet valid, or a transient miss) would be silently consumed with no retry. This is a genuine silent-loss risk worth removing, but it was NOT proven to be what happened here. Fix: keep un-registered entries for retry; guarded by app/tests/e2e/autoregister.spec.js ("a not-yet-valid scaffold path is kept for retry, not silently lost").
+- W5 (real, minor, fixed): the switcher showed the folder basename ("TaxPrepCockpit") instead of the owner's chosen name ("Tax Prep Cockpit"). The scaffolder writes no project-state.json (the retired track), and projectName() only read that. Fix: projectName() now falls back to vision-promises.json's "project" field (where the chosen name is stored) before the folder name.
+
+Significance: the soak's real value here was proving PCC scaffolds a real project correctly AND surfacing two genuine (if smaller-than-first-claimed) defects — while also proving the discipline works on the tester, not just the worker.
 
 Supersedes: None
 Related: DECISION-103 (auto-register), DECISION-108 (soak), app/main.js, app/tests/e2e/autoregister.spec.js
