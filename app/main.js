@@ -226,7 +226,11 @@ function askClaude(message, model, chatId, isFirstTurn) {
   return new Promise((resolve) => {
     const cfg = readModels();
     const chosen = model || cfg.default;
-    const args = ['-p', '--model', chosen, '--disallowedTools', 'AskUserQuestion', '--append-system-prompt', CHANNEL_PROMPT];
+    // WebSearch/WebFetch explicitly allowed (surgical grant, tested to work
+    // headlessly), NOT --dangerously-skip-permissions: that flag's own docs say
+    // "recommended only for sandboxes with no internet access" - the opposite of
+    // what we want here - and it would silently approve every other tool too.
+    const args = ['-p', '--model', chosen, '--allowedTools', 'WebSearch WebFetch', '--disallowedTools', 'AskUserQuestion', '--append-system-prompt', CHANNEL_PROMPT];
     if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
     let isNewSession;
     if (chatId) { sessionId = chatId; isNewSession = !!isFirstTurn; }
