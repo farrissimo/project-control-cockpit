@@ -869,7 +869,22 @@ function railsFrom(d) {
   return parts.some((p) => p.signal === 'notice') ? 'warn' : 'good';
 }
 
+// Authority badge (DECISION-112): show the main-process authority state in the chat
+// header. Read-only source of truth — the renderer only displays it, never sets it.
+// For this slice it is always read_only; falls back to the safe read_only label if the
+// state can't be read.
+async function loadAuthorityBadge() {
+  const clsFor = { read_only: 'readonly', approval_needed: 'warn', authorized_running: 'bad', completed_needs_review: 'good', blocked: 'bad' };
+  let s = null;
+  try { s = await window.pcc.authorityState(); } catch (e) { /* keep the safe default */ }
+  const mode = (s && s.mode) || 'read_only';
+  const label = (s && s.label) || 'Read-only — safe to paste context';
+  setChip('trust-authority', clsFor[mode] || 'readonly', label,
+    'PCC chat authority. Read-only means it can read, explain, and plan — it cannot run commands, change files, or launch anything. Reading context is never authorization to act.');
+}
+
 async function loadTrust() {
+  loadAuthorityBadge();
   let d = null, x = null;
   try { d = await window.pcc.detections(); } catch (e) { /* leave unknown */ }
   try { x = await window.pcc.trustExtras(); } catch (e) { /* leave unknown */ }

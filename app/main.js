@@ -497,6 +497,24 @@ ipcMain.handle('pcc:pickFolder', async () => {
 // against the behavior. Kept constant so it doesn't bust the prompt cache.
 const CHANNEL_PROMPT = 'You are replying inside PCC\'s text-only chat panel: there is no interactive UI, no clickable pickers or buttons you can present. Never use interactive tools such as AskUserQuestion; if you need to ask the owner something, ask it as plain text with the options listed inline. Never narrate internal tool, prompt, or mechanism failures to the owner (e.g. do not say a tool "isn\'t working") - just answer or ask plainly. The owner is a non-coder product lead: be concise and plain-language.';
 
+// Execution authority (DECISION-112). Reading context is never authorization to act,
+// so the chat is read_only by default. read_only is ENFORCED in the chat spawn
+// (askClaude, above); this state is the owner-visible SOURCE OF TRUTH. It lives in the
+// main process — the renderer can read it but never set it, and no chat message
+// changes it. S2/S3 only exposes/displays state: only read_only ever occurs here (no
+// transitions, approval, or build mode yet — those are later slices).
+const AUTHORITY_LABELS = {
+  read_only: 'Read-only — safe to paste context',
+  approval_needed: 'Approval needed — PCC wants to start work',
+  authorized_running: 'Authorized work running — background work may execute',
+  completed_needs_review: 'Work complete — review result',
+  blocked: 'Blocked — work stopped',
+};
+let authorityMode = 'read_only';
+// Read-only IPC: report the current authority state. Takes NO requested mode and
+// never mutates — the renderer can only display what main declares.
+ipcMain.handle('pcc:authorityState', () => ({ mode: authorityMode, label: AUTHORITY_LABELS[authorityMode] || AUTHORITY_LABELS.read_only }));
+
 // Send a message to Claude Code non-interactively. The prompt goes in over
 // stdin (so quotes/newlines in the message can never break shell parsing).
 // Each chat is pinned to its own UUID owned by the renderer (chat history), so

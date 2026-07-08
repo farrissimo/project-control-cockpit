@@ -262,6 +262,9 @@
   .trust-chip.bad { color: var(--danger-text); border-color: var(--danger-border); }
   .trust-chip.bad .dot { background: var(--danger); }
   .trust-chip.unknown .dot { background: var(--neutral); }
+  /* Authority mode (DECISION-112). Calm/info styling — "safe", not "task complete". */
+  .trust-chip.readonly { color: var(--info); border-color: var(--info-strong); }
+  .trust-chip.readonly .dot { background: var(--info); }
   #trust .trust-label { font-size: 11px; color: #5f646c; margin-right: 2px; }
 
   .lc-map { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 16px 0 8px; }
@@ -402,6 +405,7 @@
     </div>
     <div id="trust" title="Live trust signals — each is green only when a real deterministic check says so.">
       <span class="trust-label">Trust:</span>
+      <span class="trust-chip readonly" id="trust-authority" title="PCC chat authority. Read-only means it can read, explain, and plan — it cannot run commands, change files, or launch anything. Reading context is never authorization to act."><span class="dot"></span>Read-only — safe to paste context</span>
       <span class="trust-chip unknown" id="trust-rails"><span class="dot"></span>On the rails</span>
       <span class="trust-chip unknown" id="trust-backup"><span class="dot"></span>Backed up</span>
       <span class="trust-chip unknown" id="trust-verified"><span class="dot"></span>Verified</span>

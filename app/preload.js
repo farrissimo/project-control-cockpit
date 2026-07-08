@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('pcc', {
   getState: () => ipcRenderer.invoke('pcc:getState'),
   visionPromises: () => ipcRenderer.invoke('pcc:visionPromises'),
   send: (message, model, chatId, isFirstTurn) => ipcRenderer.invoke('pcc:send', message, model, chatId, isFirstTurn),
+  authorityState: () => ipcRenderer.invoke('pcc:authorityState'), // read-only; no setter is exposed
   secondOpinion: (prompt) => ipcRenderer.invoke('pcc:secondOpinion', prompt),
   getModels: () => ipcRenderer.invoke('pcc:getModels'),
   newChat: () => ipcRenderer.invoke('pcc:newChat'),
