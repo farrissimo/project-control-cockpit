@@ -77,10 +77,29 @@ if ($target.entry_gate -eq 'fresh_verification_pass') {
   }
 }
 
+# --- soft advisory: vision unconfirmed when moving into planning (soak fix F2) ---
+# Not a hard gate (only phase_close blocks). But the owner should be told, at the
+# moment they leave setup for planning/building, if the north-star vision promises
+# were never confirmed as their real intent -- so "is this what I meant to build?"
+# is asked, not silently skipped.
+$visionWarning = $null
+if ($To -eq 'plan') {
+  $vpPath = '.cockpit/state/vision-promises.json'
+  if (Test-Path -LiteralPath $vpPath) {
+    try {
+      $vp = Get-Content -Raw -LiteralPath $vpPath | ConvertFrom-Json
+      $reviewed = ($vp.review_status -eq 'reviewed') -and $vp.last_reviewed
+      if (-not $reviewed) {
+        $visionWarning = "Heads up: your vision promises aren't confirmed yet. You can keep going, but review them in the Overview (Vision) so the build has a north star to check against."
+      }
+    } catch { }
+  }
+}
+
 # --- perform the move ---
 $state.current_stage = $To
 $state | Add-Member -NotePropertyName note -NotePropertyValue "Advanced $from -> $To via the app." -Force
 $state | Add-Member -NotePropertyName updated_at -NotePropertyValue ((Get-Date).ToString('yyyy-MM-ddTHH:mm:sszzz')) -Force
 ($state | ConvertTo-Json -Depth 6) | Out-File -FilePath $statePath -Encoding utf8
 
-Emit ([ordered]@{ ok = $true; from = $from; to = $To; label = $target.label; message = "Advanced from '$from' to '$($target.label)'." })
+Emit ([ordered]@{ ok = $true; from = $from; to = $To; label = $target.label; message = "Advanced from '$from' to '$($target.label)'."; vision_unconfirmed = ($null -ne $visionWarning); warning = $visionWarning })

@@ -36,7 +36,23 @@
     const notice = (key) => !!(det && det[key] && det[key].signal === 'notice');
     const syncDirty = !!(sync && !sync._error && sync.clean === false);
     const factsReadable = !!(lc && lc.signal === 'ok' && det && x);
-    const needProof = proof.kind === 'missing' || proof.kind === 'review_only' || !proof.fresh;
+
+    // Current lifecycle stage. Proof only becomes relevant once there is built work
+    // to verify; before that (define/plan) demanding "get execution proof" is
+    // nonsensical and contradicts the lifecycle's own next step (soak fix F1).
+    let curStage = null, curLabel = null;
+    if (lc && lc.signal === 'ok' && Array.isArray(lc.all_stages)) {
+      const cur = lc.all_stages.find((s) => s.is_current);
+      if (cur) { curStage = (cur.id || String(cur.label || '')).toLowerCase(); curLabel = cur.label || cur.id || null; }
+    }
+    const preWork = curStage === 'define' || curStage === 'plan';
+    const needProof = !preWork && (proof.kind === 'missing' || proof.kind === 'review_only' || !proof.fresh);
+
+    // Vision promises declared but not yet owner-reviewed — an owner action the
+    // Overview should surface (soak fix F2), so the visionary is asked "is this what
+    // you meant to build?" instead of that question never appearing.
+    const visionNeedsReview = !!(vp && !vp._error && Array.isArray(vp.promises) && vp.promises.length &&
+      (vp.review_status !== 'reviewed' || !vp.last_reviewed));
 
     // ---- OVERALL CONDITION (priority; no percentage) ----
     let cond;
@@ -56,6 +72,8 @@
       cond = { label: 'Needs attention', cls: 'warn', why: 'A signal is raised: ' + which + '. See the evidence below / Signals tab.', safe: 'Yes, with caution.' };
     } else if (x && !x.rulesLoaded) {
       cond = { label: 'Needs attention', cls: 'warn', why: 'Standing rules (CLAUDE.md) are not loading.', safe: 'Yes, with caution.' };
+    } else if (preWork) {
+      cond = { label: 'Getting set up', cls: '', why: 'Still in the "' + (curLabel || 'setup') + '" stage — there is nothing built to verify yet. Follow the next step below.', safe: 'Yes — you are setting the project up.' };
     } else {
       cond = { label: 'Healthy', cls: 'good', why: 'Fresh executed proof, backed up, no raised signals, rules loaded.', safe: 'Yes.' };
     }
@@ -66,6 +84,7 @@
     else if (syncDirty) needs = { main: 'Backup needed', sub: 'Some work isn’t saved to the remote yet.', attn: true };
     else if (needProof) needs = { main: 'Verification needed', sub: 'The current code has no fresh executed proof.', attn: true };
     else if (notice('drift') || notice('highStakes')) needs = { main: 'Review needed', sub: notice('drift') ? 'A scope-drift signal is raised.' : 'A high-stakes change is flagged.', attn: true };
+    else if (visionNeedsReview) needs = { main: 'Confirm the project’s vision', sub: 'The vision promises haven’t been reviewed as your real intent yet — confirm them so the build has a north star.', attn: true };
     else needs = { main: 'Nothing needed right now', sub: 'PCC has no live owner-decision signal yet (the old source was retired), so “decision needed” is not shown here.', attn: false };
 
     // ---- NEXT BEST MOVE (urgent overrides, else the lifecycle's own next step) ----

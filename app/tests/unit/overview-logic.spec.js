@@ -87,6 +87,38 @@ test('placeholder promises flag needs-review; declared status is never called pr
   expect(m.proof.review).not.toContain('needs_owner_review');
 });
 
+// Soak fix F1: a pre-Work project (define/plan) has nothing built to verify, so the
+// Overview must NOT demand "get execution proof" (which contradicts the lifecycle) —
+// it defers to the lifecycle's own next step.
+const lcPlan = {
+  signal: 'ok',
+  all_stages: [
+    { id: 'define', label: 'Define', is_current: false },
+    { id: 'plan', label: 'Plan', is_current: true },
+    { id: 'work', label: 'Work a task', is_current: false },
+    { id: 'verify', label: 'Verify', is_current: false },
+  ],
+  next: [{ label: 'Work a task', what_to_do: 'Pick the single next bounded task.' }],
+};
+
+test('pre-Work project does not demand proof; defers to the lifecycle (F1)', () => {
+  const m = computeOverview({ lc: lcPlan, det: noNotices, x: rulesX(null), sync: cleanSync, state: {}, vp: null });
+  expect(m.cond.label).not.toBe('Needs proof');
+  expect(m.cond.label).toBe('Getting set up');
+  expect(m.move.main).toBe('Work a task'); // the lifecycle's next step, not "Get execution proof"
+  expect(m.move.fromLifecycle).toBe(true);
+  expect(m.needs.main).not.toBe('Verification needed');
+});
+
+// Soak fix F2: unconfirmed (declared-but-not-reviewed) vision promises surface as an
+// owner "needs you" item, so the visionary is actually asked to confirm intent.
+test('unconfirmed vision promises surface as a needs item (F2)', () => {
+  const vp = { review_status: 'needs_owner_review', last_reviewed: null, promises: [{ id: 'x', label: 'do the thing', declared_status: 'needs_owner_review' }] };
+  const m = computeOverview({ lc: lcPlan, det: noNotices, x: rulesX(null), sync: cleanSync, state: {}, vp });
+  expect(m.needs.main.toLowerCase()).toContain('vision');
+  expect(m.needs.attn).toBe(true);
+});
+
 test('unreadable facts → Unknown, never a fake green', () => {
   const m = computeOverview({ lc: null, det: null, x: null, sync: null, state: {}, vp: null });
   expect(m.cond.label).toBe('Unknown');

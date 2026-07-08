@@ -753,7 +753,13 @@ async function advanceStage(toId) {
   status.className = 'lc-advance-status'; status.textContent = 'Advancing…';
   let r;
   try { r = await window.pcc.lifecycleAdvance(toId); } catch (e) { status.className = 'lc-advance-status bad'; status.textContent = 'Advance failed: ' + e.message; return; }
-  if (r.ok) { status.className = 'lc-advance-status good'; status.textContent = r.message || 'Advanced.'; loadLifecycleView(); loadLifecycle(); return; }
+  if (r.ok) {
+    // Advanced. Surface a soft "vision unconfirmed" advisory if the move raised one
+    // (soak fix F2) — non-blocking, but the owner is told rather than silently skipped.
+    if (r.warning) { status.className = 'lc-advance-status warn'; status.textContent = (r.message || 'Advanced.') + ' ' + r.warning; }
+    else { status.className = 'lc-advance-status good'; status.textContent = r.message || 'Advanced.'; }
+    loadLifecycleView(); loadLifecycle(); return;
+  }
   if (r.reason === 'needs_verification') {
     status.className = 'lc-advance-status warn';
     status.textContent = (r.message || 'A fresh independent PASS is required first.') + ' ';
