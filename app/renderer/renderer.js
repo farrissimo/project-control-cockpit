@@ -90,6 +90,39 @@ function pccPrompt(message, defaultValue) {
   });
 }
 
+// Approve/Cancel modal (execution authority, DECISION-112). Resolves true ONLY if the
+// owner clicks Approve. Used to gate build-mode jobs like New Project.
+function pccConfirm(message, approveLabel) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'pcc-modal-overlay';
+    overlay.setAttribute('data-testid', 'confirm-overlay');
+    const modal = document.createElement('div');
+    modal.className = 'pcc-modal';
+    const msg = document.createElement('div');
+    msg.className = 'pcc-modal-msg';
+    msg.textContent = message || '';
+    const actions = document.createElement('div');
+    actions.className = 'pcc-modal-actions';
+    const cancel = document.createElement('button');
+    cancel.type = 'button'; cancel.textContent = 'Cancel';
+    cancel.setAttribute('data-testid', 'confirm-cancel');
+    const ok = document.createElement('button');
+    ok.type = 'button'; ok.className = 'primary'; ok.textContent = approveLabel || 'Approve';
+    ok.setAttribute('data-testid', 'confirm-approve');
+    actions.appendChild(cancel); actions.appendChild(ok);
+    modal.appendChild(msg); modal.appendChild(actions);
+    overlay.appendChild(modal);
+    let done = false;
+    const close = (val) => { if (done) return; done = true; overlay.remove(); resolve(val); };
+    ok.addEventListener('click', () => close(true));
+    cancel.addEventListener('click', () => close(false));
+    overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(false); });
+    document.body.appendChild(overlay);
+    ok.focus();
+  });
+}
+
 // Render an assistant message with working copy blocks. Fenced ```code``` blocks
 // become a styled block with a real Copy button; `inline code` is styled; the
 // rest is escaped plain text (newlines preserved by CSS pre-wrap). Everything is
@@ -267,15 +300,37 @@ document.getElementById('new-project').addEventListener('click', async () => {
   const name = await pccPrompt('What would you like to call the new project?');
   if (!name || !name.trim()) return;
   const nm = name.trim();
+  // Execution authority (DECISION-112): New Project needs the build profile, so it is
+  // gated behind an EXPLICIT approval. requestJob -> approval_needed (nothing runs);
+  // the owner Approves or Cancels; only Approve enters authorized_running, bound to a
+  // dedicated chat id. Pasted chat text can never reach this path.
+  const req = await window.pcc.requestJob('new_project', nm);
+  if (!req || !req.ok) return;
+  loadTrust(); // badge -> "Approval needed"
+  const approved = await pccConfirm(
+    'Start a new project "' + nm + '"?\n\nPCC will interview you, then create a new project folder by running its setup scripts. This runs commands on your computer for THIS build session only, and returns to read-only when it ends.',
+    'Approve & start');
+  if (!approved) { await window.pcc.cancelJob(); loadTrust(); return; }
+  const appr = await window.pcc.approveJob();
+  if (!appr || !appr.ok) { await window.pcc.cancelJob(); loadTrust(); return; }
+  loadTrust(); // badge -> "Authorized work running"
   document.querySelector('.nav[data-view="chat"]').click();
   startNewChat();
   const c = activeChat();
-  if (c) { c.name = 'New project: ' + nm.slice(0, 30); renderChatList(); }
+  // Pin this chat to the approved job's id so its sends get the build profile (askClaude
+  // only grants build when chatId === the approved job's chatId).
+  if (c) { c.name = 'New project: ' + nm.slice(0, 30); c.sessionId = appr.chatId; renderChatList(); }
   const kickoff = 'I want to start a NEW project called "' + nm + '". '
     + 'Run `scripts/new-project-intake.ps1` to load the intake protocol, then interview me in plain language following it, one or two questions at a time. '
     + 'Do not skip the approval gates. When I approve the blueprint, scaffold the project into a new folder next to this one using `scripts/bootstrap-project.ps1` with the blueprint, and tell me how to open it. Ask me the first question now.';
   sendMessage(kickoff);
 });
+
+// End an approved build session on demand -> authority returns to read_only.
+{
+  const authorityEndBtn = document.getElementById('authority-end');
+  if (authorityEndBtn) authorityEndBtn.addEventListener('click', async () => { await window.pcc.endJob(); loadTrust(); });
+}
 
 // Quick buttons act on the conversation, smartly (owner feedback):
 //  - If you've TYPED a question, the modifier is applied to it and sent in ONE
@@ -874,13 +929,16 @@ function railsFrom(d) {
 // For this slice it is always read_only; falls back to the safe read_only label if the
 // state can't be read.
 async function loadAuthorityBadge() {
-  const clsFor = { read_only: 'readonly', approval_needed: 'warn', authorized_running: 'bad', completed_needs_review: 'good', blocked: 'bad' };
+  const clsFor = { read_only: 'readonly', approval_needed: 'warn', authorized_running: 'warn', completed_needs_review: 'good', blocked: 'bad' };
   let s = null;
   try { s = await window.pcc.authorityState(); } catch (e) { /* keep the safe default */ }
   const mode = (s && s.mode) || 'read_only';
-  const label = (s && s.label) || 'Read-only — safe to paste context';
+  let label = (s && s.label) || 'Read-only — safe to paste context';
+  if (mode === 'authorized_running' && s && s.job && s.job.name) label += ' — ' + s.job.name;
   setChip('trust-authority', clsFor[mode] || 'readonly', label,
     'PCC chat authority. Read-only means it can read, explain, and plan — it cannot run commands, change files, or launch anything. Reading context is never authorization to act.');
+  const endBtn = document.getElementById('authority-end');
+  if (endBtn) endBtn.classList.toggle('hidden', mode !== 'authorized_running');
 }
 
 async function loadTrust() {

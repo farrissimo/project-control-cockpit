@@ -497,12 +497,10 @@ ipcMain.handle('pcc:pickFolder', async () => {
 // against the behavior. Kept constant so it doesn't bust the prompt cache.
 const CHANNEL_PROMPT = 'You are replying inside PCC\'s text-only chat panel: there is no interactive UI, no clickable pickers or buttons you can present. Never use interactive tools such as AskUserQuestion; if you need to ask the owner something, ask it as plain text with the options listed inline. Never narrate internal tool, prompt, or mechanism failures to the owner (e.g. do not say a tool "isn\'t working") - just answer or ask plainly. The owner is a non-coder product lead: be concise and plain-language.';
 
-// Execution authority (DECISION-112). Reading context is never authorization to act,
-// so the chat is read_only by default. read_only is ENFORCED in the chat spawn
-// (askClaude, above); this state is the owner-visible SOURCE OF TRUTH. It lives in the
-// main process — the renderer can read it but never set it, and no chat message
-// changes it. S2/S3 only exposes/displays state: only read_only ever occurs here (no
-// transitions, approval, or build mode yet — those are later slices).
+// Execution authority (DECISION-112). Reading context is never authorization to act.
+// The chat is read_only by default; only an EXPLICIT owner approval of a bounded job
+// grants execution — tied to ONE chat and auto-expiring. State lives here in main (the
+// source of truth); no chat message can change it — only the owner-driven IPC below.
 const AUTHORITY_LABELS = {
   read_only: 'Read-only — safe to paste context',
   approval_needed: 'Approval needed — PCC wants to start work',
@@ -510,10 +508,49 @@ const AUTHORITY_LABELS = {
   completed_needs_review: 'Work complete — review result',
   blocked: 'Blocked — work stopped',
 };
-let authorityMode = 'read_only';
-// Read-only IPC: report the current authority state. Takes NO requested mode and
-// never mutates — the renderer can only display what main declares.
-ipcMain.handle('pcc:authorityState', () => ({ mode: authorityMode, label: AUTHORITY_LABELS[authorityMode] || AUTHORITY_LABELS.read_only }));
+const BUILD_SESSION_MS = 30 * 60 * 1000; // an approved build session auto-expires after 30 min
+let authorityMode = 'read_only';  // read_only | approval_needed | authorized_running | completed_needs_review | blocked
+let pendingJob = null;            // { type, name, chatId } while approval_needed
+let authorizedJob = null;         // { type, name, chatId, expiresAt } while authorized_running
+const authorityLog = [];          // minimal in-memory owner-visible record
+
+function logAuthority(event, job) { authorityLog.push({ event, type: job.type, name: job.name, at: new Date().toISOString() }); }
+// A stale authorization can never linger: drop an expired build session to read_only
+// before any authority read or chat spawn.
+function expireAuthorityIfNeeded() {
+  if (authorityMode === 'authorized_running' && authorizedJob && Date.now() > authorizedJob.expiresAt) {
+    logAuthority('expired', authorizedJob); authorizedJob = null; authorityMode = 'read_only';
+  }
+}
+function authoritySnapshot() {
+  expireAuthorityIfNeeded();
+  const job = authorizedJob || pendingJob;
+  return { mode: authorityMode, label: AUTHORITY_LABELS[authorityMode] || AUTHORITY_LABELS.read_only,
+    job: job ? { type: job.type, name: job.name } : null };
+}
+// Read-only IPC: report current authority state. Takes no requested mode, never mutates.
+ipcMain.handle('pcc:authorityState', () => authoritySnapshot());
+ipcMain.handle('pcc:authorityLog', () => authorityLog.slice(-20));
+// Owner-initiated ONLY (wired to explicit UI buttons, never to chat text). Request a
+// bounded job -> approval_needed; nothing runs yet.
+ipcMain.handle('pcc:requestJob', (_e, type, name) => {
+  if (type !== 'new_project') return { ok: false, message: 'Unknown job type.' };
+  const chatId = crypto.randomUUID();
+  pendingJob = { type, name: String(name || '').slice(0, 60), chatId };
+  authorityMode = 'approval_needed';
+  return { ok: true, chatId, job: { type, name: pendingJob.name } };
+});
+// Owner approves the pending job -> authorized_running, bound to that chatId, expiring.
+ipcMain.handle('pcc:approveJob', () => {
+  if (!pendingJob) return { ok: false, message: 'Nothing to approve.' };
+  authorizedJob = Object.assign({}, pendingJob, { expiresAt: Date.now() + BUILD_SESSION_MS });
+  pendingJob = null; authorityMode = 'authorized_running'; logAuthority('approved', authorizedJob);
+  return { ok: true, chatId: authorizedJob.chatId, job: { type: authorizedJob.type, name: authorizedJob.name } };
+});
+// Owner cancels a pending approval -> read_only.
+ipcMain.handle('pcc:cancelJob', () => { if (pendingJob) logAuthority('cancelled', pendingJob); pendingJob = null; authorityMode = 'read_only'; return { ok: true }; });
+// End the approved build session -> read_only.
+ipcMain.handle('pcc:endJob', () => { if (authorizedJob) logAuthority('ended', authorizedJob); authorizedJob = null; authorityMode = 'read_only'; return { ok: true }; });
 
 // Send a message to Claude Code non-interactively. The prompt goes in over
 // stdin (so quotes/newlines in the message can never break shell parsing).
@@ -528,24 +565,24 @@ function askClaude(message, model, chatId, isFirstTurn) {
   return new Promise((resolve) => {
     const cfg = readModels();
     const chosen = model || cfg.default;
-    // READ_ONLY chat spawn (DECISION-112, Task 2 S1). Law: reading context is never
-    // authorization to act. So the chat — which is the ONLY place pasted text reaches
-    // an action-capable agent — defaults to read-only and cannot run shell, write
-    // files, scaffold, launch anything, or reach MCP/plugin tools.
-    //   Primary containment: --tools is an ALLOWLIST (default-deny) — only these
-    //     tools exist; --strict-mcp-config drops MCP/plugin tools (e.g. github).
-    //   Backstop: --disallowedTools explicitly denies known execution/mutation and
-    //     meta tools even if --tools semantics change across Claude CLI versions
-    //     (deny beats the global settings.json allow). AskUserQuestion stays denied
-    //     (this text channel can't render its picker).
-    // Proven by the S0 containment spike: canary write blocked, MCP absent, Read works.
-    // INTERIM (until the approval/build-mode slice, S4/S5): New Project /
-    // build-through-chat cannot execute its scripts while read-only — by design.
-    const args = ['-p', '--model', chosen,
-      '--tools', 'WebSearch WebFetch Read Glob Grep',
-      '--strict-mcp-config',
-      '--disallowedTools', 'AskUserQuestion Bash BashOutput KillBash PowerShell Edit Write NotebookEdit Agent Monitor Skill ToolSearch Task',
-      '--append-system-prompt', CHANNEL_PROMPT];
+    // Authority-gated spawn (DECISION-112). Reading context is never authorization to
+    // act. By DEFAULT the chat spawns READ-ONLY: an allowlist of web+read tools only,
+    // --strict-mcp-config drops MCP/plugin tools, and a deny-list backstops known
+    // execution/mutation/meta tools (deny beats the global settings.json allow).
+    // The BUILD profile (adds Bash/PowerShell/Write/Edit so New Project's setup scripts
+    // can run) is used ONLY when the owner has explicitly approved a bounded job AND
+    // this send belongs to that job's chat (chatId === authorizedJob.chatId), and only
+    // until it expires. Message content can never flip this — authorityMode is set only
+    // by owner-driven IPC (requestJob/approveJob). Both profiles proven by the S0 /
+    // build-profile spikes.
+    expireAuthorityIfNeeded();
+    const isBuild = authorityMode === 'authorized_running' && authorizedJob && chatId === authorizedJob.chatId;
+    const toolFlags = isBuild
+      ? ['--tools', 'Bash PowerShell Read Write Edit Glob Grep WebSearch WebFetch', '--strict-mcp-config',
+         '--disallowedTools', 'AskUserQuestion Agent Monitor Skill ToolSearch Task']
+      : ['--tools', 'WebSearch WebFetch Read Glob Grep', '--strict-mcp-config',
+         '--disallowedTools', 'AskUserQuestion Bash BashOutput KillBash PowerShell Edit Write NotebookEdit Agent Monitor Skill ToolSearch Task'];
+    const args = ['-p', '--model', chosen, ...toolFlags, '--append-system-prompt', CHANNEL_PROMPT];
     if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
     let isNewSession;
     if (chatId) { sessionId = chatId; isNewSession = !!isFirstTurn; }
