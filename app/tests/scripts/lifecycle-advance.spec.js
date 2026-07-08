@@ -33,8 +33,9 @@ function advance(dir, to) {
     { cwd: dir, encoding: 'utf8', timeout: 20000 });
   return JSON.parse(r.stdout.trim());
 }
-function recordVerdict(dir, verdict) {
-  fs.writeFileSync(path.join(dir, 'app', 'last-verification.txt'), 'VERIFIER: test\n\nVERDICT: ' + verdict + '\n');
+function recordVerdict(dir, verdict, type) {
+  type = type || 'review_only';
+  fs.writeFileSync(path.join(dir, 'app', 'last-verification.txt'), 'VERIFIER: test\nTYPE: ' + type + '\n\nVERDICT: ' + verdict + '\n');
 }
 function recordRaw(dir, text) {
   fs.writeFileSync(path.join(dir, 'app', 'last-verification.txt'), text);
@@ -103,6 +104,45 @@ test('gate BLOCKS on a malformed verdict (no recognizable token)', () => {
     expect(r.ok).toBe(false);
     expect(r.reason).toBe('needs_verification'); // malformed is NEVER treated as PASS
     expect(currentStage(dir)).toBe('verify');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// Independent-review finding: a stray "PASS" in prose must NOT clear the gate. The old
+// loose scan accepted any file containing the token PASS anywhere; the gate now requires
+// a structured VERDICT: line.
+test('gate BLOCKS a stray "PASS" in prose (no VERDICT: line)', () => {
+  const dir = makeProject();
+  try {
+    recordRaw(dir, 'VERIFIER: someone\nTYPE: local_execution\n\nHonestly it PASSES the smell test to me, looks good and I think it PASSES.\n');
+    const r = advance(dir, 'phase_close');
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('needs_verification'); // "PASS" in prose is not a verdict
+    expect(currentStage(dir)).toBe('verify');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// The record must declare a recognized TYPE (what KIND of proof) — an untyped PASS is
+// refused, so a bare "VERDICT: PASS" file can't clear "done".
+test('gate BLOCKS a PASS with no recognized TYPE: line', () => {
+  const dir = makeProject();
+  try {
+    recordRaw(dir, 'VERIFIER: test\n\nVERDICT: PASS\n'); // no TYPE line
+    const r = advance(dir, 'phase_close');
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('needs_verification');
+    expect(currentStage(dir)).toBe('verify');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// A fresh, well-formed local_execution PASS is the F8 escape for a local-first project:
+// it clears the gate in-cockpit without CI/Codex. Confirm the gate recognizes it.
+test('gate ALLOWS a fresh local_execution PASS (the local-first escape)', () => {
+  const dir = makeProject();
+  try {
+    recordVerdict(dir, 'PASS', 'local_execution');
+    const r = advance(dir, 'phase_close');
+    expect(r.ok).toBe(true);
+    expect(currentStage(dir)).toBe('phase_close');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 

@@ -52,26 +52,39 @@ if (-not $cur -or @($cur.next) -notcontains $To) {
 
 # --- entry gate: fresh independent PASS ---
 if ($target.entry_gate -eq 'fresh_verification_pass') {
-  $verdict = $null; $fileEpoch = 0
+  $verdict = $null; $vtype = $null; $fileEpoch = 0; $hasRecord = $false
   if (Test-Path -LiteralPath $verifyPath) {
+    $hasRecord = $true
     $txt = Get-Content -Raw -LiteralPath $verifyPath
-    $m = [regex]::Match($txt, '\b(PASS|FAIL|INSUFFICIENT|BLOCKED|OUT_OF_SCOPE)\b')
-    if ($m.Success) { $verdict = $m.Groups[1].Value }
+    # Parse STRUCTURED fields, not a loose token scan. An independent review found the
+    # old gate accepted ANY fresh file containing the word "PASS" anywhere — a stray
+    # or hand-edited "PASS" in prose could clear "done". Now the verdict must be on its
+    # own VERDICT: line, and the record must declare a recognized TYPE: (what KIND of
+    # proof it is — review_only|local_execution|ci_execution|live_boundary). A "PASS"
+    # buried in a sentence, or an untyped record, no longer counts. This is structural
+    # validation of a TRUSTED record — it is not, and does not claim to be, proof
+    # against a deliberate forgery of a well-formed record (the file is the record).
+    $mv = [regex]::Match($txt, '(?im)^[ \t]*VERDICT:[ \t]*(PASS|FAIL|INSUFFICIENT|BLOCKED|OUT_OF_SCOPE)\b')
+    if ($mv.Success) { $verdict = $mv.Groups[1].Value.ToUpper() }
+    $mt = [regex]::Match($txt, '(?im)^[ \t]*TYPE:[ \t]*(review_only|local_execution|ci_execution|live_boundary)\b')
+    if ($mt.Success) { $vtype = $mt.Groups[1].Value.ToLower() }
     $fileEpoch = [int][double]::Parse((Get-Item -LiteralPath $verifyPath).LastWriteTimeUtc.Subtract([datetime]'1970-01-01').TotalSeconds)
   }
   $headEpoch = 0
   $h = & git log -1 --format=%ct 2>$null
   if ($h) { $headEpoch = [int]$h }
-
   $fresh = ($fileEpoch -ge $headEpoch)
-  if ($verdict -ne 'PASS' -or -not $fresh) {
-    $why = if (-not $verdict) { 'no verdict is recorded yet' }
+
+  if (-not $hasRecord -or $verdict -ne 'PASS' -or -not $vtype -or -not $fresh) {
+    $why = if (-not $hasRecord) { 'no verification record exists yet' }
+      elseif (-not $verdict) { 'the record has no structured "VERDICT:" line' }
       elseif ($verdict -ne 'PASS') { "the last verdict was $verdict" }
+      elseif (-not $vtype) { 'the record has no recognized "TYPE:" line (review_only | local_execution | ci_execution | live_boundary)' }
       else { 'the last PASS is older than the latest commit (stale)' }
     Emit ([ordered]@{
         ok = $false; reason = 'needs_verification'; from = $from; to = $To
-        verdict = $verdict; fresh = $fresh
-        message = "Cannot advance to '$($target.label)': $why. Run an independent verification (a fresh PASS) first."
+        verdict = $verdict; type = $vtype; fresh = $fresh
+        message = "Cannot advance to '$($target.label)': $why. Run an independent verification (a fresh, typed PASS) first."
       })
     return
   }

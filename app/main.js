@@ -647,10 +647,12 @@ app.whenReady().then(() => {
   });
 });
 
-// Soak fix F4: kill any in-flight workers before the app goes away, so no orphaned
-// `claude` process survives to hold a chat's session lock (which bricked the chat with
-// "session already in use" on the next launch). before-quit covers the quit path;
-// window-all-closed covers closing the last window.
+// Soak fix F4: kill in-flight workers when the app goes away so stray `claude`
+// processes don't pile up. This does NOT by itself cure "session already in use": a
+// force-kill can't let claude clean up its session lock, so an interrupted turn can
+// still leave a chat's session locked. The reliable cure is the in-chat "Recover this
+// chat" action (a fresh session id). before-quit covers the quit path; window-all-closed
+// covers closing the last window.
 app.on('before-quit', () => { killAllWorkers(); });
 app.on('window-all-closed', () => {
   killAllWorkers();

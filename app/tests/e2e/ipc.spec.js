@@ -24,6 +24,15 @@ test('bridge exposes exactly the expected channels', async () => {
   ]);
 });
 
+// Soak fix F3: verifyProduct must never fake a green. With no declared product-run
+// config (PCC itself has none), it returns ok:false with an honest reason — it does not
+// invent a PASS. (Behavior check, not just channel exposure.)
+test('verifyProduct does not fabricate a pass without a declared config', async () => {
+  const r = await call('verifyProduct');
+  expect(r.ok).toBe(false);
+  expect(['no_config', 'no_verify_command']).toContain(r.reason);
+});
+
 test('getState returns project + task objects', async () => {
   const s = await call('getState');
   expect(s).toHaveProperty('project');

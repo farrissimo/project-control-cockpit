@@ -114,6 +114,29 @@ test('bloat excludes engine files via exclude_globs, still flags product (F10)',
   }
 });
 
+// Soak fix F9 (stale-docs half): like drift, stale-docs must degrade to 'unknown' when
+// the configured baseline ref is missing, not report a false 'clear'.
+test('stale-docs degrades to UNKNOWN when the baseline ref is missing (F9)', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-stale-'));
+  try {
+    spawnSync('git', ['init'], { cwd: tmp, encoding: 'utf8' });
+    spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '--allow-empty', '-q', '-m', 'seed'], { cwd: tmp, encoding: 'utf8' });
+    fs.mkdirSync(path.join(tmp, 'scripts'));
+    fs.copyFileSync(path.join(REPO, 'scripts', 'detect-stale-docs.ps1'), path.join(tmp, 'scripts', 'detect-stale-docs.ps1'));
+    fs.mkdirSync(path.join(tmp, '.cockpit', 'state'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, '.cockpit', 'state', 'doc-freshness-map.json'), JSON.stringify({
+      compare_baseline: 'no-such-baseline-ref-xyz',
+      rules: [{ id: 'r1', when_changed: ['app/*.js'], expect_updated: ['README.md'], satisfied_by: 'any' }],
+    }));
+    const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/detect-stale-docs.ps1', '-Json'],
+      { cwd: tmp, encoding: 'utf8', timeout: 30000, windowsHide: true });
+    const obj = JSON.parse((r.stdout || '').trim());
+    expect(obj.signal, 'missing baseline must be unknown, not clear:\n' + r.stdout).toBe('unknown');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 test('doctor.ps1 runs and produces output', () => {
   const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/doctor.ps1'],
     { cwd: REPO, encoding: 'utf8', timeout: 120000, windowsHide: true });

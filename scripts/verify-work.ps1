@@ -72,5 +72,9 @@ Write-Output $result
 if ($WriteFile) {
   $stamp = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz')
   $path = Join-Path $repo 'app/last-verification.txt'
-  "=== Verification run $stamp ===`n$result`n" | Out-File -FilePath $path -Encoding utf8
+  # Declare TYPE so the record is typed for the phase-close gate and the proof taxonomy.
+  # An independent agent reading the code (read-only sandbox) is review_only: it did not
+  # execute the product on a clean machine. The Overview shows it amber ("reviewed, not
+  # run"), never CI's executed-green.
+  "=== Verification run $stamp ===`nTYPE: review_only`n$result`n" | Out-File -FilePath $path -Encoding utf8
 }
