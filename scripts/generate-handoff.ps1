@@ -40,13 +40,19 @@ if (Test-Path -LiteralPath $statePath -PathType Leaf) {
 }
 
 # Verification status from the app-build's own target file (same source the trust
-# strip uses), stated honestly - not the stale governance verdict.
+# strip uses), stated honestly - not the stale governance verdict. Parse the STRUCTURED
+# VERDICT:/TYPE: lines (mirroring the phase-close gate and the shared JS parser), never a
+# loose token scan -- a stray "PASS" in prose must not make a handoff over-report status.
 $verdict = 'none recorded yet (independent Codex run is scheduled)'
 $vPath = 'app/last-verification.txt'
 if (Test-Path -LiteralPath $vPath -PathType Leaf) {
   $vtext = Get-Content -Raw -LiteralPath $vPath
-  $m = [regex]::Match($vtext, '\b(PASS|FAIL|INSUFFICIENT|BLOCKED|OUT_OF_SCOPE)\b')
-  if ($m.Success) { $verdict = "$($m.Value) (from $vPath)" }
+  $m = [regex]::Match($vtext, '(?im)^[ \t]*VERDICT:[ \t]*(PASS|FAIL|INSUFFICIENT|BLOCKED|OUT_OF_SCOPE)\b')
+  if ($m.Success) {
+    $vt = [regex]::Match($vtext, '(?im)^[ \t]*TYPE:[ \t]*(review_only|local_execution|ci_execution|live_boundary)\b')
+    $typeStr = if ($vt.Success) { " [$($vt.Groups[1].Value.ToLower())]" } else { '' }
+    $verdict = "$($m.Groups[1].Value.ToUpper())$typeStr (from $vPath)"
+  }
 }
 
 # --- live git facts ---
