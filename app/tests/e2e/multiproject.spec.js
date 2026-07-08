@@ -77,6 +77,14 @@ test('UI: the switcher lists both projects and switching updates the active name
   await expect(page.locator('#proj-panel')).not.toHaveClass(/hidden/);
   await expect(page.locator('.proj-row')).toHaveCount(2);
 
+  // DECISION-111 slice 2: engine-kit status badge per project. The home cockpit
+  // is always current; the temp project predates engine-version.json, so its
+  // badge must honestly read "unknown" rather than guessing.
+  const homeRow = page.locator('.proj-row').filter({ has: page.locator('.proj-home') });
+  await expect(homeRow.locator('.proj-engine.current')).toHaveCount(1);
+  const tempRow = page.locator('.proj-row', { hasText: 'Temp-Widget' });
+  await expect(tempRow.locator('.proj-engine.unknown')).toHaveCount(1);
+
   await page.locator('.proj-row', { hasText: 'Temp-Widget' }).click();
   await page.waitForLoadState('domcontentloaded');
   await expect(page.locator('#proj-name')).toHaveText('Temp-Widget', { timeout: 15000 });

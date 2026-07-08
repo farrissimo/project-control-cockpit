@@ -1442,6 +1442,8 @@ document.getElementById('verify-run').addEventListener('click', async () => {
 // view + loads that project's own chats), and opens an existing PCC folder.
 function closeProjPanel() { const p = document.getElementById('proj-panel'); if (p) p.classList.add('hidden'); }
 
+const engineBadgeLabel = { current: 'current', old: 'upgrade available', unknown: 'engine: unknown', ahead: 'ahead' };
+
 async function loadProjectSwitcher() {
   const nameEl = document.getElementById('proj-name');
   const panel = document.getElementById('proj-panel');
@@ -1452,11 +1454,19 @@ async function loadProjectSwitcher() {
   const active = data.active;
   const activeEntry = projects.find((p) => p.path === active) || projects[0];
   if (nameEl && activeEntry) nameEl.textContent = activeEntry.name;
-  panel.innerHTML = projects.map((p) =>
-    '<div class="proj-row' + (p.path === active ? ' active' : '') + '" data-path="' + encodeURIComponent(p.path) + '">'
-    + '<span class="proj-row-name">' + escapeHtml(p.name) + (p.isHome ? '<span class="proj-home">home</span>' : '') + '</span>'
-    + '<span class="proj-row-path">' + escapeHtml(p.path) + '</span></div>'
-  ).join('') + '<div class="proj-open" data-act="open">＋ Open existing project…</div>';
+  // Engine-kit status (DECISION-111 slice 2): tell at a glance which projects
+  // carry an old engine, so the split-brain never needs manual tracking.
+  const engineStatuses = await Promise.all(projects.map((p) =>
+    window.pcc.engineStatus(p.path).catch(() => null)));
+  panel.innerHTML = projects.map((p, i) => {
+    const es = engineStatuses[i];
+    const badge = (es && es.ok && engineBadgeLabel[es.status])
+      ? '<span class="proj-engine ' + es.status + '" title="' + escapeHtml(es.detail || '') + '">'
+        + engineBadgeLabel[es.status] + '</span>' : '';
+    return '<div class="proj-row' + (p.path === active ? ' active' : '') + '" data-path="' + encodeURIComponent(p.path) + '">'
+      + '<span class="proj-row-name">' + escapeHtml(p.name) + (p.isHome ? '<span class="proj-home">home</span>' : '') + badge + '</span>'
+      + '<span class="proj-row-path">' + escapeHtml(p.path) + '</span></div>';
+  }).join('') + '<div class="proj-open" data-act="open">＋ Open existing project…</div>';
 }
 
 function showProjError(msg) {
