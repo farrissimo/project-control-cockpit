@@ -2763,3 +2763,57 @@ Implications: A new upgrade flow + engine-kit versioning; guardrailed to touch o
 
 Supersedes: None
 Related: DECISION-106 (born bulletproof scaffold), scripts/bootstrap-project.ps1, docs/TAX-SOAK-FINDINGS.md
+
+---
+
+## DECISION-112: Execution Authority Is Explicit, Owner-Granted, and Expiring
+
+Date: 2026-07-08
+Status: Active (model accepted; enforcement is Task 2)
+
+Owner Decision:
+
+"Reading context is never authorization to act."
+
+Pasting a new-chat handoff, asking a status question, asking "what next?", or
+pasting a plan/report that contains commands is ALWAYS a read-only event. The PCC
+chat defaults to `read_only`: it may read, summarize, explain, plan, and ask — it
+may not run shell, write files, scaffold, launch the app/tests, commit, push, pull,
+or advance lifecycle. Any execution/write/scaffold/test/app-launch requires
+EXPLICIT owner approval for a single bounded job. That authorization EXPIRES the
+moment the job completes, fails, times out, or hits a forbidden action — dropping
+back to `read_only`. There is no permanent write-approved chat, and no per-command
+babysitting (approval is granted at the job/phase level, not per shell call).
+
+Reason:
+
+On 2026-07-08 a pasted handoff was treated as close enough to authorization that
+the chat agent executed work (it ran the E2E suite, launching app windows). Root
+cause: the chat agent inherits the machine's global Claude permissions
+(~/.claude/settings.json blanket-allows Bash(*)/PowerShell(*)/Edit/Write), so
+"describing" an action in pasted text became "doing" it. This violates PCC's #1
+north star (reduce babysitting) and its core promise (no fake completion, no hidden
+execution). Protecting the owner requires removing the capability by default, not
+trusting the model to ask.
+
+Implications:
+
+- The chat agent (pcc:send -> askClaude) is the sole text-to-action choke point in
+  PCC; every other execution path is a discrete owner-clicked IPC. Authority is
+  therefore enforced at the chat spawn. See docs/EXECUTION_AUTHORITY_MODEL.md and
+  docs/EXECUTION_PATH_AUDIT.md.
+- read_only must be enforced with a RESTRICTED spawn profile (deny list and/or an
+  allowlist-only --settings profile) that overrides permissive global Claude
+  settings. Deny-over-allow was observed to work; Task 2 pins it with a test.
+- The current mode must be owner-visible; a handoff paste must never silently arm
+  the worker. Approvals, executions, and drop-backs are logged for owner-visible
+  proof.
+- Emergency commit 661ae80 is NOT accepted as product direction (reverted in
+  b897b43). Its blanket-permanent-read-only chat, hidden test window, and pre-commit
+  opt-in are rejected; the useful learnings (restricted-spawn mechanism for
+  read_only; scoped Electron cleanup) are preserved as design inputs only.
+- Enforcement (state machine, UI badge, mode-aware spawn) is Task 2 — this decision
+  records the model, not the implementation.
+
+Supersedes: None (new authority layer; complements DECISION-102's chat-centered design)
+Related: DECISION-102 (chat-centered app), docs/EXECUTION_AUTHORITY_MODEL.md, docs/EXECUTION_PATH_AUDIT.md, app/main.js (askClaude), app/renderer/renderer.js (New Project)
