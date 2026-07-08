@@ -166,6 +166,24 @@ Set-Content -LiteralPath (Join-Path $Target '.cockpit/state/bloat-thresholds.jso
 }
 "@)
 
+# Declared product run/verify commands (soak fix F3/F4). "Run the product" and
+# "Verify product behavior" execute THESE, so the owner never types terminal commands
+# and PCC never guesses how to run the product. Defaults assume the common product/
+# layout; edit them to match how this product actually runs and tests.
+Set-Content -LiteralPath (Join-Path $Target '.cockpit/state/product-run.json') -Encoding utf8 -Value (@"
+{
+  "config_id": "product-run-v1",
+  "plain_language": {
+    "what_this_is": "How to run and how to test YOUR product, declared once. The cockpit's 'Run the product' and 'Verify product behavior' buttons use these — no terminal needed.",
+    "verify_note": "'verify' should run the product's own automated checks. A pass is recorded as a 'local_execution' proof (real execution on this machine, honestly not a clean-room CI run)."
+  },
+  "run": "npm start --prefix product",
+  "verify": "npm test --prefix product",
+  "cwd": ".",
+  "updated_at": "$stamp"
+}
+"@)
+
 # --- vision promises (owner intent for the Owner Overview, DECISION-107). NEVER
 #     copy PCC's own promises; generate FRESH per project. Use blueprint promises
 #     only if the intake supplied owner-approved ones; otherwise a clearly-incomplete

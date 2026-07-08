@@ -114,6 +114,14 @@ test('generated bloat config is product-scoped and excludes the copied engine (F
   expect(b.source_globs).not.toContain('app/*.js');
 });
 
+// Soak fix F3/F4: a new project declares how to run and verify ITS product, so the
+// cockpit's "Run the product" / "Verify product behavior" buttons work without a terminal.
+test('new project declares product run + verify commands (F3/F4)', () => {
+  const p = JSON.parse(fs.readFileSync(path.join(target, '.cockpit', 'state', 'product-run.json'), 'utf8'));
+  expect(p.run).toBeTruthy();
+  expect(p.verify).toBeTruthy();
+});
+
 // Anti-drift guard: EVERY scripts/*.ps1 the app invokes must travel, so no button
 // is dead in a scaffolded project. Derived from main.js, not a hand-maintained list.
 test('every script the app invokes travels into a new project', () => {

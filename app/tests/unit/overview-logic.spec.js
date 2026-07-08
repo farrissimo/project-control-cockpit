@@ -20,6 +20,16 @@ const cleanSync = { clean: true };
 const rulesX = (verif) => ({ verification: verif, headCommitEpoch: 100, rulesLoaded: true });
 const freshReview = { present: true, verdict: 'PASS', type: 'review_only', mtimeEpoch: 200 };
 const freshExec = { present: true, verdict: 'PASS', type: 'ci_execution', mtimeEpoch: 200 };
+const freshLocal = { present: true, verdict: 'PASS', type: 'local_execution', mtimeEpoch: 200 };
+
+// Soak fix F3: a local_execution PASS is REAL execution proof (Healthy), but labeled
+// honestly as local (this machine), never as a clean-room CI run.
+test('local_execution PASS counts as executed proof but is labeled honestly (F3)', () => {
+  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshLocal), sync: cleanSync, state: {}, vp: null });
+  expect(m.cond.label).toBe('Healthy');
+  expect(m.proof.exec).toContain('this machine');
+  expect(m.proof.exec).not.toContain('clean machine'); // must not overclaim CI
+});
 
 test('review-only PASS is NOT executed proof and yields "Needs proof"', () => {
   const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshReview), sync: cleanSync, state: { project: { project_name: 'X' } }, vp: null });

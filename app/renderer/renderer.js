@@ -1368,6 +1368,45 @@ document.getElementById('verify-run').addEventListener('click', async () => {
   }
 });
 
+// Soak fix F4: "Run the product" launches the declared run command detached — the
+// product's own window opens, no terminal. Soak fix F3: "Verify product behavior"
+// runs the product's declared checks and records a local_execution proof.
+(function wireProductButtons() {
+  const runBtn = document.getElementById('run-product');
+  const verBtn = document.getElementById('verify-product');
+  const status = document.getElementById('product-status');
+  const result = document.getElementById('product-result');
+  if (runBtn) runBtn.addEventListener('click', async () => {
+    runBtn.disabled = true; status.textContent = 'Launching…'; result.style.display = 'none';
+    try {
+      const r = await window.pcc.runProduct();
+      status.textContent = '';
+      result.textContent = (r && r.message) ? r.message : (r && r.ok ? 'Launched.' : 'Could not launch.');
+      result.style.display = 'block';
+    } catch (e) { result.textContent = 'Error: ' + e.message; result.style.display = 'block'; status.textContent = ''; }
+    finally { runBtn.disabled = false; }
+  });
+  if (verBtn) verBtn.addEventListener('click', async () => {
+    verBtn.disabled = true; status.textContent = 'Running the product’s checks…'; result.style.display = 'none';
+    try {
+      const r = await window.pcc.verifyProduct();
+      if (r && r.ok) {
+        status.textContent = '';
+        result.textContent = 'Local execution proof recorded: ' + r.verdict + ' (ran: ' + r.command + ').\n'
+          + (r.verdict === 'PASS' ? 'The product’s own checks passed on this machine. This is real execution proof — honestly local, not a clean-room CI run.'
+            : 'The product’s checks did NOT pass. Fix the failures before treating this as done.');
+        // refresh trust/overview so the new proof shows
+        if (typeof loadTrust === 'function') loadTrust();
+      } else {
+        status.textContent = '';
+        result.textContent = (r && r.message) ? r.message : 'Could not run product verification.';
+      }
+      result.style.display = 'block';
+    } catch (e) { result.textContent = 'Error: ' + e.message; result.style.display = 'block'; status.textContent = ''; }
+    finally { verBtn.disabled = false; }
+  });
+})();
+
 // ---- project switcher (multi-project) ----
 // The home cockpit points at one active project at a time. This panel lists the
 // registered projects, switches the active one (a full reload re-points every

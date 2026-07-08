@@ -25,11 +25,14 @@
     // Proof status, straight from the verification taxonomy.
     const v = x && x.verification;
     const headEpoch = (x && x.headCommitEpoch) || 0;
-    const proof = { kind: 'missing', fresh: false, verdict: null };
+    const proof = { kind: 'missing', fresh: false, verdict: null, type: null };
     if (v && v.present) {
       proof.verdict = v.verdict || null;
+      proof.type = v.type || 'review_only';
       proof.fresh = typeof v.mtimeEpoch === 'number' && v.mtimeEpoch >= headEpoch;
-      const executed = v.type === 'ci_execution' || v.type === 'live_boundary';
+      // local_execution counts as real execution proof (the product's checks actually
+      // ran), just on this machine rather than a clean CI box (soak fix F3).
+      const executed = v.type === 'ci_execution' || v.type === 'live_boundary' || v.type === 'local_execution';
       if (v.verdict === 'PASS') proof.kind = executed ? 'executed' : 'review_only';
       else if (v.verdict) proof.kind = 'failing';
     }
@@ -134,7 +137,11 @@
       review: proof.kind === 'review_only' ? (proof.fresh ? 'available (matches current code)' : 'stale')
         : proof.kind === 'failing' ? ('last verdict was ' + proof.verdict)
         : proof.kind === 'executed' ? 'present' : 'missing',
-      exec: (proof.kind === 'executed' && proof.fresh) ? 'yes — fresh, ran on a clean machine' : 'not surfaced in the app yet',
+      exec: (proof.kind === 'executed' && proof.fresh)
+        ? (proof.type === 'local_execution'
+          ? 'yes — the product’s checks ran on this machine (local execution, not a clean-room CI run)'
+          : 'yes — fresh, ran on a clean machine')
+        : 'not surfaced in the app yet',
     };
 
     return { projName: projName, cond: cond, needs: needs, move: move, journey: journey, vision: vision, proof: proofView };

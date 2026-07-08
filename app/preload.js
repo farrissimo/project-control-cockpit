@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld('pcc', {
   getMemory: () => ipcRenderer.invoke('pcc:getMemory'),
   saveMemory: (text) => ipcRenderer.invoke('pcc:saveMemory', text),
   verify: (record) => ipcRenderer.invoke('pcc:verify', record),
+  verifyProduct: () => ipcRenderer.invoke('pcc:verifyProduct'),
+  runProduct: () => ipcRenderer.invoke('pcc:runProduct'),
   hardChecks: () => ipcRenderer.invoke('pcc:hardChecks'),
   detections: () => ipcRenderer.invoke('pcc:detections'),
   trustExtras: () => ipcRenderer.invoke('pcc:trustExtras'),

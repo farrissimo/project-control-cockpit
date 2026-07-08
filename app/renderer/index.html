@@ -110,10 +110,11 @@
     padding: 12px 14px; font-family: inherit; font-size: 14px; line-height: 1.6; margin-top: 12px; }
   .memory-box:focus { outline: none; border-color: #3a6bd6; }
   .memory-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
-  #memory-save, #verify-run, #handoff-gen, #handoff-copy, #new-project { background: #2f6bde; color: #fff; border: none; border-radius: 10px;
+  #memory-save, #verify-run, #run-product, #verify-product, #handoff-gen, #handoff-copy, #new-project { background: #2f6bde; color: #fff; border: none; border-radius: 10px;
     padding: 8px 18px; font-weight: 500; font-size: 14px; cursor: pointer; }
   #handoff-copy { background: #1a1d23; border: 1px solid #2b2f37; }
-  #verify-run:disabled { opacity: .5; cursor: default; }
+  #run-product { background: #1a1d23; border: 1px solid #2b2f37; margin-right: 8px; }
+  #verify-run:disabled, #run-product:disabled, #verify-product:disabled { opacity: .5; cursor: default; }
 
   .signals-actions { display: flex; align-items: center; gap: 12px; margin: 14px 0 4px; }
   #signals-refresh { background: #2f6bde; color: #fff; border: none; border-radius: 10px;
@@ -497,9 +498,14 @@
 
     <div class="view hidden panel" id="view-verify">
       <h2>Verify the work</h2>
-      <p class="muted">Two layers: hard checks (facts, always available) and an independent Codex review (judgment, needs Codex usage).</p>
+      <p class="muted">Run the product you're building, prove its behavior locally, check the facts, or get an independent review.</p>
 
-      <h3 style="font-size:14px; margin:16px 0 2px; color:#8ab4ff; font-weight:500;">Hard checks — facts</h3>
+      <h3 style="font-size:14px; margin:16px 0 2px; color:#8ab4ff; font-weight:500;">Your product</h3>
+      <p class="muted">Open the app you're building, or run its own checks — no terminal needed. "Verify product behavior" records a <b>local execution</b> proof: real, run on this machine (honestly not a clean-room CI run).</p>
+      <div class="memory-actions"><button id="run-product" type="button">Run the product</button><button id="verify-product" type="button">Verify product behavior</button><span id="product-status" class="muted"></span></div>
+      <pre class="rules" id="product-result" style="margin-top:12px; display:none;"></pre>
+
+      <h3 style="font-size:14px; margin:22px 0 2px; color:#8ab4ff; font-weight:500;">Hard checks — facts</h3>
       <p class="muted">What actually changed, and PCC's own health check. No AI, no opinion.</p>
       <pre class="rules" id="verify-checks">Running…</pre>
 

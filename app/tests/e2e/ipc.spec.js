@@ -18,9 +18,9 @@ test('bridge exposes exactly the expected channels', async () => {
   expect(keys).toEqual([
     'addProject', 'backup', 'detections', 'getActiveProject', 'getMemory', 'getModels',
     'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
-    'listProjects', 'metrics', 'newChat', 'pickFolder', 'pull', 'recentDecisions', 'saveMemory',
-    'secondOpinion', 'send', 'setActiveProject', 'syncStatus', 'trustExtras', 'verify',
-    'visionPromises',
+    'listProjects', 'metrics', 'newChat', 'pickFolder', 'pull', 'recentDecisions', 'runProduct',
+    'saveMemory', 'secondOpinion', 'send', 'setActiveProject', 'syncStatus', 'trustExtras',
+    'verify', 'verifyProduct', 'visionPromises',
   ]);
 });
 

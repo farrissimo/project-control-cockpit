@@ -180,6 +180,33 @@ ipcMain.handle('pcc:verify', (_e, record) => new Promise((resolve) => {
   });
 }));
 
+// Soak fix F3: run the project's DECLARED local product checks and record a
+// local_execution proof (real execution on this machine) — the "Verify product
+// behavior" button. A local-first project can prove its own behavior without CI/Codex.
+ipcMain.handle('pcc:verifyProduct', () => new Promise((resolve) => {
+  exec('pwsh -NoProfile -File scripts/verify-product.ps1 -Json', { cwd: projectDir, timeout: 180000, windowsHide: true, maxBuffer: 8 * 1024 * 1024 }, (err, stdout, stderr) => {
+    const out = (stdout || '').trim();
+    if (!out && err) return resolve({ ok: false, message: 'Verify could not run: ' + (err.killed ? 'timed out' : (stderr || err.message)) });
+    try { resolve(JSON.parse(out)); } catch (e) { resolve({ ok: false, message: out || (stderr || '').trim() || 'No output.' }); }
+  });
+}));
+
+// Soak fix F4: launch the DECLARED product run command detached, so the product's own
+// window opens for the owner — no terminal, no npm commands to type. Non-blocking; the
+// product runs independently of the cockpit (it's not a claude worker, so no session lock).
+ipcMain.handle('pcc:runProduct', () => {
+  try {
+    const cfgPath = path.join(projectDir, '.cockpit', 'state', 'product-run.json');
+    if (!fs.existsSync(cfgPath)) return { ok: false, message: 'No product-run config yet — build the product first, then this button will run it.' };
+    const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    const cmd = cfg && cfg.run;
+    if (!cmd) return { ok: false, message: "No 'run' command declared in .cockpit/state/product-run.json." };
+    const child = spawn(cmd, { cwd: projectDir, shell: true, detached: true, stdio: 'ignore' });
+    child.unref();
+    return { ok: true, message: 'Launching the product — its window should open shortly.\nRunning: ' + cmd };
+  } catch (e) { return { ok: false, message: 'Could not launch the product: ' + e.message }; }
+});
+
 // Hard checks - deterministic facts, no LLM, always available: PCC's own
 // health check plus the git working-tree/scope facts.
 function runCmd(cmd, timeout) {
@@ -310,10 +337,13 @@ ipcMain.handle('pcc:trustExtras', () => new Promise((resolve) => {
       const m = text.match(/\b(PASS|FAIL|INSUFFICIENT|BLOCKED|OUT_OF_SCOPE)\b/);
       // Proof taxonomy (DECISION-105): a record declares WHAT KIND of proof it is
       // so a code review never wears the same green as a real execution. Values:
-      // review_only (a reviewer read the code, ran nothing) | ci_execution (tests
-      // ran on a clean machine) | live_boundary (real worker/verifier behavior).
-      // Default is review_only — the conservative, honest assumption when unstated.
-      const tm = text.match(/\bTYPE:\s*(review_only|ci_execution|live_boundary)\b/i);
+      // review_only (a reviewer read the code, ran nothing) | local_execution (the
+      // product's own checks ran on THIS machine — real execution, not a clean-room)
+      // | ci_execution (tests ran on a clean machine) | live_boundary (real
+      // worker/verifier behavior). Default is review_only — the conservative, honest
+      // assumption when unstated. Added local_execution (soak fix F3) so a local-first
+      // project that can't reach CI/Codex can still record real execution proof.
+      const tm = text.match(/\bTYPE:\s*(review_only|local_execution|ci_execution|live_boundary)\b/i);
       verification = { present: true, verdict: m ? m[1] : null, type: tm ? tm[1].toLowerCase() : 'review_only', mtimeEpoch: Math.floor(st.mtimeMs / 1000) };
     }
   } catch (e) { /* leave present:false */ }
