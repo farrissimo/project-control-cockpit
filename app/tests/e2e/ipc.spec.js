@@ -16,8 +16,8 @@ const call = (method, ...args) =>
 test('bridge exposes exactly the expected channels', async () => {
   const keys = await page.evaluate(() => Object.keys(window.pcc).sort());
   expect(keys).toEqual([
-    'addProject', 'backup', 'detections', 'getActiveProject', 'getMemory', 'getModels',
-    'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
+    'addProject', 'backup', 'detections', 'engineStatus', 'getActiveProject', 'getMemory',
+    'getModels', 'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
     'listProjects', 'metrics', 'newChat', 'pickFolder', 'pull', 'recentDecisions', 'runProduct',
     'saveMemory', 'secondOpinion', 'send', 'setActiveProject', 'setPhaseKind', 'syncStatus',
     'trustExtras', 'verify', 'verifyProduct', 'visionPromises',
@@ -31,6 +31,16 @@ test('verifyProduct does not fabricate a pass without a declared config', async 
   const r = await call('verifyProduct');
   expect(r.ok).toBe(false);
   expect(['no_config', 'no_verify_command']).toContain(r.reason);
+});
+
+// Upgrade Existing Project (DECISION-111) slice 1: engineStatus reports current/old/
+// unknown honestly. The home cockpit compared against itself is 'current'.
+test('engineStatus reports the home cockpit as current', async () => {
+  const r = await call('engineStatus');
+  expect(r.ok).toBe(true);
+  expect(r.status).toBe('current');
+  expect(typeof r.homeVersion).toBe('number');
+  expect(r.projectVersion).toBe(r.homeVersion);
 });
 
 test('getState returns project + task objects', async () => {

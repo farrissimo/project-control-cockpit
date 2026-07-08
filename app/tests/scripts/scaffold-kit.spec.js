@@ -40,6 +40,7 @@ test.afterAll(() => {
 const KIT = [
   '.github/workflows/ci.yml',           // clean-machine CI (execution proof)
   '.githooks/pre-commit',               // local test gate
+  'scripts/engine-version.json',        // engine-kit version marker (upgrade detection)
   'docs/BACKUP_POLICY.md',              // mandatory backup policy
   'scripts/lifecycle-advance.ps1',      // phase-close gate (no "done" without a PASS)
   'scripts/doctor.ps1',                 // health check
@@ -120,6 +121,15 @@ test('new project declares product run + verify commands (F3/F4)', () => {
   const p = JSON.parse(fs.readFileSync(path.join(target, '.cockpit', 'state', 'product-run.json'), 'utf8'));
   expect(p.run).toBeTruthy();
   expect(p.verify).toBeTruthy();
+});
+
+// Upgrade detection (DECISION-111): a fresh scaffold carries the CURRENT engine version,
+// so a newly-created project reads as 'current', and only older/unknown projects flag for
+// upgrade.
+test('a fresh scaffold is stamped with the current engine version', () => {
+  const home = JSON.parse(fs.readFileSync(path.join(REPO, 'scripts', 'engine-version.json'), 'utf8'));
+  const proj = JSON.parse(fs.readFileSync(path.join(target, 'scripts', 'engine-version.json'), 'utf8'));
+  expect(proj.engine_version).toBe(home.engine_version);
 });
 
 // Anti-drift guard: EVERY scripts/*.ps1 the app invokes must travel, so no button

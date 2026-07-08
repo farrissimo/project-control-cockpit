@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('pcc', {
   verifyProduct: () => ipcRenderer.invoke('pcc:verifyProduct'),
   runProduct: () => ipcRenderer.invoke('pcc:runProduct'),
   setPhaseKind: (kind) => ipcRenderer.invoke('pcc:setPhaseKind', kind),
+  engineStatus: (dir) => ipcRenderer.invoke('pcc:engineStatus', dir),
   hardChecks: () => ipcRenderer.invoke('pcc:hardChecks'),
   detections: () => ipcRenderer.invoke('pcc:detections'),
   trustExtras: () => ipcRenderer.invoke('pcc:trustExtras'),

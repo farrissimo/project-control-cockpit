@@ -1,0 +1,4 @@
+{
+  "engine_version": 1,
+  "note": "PCC engine-kit version. The engine kit = the guardrail machinery that travels into every scaffolded project (scripts/, schemas/, .github/, .githooks/, the app engine, guardrail docs, detectors, proof taxonomy, scaffolded defaults) — NOT the owner's product, decisions, memory, plans, or local state. Bump this integer whenever an engine change should be adopted by existing projects. The 'Upgrade Existing Project' flow compares a project's copy of this file to the home cockpit's to tell if the project is current, old, or unknown (pre-versioning). Version 1 = the post-soak-hardening engine (doctor/drift/bloat/Overview/worker-recovery/local-execution-proof/execution-proof-gate fixes)."
+}

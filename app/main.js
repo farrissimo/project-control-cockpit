@@ -227,6 +227,32 @@ ipcMain.handle('pcc:setPhaseKind', (_e, kind) => {
   } catch (e) { return { ok: false, message: 'Could not set phase kind: ' + e.message }; }
 });
 
+// Upgrade Existing Project (DECISION-111), slice 1 — detection. New projects get the
+// fixed engine automatically; existing ones carry the old engine (split-brain that
+// increases babysitting). This reports whether a project's engine kit is current, old,
+// or unknown vs the home cockpit's, by comparing scripts/engine-version.json. Read-only;
+// it changes nothing. (Apply/dry-run/rollback are later slices.)
+function readEngineVersion(base) {
+  try {
+    const p = path.join(base, 'scripts', 'engine-version.json');
+    if (!fs.existsSync(p)) return null;
+    const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+    return typeof j.engine_version === 'number' ? j.engine_version : null;
+  } catch (e) { return null; }
+}
+ipcMain.handle('pcc:engineStatus', (_e, dir) => {
+  const target = dir || projectDir;
+  const home = readEngineVersion(HOME_DIR);
+  const proj = readEngineVersion(target);
+  let status, detail;
+  if (home == null) { status = 'unknown'; detail = 'The home cockpit has no engine-version marker to compare against.'; }
+  else if (proj == null) { status = 'unknown'; detail = 'This project predates engine versioning (no scripts/engine-version.json). Treat it as an upgrade candidate.'; }
+  else if (proj === home) { status = 'current'; detail = 'This project is on the current engine (v' + home + ').'; }
+  else if (proj < home) { status = 'old'; detail = 'This project is on engine v' + proj + '; the current engine is v' + home + '. An upgrade is available.'; }
+  else { status = 'ahead'; detail = 'This project is on engine v' + proj + ', newer than the home cockpit (v' + home + ').'; }
+  return { ok: true, status: status, homeVersion: home, projectVersion: proj, project: target, detail: detail };
+});
+
 // Hard checks - deterministic facts, no LLM, always available: PCC's own
 // health check plus the git working-tree/scope facts.
 function runCmd(cmd, timeout) {
