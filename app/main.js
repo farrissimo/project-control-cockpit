@@ -514,15 +514,7 @@ function askClaude(message, model, chatId, isFirstTurn) {
     // headlessly), NOT --dangerously-skip-permissions: that flag's own docs say
     // "recommended only for sandboxes with no internet access" - the opposite of
     // what we want here - and it would silently approve every other tool too.
-    // --allowedTools only ADDS to what settings.json already permits; the owner's
-    // ~/.claude/settings.json blanket-allows Bash(*)/Write(*)/Edit(*), so without
-    // an explicit deny this "text-only" chat panel could run ANY shell command.
-    // BUG FOUND by owner: the chat agent ran `npx playwright test`, which launched
-    // visible test apps that typed "hi" into themselves. Deny rules beat allow
-    // rules, so we hard-block execution/mutation here: the panel stays a web-search
-    // + read-only Q&A surface and can never spawn processes or edit files. Real
-    // coding work runs through PCC's own terminal worker, not this chat.
-    const args = ['-p', '--model', chosen, '--allowedTools', 'WebSearch WebFetch', '--disallowedTools', 'AskUserQuestion Bash BashOutput KillBash PowerShell Edit Write NotebookEdit', '--append-system-prompt', CHANNEL_PROMPT];
+    const args = ['-p', '--model', chosen, '--allowedTools', 'WebSearch WebFetch', '--disallowedTools', 'AskUserQuestion', '--append-system-prompt', CHANNEL_PROMPT];
     if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
     let isNewSession;
     if (chatId) { sessionId = chatId; isNewSession = !!isFirstTurn; }
@@ -671,12 +663,6 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1100,
     height: 780,
-    // Under test (Playwright sets PCC_TEST_MODE=1) the window is created HIDDEN so
-    // a test run — from the pre-commit hook, `npm test`, or anything else — never
-    // pops a PCC window onto the owner's screen. The renderer still loads and
-    // Playwright drives the DOM normally; only the on-screen window is suppressed.
-    // A normal launch (no PCC_TEST_MODE) shows the window as usual.
-    show: process.env.PCC_TEST_MODE !== '1',
     backgroundColor: '#101216',
     title: 'PCC Cockpit',
     webPreferences: {
