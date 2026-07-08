@@ -796,6 +796,29 @@ async function advanceStage(toId) {
     else { status.className = 'lc-advance-status good'; status.textContent = r.message || 'Advanced.'; }
     loadLifecycleView(); loadLifecycle(); return;
   }
+  // Owner policy (DECISION): an executable phase needs EXECUTION proof, not a review-only
+  // pass. Offer the honest routes: run the product's checks, or — if this is genuinely a
+  // review/docs/planning phase — declare it and retry.
+  if (r.reason === 'needs_execution_proof') {
+    status.className = 'lc-advance-status warn';
+    status.textContent = (r.message || 'This phase changes behavior — it needs execution proof, not just a review.') + ' ';
+    const goVerify = document.createElement('button');
+    goVerify.className = 'lc-advance';
+    goVerify.textContent = 'Open Verify → run the product';
+    goVerify.addEventListener('click', () => { const n = document.querySelector('.nav[data-view="verify"]'); if (n) n.click(); });
+    const markReview = document.createElement('button');
+    markReview.className = 'lc-advance';
+    markReview.style.marginLeft = '8px';
+    markReview.textContent = 'This is a review/docs phase → mark & retry';
+    markReview.addEventListener('click', async () => {
+      const res = await window.pcc.setPhaseKind('review');
+      if (res && res.ok) advanceStage(toId);
+      else { status.textContent = (res && res.message) || 'Could not mark the phase.'; }
+    });
+    status.appendChild(goVerify);
+    status.appendChild(markReview);
+    return;
+  }
   if (r.reason === 'needs_verification') {
     status.className = 'lc-advance-status warn';
     status.textContent = (r.message || 'A fresh independent PASS is required first.') + ' ';

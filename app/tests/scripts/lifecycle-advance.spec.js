@@ -40,6 +40,12 @@ function recordVerdict(dir, verdict, type) {
 function recordRaw(dir, text) {
   fs.writeFileSync(path.join(dir, 'app', 'last-verification.txt'), text);
 }
+function setPhaseKind(dir, kind) {
+  const p = path.join(dir, '.cockpit', 'state', 'lifecycle-state.json');
+  const st = JSON.parse(fs.readFileSync(p, 'utf8'));
+  st.phase_kind = kind;
+  fs.writeFileSync(p, JSON.stringify(st));
+}
 function currentStage(dir) {
   return JSON.parse(fs.readFileSync(path.join(dir, '.cockpit', 'state', 'lifecycle-state.json'), 'utf8')).current_stage;
 }
@@ -64,13 +70,41 @@ test('gate BLOCKS phase_close on a FAIL verdict', () => {
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('gate ALLOWS phase_close on a fresh PASS, and moves the pin', () => {
+// Owner policy: an EXECUTABLE phase (the default) can't be closed on a review-only pass —
+// a reviewer reading the code is not proof it runs. It needs execution proof.
+test('gate BLOCKS an executable phase closing on a review-only PASS (policy)', () => {
   const dir = makeProject();
   try {
-    recordVerdict(dir, 'PASS'); // written after the commit => newer than HEAD => fresh
+    recordVerdict(dir, 'PASS', 'review_only'); // fresh, but nothing was run
+    const r = advance(dir, 'phase_close');
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('needs_execution_proof');
+    expect(currentStage(dir)).toBe('verify'); // pin did NOT move
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// ...but a phase EXPLICITLY declared review/docs/planning may close on review-only
+// evidence (that's the "no pointless friction on docs work" half of the policy).
+test('gate ALLOWS a declared review/docs phase to close on a review-only PASS (policy)', () => {
+  const dir = makeProject();
+  try {
+    setPhaseKind(dir, 'review');
+    recordVerdict(dir, 'PASS', 'review_only');
     const r = advance(dir, 'phase_close');
     expect(r.ok).toBe(true);
     expect(currentStage(dir)).toBe('phase_close');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// Advancing into a new work phase resets phase_kind to the strict default, so a stale
+// "review" declaration can't let the next batch of real code close on a review.
+test('starting a new work phase resets phase_kind to executable (strict)', () => {
+  const dir = makeProject();
+  try {
+    setPhaseKind(dir, 'review');
+    advance(dir, 'work'); // verify -> work (ungated) begins a fresh executable phase
+    const st = JSON.parse(fs.readFileSync(path.join(dir, '.cockpit', 'state', 'lifecycle-state.json'), 'utf8'));
+    expect(st.phase_kind).toBe('executable');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 

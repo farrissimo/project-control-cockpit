@@ -208,6 +208,25 @@ ipcMain.handle('pcc:runProduct', () => {
   } catch (e) { return { ok: false, message: 'Could not launch the product: ' + e.message }; }
 });
 
+// Owner policy (DECISION): let the owner declare the current phase's KIND. An executable
+// phase (default) needs execution proof to close; an explicitly review/docs/planning phase
+// may close on review-only evidence. Writes phase_kind into lifecycle-state.json; the
+// gate (scripts/lifecycle-advance.ps1) reads it. Starting a new work phase resets it to
+// 'executable' so a stale "review" can never let real code close on a review.
+ipcMain.handle('pcc:setPhaseKind', (_e, kind) => {
+  try {
+    const allowed = ['executable', 'review', 'docs', 'planning'];
+    if (!allowed.includes(kind)) return { ok: false, message: 'Unknown phase kind: ' + kind };
+    const p = path.join(projectDir, '.cockpit', 'state', 'lifecycle-state.json');
+    if (!fs.existsSync(p)) return { ok: false, message: 'No lifecycle state to update.' };
+    const st = JSON.parse(fs.readFileSync(p, 'utf8'));
+    st.phase_kind = kind;
+    st.updated_at = new Date().toISOString();
+    fs.writeFileSync(p, JSON.stringify(st, null, 2));
+    return { ok: true, phase_kind: kind };
+  } catch (e) { return { ok: false, message: 'Could not set phase kind: ' + e.message }; }
+});
+
 // Hard checks - deterministic facts, no LLM, always available: PCC's own
 // health check plus the git working-tree/scope facts.
 function runCmd(cmd, timeout) {

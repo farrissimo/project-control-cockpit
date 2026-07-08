@@ -88,6 +88,24 @@ if ($target.entry_gate -eq 'fresh_verification_pass') {
       })
     return
   }
+
+  # Owner policy (DECISION): "Review-only evidence can complete review work. Executable
+  # phases require execution proof before they can be marked done." A review_only PASS (a
+  # reviewer read the code, ran nothing) is NOT enough to close a phase that changed
+  # executable behavior — that needs a real run (local_execution | ci_execution |
+  # live_boundary). Only a phase EXPLICITLY declared review/docs/planning may close on a
+  # review_only pass. phase_kind is declared in lifecycle-state.json; absent = executable
+  # (the safe, strict default).
+  $phaseKind = if ($state.PSObject.Properties.Name -contains 'phase_kind' -and $state.phase_kind) { ([string]$state.phase_kind).ToLower() } else { 'executable' }
+  $executedTypes = @('local_execution', 'ci_execution', 'live_boundary')
+  if ($phaseKind -eq 'executable' -and ($executedTypes -notcontains $vtype)) {
+    Emit ([ordered]@{
+        ok = $false; reason = 'needs_execution_proof'; from = $from; to = $To
+        verdict = $verdict; type = $vtype; fresh = $fresh; phase_kind = $phaseKind
+        message = "Cannot advance to '$($target.label)': this phase changes executable behavior, and the only fresh proof is '$vtype' (a review, nothing was run). Review-only evidence can complete review work; executable phases require execution proof — a local test run, CI, or app-run verification. Use 'Verify product behavior' (or CI) for a fresh execution PASS. If this is genuinely a review/docs/planning phase, mark it as such first."
+      })
+    return
+  }
 }
 
 # --- soft advisory: vision unconfirmed when moving into planning (soak fix F2) ---
@@ -111,6 +129,10 @@ if ($To -eq 'plan') {
 
 # --- perform the move ---
 $state.current_stage = $To
+# Starting a new work phase resets phase_kind to the safe/strict default (executable),
+# so a prior "review/docs" declaration can't silently carry over and let real code close
+# on a review-only pass. The owner re-declares a review phase deliberately each cycle.
+if ($To -eq 'work') { $state | Add-Member -NotePropertyName phase_kind -NotePropertyValue 'executable' -Force }
 $state | Add-Member -NotePropertyName note -NotePropertyValue "Advanced $from -> $To via the app." -Force
 $state | Add-Member -NotePropertyName updated_at -NotePropertyValue ((Get-Date).ToString('yyyy-MM-ddTHH:mm:sszzz')) -Force
 ($state | ConvertTo-Json -Depth 6) | Out-File -FilePath $statePath -Encoding utf8

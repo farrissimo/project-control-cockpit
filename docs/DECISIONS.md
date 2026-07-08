@@ -2716,3 +2716,50 @@ Significance: the soak's real value here was proving PCC scaffolds a real projec
 
 Supersedes: None
 Related: DECISION-103 (auto-register), DECISION-108 (soak), app/main.js, app/tests/e2e/autoregister.spec.js
+
+---
+
+## DECISION-110: Executable Phases Require Execution Proof — Review-Only Cannot Mark Code "Done"
+
+Date: 2026-07-08
+Status: Active
+
+Owner Decision:
+
+"Review-only evidence can complete review work. Executable phases require execution proof before they can be marked done."
+
+A review-only pass (a reviewer read the code and found no static blockers) can close a phase that is EXPLICITLY review / documentation / planning. It cannot close a phase that changed executable behavior — that requires at least one real execution proof: local_execution (a local test/app run), ci_execution (clean-machine CI), or live_boundary. Review-only may read as "review passed / ready for test / no static blockers", never as "phase done / working / proven / safe to ship".
+
+Reason:
+
+A review can prove the code looks sound and in-scope, but not that the app launches, the UI behaves, the workflow works end-to-end, or that "done" can be trusted without babysitting later. Requiring execution proof on code prevents fake-green; exempting declared docs/planning work prevents pointless friction.
+
+Implications:
+
+- The phase-close gate (scripts/lifecycle-advance.ps1) now enforces this: an executable phase (the default) refuses to close on a review_only PASS with reason `needs_execution_proof`; only a phase whose declared `phase_kind` is review/docs/planning may close on review-only evidence.
+- `phase_kind` lives in .cockpit/state/lifecycle-state.json; ABSENT = executable (safe, strict default). Advancing into a new `work` phase resets it to executable so a stale "review" can't carry over onto real code.
+- The owner declares a review/docs phase in-cockpit: when the gate blocks, the Lifecycle view offers "Open Verify → run the product" and "This is a review/docs phase → mark & retry" (IPC pcc:setPhaseKind).
+- Guarded by app/tests/scripts/lifecycle-advance.spec.js (executable+review_only BLOCKED; declared review phase ALLOWED; work resets phase_kind).
+
+Supersedes: Tightens DECISION-012 ("no done without a fresh independent PASS") — a fresh PASS is still required, and for executable phases it must additionally be an EXECUTION proof, not review-only.
+Related: DECISION-105 (proof taxonomy), scripts/lifecycle-advance.ps1, app/renderer/verification-parse.js
+
+---
+
+## DECISION-111: "Upgrade Existing Project" Is the Next Build — Engine Kit Only, Never the Owner's Project
+
+Date: 2026-07-08
+Status: Active (build pending)
+
+Owner Decision:
+
+New projects get the fixed engine automatically, but existing projects still carry the old engine — a split-brain that increases babysitting (the owner must track which project has which engine). The next high-value build is a NARROW "Upgrade Existing Project" flow: detect engine/kit version; show current/old/unknown; restore-point backup FIRST; dry-run the diff; apply ONLY known engine-kit files; run doctor/tests/detectors after; mark upgraded only if checks pass; show a rollback path on failure. It upgrades the PCC engine kit (scripts, schemas, app engine files, guardrail docs, detectors, proof taxonomy, scaffolded defaults) — NOT the owner's decisions, memory, plans, local evidence, or git history, and never without human approval for risky migrations. Do NOT build a giant plugin/update system yet.
+
+Reason:
+
+The soak proved PCC creates safer NEW projects but cannot rescue OLD ones. That gap violates the #1 north star (reduce babysitting), so it is next.
+
+Implications: A new upgrade flow + engine-kit versioning; guardrailed to touch only engine files with a backup + post-upgrade verification + rollback.
+
+Supersedes: None
+Related: DECISION-106 (born bulletproof scaffold), scripts/bootstrap-project.ps1, docs/TAX-SOAK-FINDINGS.md
