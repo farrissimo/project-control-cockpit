@@ -250,6 +250,36 @@ remote a local-first project doesn't have — F8). And two of PCC's trust surfac
 whole build (F9). The build engine earned trust; several of PCC's governance/trust surfaces
 did not.
 
+## Are these PCC-core defects inherited by every spawned project?
+
+**Yes — almost all of them.** The scaffolder (`scripts/bootstrap-project.ps1`, DECISION-106
+"born bulletproof-by-default") copies the whole engine — `scripts/`, `app/`, `schemas/`,
+`.github/`, `.githooks/` — **wholesale** into each new project. So every defect in that engine
+is copied in faithfully too: **the bulletproof clone also clones the cracks.** These are not
+tax-project quirks; they are latent in PCC and will reproduce identically in every project PCC
+ever spawns.
+
+| # | Lives in (PCC-core) | Inherited by every child? |
+|---|---|---|
+| F1 | `app/renderer/overview-logic.js` (Overview meaning layer) | **Yes** |
+| F2 | bootstrap places a placeholder vision-promise; Define→Plan has no confirm gate | **Yes** |
+| F4 | `app/main.js` (worker spawn `shell:true`, no kill-on-quit) | **Yes** |
+| F5 | the app has no "run the product" affordance | **Yes** |
+| F6 | verify design = repo hygiene + code review only | **Yes** |
+| F7 | `scripts/doctor.ps1` demands files the scaffolder omits | **Yes (worst case)** |
+| F8 | `scripts/verify-work.ps1` + lifecycle phase-close gate | **Yes** (bites local-first hardest) |
+| F9 | `scripts/detect-drift.ps1` / `detect-stale-docs.ps1` baseline `main` | **Yes** (every child is on `master`) |
+| F10 | bloat detector + the scaffolder copying `app/` into the child | **Yes** (self-inflicted by the copy) |
+| F3 | — (a consequence of the prior off-flow contamination) | No — test-setup only |
+
+**The sharp irony:** PCC *itself* (the parent) does **not** trip F7 or F9 — the parent repo
+happens to have `project-state.json`/`task-state.json` and a real `main` baseline, so its own
+doctor and drift pass. That's exactly why these bugs went unnoticed: **PCC cannot catch them by
+dogfooding itself; they only appear in the children it spawns.** The "born bulletproof"
+mechanism is what both hides the defects (parent looks fine) and guarantees they propagate
+(every child gets the same broken engine). Fixing them once in PCC-core fixes them everywhere —
+but they must be tested against a *freshly-scaffolded* project, not against PCC itself.
+
 ## Findings summary (severity)
 | # | Severity | One line |
 |---|---|---|
