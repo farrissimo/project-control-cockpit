@@ -12,6 +12,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { spawn, spawnSync, exec, execFile } = require('child_process');
+const { parseVerification } = require('./renderer/verification-parse');
 
 // This app is the single "home" cockpit. It opens PROJECTS (self-contained
 // folders each with their own .cockpit + engine scripts + CLAUDE.md, exactly
@@ -334,17 +335,11 @@ ipcMain.handle('pcc:trustExtras', () => new Promise((resolve) => {
     if (fs.existsSync(vPath)) {
       const st = fs.statSync(vPath);
       const text = fs.readFileSync(vPath, 'utf8');
-      const m = text.match(/\b(PASS|FAIL|INSUFFICIENT|BLOCKED|OUT_OF_SCOPE)\b/);
-      // Proof taxonomy (DECISION-105): a record declares WHAT KIND of proof it is
-      // so a code review never wears the same green as a real execution. Values:
-      // review_only (a reviewer read the code, ran nothing) | local_execution (the
-      // product's own checks ran on THIS machine — real execution, not a clean-room)
-      // | ci_execution (tests ran on a clean machine) | live_boundary (real
-      // worker/verifier behavior). Default is review_only — the conservative, honest
-      // assumption when unstated. Added local_execution (soak fix F3) so a local-first
-      // project that can't reach CI/Codex can still record real execution proof.
-      const tm = text.match(/\bTYPE:\s*(review_only|local_execution|ci_execution|live_boundary)\b/i);
-      verification = { present: true, verdict: m ? m[1] : null, type: tm ? tm[1].toLowerCase() : 'review_only', mtimeEpoch: Math.floor(st.mtimeMs / 1000) };
+      // Structured parse via the ONE shared parser (mirrors the phase-close gate) so a
+      // stray "PASS" in prose can't read as a verdict on the trust strip / Overview.
+      // TYPE default review_only is the conservative honest assumption when unstated.
+      const parsed = parseVerification(text);
+      verification = { present: true, verdict: parsed.verdict, type: parsed.type || 'review_only', mtimeEpoch: Math.floor(st.mtimeMs / 1000) };
     }
   } catch (e) { /* leave present:false */ }
   exec('git log -1 --format=%ct', { cwd: projectDir, timeout: 10000, windowsHide: true }, (err, stdout) => {

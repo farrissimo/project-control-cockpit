@@ -815,11 +815,11 @@ async function verifyThenAdvance(toId) {
   status.className = 'lc-advance-status'; status.textContent = 'Running independent verification (records the verdict; can take a minute)…';
   let v;
   try { v = await window.pcc.verify(true); } catch (e) { status.className = 'lc-advance-status bad'; status.textContent = 'Verification failed: ' + e.message; return; }
-  const m = ((v && v.text) || '').match(/\b(PASS|FAIL|INSUFFICIENT|BLOCKED|OUT_OF_SCOPE)\b/);
+  const parsedVerdict = PCCVerification.parseVerification((v && v.text) || '').verdict;
   loadTrust();
-  if (!m || m[1] !== 'PASS') {
+  if (parsedVerdict !== 'PASS') {
     status.className = 'lc-advance-status bad';
-    status.textContent = 'Verifier verdict: ' + (m ? m[1] : 'unclear') + '. Not advancing — see the Verify tab.';
+    status.textContent = 'Verifier verdict: ' + (parsedVerdict || 'unclear') + '. Not advancing — see the Verify tab.';
     return;
   }
   status.textContent = 'Independent PASS recorded — advancing…';
@@ -872,16 +872,22 @@ async function loadTrust() {
   // Verified: honest freshness against HEAD AND honest about the KIND of proof
   // (DECISION-105 proof taxonomy). A code review that ran nothing must never wear
   // the same green as a real execution — otherwise PCC recreates fake-green with
-  // nicer wording. Only an executed proof (ci_execution / live_boundary) earns
-  // green; a fresh review_only PASS is amber "Reviewed, not run".
+  // nicer wording. Executed proof (ci_execution / live_boundary / local_execution)
+  // earns green; a fresh review_only PASS is amber "Reviewed, not run". Uses the ONE
+  // shared isExecutedType so this can never diverge from the Overview again.
   const v = x && x.verification;
-  const executed = v && (v.type === 'ci_execution' || v.type === 'live_boundary');
+  const executed = v && PCCVerification.isExecutedType(v.type);
   if (!x) {
     setChip('trust-verified', 'unknown', 'Verified', 'Could not read verification status.');
   } else if (!v || !v.present) {
     setChip('trust-verified', 'warn', 'Not verified yet', 'No independent verification recorded for the current work yet.');
   } else if (v.verdict === 'PASS' && v.mtimeEpoch >= (x.headCommitEpoch || 0) && executed) {
-    setChip('trust-verified', 'good', 'Verified (executed)', 'Independent PASS that actually ran the code (' + v.type + '), newer than the latest commit.');
+    // local_execution is real execution but on THIS machine — label it honestly, never
+    // as a clean-room CI run.
+    const local = v.type === 'local_execution';
+    setChip('trust-verified', 'good', local ? 'Verified (ran locally)' : 'Verified (executed)',
+      local ? 'The product’s own checks ran and passed on THIS machine (local execution) — real execution, but not a clean-room CI run.'
+        : 'Independent PASS that actually ran the code (' + v.type + '), newer than the latest commit.');
   } else if (v.verdict === 'PASS' && v.mtimeEpoch >= (x.headCommitEpoch || 0)) {
     setChip('trust-verified', 'warn', 'Reviewed, not run', 'A reviewer read the code and found no problems, but nothing was executed — that is not proof it runs. Execution proof comes from CI/tests.');
   } else if (v.verdict === 'PASS') {
