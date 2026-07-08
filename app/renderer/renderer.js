@@ -161,10 +161,16 @@ async function sendMessage(text, displayText) {
   busy = true; sendBtn.disabled = true;
   const thinking = addBubble('assistant thinking', 'Claude is working…', false);
   try {
-    const res = await window.pcc.send(msg, getSelectedModel(), chat.id, !chat.started);
+    // The claude session id is chat.sessionId when set (after a recovery re-mint),
+    // else the chat id — so a stale-locked session can be replaced without losing
+    // the chat's visible history (soak fix F4).
+    const res = await window.pcc.send(msg, getSelectedModel(), chat.sessionId || chat.id, !chat.started);
     thinking.remove();
     if (res.ok) { chat.started = true; save(); }
     addBubble(res.ok ? 'assistant' : 'assistant error', res.text || '(no output)', true);
+    // Soak fix F4: a stale worker is holding this chat's session — give the owner a
+    // one-click way out instead of a dead-end red error.
+    if (!res.ok && res.sessionInUse) addRecoveryAction();
   } catch (err) {
     thinking.remove();
     addBubble('assistant error', 'Something went wrong: ' + err.message, true);
@@ -207,6 +213,36 @@ async function initModels() {
 // start (no auto handoff dump) - with real chat history this is a frequent
 // action, like Claude Code's new chat. To carry context into a fresh chat, use
 // "Generate handoff" in the Project tab.
+// Soak fix F4: recovery affordances shown under a "session locked" error. Killing the
+// worker doesn't free claude's session lock (a force-kill can't clean it up), so the
+// real fix is to give THIS chat a fresh worker session id — keeping its visible history
+// — or start a brand-new chat. Either escapes the stale lock.
+function recoverThisChat() {
+  const chat = activeChat();
+  if (!chat) return;
+  chat.sessionId = uuid(); // fresh claude session, decoupled from the chat's identity
+  chat.started = false;    // next send opens the new session cleanly
+  save();
+  addBubble('assistant', 'Fresh worker session started for this chat — your history is kept. Send your message again.', true);
+}
+function addRecoveryAction() {
+  const div = document.createElement('div');
+  div.className = 'bubble assistant recovery';
+  const b1 = document.createElement('button');
+  b1.className = 'corr';
+  b1.textContent = 'Recover this chat';
+  b1.title = 'Give this chat a fresh worker session (keeps your history)';
+  b1.addEventListener('click', () => recoverThisChat());
+  const b2 = document.createElement('button');
+  b2.className = 'corr';
+  b2.textContent = 'Start a fresh chat';
+  b2.addEventListener('click', () => startNewChat());
+  div.appendChild(b1);
+  div.appendChild(b2);
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
 function startNewChat() {
   if (busy) return;
   const c = newChatObj();

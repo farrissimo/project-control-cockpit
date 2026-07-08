@@ -11,7 +11,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const { spawn, exec, execFile } = require('child_process');
+const { spawn, spawnSync, exec, execFile } = require('child_process');
 
 // This app is the single "home" cockpit. It opens PROJECTS (self-contained
 // folders each with their own .cockpit + engine scripts + CLAUDE.md, exactly
@@ -91,6 +91,29 @@ for (const k of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN']) delete process.en
 // with the same interloper test (resumed the pinned session correctly even
 // after an unrelated call ran in between).
 let sessionId = null;
+
+// Soak fix F4: track every spawned worker so we can kill it when the app quits.
+// Workers are spawned with shell:true, so the real `claude` process is a grandchild
+// that OUTLIVES the app if not killed on a tree — orphaning it, which holds the
+// chat's session lock and bricks the chat ("session already in use") on next launch.
+const activeWorkers = new Set();
+function killWorker(child) {
+  if (!child || child.killed || !child.pid) return;
+  try {
+    if (process.platform === 'win32') {
+      // SYNCHRONOUS so it actually completes before the app process exits (an async
+      // spawn would be abandoned on quit, leaving the orphan alive). /T kills the whole
+      // tree (the shell AND the claude grandchild spawned via shell:true).
+      spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true, timeout: 4000 });
+    } else {
+      try { process.kill(-child.pid, 'SIGTERM'); } catch (e) { child.kill('SIGTERM'); }
+    }
+  } catch (e) { /* best effort — we're shutting down */ }
+}
+function killAllWorkers() {
+  for (const c of Array.from(activeWorkers)) killWorker(c);
+  activeWorkers.clear();
+}
 
 function readJson(...rel) {
   try {
@@ -435,17 +458,29 @@ function askClaude(message, model, chatId, isFirstTurn) {
     } catch (e) {
       return resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message });
     }
-    child.on('error', (e) => resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message }));
+    activeWorkers.add(child); // tracked so app-quit can kill it (F4)
+    child.on('error', (e) => { activeWorkers.delete(child); resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message }); });
     child.stdout.on('data', (d) => { out += d.toString(); });
     child.stderr.on('data', (d) => { err += d.toString(); });
     child.on('close', (code) => {
+      activeWorkers.delete(child);
       if (code === 0) resolve({ ok: true, text: out.trim() });
       else {
         // A failed FIRST turn means no session actually exists at that id. When
         // the renderer owns the id it tracks that (keeps the chat "not started"
         // so it retries with --session-id); for the local fallback, reset here.
         if (isNewSession && !chatId) sessionId = null;
-        resolve({ ok: false, text: (err || out || ('Claude exited with code ' + code)).trim() });
+        const raw = (err || out || ('Claude exited with code ' + code)).trim();
+        // Soak fix F4: a stale session lock (a worker orphaned by an earlier crash or
+        // mid-turn quit) surfaces as the raw "Session ID ... is already in use". Turn
+        // it into a plain-language message and flag it so the renderer can offer a
+        // one-click recovery instead of leaving a non-coder owner stuck on a red error.
+        if (/session id .* is already in use/i.test(raw)) {
+          resolve({ ok: false, sessionInUse: true,
+            text: 'This chat’s worker session is locked — a worker was interrupted (a crash, or the app closed mid-reply) and left the session in use. Use “Recover this chat” below to give it a fresh worker session while keeping your history, or start a new chat.' });
+        } else {
+          resolve({ ok: false, text: raw });
+        }
       }
     });
     child.stdin.write(message);
@@ -582,6 +617,12 @@ app.whenReady().then(() => {
   });
 });
 
+// Soak fix F4: kill any in-flight workers before the app goes away, so no orphaned
+// `claude` process survives to hold a chat's session lock (which bricked the chat with
+// "session already in use" on the next launch). before-quit covers the quit path;
+// window-all-closed covers closing the last window.
+app.on('before-quit', () => { killAllWorkers(); });
 app.on('window-all-closed', () => {
+  killAllWorkers();
   if (process.platform !== 'darwin') app.quit();
 });
