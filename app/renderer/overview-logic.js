@@ -17,6 +17,15 @@
   else { root.PCCOverview = api; }
 })(typeof self !== 'undefined' ? self : this, function () {
 
+  // Share the ONE executed-type definition with the trust strip (soak: an independent
+  // review flagged that this list was hardcoded here and could drift from the shared
+  // helper). Node: require the sibling module; browser: use the global that
+  // verification-parse.js (loaded first) installed. If it's unavailable the call throws
+  // — which fails safe (the Overview errors) rather than silently guessing executed.
+  const VP = (typeof module !== 'undefined' && module.exports)
+    ? require('./verification-parse')
+    : (typeof self !== 'undefined' ? self.PCCVerification : undefined);
+
   function computeOverview(d) {
     d = d || {};
     const lc = d.lc, det = d.det, x = d.x, sync = d.sync, state = d.state, vp = d.vp;
@@ -31,8 +40,9 @@
       proof.type = v.type || 'review_only';
       proof.fresh = typeof v.mtimeEpoch === 'number' && v.mtimeEpoch >= headEpoch;
       // local_execution counts as real execution proof (the product's checks actually
-      // ran), just on this machine rather than a clean CI box (soak fix F3).
-      const executed = v.type === 'ci_execution' || v.type === 'live_boundary' || v.type === 'local_execution';
+      // ran), just on this machine rather than a clean CI box (soak fix F3). Uses the ONE
+      // shared definition so the Overview and the trust strip can never diverge.
+      const executed = VP.isExecutedType(v.type);
       if (v.verdict === 'PASS') proof.kind = executed ? 'executed' : 'review_only';
       else if (v.verdict) proof.kind = 'failing';
     }
