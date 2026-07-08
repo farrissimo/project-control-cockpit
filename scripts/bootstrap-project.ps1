@@ -96,7 +96,9 @@ Copy-File 'docs/BACKUP_POLICY.md'   # the mandatory backup policy CLAUDE.md + th
 
 # --- 4. generic declared state (lifecycle model + thresholds copied; state fresh) ---
 Copy-File '.cockpit/state/lifecycle-model.json'
-Copy-File '.cockpit/state/bloat-thresholds.json'
+# NOTE: bloat-thresholds.json is NOT copied from PCC (soak fix F10). PCC's globs point
+# at PCC's own engine (app/, scripts/), so a copied config made the child flag the
+# copied engine as the owner's bloat. A product-scoped config is generated below.
 Ensure-Dir (Join-Path $Target '.cockpit/result/detections')
 Ensure-Dir (Join-Path $Target '.cockpit/logs')
 
@@ -139,6 +141,27 @@ Set-Content -LiteralPath (Join-Path $Target '.cockpit/state/doc-freshness-map.js
     { "id": "app-in-brief", "when_changed": ["app/*.js"], "expect_updated": ["PROJECT.md"], "satisfied_by": "any", "why": "A user-facing app change should be reflected in the brief." }
   ],
   "not_yet_automated": [],
+  "updated_at": "$stamp"
+}
+"@)
+
+# Product-scoped bloat thresholds (soak fix F10). source_globs target THIS project's
+# own product code; exclude_globs skip the copied PCC engine and vendored deps, so the
+# owner never gets a bloat warning about app/renderer.js (PCC's tool, not their product).
+Set-Content -LiteralPath (Join-Path $Target '.cockpit/state/bloat-thresholds.json') -Encoding utf8 -Value (@"
+{
+  "thresholds_id": "bloat-v1",
+  "title": "Project-bloat thresholds (your product only, adjustable)",
+  "plain_language": {
+    "what_this_is": "Objective size/count signs of bloat in YOUR product's code. The copied PCC cockpit engine (app/, scripts/, schemas/) is deliberately excluded -- that's the tool that runs this project, not the product you're building.",
+    "adjustable": "Add source_globs as your product's languages/areas appear; raise the limits deliberately if growth is legitimate."
+  },
+  "compare_baseline": "pcc-baseline",
+  "max_source_file_lines": 600,
+  "max_dependencies": 30,
+  "source_globs": ["product/**.js", "product/**.mjs", "product/**.ts", "product/**.jsx", "product/**.tsx", "product/**.py", "product/**.rb", "product/**.go", "product/**.cs", "product/**.java", "product/**.html", "product/**.css"],
+  "exclude_globs": ["**node_modules**", "**package-lock.json", "app/**", "scripts/**", "schemas/**", ".github/**", ".githooks/**"],
+  "dependency_manifests": ["product/package.json"],
   "updated_at": "$stamp"
 }
 "@)

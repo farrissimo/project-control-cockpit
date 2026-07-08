@@ -82,6 +82,38 @@ test('drift degrades to UNKNOWN when the baseline ref is missing (F9)', () => {
   }
 });
 
+// Soak fix F10: exclude_globs must keep the copied PCC engine out of a project's
+// bloat scan. A large file matching an exclude glob is skipped; a large product file
+// is still flagged.
+test('bloat excludes engine files via exclude_globs, still flags product (F10)', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-bloat-'));
+  try {
+    fs.mkdirSync(path.join(tmp, 'scripts'));
+    fs.copyFileSync(path.join(REPO, 'scripts', 'detect-bloat.ps1'), path.join(tmp, 'scripts', 'detect-bloat.ps1'));
+    fs.mkdirSync(path.join(tmp, '.cockpit', 'state'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, '.cockpit', 'state', 'bloat-thresholds.json'), JSON.stringify({
+      max_source_file_lines: 100, max_dependencies: 20,
+      source_globs: ['app/**.js', 'product/**.js'], exclude_globs: ['app/**'],
+    }));
+    const big = Array.from({ length: 200 }, (_, i) => '// ' + i).join('\n');
+    fs.mkdirSync(path.join(tmp, 'app', 'renderer'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, 'app', 'renderer', 'engine.js'), big); // engine — must be excluded
+    fs.mkdirSync(path.join(tmp, 'product'));
+    fs.writeFileSync(path.join(tmp, 'product', 'big.js'), big); // product — must be flagged
+    spawnSync('git', ['init'], { cwd: tmp, encoding: 'utf8' });
+    spawnSync('git', ['add', '-A'], { cwd: tmp, encoding: 'utf8' });
+    spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', 'x'], { cwd: tmp, encoding: 'utf8' });
+    const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/detect-bloat.ps1', '-Json'],
+      { cwd: tmp, encoding: 'utf8', timeout: 30000, windowsHide: true });
+    const obj = JSON.parse((r.stdout || '').trim());
+    const flagged = (obj.items || []).join('\n');
+    expect(flagged, 'engine file must be excluded').not.toContain('engine.js');
+    expect(flagged, 'product file must be flagged').toContain('product/big.js');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 test('doctor.ps1 runs and produces output', () => {
   const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/doctor.ps1'],
     { cwd: REPO, encoding: 'utf8', timeout: 120000, windowsHide: true });

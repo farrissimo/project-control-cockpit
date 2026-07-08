@@ -102,6 +102,18 @@ test('generated scope + doc-map use a coherent baseline and include product/**',
   expect(scope.allowed_globs).toContain('product/**');
 });
 
+// Soak fix F10: the generated bloat config must scope to the owner's product and
+// exclude the copied PCC engine, so a new project never gets a bloat warning about
+// app/renderer.js (PCC's tool). It must NOT be a copy of PCC's engine-scoped config.
+test('generated bloat config is product-scoped and excludes the copied engine (F10)', () => {
+  const b = JSON.parse(fs.readFileSync(path.join(target, '.cockpit', 'state', 'bloat-thresholds.json'), 'utf8'));
+  expect(b.exclude_globs).toEqual(expect.arrayContaining(['app/**', 'scripts/**']));
+  expect(b.source_globs.some((g) => g.startsWith('product/'))).toBe(true);
+  expect(b.dependency_manifests).toContain('product/package.json');
+  // must not still be scanning PCC's engine as the product
+  expect(b.source_globs).not.toContain('app/*.js');
+});
+
 // Anti-drift guard: EVERY scripts/*.ps1 the app invokes must travel, so no button
 // is dead in a scaffolded project. Derived from main.js, not a hand-maintained list.
 test('every script the app invokes travels into a new project', () => {

@@ -56,13 +56,22 @@ if (-not (Test-Path -LiteralPath $cfgPath -PathType Leaf)) {
   $maxDeps  = if ($cfg.max_dependencies) { [int]$cfg.max_dependencies } else { 20 }
   $srcGlobs = @($cfg.source_globs)
   $manifests = @($cfg.dependency_manifests)
+  # Soak fix F10: exclude_globs lets a project scope bloat to ITS OWN code and skip
+  # the copied PCC cockpit engine (app/, scripts/, schemas/) and vendored deps. Without
+  # this, a scaffolded project's bloat scan flagged PCC's own renderer.js as if it were
+  # the owner's product. Absent exclude_globs = no exclusions (PCC's own config).
+  $excludeGlobs = @($cfg.exclude_globs)
 
   $items = @()
 
   # --- Large source files (from tracked files matching the source globs) ---
   $tracked = @(& git ls-files 2>$null | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
   $srcRegexes = $srcGlobs | ForEach-Object { Convert-GlobToRegex $_ }
+  $excludeRegexes = $excludeGlobs | ForEach-Object { Convert-GlobToRegex $_ }
   $sourceFiles = @($tracked | Where-Object { $f = $_; ($srcRegexes | Where-Object { $f -match $_ }).Count -gt 0 })
+  if ($excludeRegexes.Count -gt 0) {
+    $sourceFiles = @($sourceFiles | Where-Object { $f = $_; ($excludeRegexes | Where-Object { $f -match $_ }).Count -eq 0 })
+  }
   foreach ($f in $sourceFiles) {
     if (Test-Path -LiteralPath $f -PathType Leaf) {
       $lc = @(Get-Content -LiteralPath $f).Count
