@@ -120,8 +120,8 @@ Set-Content -LiteralPath (Join-Path $Target '.cockpit/state/app-build-scope.json
     "what_this_is": "The honest list of what work on this project is allowed to change, so the drift signal has a real boundary instead of guessing. Edit allowed_globs as the project takes shape.",
     "must_not_change": "Anything not covered below should be a deliberate decision, not an accident."
   },
-  "compare_baseline": "main",
-  "allowed_globs": ["app/**", "scripts/**", "docs/**", "PROJECT.md", "CLAUDE.md", "AGENTS.md", ".gitignore", ".cockpit/**"],
+  "compare_baseline": "pcc-baseline",
+  "allowed_globs": ["product/**", "app/**", "scripts/**", "docs/**", "PROJECT.md", "CLAUDE.md", "AGENTS.md", ".gitignore", ".cockpit/**"],
   "updated_at": "$stamp"
 }
 "@)
@@ -134,7 +134,7 @@ Set-Content -LiteralPath (Join-Path $Target '.cockpit/state/doc-freshness-map.js
     "what_this_is": "If this kind of code changed, this doc should have been updated too. Start small; grow from real misses.",
     "how_it_reads": "If code matching when_changed changed but expect_updated did not, stale-docs flags it. No rule match = stays quiet."
   },
-  "compare_baseline": "main",
+  "compare_baseline": "pcc-baseline",
   "rules": [
     { "id": "app-in-brief", "when_changed": ["app/*.js"], "expect_updated": ["PROJECT.md"], "satisfied_by": "any", "why": "A user-facing app change should be reflected in the brief." }
   ],
@@ -240,7 +240,13 @@ if (-not $NoGit) {
     # must not be gated. The gate activates for the owner's real commits once they
     # run `npm install --prefix app` (postinstall wires core.hooksPath).
     & git -c user.name='PCC Bootstrap' -c user.email='pcc@localhost' commit -q --no-verify -m "Bootstrap $Name from PCC" | Out-Null
-    Write-Output "git: initialized and made the first commit."
+    # Tag the bootstrap commit as the drift/stale-docs baseline (soak fix F9). A
+    # fresh project has no 'main' branch, so the detectors' baseline must be a ref
+    # that actually exists. A tag is stable, branch-name-independent, and marks
+    # exactly "the point the owner's work started from" -- so drift compares
+    # everything built since bootstrap, not an incomplete working-tree-only diff.
+    & git tag pcc-baseline | Out-Null
+    Write-Output "git: initialized, made the first commit, and tagged it 'pcc-baseline' (drift/stale-docs baseline)."
   } catch { Write-Output "git: skipped ($($_.Exception.Message))" }
   Pop-Location
 }

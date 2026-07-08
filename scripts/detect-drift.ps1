@@ -77,17 +77,23 @@ if (-not (Test-Path -LiteralPath $scopePath -PathType Leaf)) {
   } else {
     $regexes = $globs | ForEach-Object { Convert-GlobToRegex $_ }
 
-    # Changed files = branch commits since the baseline UNION uncommitted
-    # tracked changes. Untracked files are the separate untracked detector.
-    $baseErr = ''
-    $committed = @()
+    # The baseline ref must exist, or the comparison is meaningless. Soak fix F9:
+    # previously a missing baseline silently fell back to "working tree vs HEAD"
+    # (only uncommitted files) and STILL reported clear/notice -- a false green on
+    # scaffolded projects (created on 'master' with no 'main'). Honest behavior is
+    # to degrade to 'unknown', not to guess CLEAR from an incomplete comparison.
     & git rev-parse --verify --quiet $baseline > $null 2>&1
-    if ($LASTEXITCODE -eq 0) {
-      $committed = & git diff --name-only "$baseline...HEAD" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      $r = New-Result 'unknown' @() `
+        "Baseline ref '$baseline' does not exist in this repo, so changes cannot be compared against it." `
+        'The drift signal has no baseline to measure against, so it will not guess. This is common on a freshly-scaffolded project (created on ''master'' with no ''main'').' `
+        'Whether any changes are out of scope -- this check could not run against the intended baseline.' `
+        "Set compare_baseline in $scopePath to a ref that exists (e.g. the branch this work started from, or the initial commit), then re-run."
     } else {
-      $baseErr = "Baseline ref '$baseline' not found; compared working tree to HEAD only."
-    }
-    $uncommitted = & git diff --name-only HEAD 2>$null
+      # Changed files = branch commits since the baseline UNION uncommitted
+      # tracked changes. Untracked files are the separate untracked detector.
+      $committed = & git diff --name-only "$baseline...HEAD" 2>$null
+      $uncommitted = & git diff --name-only HEAD 2>$null
 
     # Coerce to string before trimming: git can emit non-string warnings and an
     # empty diff yields nothing, neither of which has a .Trim() method.
@@ -105,18 +111,17 @@ if (-not (Test-Path -LiteralPath $scopePath -PathType Leaf)) {
 
     if ($outside.Count -eq 0) {
       $observed = "All $($changed.Count) changed file(s) on this branch fall inside the declared scope (baseline '$baseline')."
-      if ($baseErr) { $observed += " $baseErr" }
       $r = New-Result 'clear' @() $observed `
         'The work has stayed on the job it was scoped to.' `
         'Whether the scope list itself is complete/correct -- drift only checks changes against the list as written.' `
         'Nothing needed for this signal.'
     } else {
       $observed = "$($outside.Count) changed file(s) fall OUTSIDE the declared scope (baseline '$baseline')."
-      if ($baseErr) { $observed += " $baseErr" }
       $r = New-Result 'notice' $outside $observed `
         'Either real drift -- work touching files this lane was not scoped to change -- OR the scope boundary is out of date because the work legitimately grew. This detector cannot tell which.' `
         'Whether these changes are wrong. Intent is not observable; the boundary is a declared list, not a judgment of correctness.' `
         "Review each file. If it does not belong to this lane, revert or move it. If it is legitimately part of the work, add it to allowed_globs in $scopePath -- on purpose, not reflexively."
+      }
     }
   }
 }

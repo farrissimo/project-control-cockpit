@@ -6,6 +6,8 @@
 // proves the extractability guarantee (scripts work without app/).
 const { test, expect } = require('@playwright/test');
 const { spawnSync } = require('child_process');
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const REPO = path.join(__dirname, '..', '..', '..'); // repo root (app/ is one below)
@@ -54,6 +56,30 @@ test('babysitting-metrics emits proxy counts', () => {
   const { stdout } = runJson('scripts/babysitting-metrics.ps1');
   const obj = JSON.parse(stdout);
   expect(obj).toHaveProperty('commits_total');
+});
+
+// Soak fix F9: when the configured baseline ref does not exist, drift must degrade to
+// 'unknown' — NOT silently fall back to a working-tree-only diff and report a false
+// 'clear'. Reproduced in a throwaway repo whose scope points at a ref that cannot exist.
+test('drift degrades to UNKNOWN when the baseline ref is missing (F9)', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-drift-'));
+  try {
+    spawnSync('git', ['init'], { cwd: tmp, encoding: 'utf8' });
+    spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '--allow-empty', '-q', '-m', 'seed'],
+      { cwd: tmp, encoding: 'utf8' });
+    // The detector pins to its own repo via $PSScriptRoot, so run a copy from tmp/scripts.
+    fs.mkdirSync(path.join(tmp, 'scripts'));
+    fs.copyFileSync(path.join(REPO, 'scripts', 'detect-drift.ps1'), path.join(tmp, 'scripts', 'detect-drift.ps1'));
+    fs.mkdirSync(path.join(tmp, '.cockpit', 'state'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, '.cockpit', 'state', 'app-build-scope.json'),
+      JSON.stringify({ compare_baseline: 'no-such-baseline-ref-xyz', allowed_globs: ['product/**'] }));
+    const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/detect-drift.ps1', '-Json'],
+      { cwd: tmp, encoding: 'utf8', timeout: 30000, windowsHide: true });
+    const obj = JSON.parse((r.stdout || '').trim());
+    expect(obj.signal, 'missing baseline must be unknown, not a false clear:\n' + r.stdout).toBe('unknown');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 });
 
 test('doctor.ps1 runs and produces output', () => {

@@ -73,42 +73,68 @@ function Invoke-ProcessCapture {
   }
 }
 
+# --- Scaffold awareness (soak fix F7) ---
+# PCC itself uses a "legacy" advisor/worker restart-safety track: project-state.json,
+# task-state.json, verification-result.json, and a .cockpit/handoff/ brief dir. Freshly
+# scaffolded projects (scripts/bootstrap-project.ps1) DELIBERATELY do not create these
+# (main.js calls project-state.json "the retired track"). Doctor must not report a lean
+# scaffolded project as broken for lacking files it was never meant to have. The presence
+# of the legacy anchor files is the signal for which checks apply; when they are absent the
+# legacy checks are reported "Not applicable" (OK), not ISSUE. This keeps PCC's own behavior
+# identical (it has the files) while a correctly-scaffolded child comes back clean.
+$legacyProjectStatePath = ".cockpit/state/project-state.json"
+$legacyTaskStatePath = ".cockpit/state/task-state.json"
+$usesLegacyTrack = (Test-Path -LiteralPath $legacyProjectStatePath -PathType Leaf) -or (Test-Path -LiteralPath $legacyTaskStatePath -PathType Leaf)
+$hasHandoffDir = Test-Path -LiteralPath ".cockpit/handoff" -PathType Container
+
 # --- Check 1: state consistency (schema/state alignment) ---
-try {
-  $output = & pwsh -NoProfile -File "scripts/validate-cockpit-state.ps1" 2>&1
-  if ($LASTEXITCODE -eq 0) {
-    Add-Finding -Check "State consistency" -Status "OK" -Detail (Strip-AnsiAndLastLine $output)
-  } else {
-    Add-Finding -Check "State consistency" -Status "ISSUE" -Detail (Strip-AnsiAndLastLine $output)
+if (-not $usesLegacyTrack) {
+  Add-Finding -Check "State consistency" -Status "OK" -Detail "Not applicable: this is a lean project (no legacy project-state/task-state track). Nothing to cross-check."
+} else {
+  try {
+    $output = & pwsh -NoProfile -File "scripts/validate-cockpit-state.ps1" 2>&1
+    if ($LASTEXITCODE -eq 0) {
+      Add-Finding -Check "State consistency" -Status "OK" -Detail (Strip-AnsiAndLastLine $output)
+    } else {
+      Add-Finding -Check "State consistency" -Status "ISSUE" -Detail (Strip-AnsiAndLastLine $output)
+    }
+  } catch {
+    Add-Finding -Check "State consistency" -Status "ISSUE" -Detail "Could not run scripts/validate-cockpit-state.ps1: $($_.Exception.Message)"
   }
-} catch {
-  Add-Finding -Check "State consistency" -Status "ISSUE" -Detail "Could not run scripts/validate-cockpit-state.ps1: $($_.Exception.Message)"
 }
 
 # --- Check 2: dual restart-safety (advisor brief + worker directive content) ---
-try {
-  $output = & pwsh -NoProfile -File "scripts/verify-dual-restart-safety.ps1" 2>&1
-  if ($LASTEXITCODE -eq 0) {
-    Add-Finding -Check "Restart safety (advisor + worker)" -Status "OK" -Detail "Fresh advisor and worker sessions can both resume from canonical repo truth."
-  } else {
-    Add-Finding -Check "Restart safety (advisor + worker)" -Status "ISSUE" -Detail (Strip-AnsiAndLastLine $output)
+if (-not $hasHandoffDir) {
+  Add-Finding -Check "Restart safety (advisor + worker)" -Status "OK" -Detail "Not applicable: this lean project has no .cockpit/handoff restart-brief track. A fresh session resumes from PROJECT.md + the lifecycle pin instead."
+} else {
+  try {
+    $output = & pwsh -NoProfile -File "scripts/verify-dual-restart-safety.ps1" 2>&1
+    if ($LASTEXITCODE -eq 0) {
+      Add-Finding -Check "Restart safety (advisor + worker)" -Status "OK" -Detail "Fresh advisor and worker sessions can both resume from canonical repo truth."
+    } else {
+      Add-Finding -Check "Restart safety (advisor + worker)" -Status "ISSUE" -Detail (Strip-AnsiAndLastLine $output)
+    }
+  } catch {
+    Add-Finding -Check "Restart safety (advisor + worker)" -Status "ISSUE" -Detail "Could not run scripts/verify-dual-restart-safety.ps1: $($_.Exception.Message)"
   }
-} catch {
-  Add-Finding -Check "Restart safety (advisor + worker)" -Status "ISSUE" -Detail "Could not run scripts/verify-dual-restart-safety.ps1: $($_.Exception.Message)"
 }
 
 # --- Check 3: schema/format check (project-state.json, task-state.json, verification-result.json) ---
 # Requires pwsh (Test-Json does not exist in Windows PowerShell 5.1), same as
 # the other composed checks above.
-try {
-  $output = & pwsh -NoProfile -File "scripts/check-schemas.ps1" 2>&1
-  if ($LASTEXITCODE -eq 0) {
-    Add-Finding -Check "Format check (schemas)" -Status "OK" -Detail "project-state.json, task-state.json, and verification-result.json all match their schemas."
-  } else {
-    Add-Finding -Check "Format check (schemas)" -Status "ISSUE" -Detail (Strip-AnsiAndLastLine $output)
+if (-not $usesLegacyTrack) {
+  Add-Finding -Check "Format check (schemas)" -Status "OK" -Detail "Not applicable: no legacy state files (project-state/task-state/verification-result) to schema-check in a lean project."
+} else {
+  try {
+    $output = & pwsh -NoProfile -File "scripts/check-schemas.ps1" 2>&1
+    if ($LASTEXITCODE -eq 0) {
+      Add-Finding -Check "Format check (schemas)" -Status "OK" -Detail "project-state.json, task-state.json, and verification-result.json all match their schemas."
+    } else {
+      Add-Finding -Check "Format check (schemas)" -Status "ISSUE" -Detail (Strip-AnsiAndLastLine $output)
+    }
+  } catch {
+    Add-Finding -Check "Format check (schemas)" -Status "ISSUE" -Detail "Could not run scripts/check-schemas.ps1: $($_.Exception.Message)"
   }
-} catch {
-  Add-Finding -Check "Format check (schemas)" -Status "ISSUE" -Detail "Could not run scripts/check-schemas.ps1: $($_.Exception.Message)"
 }
 
 # --- Check 4: last known handoff-gate verdict (informational only - does not re-run the gate) ---
@@ -119,7 +145,9 @@ $gate = Read-JsonSafe $gatePath
 $taskState = Read-JsonSafe $taskStatePath
 $projectState = Read-JsonSafe $projectStatePath
 
-if ($null -eq $gate) {
+if (-not $usesLegacyTrack) {
+  Add-Finding -Check "Handoff gate (last known)" -Status "OK" -Detail "Not applicable: this lean project uses the lifecycle phase-close gate (a fresh verification verdict), not the legacy handoff-gate track."
+} elseif ($null -eq $gate) {
   Add-Finding -Check "Handoff gate (last known)" -Status "WARN" -Detail "No $gatePath found yet. The enforcement gate (scripts/enforce-handoff-restart-safety.ps1) has not been run this cycle."
 } elseif ($null -ne $taskState -and $gate.task_id -ne $taskState.task_id) {
   Add-Finding -Check "Handoff gate (last known)" -Status "WARN" -Detail "Last recorded gate result was for task '$($gate.task_id)' ($($gate.gate_result)), but the active task is now '$($taskState.task_id)'. Re-run scripts/enforce-handoff-restart-safety.ps1 before treating this task's handoff as gated."
@@ -130,7 +158,9 @@ if ($null -eq $gate) {
 }
 
 # --- Check 5: active task context (informational only, not a pass/fail judgment) ---
-if ($null -eq $taskState) {
+if (-not $usesLegacyTrack) {
+  Add-Finding -Check "Active task" -Status "OK" -Detail "Not applicable: the active task is tracked by the lifecycle pin (.cockpit/state/lifecycle-state.json), not task-state.json."
+} elseif ($null -eq $taskState) {
   Add-Finding -Check "Active task" -Status "WARN" -Detail "$taskStatePath is missing or unreadable."
 } else {
   Add-Finding -Check "Active task" -Status "OK" -Detail "Task '$($taskState.task_id)' status is '$($taskState.task_status)' (verification_verdict: $($taskState.verification_verdict))."
@@ -178,7 +208,11 @@ try {
     }
 
     if ($null -eq $expectedBranch) {
-      Add-Finding -Check "Branch hygiene" -Status "WARN" -Detail "On branch '$currentBranch'. $projectStatePath has no active_branch to compare against.$aheadBehindNote"
+      if ($usesLegacyTrack) {
+        Add-Finding -Check "Branch hygiene" -Status "WARN" -Detail "On branch '$currentBranch'. $projectStatePath has no active_branch to compare against.$aheadBehindNote"
+      } else {
+        Add-Finding -Check "Branch hygiene" -Status "OK" -Detail "On branch '$currentBranch'.$aheadBehindNote"
+      }
     } elseif ($currentBranch -eq $expectedBranch) {
       Add-Finding -Check "Branch hygiene" -Status "OK" -Detail "On expected branch '$currentBranch'.$aheadBehindNote"
     } else {
@@ -191,25 +225,42 @@ try {
 
 # --- Check 8: file structure (canonical .cockpit/ subdirectories and state files present, nothing stray at the top level) ---
 try {
-  $expectedSubdirs = @("backups", "handoff", "logs", "result", "state")
-  $expectedStateFiles = @(
+  # Only .cockpit/state (which holds the lifecycle pin) is essential and file-backed
+  # in every project. backups/logs/result/handoff are working dirs that are created
+  # on first use and, being empty, wouldn't even survive a git clone -- so requiring
+  # them would false-flag a clean project. They are allowed, not required.
+  $baseSubdirs = @("state")
+  $baseStateFiles = @(".cockpit/state/lifecycle-state.json")
+  # Legit optional subdirs — present in PCC (legacy) but not required of a lean scaffold.
+  $allowedSubdirs = @("backups", "handoff", "logs", "request", "result", "state")
+  # Legacy-only structure, required ONLY when this project uses the legacy track.
+  $legacyOnlySubdirs = @("handoff")
+  $legacyStateFiles = @(
     ".cockpit/state/project-state.json",
     ".cockpit/state/task-state.json",
     ".cockpit/state/handoff-gate.json"
   )
 
   $missing = New-Object System.Collections.Generic.List[string]
-  foreach ($d in $expectedSubdirs) {
+  foreach ($d in $baseSubdirs) {
     if (-not (Test-Path -LiteralPath ".cockpit/$d" -PathType Container)) { $missing.Add(".cockpit/$d") }
   }
-  foreach ($f in $expectedStateFiles) {
+  foreach ($f in $baseStateFiles) {
     if (-not (Test-Path -LiteralPath $f -PathType Leaf)) { $missing.Add($f) }
+  }
+  if ($usesLegacyTrack) {
+    foreach ($d in $legacyOnlySubdirs) {
+      if (-not (Test-Path -LiteralPath ".cockpit/$d" -PathType Container)) { $missing.Add(".cockpit/$d") }
+    }
+    foreach ($f in $legacyStateFiles) {
+      if (-not (Test-Path -LiteralPath $f -PathType Leaf)) { $missing.Add($f) }
+    }
   }
 
   $unexpected = New-Object System.Collections.Generic.List[string]
   if (Test-Path -LiteralPath ".cockpit" -PathType Container) {
     Get-ChildItem -LiteralPath ".cockpit" -Force | ForEach-Object {
-      if ($_.Name -notin $expectedSubdirs) { $unexpected.Add($_.Name) }
+      if ($_.Name -notin $allowedSubdirs) { $unexpected.Add($_.Name) }
     }
   }
 

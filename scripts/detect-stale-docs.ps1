@@ -73,17 +73,22 @@ if (-not (Test-Path -LiteralPath $mapPath -PathType Leaf)) {
       'Whether docs are actually current -- no rules are defined to check.' `
       "Add rules to $mapPath as real misses show up."
   } else {
-    # Changed files = branch commits since baseline UNION uncommitted tracked
-    # changes (the doc should move within the same body of work).
-    $baseErr = ''
-    $committed = @()
+    # The baseline ref must exist (soak fix F9): a missing baseline previously
+    # fell back to "working tree vs HEAD" and STILL reported clear/notice -- a
+    # false green on scaffolded projects (on 'master', no 'main'). Degrade to
+    # 'unknown' instead of guessing from an incomplete comparison.
     & git rev-parse --verify --quiet $baseline > $null 2>&1
-    if ($LASTEXITCODE -eq 0) {
-      $committed = & git diff --name-only "$baseline...HEAD" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      $r = New-Result 'unknown' @() `
+        "Baseline ref '$baseline' does not exist in this repo, so changed files cannot be compared against it." `
+        'The stale-docs signal has no baseline to measure against, so it will not guess. Common on a freshly-scaffolded project (on ''master'' with no ''main'').' `
+        'Whether any doc is stale -- this check could not run against the intended baseline.' `
+        "Set compare_baseline in $mapPath to a ref that exists (e.g. the branch this work started from, or the initial commit), then re-run."
     } else {
-      $baseErr = "Baseline ref '$baseline' not found; compared working tree to HEAD only."
-    }
-    $uncommitted = & git diff --name-only HEAD 2>$null
+      # Changed files = branch commits since baseline UNION uncommitted tracked
+      # changes (the doc should move within the same body of work).
+      $committed = & git diff --name-only "$baseline...HEAD" 2>$null
+      $uncommitted = & git diff --name-only HEAD 2>$null
     # Coerce to string before trimming: git can emit non-string warnings and an
     # empty diff yields nothing, neither of which has a .Trim() method.
     $changed = @($committed) + @($uncommitted) |
@@ -112,18 +117,17 @@ if (-not (Test-Path -LiteralPath $mapPath -PathType Leaf)) {
 
     if ($misses.Count -eq 0) {
       $observed = "Every triggered doc rule was satisfied on this branch (baseline '$baseline', $($rules.Count) rule(s) checked)."
-      if ($baseErr) { $observed += " $baseErr" }
       $r = New-Result 'clear' @() $observed `
         'The docs the starter rules care about were updated alongside the code.' `
         'Only the declared rules are checked; docs outside them, and whether the updates are actually correct, are not judged here.' `
         'Nothing needed for this signal.'
     } else {
       $observed = "$($misses.Count) doc rule(s) fired: code changed but the doc that should track it was not updated (baseline '$baseline')."
-      if ($baseErr) { $observed += " $baseErr" }
       $r = New-Result 'notice' $misses $observed `
         'Either a doc genuinely fell behind the code, OR the rule is too broad for this change. This is a starter rule list, adjustable.' `
         'Whether the doc truly needs updating for this specific change. The rule is a declared heuristic, not proof.' `
         "Update the named doc(s) if they are actually behind; or, if the rule is over-firing, loosen/remove it in $mapPath."
+      }
     }
   }
 }

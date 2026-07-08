@@ -77,6 +77,31 @@ test('new project gets a fresh vision-promises.json (placeholder, not PCC\'s)', 
   expect(vp.promises[0]).toHaveProperty('declared_status');
 });
 
+// Soak fix F7: a freshly-scaffolded project must PASS its own health check. It used
+// to fail on day one ("4 issues — don't trust current state") because doctor demanded
+// retired-track files the scaffolder deliberately omits. doctor is now scaffold-aware,
+// so a clean new project reports zero ISSUEs (warnings like "no git upstream" are fine).
+test('a freshly-scaffolded project passes doctor with no ISSUEs', () => {
+  const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/doctor.ps1'],
+    { cwd: target, encoding: 'utf8', timeout: 120000, windowsHide: true });
+  const out = (r.stdout || '') + (r.stderr || '');
+  expect(out, 'doctor produced no output').not.toHaveLength(0);
+  const issueLines = out.split(/\r?\n/).filter((l) => l.includes('[ISSUE]'));
+  expect(issueLines, 'fresh scaffold should have no [ISSUE] findings:\n' + out).toEqual([]);
+  expect(out).toMatch(/Overall: no issues/);
+});
+
+// Soak fix F9 (config half): the drift/stale-docs baseline must be a ref that actually
+// exists in a fresh project (a stable tag), not the non-existent 'main'; and the product
+// area must be in scope so building it isn't flagged as drift.
+test('generated scope + doc-map use a coherent baseline and include product/**', () => {
+  const scope = JSON.parse(fs.readFileSync(path.join(target, '.cockpit', 'state', 'app-build-scope.json'), 'utf8'));
+  const map = JSON.parse(fs.readFileSync(path.join(target, '.cockpit', 'state', 'doc-freshness-map.json'), 'utf8'));
+  expect(scope.compare_baseline).toBe('pcc-baseline');
+  expect(map.compare_baseline).toBe('pcc-baseline');
+  expect(scope.allowed_globs).toContain('product/**');
+});
+
 // Anti-drift guard: EVERY scripts/*.ps1 the app invokes must travel, so no button
 // is dead in a scaffolded project. Derived from main.js, not a hand-maintained list.
 test('every script the app invokes travels into a new project', () => {
