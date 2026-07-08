@@ -510,11 +510,24 @@ function askClaude(message, model, chatId, isFirstTurn) {
   return new Promise((resolve) => {
     const cfg = readModels();
     const chosen = model || cfg.default;
-    // WebSearch/WebFetch explicitly allowed (surgical grant, tested to work
-    // headlessly), NOT --dangerously-skip-permissions: that flag's own docs say
-    // "recommended only for sandboxes with no internet access" - the opposite of
-    // what we want here - and it would silently approve every other tool too.
-    const args = ['-p', '--model', chosen, '--allowedTools', 'WebSearch WebFetch', '--disallowedTools', 'AskUserQuestion', '--append-system-prompt', CHANNEL_PROMPT];
+    // READ_ONLY chat spawn (DECISION-112, Task 2 S1). Law: reading context is never
+    // authorization to act. So the chat — which is the ONLY place pasted text reaches
+    // an action-capable agent — defaults to read-only and cannot run shell, write
+    // files, scaffold, launch anything, or reach MCP/plugin tools.
+    //   Primary containment: --tools is an ALLOWLIST (default-deny) — only these
+    //     tools exist; --strict-mcp-config drops MCP/plugin tools (e.g. github).
+    //   Backstop: --disallowedTools explicitly denies known execution/mutation and
+    //     meta tools even if --tools semantics change across Claude CLI versions
+    //     (deny beats the global settings.json allow). AskUserQuestion stays denied
+    //     (this text channel can't render its picker).
+    // Proven by the S0 containment spike: canary write blocked, MCP absent, Read works.
+    // INTERIM (until the approval/build-mode slice, S4/S5): New Project /
+    // build-through-chat cannot execute its scripts while read-only — by design.
+    const args = ['-p', '--model', chosen,
+      '--tools', 'WebSearch WebFetch Read Glob Grep',
+      '--strict-mcp-config',
+      '--disallowedTools', 'AskUserQuestion Bash BashOutput KillBash PowerShell Edit Write NotebookEdit Agent Monitor Skill ToolSearch Task',
+      '--append-system-prompt', CHANNEL_PROMPT];
     if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
     let isNewSession;
     if (chatId) { sessionId = chatId; isNewSession = !!isFirstTurn; }
