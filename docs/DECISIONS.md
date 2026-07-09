@@ -2861,3 +2861,56 @@ Implications:
 
 Supersedes: None
 Related: IDEA-016 / IDEA-017 (chat-parity features), DECISION-112 (authority), scripts/bootstrap-project.ps1 (scaffolder phase), the recovery de-dup phase, backup-tier work (ab17bc2/21b5cd3)
+
+## DECISION-114: New Project Is a New Document — Enter Immediately, Outside PCC; One "Save Project" Makes It Real
+
+Date: 2026-07-09
+Status: Active (design locked; BUILD PENDING — sequenced AFTER the earlier-approved chat features)
+
+Decision:
+
+Clicking "New Project" takes the owner OUT of PCC entirely into a dedicated intake wizard — a
+full chat like today, but NOT the PCC cockpit chat and never operating in PCC's folder. You are
+"in" the new (unsaved) project immediately, exactly like opening a new document in Word. A SINGLE
+"Save Project" button materializes it: name + location, scaffold to a real folder, register it,
+and you continue INSIDE the new project. There is NO "Save As" (that would be clone/fork a
+project — out of scope). After the project is real, saving is just the normal Backup/checkpoint
+(the backup tiers, local-only by default). PCC is only ever the launcher.
+
+Reason:
+
+Today New Project runs inside the PCC (home) chat, which holds the build session and whose worker
+runs in PCC's own folder. On scaffold the new project is registered but the app neither switches
+you into it nor ends the chat — so a build-powered "New project: X" chat keeps living in PCC's
+context and can "manage" the new project while actually acting on PCC itself. That is both the
+owner's felt confusion AND a real hazard (build commands scribbling on the cockpit). The
+new-document model removes the ambiguity and the hazard at the root: you are never "in PCC"
+managing a new project — before it exists you are in the create-flow; after Save you are in the
+project. Supersedes the earlier "graduate the chat / forced cutoff" concept discussed this session.
+
+Implications / build reality:
+
+- The intake wizard is a DISTINCT surface (its own "Creating a project" view), not the normal
+  cockpit chat; entered on New Project click; PCC chrome/context is not present.
+- Unlike a Word doc (pure data), a project needs a real working folder for the worker to run
+  scripts and write files, so an unsaved project quietly operates in a SCRATCH area that belongs
+  to the new project, never PCC/home. The create-flow worker is scoped to that scratch/target
+  only — it must not be able to write into PCC.
+- "Save Project" = first materialize (name + location → scaffold via bootstrap-project.ps1 into
+  the chosen folder, move scratch content in, register in the switcher, switch active project to
+  it, open its chat) = the project's first checkpoint. One button; behavior is contextual.
+- After materialization, persistence = the existing Backup/checkpoint + backup tiers; no second
+  save concept, no Save As.
+- Ties to DECISION-113: the wizard UI lives in the one home app, so every "new project" launch is
+  automatically identical.
+
+Task breakdown (the formal set of tasks; build order TBD, but AFTER the earlier-approved chat features):
+  T1. New Project opens a distinct "Creating a project" surface outside the cockpit chat (UI + routing).
+  T2. Scratch workspace + create-flow worker scoped to scratch/target only (never PCC/home); authority scoped to the create-flow.
+  T3. "Save Project" button: name + location, scaffold to chosen folder, move scratch in, register, switch active project, open its chat.
+  T4. Land-in-project on save; first save = first checkpoint (backup tier local-only default).
+  T5. Remove the old in-PCC New Project behavior (no lingering PCC-context build session; supersede the graduate/cutoff path).
+  T6. Focused tests + Codex verification.
+
+Supersedes: the "graduate the chat / forced cutoff" design floated earlier this session.
+Related: DECISION-112 (authority), DECISION-113 (parity), backup tiers (ab17bc2/21b5cd3), scripts/bootstrap-project.ps1, app/main.js + app/renderer/renderer.js (current New Project flow), IDEA-016 / IDEA-017.
