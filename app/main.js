@@ -561,10 +561,21 @@ function askClaude(message, model, chatId, isFirstTurn) {
     // tools right through to the final scaffold write; the hard cap it can't extend still
     // bounds the session. Both profiles proven by the S0 / build-profile spikes.
     const isBuild = authority.authorizeSend(chatId, Date.now());
+    // --tools makes a built-in tool AVAILABLE; it does NOT grant permission to RUN it. In
+    // headless `claude -p` there is no prompt to approve a tool, so anything not explicitly
+    // permitted is denied at runtime. Previously only the machine's global settings.json
+    // allow-list (Bash/PowerShell/Read/Edit/Write/Glob/Grep) had run-permission — so web
+    // tools were listed but silently blocked ("no web access"). We now grant run-permission
+    // for exactly this profile's tools via --allowedTools, so the spawn is self-sufficient
+    // and no longer depends on global settings. --disallowedTools stays as the deny backstop
+    // (deny beats allow), so read-only still cannot run Bash/Write. Proven by the A/B/C
+    // headless repros (web denied -> web works -> Bash still denied).
     const toolFlags = isBuild
       ? ['--tools', 'Bash PowerShell Read Write Edit Glob Grep WebSearch WebFetch', '--strict-mcp-config',
+         '--allowedTools', 'Bash PowerShell Read Write Edit Glob Grep WebSearch WebFetch',
          '--disallowedTools', 'AskUserQuestion Agent Monitor Skill ToolSearch Task']
       : ['--tools', 'WebSearch WebFetch Read Glob Grep', '--strict-mcp-config',
+         '--allowedTools', 'WebSearch WebFetch Read Glob Grep',
          '--disallowedTools', 'AskUserQuestion Bash BashOutput KillBash PowerShell Edit Write NotebookEdit Agent Monitor Skill ToolSearch Task'];
     const args = ['-p', '--model', chosen, ...toolFlags, '--append-system-prompt', CHANNEL_PROMPT];
     if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
