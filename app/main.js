@@ -561,7 +561,28 @@ ipcMain.handle('pcc:endJob', (_e, chatId) => authority.disable(chatId));
 // (older callers), we fall back to a locally-generated pinned id.
 // --model picks the chosen model; --fallback-model makes an unavailable model
 // fall back gracefully instead of crashing the chat.
-function askClaude(message, model, workerSessionId, isFirstTurn, chatId) {
+// Parse Claude Code's stream-json output (used when we send attachments via
+// --input-format stream-json) back into plain assistant text.
+function parseStreamJson(raw) {
+  let text = '';
+  for (const line of String(raw).split('\n')) {
+    const l = line.trim();
+    if (!l) continue;
+    try {
+      const o = JSON.parse(l);
+      if (o.type === 'assistant' && o.message && Array.isArray(o.message.content)) {
+        for (const c of o.message.content) if (c.type === 'text' && c.text) text += c.text;
+      } else if (o.type === 'result' && typeof o.result === 'string' && !text) {
+        text = o.result;
+      }
+    } catch (e) { /* ignore non-JSON lines */ }
+  }
+  return text.trim();
+}
+
+// `attachments` (optional): [{ kind:'image', mediaType, dataBase64 } | { kind:'text', name, content }].
+// When present, the worker is spawned in stream-json mode so images/files ride as content blocks.
+function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachments) {
   return new Promise((resolve) => {
     const cfg = readModels();
     const chosen = model || cfg.default;
@@ -604,6 +625,12 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId) {
     if (workerSessionId) { sessionId = workerSessionId; isNewSession = !!isFirstTurn; }
     else { isNewSession = !sessionId; if (isNewSession) sessionId = crypto.randomUUID(); }
     args.push(isNewSession ? '--session-id' : '--resume', sessionId);
+    // Attachments (images / files) reach the worker as structured content blocks, which headless
+    // claude accepts ONLY via stream-json in+out (proven: a base64 image round-trips and the
+    // worker sees it). Plain-text sends keep the original text path unchanged — no regression to
+    // the authority/read-only spawn behavior, which is identical either way (same tool flags).
+    const hasAttach = Array.isArray(attachments) && attachments.length > 0;
+    if (hasAttach) args.push('--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose');
     let out = '';
     let err = '';
     let child;
@@ -618,13 +645,13 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId) {
     child.stderr.on('data', (d) => { err += d.toString(); });
     child.on('close', (code) => {
       activeWorkers.delete(child);
-      if (code === 0) resolve({ ok: true, text: out.trim() });
+      if (code === 0) resolve({ ok: true, text: hasAttach ? parseStreamJson(out) : out.trim() });
       else {
         // A failed FIRST turn means no session actually exists at that id. When
         // the renderer owns the id it tracks that (keeps the chat "not started"
         // so it retries with --session-id); for the local fallback, reset here.
         if (isNewSession && !workerSessionId) sessionId = null;
-        const raw = (err || out || ('Claude exited with code ' + code)).trim();
+        const raw = (err || (hasAttach ? parseStreamJson(out) : out) || ('Claude exited with code ' + code)).trim();
         // Soak fix F4: a stale session lock (a worker orphaned by an earlier crash or
         // mid-turn quit) surfaces as the raw "Session ID ... is already in use". Turn
         // it into a plain-language message and flag it so the renderer can offer a
@@ -637,12 +664,23 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId) {
         }
       }
     });
-    child.stdin.write(message);
+    if (hasAttach) {
+      // One user message: attached file text first (context), then the typed message, then image
+      // blocks. base64 images ride inline so the worker never needs filesystem access to them.
+      const content = [];
+      for (const a of attachments) if (a && a.kind === 'text' && a.content) content.push({ type: 'text', text: 'Attached file "' + (a.name || 'file') + '":\n\n' + String(a.content).slice(0, 200000) });
+      if (message && message.trim()) content.push({ type: 'text', text: message });
+      for (const a of attachments) if (a && a.kind === 'image' && a.dataBase64) content.push({ type: 'image', source: { type: 'base64', media_type: a.mediaType || 'image/png', data: a.dataBase64 } });
+      if (!content.some((c) => c.type === 'text')) content.push({ type: 'text', text: '(see attached)' });
+      child.stdin.write(JSON.stringify({ type: 'user', message: { role: 'user', content } }) + '\n');
+    } else {
+      child.stdin.write(message);
+    }
     child.stdin.end();
   });
 }
 
-ipcMain.handle('pcc:send', (_e, message, model, workerSessionId, isFirstTurn, chatId) => askClaude(message, model, workerSessionId, isFirstTurn, chatId));
+ipcMain.handle('pcc:send', (_e, message, model, workerSessionId, isFirstTurn, chatId, attachments) => askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachments));
 
 // Second opinion: hand a composed prompt to Codex (a DIFFERENT model) over stdin
 // and return its independent take. The worker (Claude) never grades itself; this

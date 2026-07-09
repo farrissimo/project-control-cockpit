@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld('pcc', {
   visionPromises: () => ipcRenderer.invoke('pcc:visionPromises'),
   // workerSessionId = the Claude session (chat's own id, or a re-minted id after recovery);
   // chatId = the STABLE chat.id used for build authority — kept separate on purpose.
-  send: (message, model, workerSessionId, isFirstTurn, chatId) => ipcRenderer.invoke('pcc:send', message, model, workerSessionId, isFirstTurn, chatId),
+  send: (message, model, workerSessionId, isFirstTurn, chatId, attachments) => ipcRenderer.invoke('pcc:send', message, model, workerSessionId, isFirstTurn, chatId, attachments),
   authorityState: (chatId) => ipcRenderer.invoke('pcc:authorityState', chatId), // read-only, per-chat; no setter is exposed
   authorityLog: () => ipcRenderer.invoke('pcc:authorityLog'),
   // Owner-driven authority transitions (wired ONLY to explicit UI controls, never chat text):
