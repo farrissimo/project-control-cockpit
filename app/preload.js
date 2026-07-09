@@ -26,6 +26,12 @@ contextBridge.exposeInMainWorld('pcc', {
   setActiveProject: (dir) => ipcRenderer.invoke('pcc:setActiveProject', dir),
   addProject: (dir) => ipcRenderer.invoke('pcc:addProject', dir),
   pickFolder: () => ipcRenderer.invoke('pcc:pickFolder'),
+  // New Project create-flow (DECISION-114): a scratch workspace + Save Project, all outside PCC.
+  createFlowStart: () => ipcRenderer.invoke('pcc:createFlowStart'),
+  createFlowSend: (message, model, attachments) => ipcRenderer.invoke('pcc:createFlowSend', message, model, attachments),
+  createFlowCancel: () => ipcRenderer.invoke('pcc:createFlowCancel'),
+  createFlowPickLocation: () => ipcRenderer.invoke('pcc:createFlowPickLocation'),
+  createFlowSave: (name, location) => ipcRenderer.invoke('pcc:createFlowSave', name, location),
   syncStatus: () => ipcRenderer.invoke('pcc:syncStatus'),
   backup: (message) => ipcRenderer.invoke('pcc:backup', message),
   pull: () => ipcRenderer.invoke('pcc:pull'),

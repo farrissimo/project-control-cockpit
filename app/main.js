@@ -582,10 +582,16 @@ function parseStreamJson(raw) {
 
 // `attachments` (optional): [{ kind:'image', mediaType, dataBase64 } | { kind:'text', name, content }].
 // When present, the worker is spawned in stream-json mode so images/files ride as content blocks.
-function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachments) {
+// `opts` (optional): { cwd, forceBuild }. cwd overrides the active projectDir (used by the New
+// Project create-flow to run the worker in an isolated SCRATCH folder, never PCC's own folder —
+// DECISION-114). forceBuild grants the build tool profile for that scoped surface without going
+// through the per-chat authority store (the create-flow surface IS the owner gate; it is only
+// reachable from the dedicated Create-a-project UI, never from pasted cockpit chat text).
+function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachments, opts) {
   return new Promise((resolve) => {
     const cfg = readModels();
     const chosen = model || cfg.default;
+    const scopedCwd = (opts && opts.cwd) || projectDir;
     // Authority-gated spawn (DECISION-112). Reading context is never authorization to
     // act. By DEFAULT the chat spawns READ-ONLY: an allowlist of web+read tools only,
     // --strict-mcp-config drops MCP/plugin tools, and a deny-list backstops known
@@ -598,7 +604,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     // idle window on this grant (Task 2L), so a long New-Project interview keeps its build
     // tools right through to the final scaffold write; the hard cap it can't extend still
     // bounds the session. Both profiles proven by the S0 / build-profile spikes.
-    const isBuild = authority.authorizeSend(chatId, Date.now());
+    const isBuild = (opts && opts.forceBuild) || authority.authorizeSend(chatId, Date.now());
     // --tools makes a built-in tool AVAILABLE; it does NOT grant permission to RUN it. In
     // headless `claude -p` there is no prompt to approve a tool, so anything not explicitly
     // permitted is denied at runtime. Previously only the machine's global settings.json
@@ -635,7 +641,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     let err = '';
     let child;
     try {
-      child = spawn('claude', args, { cwd: projectDir, shell: true });
+      child = spawn('claude', args, { cwd: scopedCwd, shell: true });
     } catch (e) {
       return resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message });
     }
@@ -681,6 +687,116 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
 }
 
 ipcMain.handle('pcc:send', (_e, message, model, workerSessionId, isFirstTurn, chatId, attachments) => askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachments));
+
+// ---- New Project create-flow (DECISION-114): "New Project" is a new document ----
+// Clicking New Project takes the owner OUT of the cockpit into a dedicated create surface. The
+// as-yet-unsaved project lives in a SCRATCH folder that belongs to the app (userData), never
+// PCC's repo — the create-flow worker runs there (cwd=scratch) with build tools, so an intake can
+// no longer run in, or scribble on, the home cockpit's folder (the exact hazard DECISION-114
+// removes). "Save Project" materializes it: scaffold into the owner's chosen folder, fold the
+// scratch work in, register, and switch the active project to it (its first checkpoint). Cancel
+// discards the scratch. Honest limit: scoping is by working directory (as with any claude -p
+// worker) — there is no OS jail, so this prevents running IN PCC, not every conceivable
+// absolute-path write.
+const createFlow = { active: false, scratchDir: null, chatId: null, started: false };
+function scratchRoot() { return path.join(app.getPath('userData'), 'pcc-scratch'); }
+function rmScratch(dir) { try { if (dir && fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* best effort */ } }
+// A safe project folder name from the owner's project name (no path traversal / illegal chars).
+function slugify(name) {
+  const s = String(name || '').trim().replace(/[^A-Za-z0-9._ -]/g, '').replace(/\s+/g, '-').replace(/^[-.]+|-+$/g, '');
+  return s || 'new-project';
+}
+
+// Start (or restart) a create-flow: mint a fresh scratch workspace under app data. The intake
+// protocol script is SEEDED into the scratch (single source of truth) so the worker reads its own
+// copy and never has to reach into PCC's folder for it. Save later scaffolds the full engine on top.
+ipcMain.handle('pcc:createFlowStart', () => {
+  try {
+    rmScratch(createFlow.scratchDir);            // clear any prior abandoned scratch
+    const id = crypto.randomUUID();
+    const dir = path.join(scratchRoot(), id);
+    fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
+    try {
+      const intakeSrc = path.join(HOME_DIR, 'scripts', 'new-project-intake.ps1');
+      if (fs.existsSync(intakeSrc)) fs.copyFileSync(intakeSrc, path.join(dir, 'scripts', 'new-project-intake.ps1'));
+    } catch (e) { /* the worker can still interview without the printed protocol */ }
+    createFlow.active = true; createFlow.scratchDir = dir; createFlow.chatId = id; createFlow.started = false;
+    return { ok: true, id };
+  } catch (e) { return { ok: false, error: 'Could not start a new project workspace: ' + e.message }; }
+});
+
+// Send to the create-flow worker: runs in the scratch folder with build tools. isFirstTurn is
+// tracked here in main so the renderer can never resume a session that was never opened.
+ipcMain.handle('pcc:createFlowSend', async (_e, message, model, attachments) => {
+  if (!createFlow.active || !createFlow.scratchDir) return { ok: false, text: 'No project is being created.' };
+  const isFirstTurn = !createFlow.started;
+  const res = await askClaude(message, model, createFlow.chatId, isFirstTurn, createFlow.chatId, attachments,
+    { cwd: createFlow.scratchDir, forceBuild: true });
+  if (res && res.ok) createFlow.started = true;
+  return res;
+});
+
+// Cancel: discard the scratch. Nothing was registered, so there is nothing else to undo.
+ipcMain.handle('pcc:createFlowCancel', () => {
+  rmScratch(createFlow.scratchDir);
+  createFlow.active = false; createFlow.scratchDir = null; createFlow.chatId = null; createFlow.started = false;
+  return { ok: true };
+});
+
+// Native folder picker for "Save Project": choose the PARENT folder the project will live in.
+ipcMain.handle('pcc:createFlowPickLocation', async () => {
+  const r = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'], title: 'Choose where to save the new project' });
+  if (r.canceled || !r.filePaths || !r.filePaths.length) return { path: null };
+  return { path: r.filePaths[0] };
+});
+
+// Save Project: materialize the scratch into a real, registered, active project.
+//   name     — the owner's project name;  location — the PARENT folder (project = <location>/<slug>)
+// Fold scratch content in → scaffold on top (bootstrap-project.ps1 -Force -NoInbox; we register
+// directly, so no inbox round-trip) → register + set active. Renderer then switches into it.
+ipcMain.handle('pcc:createFlowSave', async (_e, name, location) => {
+  if (!createFlow.active || !createFlow.scratchDir) return { ok: false, error: 'No project is being created.' };
+  const nm = (typeof name === 'string' ? name.trim() : '');
+  if (!nm) return { ok: false, error: 'Give the project a name.' };
+  if (typeof location !== 'string' || !location.trim()) return { ok: false, error: 'Choose where to save the project.' };
+  if (!fs.existsSync(location)) return { ok: false, error: 'That location does not exist.' };
+  const target = path.join(location, slugify(nm));
+  if (fs.existsSync(target)) {
+    try { if (fs.readdirSync(target).length > 0) return { ok: false, error: 'A non-empty folder already exists there: ' + target }; }
+    catch (e) { return { ok: false, error: 'Could not read the target folder: ' + e.message }; }
+  }
+  try {                                            // 1. fold scratch → target (cross-drive safe copy)
+    fs.mkdirSync(target, { recursive: true });
+    fs.cpSync(createFlow.scratchDir, target, { recursive: true });
+  } catch (e) { return { ok: false, error: 'Could not copy the new project into place: ' + e.message }; }
+  // 2. scaffold the cockpit engine on top (deterministic; a blueprint.json from the intake is used if present)
+  const bootstrap = path.join(HOME_DIR, 'scripts', 'bootstrap-project.ps1');
+  const args = ['-NoProfile', '-File', bootstrap, '-Target', target, '-Name', nm, '-Force', '-NoInbox'];
+  const bp = path.join(target, 'blueprint.json');
+  if (fs.existsSync(bp)) args.push('-Blueprint', bp);
+  // Async spawn (not spawnSync) so scaffolding — which copies the engine + git-inits, a few
+  // seconds — never blocks the Electron main process / IPC while the owner watches "Saving…".
+  const r = await new Promise((resolve) => {
+    let so = '', se = '', child;
+    try { child = spawn('pwsh', args, { cwd: HOME_DIR }); }
+    catch (e) { return resolve({ status: -1, stderr: e.message }); }
+    child.stdout.on('data', (d) => { so += d.toString(); });
+    child.stderr.on('data', (d) => { se += d.toString(); });
+    child.on('error', (e) => resolve({ status: -1, stderr: e.message }));
+    child.on('close', (code) => resolve({ status: code, stdout: so, stderr: se }));
+  });
+  if (r.status !== 0) return { ok: false, error: 'Scaffolding failed: ' + ((r.stderr || r.stdout || '').trim() || ('exit ' + r.status)) };
+  if (!isPccProject(target)) return { ok: false, error: 'Scaffolding did not produce a valid project (missing .cockpit / scripts / CLAUDE.md).' };
+  // 3. register + make active
+  const reg = readRegistry();
+  if (!reg.projects.includes(target)) reg.projects.push(target);
+  reg.active = target; writeRegistry(reg);
+  projectDir = target; sessionId = null;
+  // 4. done — discard scratch, close the create-flow
+  rmScratch(createFlow.scratchDir);
+  createFlow.active = false; createFlow.scratchDir = null; createFlow.chatId = null; createFlow.started = false;
+  return { ok: true, project: projectEntry(target) };
+});
 
 // Second opinion: hand a composed prompt to Codex (a DIFFERENT model) over stdin
 // and return its independent take. The worker (Claude) never grades itself; this

@@ -2865,7 +2865,15 @@ Related: IDEA-016 / IDEA-017 (chat-parity features), DECISION-112 (authority), s
 ## DECISION-114: New Project Is a New Document — Enter Immediately, Outside PCC; One "Save Project" Makes It Real
 
 Date: 2026-07-09
-Status: Active (design locked; BUILD PENDING — sequenced AFTER the earlier-approved chat features)
+Status: Active — BUILT 2026-07-09 (T1–T6). New Project now opens a distinct "Creating a project"
+surface outside the cockpit; its worker runs in an isolated scratch folder under app data (cwd
+scoped, build tools), never PCC; "Save Project" (name + native folder pick) folds the scratch in,
+scaffolds via bootstrap-project.ps1 (-Force -NoInbox), registers + activates the project, and a
+reload lands the owner inside it. Old in-PCC intake path removed. Verified: 108 unit/script + 88
+e2e green (incl. new tests/e2e/create-flow.spec.js proving Save materializes a real, registered,
+active PCC project, and updated dialogs/ipc specs). Honest limit: worker scoping is by working
+directory (as with any claude -p worker) — no OS jail, so this prevents running IN PCC, not every
+conceivable absolute-path write.
 
 Decision:
 

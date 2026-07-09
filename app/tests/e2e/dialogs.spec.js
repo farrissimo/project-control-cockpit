@@ -31,20 +31,22 @@ test('rename chat: in-app prompt sets the chat name', async () => {
   await expect(page.locator('.chat-name').first()).toHaveText('Renamed by test', { timeout: 10000 });
 });
 
-test('new project: in-app prompt opens a project intake chat', async () => {
+test('new project: opens the isolated create-flow surface, outside the cockpit', async () => {
+  // DECISION-114: New Project is a "new document" — clicking it leaves the cockpit for a distinct
+  // "Creating a project" surface whose worker runs in a scratch folder, never PCC. No in-PCC chat.
   await page.locator('.nav[data-view="project"]').click();
   await page.locator('#new-project').click();
-  const overlay = page.locator('[data-testid="prompt-overlay"]');
-  await expect(overlay).toBeVisible();
-  await page.locator('[data-testid="prompt-input"]').fill('Test Widget');
-  await page.locator('[data-testid="prompt-ok"]').click();
-  // New Project is gated behind an explicit build-session approval (DECISION-112):
-  // approve the "Start a new project" confirm before the intake chat opens.
+  const surface = page.locator('#create-flow');
+  await expect(surface).toHaveClass(/open/);
+  // The interview kicks off in the scratch-scoped worker; its reply lands in the create-flow log
+  // (NOT the cockpit chat). Wait for the kickoff to resolve so no thinking bubble lingers.
+  await expect(page.locator('#cf-log .bubble.assistant').last()).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#cf-log .bubble.assistant.thinking')).toHaveCount(0, { timeout: 15000 });
+  // Cancel discards it (nothing saved) and returns to the cockpit.
+  await page.locator('#cf-cancel').click();
   await expect(page.locator('[data-testid="confirm-overlay"]')).toBeVisible();
   await page.locator('[data-testid="confirm-approve"]').click();
-  // Switches to chat, opens a "New project: ..." chat, and sends the intake kickoff.
-  await expect(page.locator('#view-chat')).toBeVisible();
-  await expect(page.locator('.bubble.user').last()).toContainText('Test Widget', { timeout: 15000 });
+  await expect(surface).not.toHaveClass(/open/);
 });
 
 test('prompt: Cancel makes no change', async () => {

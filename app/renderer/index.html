@@ -393,6 +393,33 @@
     border: 2px solid var(--border); border-top-color: var(--info); border-radius: 50%;
     vertical-align: -2px; animation: pcc-spin 0.7s linear infinite; }
   @keyframes pcc-spin { to { transform: rotate(360deg); } }
+
+  /* New Project create-flow surface (DECISION-114). A full-window overlay OUTSIDE the cockpit:
+     clicking New Project drops you here (a "new document"), so PCC's chrome/context is gone and
+     the worker runs in an isolated scratch folder, never PCC. "Save Project" makes it real. */
+  #create-flow { position: fixed; inset: 0; z-index: 50; background: var(--bg);
+    display: none; flex-direction: column; }
+  #create-flow.open { display: flex; }
+  .cf-head { display: flex; align-items: center; gap: 14px; padding: 15px 22px;
+    border-bottom: 1px solid var(--border-2); background: var(--surface); }
+  .cf-title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .cf-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .cf-spacer { flex: 1; }
+  .cf-btn { border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+    background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border-2); }
+  .cf-btn:hover { border-color: var(--muted); }
+  .cf-btn.primary { background: #2f6bde; border-color: #2f6bde; color: #fff; }
+  .cf-btn:disabled { opacity: .5; cursor: default; }
+  #cf-log { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column;
+    gap: 12px; width: 100%; max-width: 900px; margin: 0 auto; box-sizing: border-box; }
+  .cf-welcome { color: var(--muted); font-size: 14px; align-self: center; text-align: center;
+    max-width: 540px; margin-top: 7vh; line-height: 1.5; }
+  #cf-composer { display: flex; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--border-2);
+    background: var(--surface); width: 100%; max-width: 900px; margin: 0 auto; box-sizing: border-box; }
+  #cf-input { flex: 1; resize: none; background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border-2); border-radius: 10px; padding: 11px 14px; font-size: 14px;
+    font-family: inherit; max-height: 180px; }
+  #cf-input:focus { outline: none; border-color: var(--info-strong); }
 </style>
 </head>
 <body>
@@ -546,6 +573,27 @@
       <pre class="rules" id="verify-result" style="margin-top:12px; display:none;"></pre>
     </div>
   </section>
+
+  <!-- New Project create-flow (DECISION-114): a distinct "Creating a project" surface, OUTSIDE the
+       cockpit. You are "in" the new (unsaved) project here; its worker runs in a scratch folder,
+       never PCC. "Save Project" names it, picks a folder, scaffolds, and lands you inside it. -->
+  <div id="create-flow">
+    <div class="cf-head">
+      <div>
+        <div class="cf-title">Creating a new project</div>
+        <div class="cf-sub" id="cf-sub">You're in a new, unsaved project. Nothing is written to disk until you click Save Project.</div>
+      </div>
+      <div class="cf-spacer"></div>
+      <button id="cf-save" class="cf-btn primary" type="button" title="Name it, pick a folder, and turn this into a real, saved project.">Save Project</button>
+      <button id="cf-cancel" class="cf-btn" type="button" title="Discard this and return to the cockpit. Nothing is saved.">Cancel</button>
+    </div>
+    <div id="cf-log"></div>
+    <form id="cf-composer">
+      <textarea id="cf-input" placeholder="Tell me about the project you want to create" rows="1"></textarea>
+      <button id="cf-send" class="cf-btn primary" type="submit">Send</button>
+    </form>
+  </div>
+
   <script src="verification-parse.js"></script>
   <script src="overview-logic.js"></script>
   <script src="renderer.js"></script>

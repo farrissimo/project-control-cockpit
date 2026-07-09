@@ -17,6 +17,7 @@ test('bridge exposes exactly the expected channels', async () => {
   const keys = await page.evaluate(() => Object.keys(window.pcc).sort());
   expect(keys).toEqual([
     'addProject', 'approveJob', 'authorityLog', 'authorityState', 'backup', 'cancelJob',
+    'createFlowCancel', 'createFlowPickLocation', 'createFlowSave', 'createFlowSend', 'createFlowStart',
     'detections', 'endJob', 'engineStatus', 'getActiveProject', 'getMemory', 'getModels',
     'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
     'listProjects', 'metrics', 'newChat', 'pickFolder', 'pull', 'recentDecisions', 'requestJob',

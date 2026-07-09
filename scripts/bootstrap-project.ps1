@@ -18,7 +18,8 @@ param(
   [Parameter(Mandatory = $true)][string]$Name,
   [string]$Blueprint,
   [switch]$Force,
-  [switch]$NoGit
+  [switch]$NoGit,
+  [switch]$NoInbox   # skip the scaffolded-inbox drop (the caller registers the project directly)
 )
 
 $ErrorActionPreference = 'Stop'
@@ -296,14 +297,17 @@ if (-not $NoGit) {
 # Drop the new project's path into an inbox in the repo this script was launched
 # from, so the running cockpit auto-imports it into its project switcher (the app
 # clears the inbox after reading). This is what makes "New project" appear in the
-# switcher without a manual "Open existing project" step.
-try {
-  $inboxPath = Join-Path $src '.cockpit/state/scaffolded-inbox.json'
-  $inbox = @()
-  if (Test-Path -LiteralPath $inboxPath) { try { $inbox = @(Get-Content -Raw -LiteralPath $inboxPath | ConvertFrom-Json) } catch { $inbox = @() } }
-  if ($inbox -notcontains $Target) { $inbox += $Target }
-  ($inbox | ConvertTo-Json -AsArray) | Out-File -FilePath $inboxPath -Encoding utf8
-} catch { }
+# switcher without a manual "Open existing project" step. -NoInbox skips this when the caller
+# (e.g. the DECISION-114 Save Project flow) registers the new project directly.
+if (-not $NoInbox) {
+  try {
+    $inboxPath = Join-Path $src '.cockpit/state/scaffolded-inbox.json'
+    $inbox = @()
+    if (Test-Path -LiteralPath $inboxPath) { try { $inbox = @(Get-Content -Raw -LiteralPath $inboxPath | ConvertFrom-Json) } catch { $inbox = @() } }
+    if ($inbox -notcontains $Target) { $inbox += $Target }
+    ($inbox | ConvertTo-Json -AsArray) | Out-File -FilePath $inboxPath -Encoding utf8
+  } catch { }
+}
 
 Write-Output ''
 Write-Output "Done. Next steps:"

@@ -376,41 +376,127 @@ function startNewChat() {
 }
 document.getElementById('new-chat').addEventListener('click', startNewChat);
 
-// New project: start a guided, chat-first intake (reuses CCB's intake logic via
-// scripts/new-project-intake.ps1). Opens a fresh named chat and kicks off the
-// interview; the worker runs the protocol, interviews in plain language, and
-// scaffolds via bootstrap-project.ps1 when the owner approves.
-document.getElementById('new-project').addEventListener('click', async () => {
-  if (busy) return;
-  const name = await pccPrompt('What would you like to call the new project?');
-  if (!name || !name.trim()) return;
-  const nm = name.trim();
-  // Execution authority (DECISION-112 + durable per-chat store): New Project needs the build
-  // profile, gated behind an EXPLICIT approval. Create the chat FIRST so authority binds to
-  // its STABLE id; requestJob -> approval_needed (nothing runs); the owner Approves or Cancels;
-  // only Approve authorizes build for THIS chat. Pasted chat text can never reach this path.
-  // Mark it a build chat + remember the job name so if it later drops to read-only (hard-cap
-  // expiry) the owner gets one-click "Enable build session" instead of a stranded chat.
-  document.querySelector('.nav[data-view="chat"]').click();
-  startNewChat();
-  const c = activeChat();
-  if (!c) return;
-  c.name = 'New project: ' + nm.slice(0, 30); c.buildChat = true; c.buildName = nm; persistChats(); renderChatList();
-  const req = await window.pcc.requestJob('new_project', nm, c.id);
-  if (!req || !req.ok) { loadTrust(); return; }
-  loadTrust(); // badge -> "Approval needed"
-  const approved = await pccConfirm(
-    'Start a new project "' + nm + '"?\n\nPCC will interview you, then create a new project folder by running its setup scripts. This runs commands on your computer for THIS build session only, and returns to read-only when it ends.',
-    'Approve & start');
-  if (!approved) { await window.pcc.cancelJob(); loadTrust(); return; }
-  const appr = await window.pcc.approveJob();
-  if (!appr || !appr.ok) { await window.pcc.cancelJob(); loadTrust(); return; }
-  loadTrust(); // badge -> "Authorized work running" for THIS chat
-  const kickoff = 'I want to start a NEW project called "' + nm + '". '
-    + 'Run `scripts/new-project-intake.ps1` to load the intake protocol, then interview me in plain language following it, one or two questions at a time. '
-    + 'Do not skip the approval gates. When I approve the blueprint, scaffold the project into a new folder next to this one using `scripts/bootstrap-project.ps1` with the blueprint, and tell me how to open it. Ask me the first question now.';
-  sendMessage(kickoff);
+// New project (DECISION-114): "New Project" is a NEW DOCUMENT. Clicking it takes you OUT of the
+// cockpit into a distinct "Creating a project" surface — a full chat, but NOT this cockpit chat,
+// and its worker runs in an isolated SCRATCH folder that will become the project (never PCC). You
+// are "in" the unsaved project immediately; "Save Project" materializes it (name + location →
+// scaffold → register → land you inside it). There is no in-PCC intake and no per-chat build grant
+// anymore — the isolated create-flow IS the gate, so the cockpit chat can stay purely read-only.
+//
+// ---- create-flow surface state (its own transcript; nothing here touches the cockpit chats) ----
+const cfLog = document.getElementById('cf-log');
+const cfInput = document.getElementById('cf-input');
+let cfBusy = false;
+const cfQueue = [];           // steering parity: keep the composer usable; queue sends in order
+
+function cfAddBubble(cls, text) {
+  const el = document.createElement('div');
+  el.className = 'bubble ' + cls;
+  const isAssistant = cls.indexOf('assistant') !== -1 && cls.indexOf('thinking') === -1;
+  if (isAssistant && String(text).indexOf('```') !== -1) { el.innerHTML = renderAssistant(text); }
+  else { el.textContent = text; }
+  cfLog.appendChild(el);
+  cfLog.scrollTop = cfLog.scrollHeight;
+  return el;
+}
+// Copy buttons inside create-flow code blocks (same behavior as the cockpit chat).
+cfLog.addEventListener('click', (e) => {
+  const btn = e.target.closest && e.target.closest('.cb-copy');
+  if (!btn) return;
+  const pre = btn.parentElement.querySelector('.cb-code');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.textContent).then(() => {
+    const prev = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = prev; }, 1500);
+  }).catch(() => { btn.textContent = 'Copy failed'; });
 });
+
+async function cfRunSend(item) {
+  cfBusy = true; cfInput.focus();
+  const thinking = cfAddBubble('assistant thinking', 'Claude is working…');
+  try {
+    const res = await window.pcc.createFlowSend(item.msg, getSelectedModel());
+    thinking.remove();
+    cfAddBubble(res && res.ok ? 'assistant' : 'assistant error', (res && res.text) || '(no output)');
+  } catch (err) {
+    thinking.remove();
+    cfAddBubble('assistant error', 'Something went wrong: ' + err.message);
+  } finally {
+    cfBusy = false; cfInput.focus();
+    if (cfQueue.length) cfRunSend(cfQueue.shift());
+  }
+}
+// `hidden` = don't show a user bubble (used for the invisible kickoff that starts the interview).
+function cfSend(text, hidden) {
+  const msg = (text || '').trim();
+  if (!msg) return;
+  if (!hidden) cfAddBubble('user', msg);
+  const item = { msg };
+  if (cfBusy) { cfQueue.push(item); return; }
+  cfRunSend(item);
+}
+
+function cfClose() {
+  document.getElementById('create-flow').classList.remove('open');
+  cfLog.innerHTML = ''; cfInput.value = ''; cfBusy = false; cfQueue.length = 0;
+  // Land back on the cockpit's primary surface (Chat), not wherever New Project was clicked from.
+  const chatNav = document.querySelector('.nav[data-view="chat"]');
+  if (chatNav) chatNav.click();
+}
+
+async function cfOpen() {
+  const start = await window.pcc.createFlowStart();
+  if (!start || !start.ok) { addBubble('assistant error', (start && start.error) || 'Could not start a new project.', false); return; }
+  cfLog.innerHTML = ''; cfInput.value = '';
+  document.getElementById('create-flow').classList.add('open');
+  cfInput.focus();
+  // Kick off the plain-language interview. The worker runs in the scratch folder (its own seeded
+  // intake protocol) and must NOT scaffold — the owner's "Save Project" click does that.
+  const kickoff = 'You are helping me create a BRAND-NEW project. You are running inside a fresh scratch '
+    + 'folder that will BECOME this project — everything you create belongs to the new project. Never read '
+    + 'from, write to, or reference the PCC cockpit folder. Run `pwsh -File scripts/new-project-intake.ps1` '
+    + 'to load the interview protocol, then interview me in plain language following it, one or two questions '
+    + 'at a time. Do NOT scaffold or try to "finish" the project — when I am ready I will click "Save Project", '
+    + 'which creates the real project folder. When you have enough from the interview, write a `blueprint.json` '
+    + 'in this folder capturing the project (name, problem, target user, desired outcome, scope). '
+    + 'Ask me the first question now.';
+  cfSend(kickoff, true);
+}
+
+async function cfSave() {
+  if (cfBusy) { const wait = await pccConfirm('Claude is still replying. Save the project now anyway?', 'Save now'); if (!wait) return; }
+  const name = await pccPrompt('Name this project:');
+  if (!name || !name.trim()) return;
+  const loc = await window.pcc.createFlowPickLocation();
+  if (!loc || !loc.path) return;
+  const saveBtn = document.getElementById('cf-save');
+  saveBtn.disabled = true; const prev = saveBtn.textContent; saveBtn.textContent = 'Saving…';
+  const res = await window.pcc.createFlowSave(name.trim(), loc.path);
+  if (res && res.ok) {
+    // Land INSIDE the new project: the active project is now it, so a reload boots the cockpit
+    // onto it (its first checkpoint is already committed by the scaffolder).
+    location.reload();
+  } else {
+    saveBtn.disabled = false; saveBtn.textContent = prev;
+    cfAddBubble('assistant error', 'Could not save the project: ' + ((res && res.error) || 'unknown error'));
+  }
+}
+
+async function cfCancel() {
+  const ok = await pccConfirm('Discard this new project? Nothing has been saved yet.', 'Discard');
+  if (!ok) return;
+  try { await window.pcc.createFlowCancel(); } catch (e) { /* scratch cleanup is best-effort */ }
+  cfClose();
+}
+
+document.getElementById('new-project').addEventListener('click', () => { if (!busy) cfOpen(); });
+document.getElementById('cf-save').addEventListener('click', cfSave);
+document.getElementById('cf-cancel').addEventListener('click', cfCancel);
+{
+  const cfForm = document.getElementById('cf-composer');
+  cfForm.addEventListener('submit', (e) => { e.preventDefault(); const v = cfInput.value; cfInput.value = ''; cfInput.style.height = 'auto'; cfSend(v); });
+  cfInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); cfForm.requestSubmit(); } });
+  cfInput.addEventListener('input', () => { cfInput.style.height = 'auto'; cfInput.style.height = Math.min(cfInput.scrollHeight, 180) + 'px'; });
+}
 
 // End an approved build session on demand -> authority returns to read_only.
 {
