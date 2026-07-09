@@ -14,6 +14,7 @@ const crypto = require('crypto');
 const { spawn, spawnSync, exec, execFile } = require('child_process');
 const { parseVerification } = require('./renderer/verification-parse');
 const { createAuthorityStore } = require('./authority-store');
+const { decideBackup } = require('./backup-policy');
 
 // This app is the single "home" cockpit. It opens PROJECTS (self-contained
 // folders each with their own .cockpit + engine scripts + CLAUDE.md, exactly
@@ -700,6 +701,15 @@ ipcMain.handle('pcc:syncStatus', async () => {
 // backup is a "don't lose my work" snapshot, NOT a verified checkpoint, so it must
 // never be blocked by the test hook (you may want to snapshot broken WIP). An
 // optional message is used verbatim; otherwise a timestamped default.
+// Read the active project's declared backup tier (owner policy 2026-07-09). Missing file =
+// no declared tier (the decision helper treats that as remote-backed if an upstream exists,
+// else as an undecided "setup" state — never a failure).
+function readBackupPolicy() {
+  try {
+    const p = JSON.parse(fs.readFileSync(path.join(projectDir, '.cockpit', 'state', 'backup-policy.json'), 'utf8'));
+    return (p && typeof p.mode === 'string') ? p.mode : null;
+  } catch (e) { return null; }
+}
 ipcMain.handle('pcc:backup', async (_e, message) => {
   const status = await git(['status', '--porcelain']);
   const steps = [];
@@ -717,7 +727,13 @@ ipcMain.handle('pcc:backup', async (_e, message) => {
   } else {
     steps.push('No new changes to commit');
   }
+  // Policy-driven push decision. A local-only (or undecided-no-remote) project checkpoints
+  // LOCALLY and never pushes — that is success for its tier, NOT a "Push FAILED" error.
   const up = await git(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
+  const decision = decideBackup(readBackupPolicy(), !up.failed);
+  if (!decision.push) {
+    return { ok: true, text: steps.join('. ') + '. ' + decision.noPushMessage };
+  }
   let push;
   if (up.failed) {
     const branch = (await git(['rev-parse', '--abbrev-ref', 'HEAD'])).out;

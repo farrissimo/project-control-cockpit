@@ -1002,14 +1002,16 @@ async function loadTrust() {
       : rails === 'warn' ? 'A drift or stale-docs signal is raised — see the Signals tab.'
       : 'Could not read the drift/stale-docs signals.');
 
-  // Backed up: repo-sync clear.
-  const rs = d && d.repoSync && d.repoSync.signal;
+  // Backup tier (owner policy 2026-07-09): label + color come from the repo-sync detector,
+  // which distinguishes "Local checkpointed" (local-only by decision, clean) from "Backed up"
+  // (remote, pushed), "Committed, not pushed", "Uncheckpointed", and "No backup tier set".
+  // A clean local-only project is GOOD, not amber — no nagging for a chosen tier.
+  const repo = d && d.repoSync;
+  const rs = repo && repo.signal;
   setChip('trust-backup',
     rs === 'clear' ? 'good' : rs === 'notice' ? 'warn' : 'unknown',
-    'Backed up',
-    rs === 'clear' ? 'Working tree clean and branch level with its remote.'
-      : rs === 'notice' ? 'Work is not fully backed up — see the Signals tab.'
-      : 'Could not read the repo-sync signal.');
+    (repo && repo.chip_label) || 'Backup',
+    (repo && repo.observed) || 'Could not read the repo-sync signal.');
 
   // Verified: honest freshness against HEAD AND honest about the KIND of proof
   // (DECISION-105 proof taxonomy). A code review that ran nothing must never wear
@@ -1079,7 +1081,7 @@ function renderChatHealth(d) {
   const tiles = signals.map((s) => {
     const sig = (s && s.signal) || 'unknown';
     const cls = (sig === 'clear' || sig === 'notice') ? sig : 'unknown';
-    const label = CH_LABELS[s && s.detector] || (s && s.detector) || 'Signal';
+    const label = (s && s.chip_label) || CH_LABELS[s && s.detector] || (s && s.detector) || 'Signal';
     return '<span class="ch-tile ' + cls + '" data-open="1">'
       + '<span class="ch-dot"></span>' + escapeHtml(label)
       + '<span class="ch-status">' + escapeHtml(sig) + '</span></span>';
@@ -1176,7 +1178,7 @@ async function loadProjectGlance() {
     const tiles = signals.map((s) => {
       const sig = (s && s.signal) || 'unknown';
       const cls = (sig === 'clear' || sig === 'notice') ? sig : 'unknown';
-      const label = CH_LABELS[s && s.detector] || (s && s.detector) || 'Signal';
+      const label = (s && s.chip_label) || CH_LABELS[s && s.detector] || (s && s.detector) || 'Signal';
       return '<span class="ch-tile ' + cls + '"><span class="ch-dot"></span>' + escapeHtml(label)
         + '<span class="ch-status">' + escapeHtml(sig) + '</span></span>';
     }).join('');
