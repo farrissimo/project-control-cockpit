@@ -13,8 +13,8 @@ test.beforeAll(async () => {
 });
 test.afterAll(async () => { await closeApp(app); });
 
-// The app disables #send while a worker turn is in flight (busy guard). Wait for
-// idle before each test so a send-type click is never swallowed mid-turn.
+// #send stays enabled during a turn now (steering: mid-turn messages queue, IDEA-017), but
+// wait for idle before each test so these single-shot button flows start from a clean state.
 test.beforeEach(async () => {
   await expect(page.locator('#send')).toBeEnabled({ timeout: 20000 });
 });
