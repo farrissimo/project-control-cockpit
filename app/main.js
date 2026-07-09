@@ -646,6 +646,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
       return resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message });
     }
     activeWorkers.add(child); // tracked so app-quit can kill it (F4)
+    if (opts && typeof opts.onSpawn === 'function') opts.onSpawn(child); // let the create-flow track its worker so Save/Cancel can stop it
     child.on('error', (e) => { activeWorkers.delete(child); resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message }); });
     child.stdout.on('data', (d) => { out += d.toString(); });
     child.stderr.on('data', (d) => { err += d.toString(); });
@@ -698,9 +699,19 @@ ipcMain.handle('pcc:send', (_e, message, model, workerSessionId, isFirstTurn, ch
 // discards the scratch. Honest limit: scoping is by working directory (as with any claude -p
 // worker) — there is no OS jail, so this prevents running IN PCC, not every conceivable
 // absolute-path write.
-const createFlow = { active: false, scratchDir: null, chatId: null, started: false };
+const createFlow = { active: false, saving: false, scratchDir: null, chatId: null, started: false, child: null, pending: null };
 function scratchRoot() { return path.join(app.getPath('userData'), 'pcc-scratch'); }
 function rmScratch(dir) { try { if (dir && fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* best effort */ } }
+// Stop any in-flight interview worker and WAIT for it to actually settle. Save/Cancel call this
+// FIRST so nothing (copy / scaffold / rmScratch) can race a worker still writing to the scratch,
+// and no build-capable worker lingers past materialization. killWorker tree-kills (taskkill /T);
+// the timeout is only a safety net if a killed child's stdio never closes.
+async function stopCreateFlowWorker() {
+  if (createFlow.child) killWorker(createFlow.child);
+  const pending = createFlow.pending;
+  if (pending) await Promise.race([pending.catch(() => {}), new Promise((r) => setTimeout(r, 4000))]);
+  createFlow.child = null; createFlow.pending = null;
+}
 // A safe project folder name from the owner's project name (no path traversal / illegal chars).
 function slugify(name) {
   const s = String(name || '').trim().replace(/[^A-Za-z0-9._ -]/g, '').replace(/\s+/g, '-').replace(/^[-.]+|-+$/g, '');
@@ -728,18 +739,24 @@ ipcMain.handle('pcc:createFlowStart', () => {
 // Send to the create-flow worker: runs in the scratch folder with build tools. isFirstTurn is
 // tracked here in main so the renderer can never resume a session that was never opened.
 ipcMain.handle('pcc:createFlowSend', async (_e, message, model, attachments) => {
-  if (!createFlow.active || !createFlow.scratchDir) return { ok: false, text: 'No project is being created.' };
+  if (!createFlow.active || createFlow.saving || !createFlow.scratchDir) return { ok: false, text: 'No project is being created.' };
   const isFirstTurn = !createFlow.started;
-  const res = await askClaude(message, model, createFlow.chatId, isFirstTurn, createFlow.chatId, attachments,
-    { cwd: createFlow.scratchDir, forceBuild: true });
+  const p = askClaude(message, model, createFlow.chatId, isFirstTurn, createFlow.chatId, attachments,
+    { cwd: createFlow.scratchDir, forceBuild: true, onSpawn: (c) => { createFlow.child = c; } });
+  createFlow.pending = p;                               // tracked so Save/Cancel can wait it out
+  const res = await p;
+  if (createFlow.pending === p) { createFlow.pending = null; createFlow.child = null; }
   if (res && res.ok) createFlow.started = true;
   return res;
 });
 
-// Cancel: discard the scratch. Nothing was registered, so there is nothing else to undo.
-ipcMain.handle('pcc:createFlowCancel', () => {
+// Cancel: stop any running worker, then discard the scratch. Nothing was registered, so there is
+// nothing else to undo. active is cleared FIRST so an in-flight send can't keep the flow alive.
+ipcMain.handle('pcc:createFlowCancel', async () => {
+  createFlow.active = false;
+  await stopCreateFlowWorker();
   rmScratch(createFlow.scratchDir);
-  createFlow.active = false; createFlow.scratchDir = null; createFlow.chatId = null; createFlow.started = false;
+  createFlow.scratchDir = null; createFlow.chatId = null; createFlow.started = false;
   return { ok: true };
 });
 
@@ -765,10 +782,15 @@ ipcMain.handle('pcc:createFlowSave', async (_e, name, location) => {
     try { if (fs.readdirSync(target).length > 0) return { ok: false, error: 'A non-empty folder already exists there: ' + target }; }
     catch (e) { return { ok: false, error: 'Could not read the target folder: ' + e.message }; }
   }
+  // Commit to materializing: block any further interview sends, and stop the in-flight worker
+  // BEFORE folding the scratch in, so the copy can't race a write and no build-capable worker
+  // survives materialization. On failure below, `saving` is cleared so the owner can retry.
+  createFlow.saving = true;
+  await stopCreateFlowWorker();
   try {                                            // 1. fold scratch → target (cross-drive safe copy)
     fs.mkdirSync(target, { recursive: true });
     fs.cpSync(createFlow.scratchDir, target, { recursive: true });
-  } catch (e) { return { ok: false, error: 'Could not copy the new project into place: ' + e.message }; }
+  } catch (e) { createFlow.saving = false; return { ok: false, error: 'Could not copy the new project into place: ' + e.message }; }
   // 2. scaffold the cockpit engine on top (deterministic; a blueprint.json from the intake is used if present)
   const bootstrap = path.join(HOME_DIR, 'scripts', 'bootstrap-project.ps1');
   const args = ['-NoProfile', '-File', bootstrap, '-Target', target, '-Name', nm, '-Force', '-NoInbox'];
@@ -785,8 +807,8 @@ ipcMain.handle('pcc:createFlowSave', async (_e, name, location) => {
     child.on('error', (e) => resolve({ status: -1, stderr: e.message }));
     child.on('close', (code) => resolve({ status: code, stdout: so, stderr: se }));
   });
-  if (r.status !== 0) return { ok: false, error: 'Scaffolding failed: ' + ((r.stderr || r.stdout || '').trim() || ('exit ' + r.status)) };
-  if (!isPccProject(target)) return { ok: false, error: 'Scaffolding did not produce a valid project (missing .cockpit / scripts / CLAUDE.md).' };
+  if (r.status !== 0) { createFlow.saving = false; return { ok: false, error: 'Scaffolding failed: ' + ((r.stderr || r.stdout || '').trim() || ('exit ' + r.status)) }; }
+  if (!isPccProject(target)) { createFlow.saving = false; return { ok: false, error: 'Scaffolding did not produce a valid project (missing .cockpit / scripts / CLAUDE.md).' }; }
   // 3. register + make active
   const reg = readRegistry();
   if (!reg.projects.includes(target)) reg.projects.push(target);
@@ -794,7 +816,7 @@ ipcMain.handle('pcc:createFlowSave', async (_e, name, location) => {
   projectDir = target; sessionId = null;
   // 4. done — discard scratch, close the create-flow
   rmScratch(createFlow.scratchDir);
-  createFlow.active = false; createFlow.scratchDir = null; createFlow.chatId = null; createFlow.started = false;
+  createFlow.active = false; createFlow.saving = false; createFlow.scratchDir = null; createFlow.chatId = null; createFlow.started = false;
   return { ok: true, project: projectEntry(target) };
 });
 
