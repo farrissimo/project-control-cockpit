@@ -71,7 +71,7 @@ test('UI: the switcher lists both projects and switching updates the active name
   await call('setActiveProject', home);
   await page.reload();
   await page.waitForLoadState('domcontentloaded');
-  await expect(page.locator('#send')).toBeEnabled({ timeout: 20000 });
+  await expect(page.locator('.bubble.assistant.thinking')).toHaveCount(0, { timeout: 20000 });
 
   await page.locator('#proj-switch').click();
   await expect(page.locator('#proj-panel')).not.toHaveClass(/hidden/);
@@ -95,7 +95,7 @@ test('chat history is isolated between projects', async () => {
   const home = list.projects.find((p) => p.isHome).path;
 
   // On Temp-Widget (from the previous test): send a message, creating a temp chat.
-  await expect(page.locator('#send')).toBeEnabled({ timeout: 20000 });
+  await expect(page.locator('.bubble.assistant.thinking')).toHaveCount(0, { timeout: 20000 });
   await page.locator('#input').fill('temp-project message');
   await page.locator('#send').click();
   await expect(page.locator('.bubble.user').last()).toHaveText(/temp-project message/);
@@ -104,7 +104,7 @@ test('chat history is isolated between projects', async () => {
   await call('setActiveProject', home);
   await page.reload();
   await page.waitForLoadState('domcontentloaded');
-  await expect(page.locator('#send')).toBeEnabled({ timeout: 20000 });
+  await expect(page.locator('.bubble.assistant.thinking')).toHaveCount(0, { timeout: 20000 });
   await expect(page.locator('.bubble.user', { hasText: 'temp-project message' })).toHaveCount(0);
 
   // The two projects wrote to different namespaced localStorage keys.

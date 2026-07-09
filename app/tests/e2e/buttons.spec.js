@@ -16,7 +16,7 @@ test.afterAll(async () => { await closeApp(app); });
 // #send stays enabled during a turn now (steering: mid-turn messages queue, IDEA-017), but
 // wait for idle before each test so these single-shot button flows start from a clean state.
 test.beforeEach(async () => {
-  await expect(page.locator('#send')).toBeEnabled({ timeout: 20000 });
+  await expect(page.locator('.bubble.assistant.thinking')).toHaveCount(0, { timeout: 20000 });
 });
 
 // --- sidebar navigation: every view opens and renders without an error state ---

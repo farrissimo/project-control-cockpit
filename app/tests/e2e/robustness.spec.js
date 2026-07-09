@@ -7,7 +7,7 @@ const { launchApp, closeApp } = require('../helpers/launch');
 test('rename persists across an app reload', async () => {
   const { app, page } = await launchApp();
   try {
-    await expect(page.locator('#send')).toBeEnabled({ timeout: 20000 });
+    await expect(page.locator('.bubble.assistant.thinking')).toHaveCount(0, { timeout: 20000 });
     // Ensure the panel is open, then rename the first chat via the in-app modal.
     const panel = page.locator('#chats-panel');
     if (await panel.evaluate((el) => el.classList.contains('hidden'))) await page.locator('#chats-btn').click();
@@ -31,7 +31,7 @@ test('steering: composer stays usable mid-turn; a second message queues and both
   // 1.2s fake reply so the in-flight window is comfortably observable.
   const { app, page } = await launchApp({ PCC_FAKE_DELAY_MS: '1200' });
   try {
-    await expect(page.locator('#send')).toBeEnabled({ timeout: 20000 });
+    await expect(page.locator('.bubble.assistant.thinking')).toHaveCount(0, { timeout: 20000 });
     await page.locator('#input').fill('first message');
     await page.locator('#send').click();
     // Steering (IDEA-017): the composer does NOT lock while a turn is in flight.
@@ -42,7 +42,7 @@ test('steering: composer stays usable mid-turn; a second message queues and both
     await page.locator('#input').press('Enter');
     expect(await page.locator('.bubble.user').count()).toBe(usersInFlight + 1);
     // Both turns complete in order → two real assistant replies.
-    await expect(page.locator('#send')).toBeEnabled({ timeout: 20000 });
+    await expect(page.locator('.bubble.assistant.thinking')).toHaveCount(0, { timeout: 20000 });
     await expect(page.locator('.bubble.assistant:not(.thinking)')).toHaveCount(2, { timeout: 20000 });
   } finally {
     await closeApp(app);

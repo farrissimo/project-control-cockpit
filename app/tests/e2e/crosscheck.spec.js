@@ -6,7 +6,7 @@ const { launchApp, closeApp } = require('../helpers/launch');
 let app, page;
 test.beforeAll(async () => { ({ app, page } = await launchApp()); });
 test.afterAll(async () => { await closeApp(app); });
-test.beforeEach(async () => { await expect(page.locator('#send')).toBeEnabled({ timeout: 20000 }); });
+test.beforeEach(async () => { await expect(page.locator('.bubble.assistant.thinking')).toHaveCount(0, { timeout: 20000 }); });
 
 test('Second opinion with no answer yet shows a friendly error', async () => {
   await page.locator('.corr', { hasText: 'Second opinion' }).first().click();
@@ -18,7 +18,7 @@ test('Second opinion sends the last answer to Codex and renders a codex bubble',
   await page.locator('#input').fill('should I ship this?');
   await page.locator('#send').click();
   await expect(page.locator('.bubble.assistant').last()).toContainText('FAKE-CLAUDE-REPLY', { timeout: 15000 });
-  await expect(page.locator('#send')).toBeEnabled({ timeout: 15000 });
+  await expect(page.locator('.bubble.assistant.thinking')).toHaveCount(0, { timeout: 15000 });
 
   // Now ask Codex for a second opinion.
   await page.locator('.corr', { hasText: 'Second opinion' }).first().click();

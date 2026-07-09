@@ -9,7 +9,7 @@ const { launchApp, closeApp } = require('../helpers/launch');
 let app, page;
 test.beforeAll(async () => { ({ app, page } = await launchApp()); });
 test.afterAll(async () => { await closeApp(app); });
-test.beforeEach(async () => { await expect(page.locator('#send')).toBeEnabled({ timeout: 20000 }); });
+test.beforeEach(async () => { await expect(page.locator('.bubble.assistant.thinking')).toHaveCount(0, { timeout: 20000 }); });
 
 // Open the chats panel deterministically (it's a toggle; state leaks between
 // tests that share one app instance).

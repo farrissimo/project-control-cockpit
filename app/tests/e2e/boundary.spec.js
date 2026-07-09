@@ -34,7 +34,7 @@ test('worker auth failure surfaces honestly', async () => {
 
 test('empty worker output shows "(no output)", never a silent blank', async () => {
   await withApp({ PCC_FAKE_CLAUDE_FIXTURE: FX('worker-empty.json') }, async (page) => {
-    await expect(page.locator('#send')).toBeEnabled({ timeout: 20000 });
+    await expect(page.locator('.bubble.assistant.thinking')).toHaveCount(0, { timeout: 20000 });
     await page.locator('#input').fill('hi');
     await page.locator('#send').click();
     await expect(page.locator('.bubble.assistant').last()).toHaveText('(no output)', { timeout: 15000 });
