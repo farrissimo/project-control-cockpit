@@ -351,21 +351,21 @@ function activeIsBuildChat() {
 async function resumeBuildForActiveChat() {
   if (busy) return;
   const c = activeChat();
-  if (!c || !activeIsBuildChat()) return;
+  if (!c) return;
   const chatId = c.sessionId || c.id;
-  const name = c.buildName || (c.name || '').replace(/^New project:\s*/, '') || 'this project';
+  const name = c.buildName || (c.name || '').replace(/^New project:\s*/, '') || 'this chat';
   const req = await window.pcc.requestJob('new_project', name, chatId);
   if (!req || !req.ok) return;
   loadTrust();
   const ok = await pccConfirm(
-    'Resume the build session for "' + name + '"?\n\nThis lets THIS chat run commands and write files again for a bounded build session, then returns to read-only when it ends.',
-    'Resume build');
+    'Enable a build session for "' + name + '"?\n\nThis lets THIS chat run commands and write files for a bounded build session, then returns to read-only when it ends.',
+    'Enable build');
   if (!ok) { await window.pcc.cancelJob(); loadTrust(); return; }
   const appr = await window.pcc.approveJob();
   if (!appr || !appr.ok) { await window.pcc.cancelJob(); loadTrust(); return; }
   c.sessionId = appr.chatId; c.buildChat = true; c.buildName = name; persistChats();
   loadTrust();
-  addBubble('assistant', 'Build session resumed for this chat — you can continue building. Send your next message.', true);
+  addBubble('assistant', 'Build session enabled for this chat — it can now run commands and write files. Send your next message.', true);
 }
 {
   const authorityResumeBtn = document.getElementById('authority-resume');
@@ -983,7 +983,7 @@ async function loadAuthorityBadge() {
   // app is NOT currently in an authorized build (dropped to read-only after a restart or
   // expiry). This is the escape hatch from a stranded, un-writable New Project chat.
   const resumeBtn = document.getElementById('authority-resume');
-  if (resumeBtn) resumeBtn.classList.toggle('hidden', !(activeIsBuildChat() && mode !== 'authorized_running'));
+  if (resumeBtn) resumeBtn.classList.toggle('hidden', mode === 'authorized_running' || !activeChat());
 }
 
 async function loadTrust() {
