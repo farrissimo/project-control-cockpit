@@ -58,7 +58,8 @@ test('requestJob moves to approval_needed; still nothing executed', async () => 
   await withApp(async (page) => {
     const r = await page.evaluate(() => window.pcc.requestJob('new_project', 'DemoProj'));
     expect(r.ok).toBe(true);
-    const s = await authority(page);
+    // Authority is PER-CHAT now: check the state of the chat the request was bound to.
+    const s = await page.evaluate((cid) => window.pcc.authorityState(cid), r.chatId);
     expect(s.mode).toBe('approval_needed');
     expect(s.job && s.job.name).toBe('DemoProj');
   });
@@ -79,9 +80,10 @@ test('approveJob enters authorized_running bound to the requested chatId; endJob
     const appr = await page.evaluate(() => window.pcc.approveJob());
     expect(appr.ok).toBe(true);
     expect(appr.chatId).toBe(req.chatId);
-    expect((await authority(page)).mode).toBe('authorized_running');
-    await page.evaluate(() => window.pcc.endJob());
-    expect((await authority(page)).mode).toBe('read_only');
+    // Per-chat: query and end THIS chat's authority by its id.
+    expect((await page.evaluate((cid) => window.pcc.authorityState(cid), req.chatId)).mode).toBe('authorized_running');
+    await page.evaluate((cid) => window.pcc.endJob(cid), req.chatId);
+    expect((await page.evaluate((cid) => window.pcc.authorityState(cid), req.chatId)).mode).toBe('read_only');
   });
 });
 
