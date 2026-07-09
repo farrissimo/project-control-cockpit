@@ -26,6 +26,7 @@ let activeId = null;
 let history = [];
 let busy = false;
 let attachments = []; // composer attachments for the NEXT send: {kind:'image',mediaType,dataBase64,name} | {kind:'text',name,content}
+let sendQueue = []; // steering: messages composed while a turn is running, sent in order when it finishes
 
 function uuid() { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'c-' + Date.now() + '-' + Math.random().toString(16).slice(2); }
 function activeChat() { return chats.find((c) => c.id === activeId) || null; }
@@ -178,10 +179,13 @@ log.addEventListener('click', (e) => {
 // actually goes to Claude. Needed for "Capture decisions": without this, the
 // giant embedded transcript would itself get stored in history, and the NEXT
 // capture would re-embed it, growing without bound.
+// Compose + show a message, then either send it now or QUEUE it if a turn is already running.
+// STEERING (owner request): the composer never locks mid-turn — you can keep sending / redirecting,
+// and queued messages are sent in order as each turn finishes, instead of being dropped.
 async function sendMessage(text, displayText) {
   const msg = (text || '').trim();
   const outbound = attachments.slice(); // snapshot the composer's attachments for THIS send
-  if ((!msg && outbound.length === 0) || busy) return;
+  if (!msg && outbound.length === 0) return;
   const shown = (displayText || msg).trim();
   const chat = activeChat();
   if (!chat) return;
@@ -192,19 +196,28 @@ async function sendMessage(text, displayText) {
     chat.name = shown.replace(/\s+/g, ' ').slice(0, 40) + (shown.length > 40 ? '…' : '');
     renderChatList();
   }
-  // Show the message plus a plain note of what was attached; then clear the composer's attachments.
+  // Show the message (plus a plain note of what was attached) immediately, then clear the composer.
   const attachNote = outbound.length ? (shown ? '\n\n' : '') + '📎 ' + outbound.length + ' attachment' + (outbound.length > 1 ? 's' : '') + ': ' + outbound.map((a) => a.name || a.kind).join(', ') : '';
   addBubble('user', shown + attachNote, true);
   attachments = []; renderAttachments();
-  busy = true; sendBtn.disabled = true;
+  const item = { msg, outbound, chat };
+  if (busy) { sendQueue.push(item); return; } // a turn is running — send this one when it finishes
+  runSend(item);
+}
+
+// Run one turn against the worker, then drain the next queued message (if any).
+async function runSend(item) {
+  const chat = item.chat;
+  busy = true; input.focus();
   const thinking = addBubble('assistant thinking', 'Claude is working…', false);
   try {
     // Two IDs, kept separate on purpose: the WORKER session id is chat.sessionId when set
     // (after a recovery re-mint) else chat.id — so a stale-locked session can be replaced
-    // without losing history (soak fix F4). The stable chat.id is passed as the last arg as
-    // the AUTHORITY key, so build permission tracks the chat itself and never desyncs when
-    // the worker session is re-minted.
-    const res = await window.pcc.send(msg, getSelectedModel(), chat.sessionId || chat.id, !chat.started, chat.id, outbound);
+    // without losing history (soak fix F4). The stable chat.id is passed as the AUTHORITY key,
+    // so build permission tracks the chat itself and never desyncs when the worker session is
+    // re-minted. isFirstTurn is read now (not at compose time) so a queued follow-up correctly
+    // resumes the session the previous turn just opened.
+    const res = await window.pcc.send(item.msg, getSelectedModel(), chat.sessionId || chat.id, !chat.started, chat.id, item.outbound);
     thinking.remove();
     if (res.ok) { chat.started = true; save(); }
     addBubble(res.ok ? 'assistant' : 'assistant error', res.text || '(no output)', true);
@@ -215,7 +228,8 @@ async function sendMessage(text, displayText) {
     thinking.remove();
     addBubble('assistant error', 'Something went wrong: ' + err.message, true);
   } finally {
-    busy = false; sendBtn.disabled = false; input.focus();
+    busy = false; input.focus();
+    if (sendQueue.length) runSend(sendQueue.shift()); // steering: send the next queued message
   }
 }
 
@@ -499,6 +513,7 @@ function makeSecondOpinionButton() {
       addBubble('assistant error', 'Second opinion failed: ' + e.message, true);
     } finally {
       busy = false; sendBtn.disabled = false;
+      if (sendQueue.length) runSend(sendQueue.shift()); // drain anything queued during the review
     }
   });
   return b;
