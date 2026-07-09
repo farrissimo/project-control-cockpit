@@ -423,7 +423,9 @@ async function cfRunSend(item) {
     cfAddBubble('assistant error', 'Something went wrong: ' + err.message);
   } finally {
     cfBusy = false; cfInput.focus();
-    if (cfQueue.length) cfRunSend(cfQueue.shift());
+    // Don't drain the queue once Save has started materializing (cfSaving) — those pre-Save
+    // messages are moot and would only draw a spurious "no project" error during the save.
+    if (!cfSaving && cfQueue.length) cfRunSend(cfQueue.shift());
   }
 }
 // `hidden` = don't show a user bubble (used for the invisible kickoff that starts the interview).
@@ -471,7 +473,7 @@ async function cfSave() {
   const loc = await window.pcc.createFlowPickLocation();
   if (!loc || !loc.path) return;
   // Commit to materializing: block sends + Cancel so nothing races the Save (Save/Cancel race).
-  cfSaving = true;
+  cfSaving = true; cfQueue.length = 0;   // drop any pre-Save queued turns; they're moot now
   const saveBtn = document.getElementById('cf-save');
   const cancelBtn = document.getElementById('cf-cancel');
   saveBtn.disabled = true; cancelBtn.disabled = true;
