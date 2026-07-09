@@ -13,6 +13,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { spawn, spawnSync, exec, execFile } = require('child_process');
 const { parseVerification } = require('./renderer/verification-parse');
+const { createAuthority } = require('./authority-logic');
 
 // This app is the single "home" cockpit. It opens PROJECTS (self-contained
 // folders each with their own .cockpit + engine scripts + CLAUDE.md, exactly
@@ -508,49 +509,31 @@ const AUTHORITY_LABELS = {
   completed_needs_review: 'Work complete — review result',
   blocked: 'Blocked — work stopped',
 };
-const BUILD_SESSION_MS = 30 * 60 * 1000; // an approved build session auto-expires after 30 min
-let authorityMode = 'read_only';  // read_only | approval_needed | authorized_running | completed_needs_review | blocked
-let pendingJob = null;            // { type, name, chatId } while approval_needed
-let authorizedJob = null;         // { type, name, chatId, expiresAt } while authorized_running
-const authorityLog = [];          // minimal in-memory owner-visible record
-
-function logAuthority(event, job) { authorityLog.push({ event, type: job.type, name: job.name, at: new Date().toISOString() }); }
-// A stale authorization can never linger: drop an expired build session to read_only
-// before any authority read or chat spawn.
-function expireAuthorityIfNeeded() {
-  if (authorityMode === 'authorized_running' && authorizedJob && Date.now() > authorizedJob.expiresAt) {
-    logAuthority('expired', authorizedJob); authorizedJob = null; authorityMode = 'read_only';
-  }
-}
+// The state machine + its two-deadline timeout model live in the pure, unit-tested
+// authority-logic module (injectable clock). main owns IPC, chatId minting, and the
+// tool-flag selection below; every transition delegates here so no logic drifts.
+const authority = createAuthority();
 function authoritySnapshot() {
-  expireAuthorityIfNeeded();
-  const job = authorizedJob || pendingJob;
-  return { mode: authorityMode, label: AUTHORITY_LABELS[authorityMode] || AUTHORITY_LABELS.read_only,
-    job: job ? { type: job.type, name: job.name } : null };
+  const s = authority.snapshot(Date.now());
+  return { mode: s.mode, label: AUTHORITY_LABELS[s.mode] || AUTHORITY_LABELS.read_only, job: s.job };
 }
 // Read-only IPC: report current authority state. Takes no requested mode, never mutates.
 ipcMain.handle('pcc:authorityState', () => authoritySnapshot());
-ipcMain.handle('pcc:authorityLog', () => authorityLog.slice(-20));
+ipcMain.handle('pcc:authorityLog', () => authority.logTail(20));
 // Owner-initiated ONLY (wired to explicit UI buttons, never to chat text). Request a
 // bounded job -> approval_needed; nothing runs yet.
 ipcMain.handle('pcc:requestJob', (_e, type, name) => {
   if (type !== 'new_project') return { ok: false, message: 'Unknown job type.' };
   const chatId = crypto.randomUUID();
-  pendingJob = { type, name: String(name || '').slice(0, 60), chatId };
-  authorityMode = 'approval_needed';
-  return { ok: true, chatId, job: { type, name: pendingJob.name } };
+  const r = authority.request(type, name, chatId);
+  return { ok: true, chatId: r.chatId, job: r.job };
 });
 // Owner approves the pending job -> authorized_running, bound to that chatId, expiring.
-ipcMain.handle('pcc:approveJob', () => {
-  if (!pendingJob) return { ok: false, message: 'Nothing to approve.' };
-  authorizedJob = Object.assign({}, pendingJob, { expiresAt: Date.now() + BUILD_SESSION_MS });
-  pendingJob = null; authorityMode = 'authorized_running'; logAuthority('approved', authorizedJob);
-  return { ok: true, chatId: authorizedJob.chatId, job: { type: authorizedJob.type, name: authorizedJob.name } };
-});
+ipcMain.handle('pcc:approveJob', () => authority.approve(Date.now()));
 // Owner cancels a pending approval -> read_only.
-ipcMain.handle('pcc:cancelJob', () => { if (pendingJob) logAuthority('cancelled', pendingJob); pendingJob = null; authorityMode = 'read_only'; return { ok: true }; });
+ipcMain.handle('pcc:cancelJob', () => authority.cancel());
 // End the approved build session -> read_only.
-ipcMain.handle('pcc:endJob', () => { if (authorizedJob) logAuthority('ended', authorizedJob); authorizedJob = null; authorityMode = 'read_only'; return { ok: true }; });
+ipcMain.handle('pcc:endJob', () => authority.end());
 
 // Send a message to Claude Code non-interactively. The prompt goes in over
 // stdin (so quotes/newlines in the message can never break shell parsing).
@@ -571,12 +554,13 @@ function askClaude(message, model, chatId, isFirstTurn) {
     // execution/mutation/meta tools (deny beats the global settings.json allow).
     // The BUILD profile (adds Bash/PowerShell/Write/Edit so New Project's setup scripts
     // can run) is used ONLY when the owner has explicitly approved a bounded job AND
-    // this send belongs to that job's chat (chatId === authorizedJob.chatId), and only
-    // until it expires. Message content can never flip this — authorityMode is set only
-    // by owner-driven IPC (requestJob/approveJob). Both profiles proven by the S0 /
-    // build-profile spikes.
-    expireAuthorityIfNeeded();
-    const isBuild = authorityMode === 'authorized_running' && authorizedJob && chatId === authorizedJob.chatId;
+    // this send belongs to that job's chat (chatId === the approved job's chatId), and
+    // only until the session expires. Message content can never flip this — authority is
+    // set only by owner-driven IPC (requestJob/approveJob). authorizeSend also RENEWS the
+    // idle window on this grant (Task 2L), so a long New-Project interview keeps its build
+    // tools right through to the final scaffold write; the hard cap it can't extend still
+    // bounds the session. Both profiles proven by the S0 / build-profile spikes.
+    const isBuild = authority.authorizeSend(chatId, Date.now());
     const toolFlags = isBuild
       ? ['--tools', 'Bash PowerShell Read Write Edit Glob Grep WebSearch WebFetch', '--strict-mcp-config',
          '--disallowedTools', 'AskUserQuestion Agent Monitor Skill ToolSearch Task']

@@ -38,6 +38,10 @@ test('new project: in-app prompt opens a project intake chat', async () => {
   await expect(overlay).toBeVisible();
   await page.locator('[data-testid="prompt-input"]').fill('Test Widget');
   await page.locator('[data-testid="prompt-ok"]').click();
+  // New Project is gated behind an explicit build-session approval (DECISION-112):
+  // approve the "Start a new project" confirm before the intake chat opens.
+  await expect(page.locator('[data-testid="confirm-overlay"]')).toBeVisible();
+  await page.locator('[data-testid="confirm-approve"]').click();
   // Switches to chat, opens a "New project: ..." chat, and sends the intake kickoff.
   await expect(page.locator('#view-chat')).toBeVisible();
   await expect(page.locator('.bubble.user').last()).toContainText('Test Widget', { timeout: 15000 });

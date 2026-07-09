@@ -16,11 +16,12 @@ const call = (method, ...args) =>
 test('bridge exposes exactly the expected channels', async () => {
   const keys = await page.evaluate(() => Object.keys(window.pcc).sort());
   expect(keys).toEqual([
-    'addProject', 'backup', 'detections', 'engineStatus', 'getActiveProject', 'getMemory',
-    'getModels', 'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
-    'listProjects', 'metrics', 'newChat', 'pickFolder', 'pull', 'recentDecisions', 'runProduct',
-    'saveMemory', 'secondOpinion', 'send', 'setActiveProject', 'setPhaseKind', 'syncStatus',
-    'trustExtras', 'verify', 'verifyProduct', 'visionPromises',
+    'addProject', 'approveJob', 'authorityLog', 'authorityState', 'backup', 'cancelJob',
+    'detections', 'endJob', 'engineStatus', 'getActiveProject', 'getMemory', 'getModels',
+    'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
+    'listProjects', 'metrics', 'newChat', 'pickFolder', 'pull', 'recentDecisions', 'requestJob',
+    'runProduct', 'saveMemory', 'secondOpinion', 'send', 'setActiveProject', 'setPhaseKind',
+    'syncStatus', 'trustExtras', 'verify', 'verifyProduct', 'visionPromises',
   ]);
 });
 
