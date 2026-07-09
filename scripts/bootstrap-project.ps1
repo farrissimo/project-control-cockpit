@@ -97,6 +97,11 @@ Copy-File 'docs/BACKUP_POLICY.md'   # the mandatory backup policy CLAUDE.md + th
 
 # --- 4. generic declared state (lifecycle model + thresholds copied; state fresh) ---
 Copy-File '.cockpit/state/lifecycle-model.json'
+# The model switcher list is generic (no project-specific data), so COPY the current one rather
+# than templating a stale copy — every new project is born with the same up-to-date model list and
+# default the home cockpit has (fix for under-provisioning: children were born without models.json
+# and fell back to a hard-coded single-model list the owner couldn't edit).
+Copy-File '.cockpit/state/models.json'
 # NOTE: bloat-thresholds.json is NOT copied from PCC (soak fix F10). PCC's globs point
 # at PCC's own engine (app/, scripts/), so a copied config made the child flag the
 # copied engine as the owner's bloat. A product-scoped config is generated below.
@@ -182,6 +187,49 @@ Set-Content -LiteralPath (Join-Path $Target '.cockpit/state/product-run.json') -
   "verify": "npm test --prefix product",
   "cwd": ".",
   "updated_at": "$stamp"
+}
+"@)
+
+# Backup tier (owner policy 2026-07-09: projects EARN off-machine backup). A fresh project has just
+# been git-inited with NO remote, so it is born LOCAL-ONLY: local commits are the accepted
+# checkpoint and the app shows a clean "Local checkpointed" instead of nagging about a missing
+# remote or a false "Push FAILED". Change to "remote-backed" once the project earns an off-machine
+# repo. (Fix for under-provisioning: children were born WITHOUT this file and sat in the undecided
+# "setup" state instead of a clean local-only tier.)
+Set-Content -LiteralPath (Join-Path $Target '.cockpit/state/backup-policy.json') -Encoding utf8 -Value (@"
+{
+  "config_id": "backup-policy-v1",
+  "plain_language": {
+    "what_this_is": "Which backup tier this project is on. 'local-only' means your local commits ARE the accepted checkpoint -- the app shows a clean 'Local checkpointed' and never nags about a missing remote. A new project starts here because it has no off-machine remote yet.",
+    "how_to_upgrade": "When this project earns off-machine backup (you push it to a GitHub/remote repo), change mode to 'remote-backed' so the Backup button pushes and a push failure is treated as a real warning."
+  },
+  "mode": "local-only",
+  "updated_at": "$stamp"
+}
+"@)
+
+# High-stakes rules (declared boundary for the high-stakes signal). Missing = the detector honestly
+# reports "unknown"; born with a starter list = it works from day one. Baseline is the bootstrap tag
+# (pcc-baseline), matching the other generated boundaries. Globs are generic files every project has.
+# (Fix for under-provisioning: children were born WITHOUT this file, so the high-stakes signal read
+# "unknown" instead of watching the obvious high-stakes files.)
+Set-Content -LiteralPath (Join-Path $Target '.cockpit/state/high-stakes-rules.json') -Encoding utf8 -Value (@"
+{
+  "_plain_language": "A DECLARED list of changes important enough that a second opinion (Codex cross-check) is worth considering before you rely on them. A match raises a 'consider a second opinion' notice in Signals; it never blocks anything. Edit deliberately -- the detector checks exactly this list and reports 'unknown' rather than guessing if it is missing.",
+  "compare_baseline": "pcc-baseline",
+  "high_stakes_globs": [
+    "docs/DECISIONS.md",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "PROJECT.md",
+    ".cockpit/state/app-build-scope.json",
+    ".cockpit/state/doc-freshness-map.json",
+    ".cockpit/state/lifecycle-model.json",
+    ".cockpit/state/high-stakes-rules.json",
+    "scripts/backup-protected-files.ps1",
+    ".githooks/**"
+  ],
+  "flag_deletions": true
 }
 "@)
 

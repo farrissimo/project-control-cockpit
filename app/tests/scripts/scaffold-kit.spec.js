@@ -132,6 +132,53 @@ test('a fresh scaffold is stamped with the current engine version', () => {
   expect(proj.engine_version).toBe(home.engine_version);
 });
 
+// Under-provisioning fix (2026-07-09): a new project must be born with the declared ENGINE CONFIG
+// the app reads, not just the scripts. Children were born missing models.json (fell back to a
+// hard-coded single model the owner couldn't edit), backup-policy.json (sat in the undecided
+// "setup" tier instead of a clean local-only), and high-stakes-rules.json (detector read "unknown").
+test('new project is born with an editable model list (models.json)', () => {
+  const m = JSON.parse(fs.readFileSync(path.join(target, '.cockpit', 'state', 'models.json'), 'utf8'));
+  expect(m.default).toBeTruthy();
+  expect(Array.isArray(m.models)).toBe(true);
+  expect(m.models.length).toBeGreaterThan(0);
+  expect(m.models.every((x) => x.id && x.label)).toBe(true);
+});
+
+test('new project is born on the local-only backup tier (no false "not backed up" nag)', () => {
+  const b = JSON.parse(fs.readFileSync(path.join(target, '.cockpit', 'state', 'backup-policy.json'), 'utf8'));
+  expect(b.mode).toBe('local-only'); // a fresh project has no remote — local commits are the checkpoint
+});
+
+test('new project is born with declared high-stakes rules (detector works, not "unknown")', () => {
+  const h = JSON.parse(fs.readFileSync(path.join(target, '.cockpit', 'state', 'high-stakes-rules.json'), 'utf8'));
+  expect(Array.isArray(h.high_stakes_globs)).toBe(true);
+  expect(h.high_stakes_globs.length).toBeGreaterThan(0);
+  expect(h.compare_baseline).toBe('pcc-baseline'); // coherent baseline, like the other boundaries
+});
+
+// Anti-drift guard for state CONFIG (mirrors the scripts guard below): every .cockpit/state/*.json
+// the APP reads must be born with the project OR be an explicitly-excused runtime file — so a future
+// declared-config file can't silently skip the scaffolder the way models.json/backup-policy.json did.
+// Derived from main.js, not a hand-maintained list.
+test('every state config the app reads is born with a new project (or explicitly runtime)', () => {
+  const mainJs = fs.readFileSync(path.join(REPO, 'app', 'main.js'), 'utf8');
+  // reads of the ACTIVE project's state dir: readJson('state','X.json') or path.join(...,'state','X.json').
+  // (userData files like authority-store.json/projects.json and the create-flow blueprint.json have no
+  //  'state','…' segment, so they are correctly excluded.)
+  const read = [...new Set((mainJs.match(/state',\s*'([a-z0-9-]+\.json)'/g) || [])
+    .map((s) => s.match(/'([a-z0-9-]+\.json)'/)[1]))];
+  expect(read.length).toBeGreaterThan(3); // sanity: the regex actually matched
+  // Deliberately NOT born (created at runtime when work/registration happens), documented here:
+  const RUNTIME_OK = new Set([
+    'project-state.json',    // retired advisor track; scaffolded projects intentionally omit it
+    'task-state.json',       // no task exists until one is assigned
+    'scaffolded-inbox.json', // a project's own inbox is written only when IT scaffolds a child
+  ]);
+  const missing = read.filter((f) => !RUNTIME_OK.has(f)
+    && !fs.existsSync(path.join(target, '.cockpit', 'state', f)));
+  expect(missing, 'declared config the app reads but the scaffolder does not seed:\n' + missing.join('\n')).toEqual([]);
+});
+
 // Anti-drift guard: EVERY scripts/*.ps1 the app invokes must travel, so no button
 // is dead in a scaffolded project. Derived from main.js, not a hand-maintained list.
 test('every script the app invokes travels into a new project', () => {
