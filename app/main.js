@@ -694,7 +694,7 @@ ipcMain.handle('pcc:syncStatus', async () => {
     if (!counts.failed) { const [b, a] = counts.out.split(/\s+/).map((n) => parseInt(n, 10) || 0); behind = b; ahead = a; }
   }
   const clean = untracked === 0 && dirty === 0 && ahead === 0;
-  return { branch, untracked, dirty, ahead, behind, hasUpstream, upstream, clean };
+  return { branch, untracked, dirty, ahead, behind, hasUpstream, upstream, clean, mode: readBackupPolicy() };
 });
 
 // Back up = stage all + commit (if there are changes) + push. --no-verify: a

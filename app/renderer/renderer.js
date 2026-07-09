@@ -1338,7 +1338,17 @@ async function loadSync() {
   try { s = await window.pcc.syncStatus(); } catch (e) { statusEl.textContent = 'Could not read git status.'; return; }
   let cls = 'good', msg;
   if (s.clean && s.behind === 0) {
-    msg = 'On ' + s.branch + ' — everything is backed up' + (s.hasUpstream ? '' : ' (no remote set yet)') + '.';
+    // Honest per backup tier (owner policy): only a pushed remote is "backed up off-machine".
+    // A clean local-only repo is a saved checkpoint, NOT off-machine backup — never claim it is.
+    if (s.hasUpstream) {
+      msg = 'On ' + s.branch + ' — everything is backed up.';
+    } else if (s.mode === 'local-only') {
+      msg = 'On ' + s.branch + ' — local checkpoint saved (local-only by decision; not backed up off-machine).';
+    } else if (s.mode === 'remote-backed') {
+      msg = 'On ' + s.branch + ' — committed locally, but no remote is configured despite the remote-backed setting.'; cls = 'warn';
+    } else {
+      msg = 'On ' + s.branch + ' — local checkpoint saved; no remote or backup tier set yet.'; cls = 'warn';
+    }
   } else {
     const parts = [];
     if (s.dirty) parts.push(s.dirty + ' uncommitted change' + (s.dirty > 1 ? 's' : ''));
