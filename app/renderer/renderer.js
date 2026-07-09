@@ -194,10 +194,12 @@ async function sendMessage(text, displayText) {
   busy = true; sendBtn.disabled = true;
   const thinking = addBubble('assistant thinking', 'Claude is working…', false);
   try {
-    // The claude session id is chat.sessionId when set (after a recovery re-mint),
-    // else the chat id — so a stale-locked session can be replaced without losing
-    // the chat's visible history (soak fix F4).
-    const res = await window.pcc.send(msg, getSelectedModel(), chat.sessionId || chat.id, !chat.started);
+    // Two IDs, kept separate on purpose: the WORKER session id is chat.sessionId when set
+    // (after a recovery re-mint) else chat.id — so a stale-locked session can be replaced
+    // without losing history (soak fix F4). The stable chat.id is passed as the last arg as
+    // the AUTHORITY key, so build permission tracks the chat itself and never desyncs when
+    // the worker session is re-minted.
+    const res = await window.pcc.send(msg, getSelectedModel(), chat.sessionId || chat.id, !chat.started, chat.id);
     thinking.remove();
     if (res.ok) { chat.started = true; save(); }
     addBubble(res.ok ? 'assistant' : 'assistant error', res.text || '(no output)', true);
@@ -300,12 +302,19 @@ document.getElementById('new-project').addEventListener('click', async () => {
   const name = await pccPrompt('What would you like to call the new project?');
   if (!name || !name.trim()) return;
   const nm = name.trim();
-  // Execution authority (DECISION-112): New Project needs the build profile, so it is
-  // gated behind an EXPLICIT approval. requestJob -> approval_needed (nothing runs);
-  // the owner Approves or Cancels; only Approve enters authorized_running, bound to a
-  // dedicated chat id. Pasted chat text can never reach this path.
-  const req = await window.pcc.requestJob('new_project', nm);
-  if (!req || !req.ok) return;
+  // Execution authority (DECISION-112 + durable per-chat store): New Project needs the build
+  // profile, gated behind an EXPLICIT approval. Create the chat FIRST so authority binds to
+  // its STABLE id; requestJob -> approval_needed (nothing runs); the owner Approves or Cancels;
+  // only Approve authorizes build for THIS chat. Pasted chat text can never reach this path.
+  // Mark it a build chat + remember the job name so if it later drops to read-only (hard-cap
+  // expiry) the owner gets one-click "Enable build session" instead of a stranded chat.
+  document.querySelector('.nav[data-view="chat"]').click();
+  startNewChat();
+  const c = activeChat();
+  if (!c) return;
+  c.name = 'New project: ' + nm.slice(0, 30); c.buildChat = true; c.buildName = nm; persistChats(); renderChatList();
+  const req = await window.pcc.requestJob('new_project', nm, c.id);
+  if (!req || !req.ok) { loadTrust(); return; }
   loadTrust(); // badge -> "Approval needed"
   const approved = await pccConfirm(
     'Start a new project "' + nm + '"?\n\nPCC will interview you, then create a new project folder by running its setup scripts. This runs commands on your computer for THIS build session only, and returns to read-only when it ends.',
@@ -313,16 +322,7 @@ document.getElementById('new-project').addEventListener('click', async () => {
   if (!approved) { await window.pcc.cancelJob(); loadTrust(); return; }
   const appr = await window.pcc.approveJob();
   if (!appr || !appr.ok) { await window.pcc.cancelJob(); loadTrust(); return; }
-  loadTrust(); // badge -> "Authorized work running"
-  document.querySelector('.nav[data-view="chat"]').click();
-  startNewChat();
-  const c = activeChat();
-  // Pin this chat to the approved job's id so its sends get the build profile (askClaude
-  // only grants build when chatId === the approved job's chatId).
-  // Mark this as a build chat + remember the job name, so if it later falls back to
-  // read-only (app restart / session expiry) the owner gets a one-click "Resume build
-  // session" instead of a permanently stranded, un-writable New Project chat.
-  if (c) { c.name = 'New project: ' + nm.slice(0, 30); c.sessionId = appr.chatId; c.buildChat = true; c.buildName = nm; persistChats(); renderChatList(); }
+  loadTrust(); // badge -> "Authorized work running" for THIS chat
   const kickoff = 'I want to start a NEW project called "' + nm + '". '
     + 'Run `scripts/new-project-intake.ps1` to load the intake protocol, then interview me in plain language following it, one or two questions at a time. '
     + 'Do not skip the approval gates. When I approve the blueprint, scaffold the project into a new folder next to this one using `scripts/bootstrap-project.ps1` with the blueprint, and tell me how to open it. Ask me the first question now.';
@@ -332,7 +332,7 @@ document.getElementById('new-project').addEventListener('click', async () => {
 // End an approved build session on demand -> authority returns to read_only.
 {
   const authorityEndBtn = document.getElementById('authority-end');
-  if (authorityEndBtn) authorityEndBtn.addEventListener('click', async () => { await window.pcc.endJob(); loadTrust(); });
+  if (authorityEndBtn) authorityEndBtn.addEventListener('click', async () => { const c = activeChat(); if (c) await window.pcc.endJob(c.id); loadTrust(); });
 }
 
 // Is the active chat a New Project build chat? (flagged at creation, or by its name for
@@ -352,7 +352,7 @@ async function resumeBuildForActiveChat() {
   if (busy) return;
   const c = activeChat();
   if (!c) return;
-  const chatId = c.sessionId || c.id;
+  const chatId = c.id; // stable authority key (NOT the worker session id)
   const name = c.buildName || (c.name || '').replace(/^New project:\s*/, '') || 'this chat';
   const req = await window.pcc.requestJob('new_project', name, chatId);
   if (!req || !req.ok) return;
@@ -363,7 +363,7 @@ async function resumeBuildForActiveChat() {
   if (!ok) { await window.pcc.cancelJob(); loadTrust(); return; }
   const appr = await window.pcc.approveJob();
   if (!appr || !appr.ok) { await window.pcc.cancelJob(); loadTrust(); return; }
-  c.sessionId = appr.chatId; c.buildChat = true; c.buildName = name; persistChats();
+  c.buildChat = true; c.buildName = name; persistChats();
   loadTrust();
   addBubble('assistant', 'Build session enabled for this chat — it can now run commands and write files. Send your next message.', true);
 }
@@ -971,7 +971,8 @@ function railsFrom(d) {
 async function loadAuthorityBadge() {
   const clsFor = { read_only: 'readonly', approval_needed: 'warn', authorized_running: 'warn', completed_needs_review: 'good', blocked: 'bad' };
   let s = null;
-  try { s = await window.pcc.authorityState(); } catch (e) { /* keep the safe default */ }
+  const activeForBadge = activeChat();
+  try { s = await window.pcc.authorityState(activeForBadge && activeForBadge.id); } catch (e) { /* keep the safe default */ }
   const mode = (s && s.mode) || 'read_only';
   let label = (s && s.label) || 'Read-only — safe to paste context';
   if (mode === 'authorized_running' && s && s.job && s.job.name) label += ' — ' + s.job.name;

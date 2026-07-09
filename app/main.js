@@ -13,7 +13,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { spawn, spawnSync, exec, execFile } = require('child_process');
 const { parseVerification } = require('./renderer/verification-parse');
-const { createAuthority } = require('./authority-logic');
+const { createAuthorityStore } = require('./authority-store');
 
 // This app is the single "home" cockpit. It opens PROJECTS (self-contained
 // folders each with their own .cockpit + engine scripts + CLAUDE.md, exactly
@@ -512,13 +512,25 @@ const AUTHORITY_LABELS = {
 // The state machine + its two-deadline timeout model live in the pure, unit-tested
 // authority-logic module (injectable clock). main owns IPC, chatId minting, and the
 // tool-flag selection below; every transition delegates here so no logic drifts.
-const authority = createAuthority();
-function authoritySnapshot() {
-  const s = authority.snapshot(Date.now());
+// Durable, per-chat authority store, persisted at app level (userData) — independent of the
+// active project, because chat ids are app/renderer-owned so authority lives with the app too.
+// Keyed by STABLE chat.id (not the worker session id), so build authority survives an app
+// restart and can never desync when a chat's worker session is re-minted for recovery.
+function authorityStorePath() { return path.join(app.getPath('userData'), 'authority-store.json'); }
+const authority = createAuthorityStore({
+  storage: {
+    read() { try { return JSON.parse(fs.readFileSync(authorityStorePath(), 'utf8')); } catch (e) { return null; } },
+    write(obj) { try { fs.writeFileSync(authorityStorePath(), JSON.stringify(obj, null, 2), 'utf8'); } catch (e) { /* best effort */ } },
+  },
+});
+// Per-chat snapshot for the badge: reflects THIS chat's authority only — never a global state
+// that could show "authorized" while a different chat spawns read-only.
+function authoritySnapshot(chatId) {
+  const s = authority.stateFor(chatId, Date.now());
   return { mode: s.mode, label: AUTHORITY_LABELS[s.mode] || AUTHORITY_LABELS.read_only, job: s.job };
 }
-// Read-only IPC: report current authority state. Takes no requested mode, never mutates.
-ipcMain.handle('pcc:authorityState', () => authoritySnapshot());
+// Read-only IPC: report the ACTIVE chat's authority state (by stable chatId). Never mutates.
+ipcMain.handle('pcc:authorityState', (_e, chatId) => authoritySnapshot(chatId));
 ipcMain.handle('pcc:authorityLog', () => authority.logTail(20));
 // Owner-initiated ONLY (wired to explicit UI buttons, never to chat text). Request a
 // bounded job -> approval_needed; nothing runs yet.
@@ -536,8 +548,8 @@ ipcMain.handle('pcc:requestJob', (_e, type, name, existingChatId) => {
 ipcMain.handle('pcc:approveJob', () => authority.approve(Date.now()));
 // Owner cancels a pending approval -> read_only.
 ipcMain.handle('pcc:cancelJob', () => authority.cancel());
-// End the approved build session -> read_only.
-ipcMain.handle('pcc:endJob', () => authority.end());
+// Disable build for a SPECIFIC chat (by stable chatId) -> that chat returns to read_only.
+ipcMain.handle('pcc:endJob', (_e, chatId) => authority.disable(chatId));
 
 // Send a message to Claude Code non-interactively. The prompt goes in over
 // stdin (so quotes/newlines in the message can never break shell parsing).
@@ -548,7 +560,7 @@ ipcMain.handle('pcc:endJob', () => authority.end());
 // (older callers), we fall back to a locally-generated pinned id.
 // --model picks the chosen model; --fallback-model makes an unavailable model
 // fall back gracefully instead of crashing the chat.
-function askClaude(message, model, chatId, isFirstTurn) {
+function askClaude(message, model, workerSessionId, isFirstTurn, chatId) {
   return new Promise((resolve) => {
     const cfg = readModels();
     const chosen = model || cfg.default;
@@ -583,8 +595,12 @@ function askClaude(message, model, chatId, isFirstTurn) {
          '--disallowedTools', 'AskUserQuestion Bash BashOutput KillBash PowerShell Edit Write NotebookEdit Agent Monitor Skill ToolSearch Task'];
     const args = ['-p', '--model', chosen, ...toolFlags, '--append-system-prompt', CHANNEL_PROMPT];
     if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
+    // Worker (Claude) session identity is SEPARATE from authority identity: the renderer
+    // passes workerSessionId (the chat's own id, or a re-minted id after crash recovery) for
+    // --session-id/--resume, while build authority above is keyed to the stable chatId. So
+    // re-minting a worker session can never move or drop a chat's build authorization.
     let isNewSession;
-    if (chatId) { sessionId = chatId; isNewSession = !!isFirstTurn; }
+    if (workerSessionId) { sessionId = workerSessionId; isNewSession = !!isFirstTurn; }
     else { isNewSession = !sessionId; if (isNewSession) sessionId = crypto.randomUUID(); }
     args.push(isNewSession ? '--session-id' : '--resume', sessionId);
     let out = '';
@@ -606,7 +622,7 @@ function askClaude(message, model, chatId, isFirstTurn) {
         // A failed FIRST turn means no session actually exists at that id. When
         // the renderer owns the id it tracks that (keeps the chat "not started"
         // so it retries with --session-id); for the local fallback, reset here.
-        if (isNewSession && !chatId) sessionId = null;
+        if (isNewSession && !workerSessionId) sessionId = null;
         const raw = (err || out || ('Claude exited with code ' + code)).trim();
         // Soak fix F4: a stale session lock (a worker orphaned by an earlier crash or
         // mid-turn quit) surfaces as the raw "Session ID ... is already in use". Turn
@@ -625,7 +641,7 @@ function askClaude(message, model, chatId, isFirstTurn) {
   });
 }
 
-ipcMain.handle('pcc:send', (_e, message, model, chatId, isFirstTurn) => askClaude(message, model, chatId, isFirstTurn));
+ipcMain.handle('pcc:send', (_e, message, model, workerSessionId, isFirstTurn, chatId) => askClaude(message, model, workerSessionId, isFirstTurn, chatId));
 
 // Second opinion: hand a composed prompt to Codex (a DIFFERENT model) over stdin
 // and return its independent take. The worker (Claude) never grades itself; this
@@ -742,6 +758,9 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Load the persisted per-chat build authority (needs app.getPath, so do it here). Any
+  // session already past its idle/hard deadline is dropped on load.
+  try { authority.load(Date.now()); } catch (e) { /* start with an empty authority set */ }
   // Restore the last-active project (registry needs app.getPath, so read it here).
   try {
     const reg = readRegistry();

@@ -1,31 +1,32 @@
 #!/bin/sh
-# PCC pre-commit — run the automated test suite before a commit lands, so a
-# broken button or a broken script can't be snapshotted as "working".
-# Owner chose auto-run-on-commit as the safety net (2026-07-07).
+# PCC pre-commit.
 #
-# Scope: only runs when files the suite actually covers (app/ or scripts/) are
-# staged — editing docs/PROJECT.md won't trigger a 45s Electron run. This keeps
-# the net taut without training you to bypass it.
+# Auto-run-on-commit is OFF by default (owner decision, 2026-07-09). The automated
+# suite is END-TO-END: it LAUNCHES the real Electron app and clicks its buttons, so
+# it popped windows on every commit that touched app/. That net was switched on
+# 2026-07-07 for a specific push and was never meant to keep firing on every small,
+# already-proven change a week later.
 #
-# Bypass in a genuine emergency:
-#   PCC_SKIP_TESTS=1 git commit ...        (or)   git commit --no-verify
+# The tests are NOT gone. Run them deliberately whenever you want a real check:
+#   npm test --prefix app                 (full suite — WILL launch the app)
+# and they still run automatically on GitHub after every push.
+#
+# Opt in to the full run for a single commit:
+#   PCC_RUN_TESTS=1 git commit ...
+# To restore the always-on net, revert this file from git history.
 
-if [ "$PCC_SKIP_TESTS" = "1" ]; then
-  echo "[pcc] PCC_SKIP_TESTS=1 set — skipping tests for this commit."
+if [ "$PCC_RUN_TESTS" != "1" ]; then
+  echo "[pcc] pre-commit test auto-run is OFF — commit proceeds without launching the app."
+  echo "      Run tests on demand:  npm test --prefix app   (or  PCC_RUN_TESTS=1 git commit …)"
   exit 0
 fi
 
-changed=$(git diff --cached --name-only)
-if ! echo "$changed" | grep -qE '^(app/|scripts/)'; then
-  echo "[pcc] No app/ or scripts/ changes staged — skipping tests."
-  exit 0
-fi
-
+# --- opt-in path: PCC_RUN_TESTS=1 explicitly asked for the full run ---
 # Clear any stray Electron from a prior run — leftover processes are what trip
 # Playwright's intermittent "did not expect test.beforeAll()" collection flake.
 taskkill //F //IM electron.exe >/dev/null 2>&1 || true
 
-echo "[pcc] app/ or scripts/ changed — running test suite (npm test)…"
+echo "[pcc] PCC_RUN_TESTS=1 — running full test suite (npm test)…"
 npm test --prefix app
 if [ $? -ne 0 ]; then
   # A real failure fails twice; the known collection flake passes on retry. So we
