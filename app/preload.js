@@ -12,7 +12,7 @@ contextBridge.exposeInMainWorld('pcc', {
   authorityState: () => ipcRenderer.invoke('pcc:authorityState'), // read-only; no setter is exposed
   authorityLog: () => ipcRenderer.invoke('pcc:authorityLog'),
   // Owner-driven authority transitions (wired ONLY to explicit UI controls, never chat text):
-  requestJob: (type, name) => ipcRenderer.invoke('pcc:requestJob', type, name),
+  requestJob: (type, name, chatId) => ipcRenderer.invoke('pcc:requestJob', type, name, chatId),
   approveJob: () => ipcRenderer.invoke('pcc:approveJob'),
   cancelJob: () => ipcRenderer.invoke('pcc:cancelJob'),
   endJob: () => ipcRenderer.invoke('pcc:endJob'),

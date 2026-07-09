@@ -101,6 +101,19 @@ test('renewal is chat-SCOPED: a matching-mode send from a DIFFERENT chat is neve
   expect(a.authorizeSend('chat-1', 31 * MIN)).toBe(false);
 });
 
+test('RESUME: re-approval bound to an EXISTING chatId re-grants build to that same chat', () => {
+  // Simulates reopening a New Project chat that fell back to read-only (app restart /
+  // expiry) and clicking "Resume build session": request is bound to the chat's own id.
+  const existingChatId = 'reopened-new-project-chat';
+  const a = createAuthority();
+  a.request('new_project', 'DemoProj', existingChatId); // owner-confirmed resume request
+  a.approve(0);
+  // The reopened chat's sends now get build again...
+  expect(a.authorizeSend(existingChatId, MIN)).toBe(true);
+  // ...while an unrelated chat still does not.
+  expect(a.authorizeSend('some-other-chat', MIN)).toBe(false);
+});
+
 test('end() drops an active build session back to read_only immediately', () => {
   const a = approvedAt(0);
   expect(a.authorizeSend('chat-1', MIN)).toBe(true);

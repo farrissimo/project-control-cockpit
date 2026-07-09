@@ -319,7 +319,10 @@ document.getElementById('new-project').addEventListener('click', async () => {
   const c = activeChat();
   // Pin this chat to the approved job's id so its sends get the build profile (askClaude
   // only grants build when chatId === the approved job's chatId).
-  if (c) { c.name = 'New project: ' + nm.slice(0, 30); c.sessionId = appr.chatId; renderChatList(); }
+  // Mark this as a build chat + remember the job name, so if it later falls back to
+  // read-only (app restart / session expiry) the owner gets a one-click "Resume build
+  // session" instead of a permanently stranded, un-writable New Project chat.
+  if (c) { c.name = 'New project: ' + nm.slice(0, 30); c.sessionId = appr.chatId; c.buildChat = true; c.buildName = nm; persistChats(); renderChatList(); }
   const kickoff = 'I want to start a NEW project called "' + nm + '". '
     + 'Run `scripts/new-project-intake.ps1` to load the intake protocol, then interview me in plain language following it, one or two questions at a time. '
     + 'Do not skip the approval gates. When I approve the blueprint, scaffold the project into a new folder next to this one using `scripts/bootstrap-project.ps1` with the blueprint, and tell me how to open it. Ask me the first question now.';
@@ -330,6 +333,43 @@ document.getElementById('new-project').addEventListener('click', async () => {
 {
   const authorityEndBtn = document.getElementById('authority-end');
   if (authorityEndBtn) authorityEndBtn.addEventListener('click', async () => { await window.pcc.endJob(); loadTrust(); });
+}
+
+// Is the active chat a New Project build chat? (flagged at creation, or by its name for
+// chats created before the flag existed). Used to offer "Resume build session".
+function activeIsBuildChat() {
+  const c = activeChat();
+  return !!(c && (c.buildChat || /^New project:/.test(c.name || '')));
+}
+
+// Resume build for the active New Project chat. Build authority lives only in the running
+// app's memory, so an app restart or session expiry drops the chat back to read-only with
+// no way to keep building. This re-approves build BOUND TO THIS SAME CHAT — still behind an
+// explicit owner confirm (never self-authorizing, never pasted-text driven), still one chat,
+// still expiring. On approval the chat's send id is re-pinned to the approved id so its next
+// send gets the build profile.
+async function resumeBuildForActiveChat() {
+  if (busy) return;
+  const c = activeChat();
+  if (!c || !activeIsBuildChat()) return;
+  const chatId = c.sessionId || c.id;
+  const name = c.buildName || (c.name || '').replace(/^New project:\s*/, '') || 'this project';
+  const req = await window.pcc.requestJob('new_project', name, chatId);
+  if (!req || !req.ok) return;
+  loadTrust();
+  const ok = await pccConfirm(
+    'Resume the build session for "' + name + '"?\n\nThis lets THIS chat run commands and write files again for a bounded build session, then returns to read-only when it ends.',
+    'Resume build');
+  if (!ok) { await window.pcc.cancelJob(); loadTrust(); return; }
+  const appr = await window.pcc.approveJob();
+  if (!appr || !appr.ok) { await window.pcc.cancelJob(); loadTrust(); return; }
+  c.sessionId = appr.chatId; c.buildChat = true; c.buildName = name; persistChats();
+  loadTrust();
+  addBubble('assistant', 'Build session resumed for this chat — you can continue building. Send your next message.', true);
+}
+{
+  const authorityResumeBtn = document.getElementById('authority-resume');
+  if (authorityResumeBtn) authorityResumeBtn.addEventListener('click', resumeBuildForActiveChat);
 }
 
 // Quick buttons act on the conversation, smartly (owner feedback):
@@ -939,6 +979,11 @@ async function loadAuthorityBadge() {
     'PCC chat authority. Read-only means it can read, explain, and plan — it cannot run commands, change files, or launch anything. Reading context is never authorization to act.');
   const endBtn = document.getElementById('authority-end');
   if (endBtn) endBtn.classList.toggle('hidden', mode !== 'authorized_running');
+  // Offer "Resume build session" when the active chat is a New Project build chat but the
+  // app is NOT currently in an authorized build (dropped to read-only after a restart or
+  // expiry). This is the escape hatch from a stranded, un-writable New Project chat.
+  const resumeBtn = document.getElementById('authority-resume');
+  if (resumeBtn) resumeBtn.classList.toggle('hidden', !(activeIsBuildChat() && mode !== 'authorized_running'));
 }
 
 async function loadTrust() {

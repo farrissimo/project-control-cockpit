@@ -522,9 +522,13 @@ ipcMain.handle('pcc:authorityState', () => authoritySnapshot());
 ipcMain.handle('pcc:authorityLog', () => authority.logTail(20));
 // Owner-initiated ONLY (wired to explicit UI buttons, never to chat text). Request a
 // bounded job -> approval_needed; nothing runs yet.
-ipcMain.handle('pcc:requestJob', (_e, type, name) => {
+ipcMain.handle('pcc:requestJob', (_e, type, name, existingChatId) => {
   if (type !== 'new_project') return { ok: false, message: 'Unknown job type.' };
-  const chatId = crypto.randomUUID();
+  // Normally we mint a fresh chatId. RESUME (owner reopened a New Project chat that fell
+  // back to read-only after an app restart / session expiry) passes the chat's OWN id so
+  // the re-approval re-binds build to that same chat. Still gated by the owner confirm +
+  // approveJob below — this is not self-authorization, just re-binding to an existing chat.
+  const chatId = (typeof existingChatId === 'string' && existingChatId) ? existingChatId : crypto.randomUUID();
   const r = authority.request(type, name, chatId);
   return { ok: true, chatId: r.chatId, job: r.job };
 });

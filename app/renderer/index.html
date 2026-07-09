@@ -268,6 +268,9 @@
   #authority-end { font-size: 11px; padding: 2px 8px; border-radius: 5px; cursor: pointer;
     color: var(--warning-text); background: transparent; border: 1px solid var(--warning-border); }
   #authority-end.hidden { display: none; }
+  #authority-resume { font-size: 11px; padding: 2px 8px; border-radius: 5px; cursor: pointer;
+    color: var(--warning-text); background: transparent; border: 1px solid var(--warning-border); }
+  #authority-resume.hidden { display: none; }
   #trust .trust-label { font-size: 11px; color: #5f646c; margin-right: 2px; }
 
   .lc-map { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 16px 0 8px; }
@@ -410,6 +413,7 @@
       <span class="trust-label">Trust:</span>
       <span class="trust-chip readonly" id="trust-authority" title="PCC chat authority. Read-only means it can read, explain, and plan — it cannot run commands, change files, or launch anything. Reading context is never authorization to act."><span class="dot"></span>Read-only — safe to paste context</span>
       <button id="authority-end" class="hidden" type="button" title="End the approved build session and return to read-only.">End build session</button>
+      <button id="authority-resume" class="hidden" type="button" title="Re-approve build for this New Project chat so it can run commands and write files again (bounded session, then back to read-only).">Resume build session</button>
       <span class="trust-chip unknown" id="trust-rails"><span class="dot"></span>On the rails</span>
       <span class="trust-chip unknown" id="trust-backup"><span class="dot"></span>Backed up</span>
       <span class="trust-chip unknown" id="trust-verified"><span class="dot"></span>Verified</span>
