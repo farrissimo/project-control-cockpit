@@ -95,6 +95,17 @@
   #send { background: #2f6bde; color: #fff; border: none; border-radius: 10px; padding: 0 18px;
     font-weight: 500; font-size: 14px; cursor: pointer; }
   #send:disabled { opacity: .5; cursor: default; }
+  #attach-btn { background: #14171c; color: #aeb4bd; border: 1px solid #2b2f37; border-radius: 10px;
+    width: 42px; font-size: 22px; line-height: 1; cursor: pointer; }
+  #attach-btn:hover { background: #1d2230; color: #dbe8ff; }
+  #attachments { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 20px 0; }
+  #attachments.hidden { display: none; }
+  .attach-chip { display: flex; align-items: center; gap: 6px; background: #14171c; border: 1px solid #2b2f37;
+    color: #cbd2dc; font-size: 12px; padding: 4px 8px; border-radius: 8px; max-width: 240px; }
+  .attach-chip img { width: 28px; height: 28px; object-fit: cover; border-radius: 4px; flex: none; }
+  .attach-chip .attach-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .attach-chip .ax { cursor: pointer; color: #8a929c; font-weight: 700; flex: none; }
+  .attach-chip .ax:hover { color: #ff6b6b; }
 
   .panel { padding: 24px; overflow-y: auto; }
   .panel h2 { font-size: 16px; font-weight: 600; margin: 0 0 8px; }
@@ -432,7 +443,10 @@
       <div id="chat-health" title="Project health at a glance. Click any tile to open the full detail in the Signals tab."></div>
       <div id="log"></div>
       <div id="corrections"></div>
+      <div id="attachments" class="hidden"></div>
       <form id="composer">
+        <button id="attach-btn" type="button" title="Attach files or images. You can also paste or drop an image into the box.">+</button>
+        <input id="attach-input" type="file" multiple style="display:none" accept="image/*,text/*,.md,.txt,.json,.js,.ts,.tsx,.jsx,.py,.ps1,.csv,.log,.html,.css,.yml,.yaml" />
         <textarea id="input" placeholder="Tell PCC what to do" rows="1"></textarea>
         <button id="send" type="submit" title="Send this message to Claude Code (Enter also sends; Shift+Enter for a new line).">Send</button>
       </form>

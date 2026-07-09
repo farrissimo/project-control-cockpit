@@ -25,6 +25,7 @@ let chats = [];
 let activeId = null;
 let history = [];
 let busy = false;
+let attachments = []; // composer attachments for the NEXT send: {kind:'image',mediaType,dataBase64,name} | {kind:'text',name,content}
 
 function uuid() { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'c-' + Date.now() + '-' + Math.random().toString(16).slice(2); }
 function activeChat() { return chats.find((c) => c.id === activeId) || null; }
@@ -179,18 +180,22 @@ log.addEventListener('click', (e) => {
 // capture would re-embed it, growing without bound.
 async function sendMessage(text, displayText) {
   const msg = (text || '').trim();
-  if (!msg || busy) return;
+  const outbound = attachments.slice(); // snapshot the composer's attachments for THIS send
+  if ((!msg && outbound.length === 0) || busy) return;
   const shown = (displayText || msg).trim();
   const chat = activeChat();
   if (!chat) return;
   const welcome = log.querySelector('.welcome');
   if (welcome) welcome.remove();
   // Auto-name a fresh chat from its first message (like Claude Code's Recents).
-  if (chat.name === 'New chat' && chat.messages.filter((m) => m.cls === 'user').length === 0) {
+  if (shown && chat.name === 'New chat' && chat.messages.filter((m) => m.cls === 'user').length === 0) {
     chat.name = shown.replace(/\s+/g, ' ').slice(0, 40) + (shown.length > 40 ? '…' : '');
     renderChatList();
   }
-  addBubble('user', shown, true);
+  // Show the message plus a plain note of what was attached; then clear the composer's attachments.
+  const attachNote = outbound.length ? (shown ? '\n\n' : '') + '📎 ' + outbound.length + ' attachment' + (outbound.length > 1 ? 's' : '') + ': ' + outbound.map((a) => a.name || a.kind).join(', ') : '';
+  addBubble('user', shown + attachNote, true);
+  attachments = []; renderAttachments();
   busy = true; sendBtn.disabled = true;
   const thinking = addBubble('assistant thinking', 'Claude is working…', false);
   try {
@@ -199,7 +204,7 @@ async function sendMessage(text, displayText) {
     // without losing history (soak fix F4). The stable chat.id is passed as the last arg as
     // the AUTHORITY key, so build permission tracks the chat itself and never desyncs when
     // the worker session is re-minted.
-    const res = await window.pcc.send(msg, getSelectedModel(), chat.sessionId || chat.id, !chat.started, chat.id);
+    const res = await window.pcc.send(msg, getSelectedModel(), chat.sessionId || chat.id, !chat.started, chat.id, outbound);
     thinking.remove();
     if (res.ok) { chat.started = true; save(); }
     addBubble(res.ok ? 'assistant' : 'assistant error', res.text || '(no output)', true);
@@ -211,6 +216,70 @@ async function sendMessage(text, displayText) {
     addBubble('assistant error', 'Something went wrong: ' + err.message, true);
   } finally {
     busy = false; sendBtn.disabled = false; input.focus();
+  }
+}
+
+// ---- attachments: images (paste/drop/pick) + files (pick) ----
+// Images ride to the worker as base64 content blocks (main spawns stream-json); text files are
+// inlined as text. Everything the owner attaches is shown as a removable chip above the composer.
+const IMG_RE = /^image\//;
+const MAX_ATTACH_BYTES = 8 * 1024 * 1024; // 8 MB per file guard (keeps the IPC payload sane)
+
+function renderAttachments() {
+  const el = document.getElementById('attachments');
+  if (!el) return;
+  el.classList.toggle('hidden', attachments.length === 0);
+  el.innerHTML = attachments.map((a, i) =>
+    '<span class="attach-chip">'
+    + (a.kind === 'image' ? '<img src="data:' + a.mediaType + ';base64,' + a.dataBase64 + '" alt="">' : '')
+    + '<span class="attach-name">' + escapeHtml(a.name || (a.kind === 'image' ? 'image' : 'file')) + '</span>'
+    + '<span class="ax" data-remove="' + i + '" title="Remove">✕</span></span>'
+  ).join('');
+  el.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => {
+    attachments.splice(parseInt(b.getAttribute('data-remove'), 10), 1); renderAttachments();
+  }));
+}
+
+function fileToAttachment(file) {
+  return new Promise((resolve) => {
+    if (!file || file.size > MAX_ATTACH_BYTES) { resolve(null); return; }
+    const reader = new FileReader();
+    if (IMG_RE.test(file.type)) {
+      reader.onload = () => { const s = String(reader.result); resolve({ kind: 'image', mediaType: file.type, dataBase64: s.slice(s.indexOf(',') + 1), name: file.name || 'image' }); };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    } else {
+      reader.onload = () => resolve({ kind: 'text', name: file.name || 'file', content: String(reader.result) });
+      reader.onerror = () => resolve(null);
+      reader.readAsText(file);
+    }
+  });
+}
+
+async function addFiles(fileList) {
+  for (const f of Array.from(fileList || [])) { const a = await fileToAttachment(f); if (a) attachments.push(a); }
+  renderAttachments();
+}
+
+{
+  const btn = document.getElementById('attach-btn');
+  const inp = document.getElementById('attach-input');
+  if (btn && inp) {
+    btn.addEventListener('click', () => inp.click());
+    inp.addEventListener('change', async () => { await addFiles(inp.files); inp.value = ''; });
+  }
+  // Paste an image straight into the message box (Ctrl/Cmd+V of a screenshot, etc.).
+  if (input) input.addEventListener('paste', async (e) => {
+    const items = (e.clipboardData && e.clipboardData.items) || [];
+    const imgs = [];
+    for (const it of items) if (it.kind === 'file' && IMG_RE.test(it.type)) { const f = it.getAsFile(); if (f) imgs.push(f); }
+    if (imgs.length) { e.preventDefault(); await addFiles(imgs); }
+  });
+  // Drag & drop files/images onto the composer.
+  const composerEl = document.getElementById('composer');
+  if (composerEl) {
+    composerEl.addEventListener('dragover', (e) => { e.preventDefault(); });
+    composerEl.addEventListener('drop', async (e) => { e.preventDefault(); if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) await addFiles(e.dataTransfer.files); });
   }
 }
 
