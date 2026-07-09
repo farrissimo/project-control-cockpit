@@ -2817,3 +2817,47 @@ Implications:
 
 Supersedes: None (new authority layer; complements DECISION-102's chat-centered design)
 Related: DECISION-102 (chat-centered app), docs/EXECUTION_AUTHORITY_MODEL.md, docs/EXECUTION_PATH_AUDIT.md, app/main.js (askClaude), app/renderer/renderer.js (New Project)
+
+## DECISION-113: What PCC Gets, Spawned Projects Should Get — Parity by Default, Justify Exclusions
+
+Date: 2026-07-09
+Status: Active
+
+Decision:
+
+Whatever capability we build into PCC (the home cockpit) must be implemented for — or at
+least deliberately CONSIDERED for — every spawned project, not just the home repo.
+Owner-facing chat/app features (e.g. paste/drop images, the "+" file button, conversation
+steering) are parity-by-default: a project must not silently lack them. Not literally every
+PCC internal is forced onto a product project (PCC-only governance tooling — kernel audits,
+routing-decision logs, advisor/verifier plumbing — has no meaning in a product), but the
+default posture is "consider it": the burden is on justifying an EXCLUSION, not on justifying
+inclusion. Silent omission is the failure this rule forbids.
+
+Reason:
+
+The owner hit this directly on 2026-07-09: opening the Tax-Prep project, capabilities that
+exist or are expected in PCC's chat were missing or degraded (models list, backup honesty,
+and the not-yet-built image/file input). Projects felt second-class. A cockpit whose #1 job
+is reducing babysitting cannot make every new project a fresh set of paper-cuts.
+
+Implications:
+
+- TWO delivery mechanisms, because a project is opened by the ONE home app (not its own app/
+  copy — the home app always runs its own __dirname code and just re-points projectDir):
+  1. App/UI + chat features (image paste, "+" files, steering, backup-tier UI) live in the
+     single home app and are therefore shared AUTOMATICALLY across every project the owner
+     opens — build once in core, every project gets it, no per-project work. (Same fact that
+     makes the per-project app/ clone dead weight — see the recovery de-dup phase.)
+  2. Per-project ENGINE state (.cockpit/state config: models.json, backup-policy.json, the
+     full state set) and per-project SCRIPTS (detectors) are NOT auto-shared; they must be
+     seeded by the scaffolder (scripts/bootstrap-project.ps1) for new projects and back-filled
+     for existing ones. This is where the parity rule requires real work.
+- Scaffolder-phase rule: a new project must be born with the same engine config PCC has
+  (models.json, backup-policy.json, full .cockpit/state), so it is never "born broken." The
+  Tax-Prep incident (missing models.json, no backup tier) is exactly the failure this prevents.
+- Exclusion must be deliberate and recorded (IDEA-010-style "not for products" is fine when
+  justified); accidental omission is not.
+
+Supersedes: None
+Related: IDEA-016 / IDEA-017 (chat-parity features), DECISION-112 (authority), scripts/bootstrap-project.ps1 (scaffolder phase), the recovery de-dup phase, backup-tier work (ab17bc2/21b5cd3)
