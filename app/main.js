@@ -753,6 +753,9 @@ ipcMain.handle('pcc:createFlowSend', async (_e, message, model, attachments) => 
 // Cancel: stop any running worker, then discard the scratch. Nothing was registered, so there is
 // nothing else to undo. active is cleared FIRST so an in-flight send can't keep the flow alive.
 ipcMain.handle('pcc:createFlowCancel', async () => {
+  // Refuse mid-materialize: a Cancel during Save must not delete the scratch or mutate state
+  // while Save is copying/scaffolding from it (the Save/Cancel race).
+  if (createFlow.saving) return { ok: false, error: 'Save in progress — cannot cancel right now.' };
   createFlow.active = false;
   await stopCreateFlowWorker();
   rmScratch(createFlow.scratchDir);

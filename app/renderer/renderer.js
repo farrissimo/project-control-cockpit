@@ -387,6 +387,7 @@ document.getElementById('new-chat').addEventListener('click', startNewChat);
 const cfLog = document.getElementById('cf-log');
 const cfInput = document.getElementById('cf-input');
 let cfBusy = false;
+let cfSaving = false;         // true while Save is materializing — blocks sends and Cancel (Save/Cancel race)
 const cfQueue = [];           // steering parity: keep the composer usable; queue sends in order
 
 function cfAddBubble(cls, text) {
@@ -427,6 +428,7 @@ async function cfRunSend(item) {
 }
 // `hidden` = don't show a user bubble (used for the invisible kickoff that starts the interview).
 function cfSend(text, hidden) {
+  if (cfSaving) return;        // no new interview turns once Save has started materializing
   const msg = (text || '').trim();
   if (!msg) return;
   if (!hidden) cfAddBubble('user', msg);
@@ -437,7 +439,7 @@ function cfSend(text, hidden) {
 
 function cfClose() {
   document.getElementById('create-flow').classList.remove('open');
-  cfLog.innerHTML = ''; cfInput.value = ''; cfBusy = false; cfQueue.length = 0;
+  cfLog.innerHTML = ''; cfInput.value = ''; cfBusy = false; cfSaving = false; cfQueue.length = 0;
   // Land back on the cockpit's primary surface (Chat), not wherever New Project was clicked from.
   const chatNav = document.querySelector('.nav[data-view="chat"]');
   if (chatNav) chatNav.click();
@@ -468,20 +470,26 @@ async function cfSave() {
   if (!name || !name.trim()) return;
   const loc = await window.pcc.createFlowPickLocation();
   if (!loc || !loc.path) return;
+  // Commit to materializing: block sends + Cancel so nothing races the Save (Save/Cancel race).
+  cfSaving = true;
   const saveBtn = document.getElementById('cf-save');
-  saveBtn.disabled = true; const prev = saveBtn.textContent; saveBtn.textContent = 'Saving…';
+  const cancelBtn = document.getElementById('cf-cancel');
+  saveBtn.disabled = true; cancelBtn.disabled = true;
+  const prev = saveBtn.textContent; saveBtn.textContent = 'Saving…';
   const res = await window.pcc.createFlowSave(name.trim(), loc.path);
   if (res && res.ok) {
     // Land INSIDE the new project: the active project is now it, so a reload boots the cockpit
     // onto it (its first checkpoint is already committed by the scaffolder).
     location.reload();
   } else {
-    saveBtn.disabled = false; saveBtn.textContent = prev;
+    cfSaving = false;
+    saveBtn.disabled = false; cancelBtn.disabled = false; saveBtn.textContent = prev;
     cfAddBubble('assistant error', 'Could not save the project: ' + ((res && res.error) || 'unknown error'));
   }
 }
 
 async function cfCancel() {
+  if (cfSaving) return;        // a Save is materializing — cannot cancel now
   const ok = await pccConfirm('Discard this new project? Nothing has been saved yet.', 'Discard');
   if (!ok) return;
   try { await window.pcc.createFlowCancel(); } catch (e) { /* scratch cleanup is best-effort */ }
