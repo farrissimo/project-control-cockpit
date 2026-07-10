@@ -80,10 +80,35 @@ put it). Behind it, three stages:
    tokens. Grep is **recall-oriented, not precision**: literal substring matching
    has vocabulary-gap holes (proven — see battery below), so it ORDERS/narrows but
    must never be the thing that decides. The judge (stage 3) is the precision stage.
-3. **Judge + polish (AI):** read only the handful of grep hits, compare against
-   the *original* question, discard noise, answer in plain English with the date,
-   a quote, and a **link to the chat**. Only touches the top hits, never the
-   whole archive.
+3. **Judge + polish (AI):** read only the handful of candidate chats, compare
+   against the *original* question, discard noise, and return the RELEVANT matches
+   — zero, one, or several — each with a quote and a **link to the chat**, ranked.
+   It does NOT force a single "winner" and does NOT adjudicate which decision
+   superseded another (owner: basic search finds matches to your phrase; it is not
+   the app's job to decide which one "won"). If two chats genuinely match (e.g. an
+   approval and a later reversal), show BOTH. Still returns nothing, honestly, when
+   the topic is truly absent (anti-hallucination). Only touches the candidates,
+   never the whole archive.
+
+### Advanced, intent-aware search (Phase 3 — after basic is proven)
+A later mode detects the *intent* behind a phrase and adds interpretation on top of
+the matches. Example (owner's): "when I approved v2 but then changed my mind" — the
+approval is in one chat, the reversal in a later one; advanced search returns BOTH
+and the finisher FLAGS the newer as the reversal / current state. Basic search never
+does this editorializing; it just surfaces high-quality matches.
+
+### Scaling (measured — app/prototypes/chat-recall/scale.js, deterministic, free)
+The AI judge reads only a small candidate set, so its quality is corpus-size-
+independent; the thing that can break at scale is retrieval. Probe at 25 / 100 / 1000
+chats (needles among keyword-overlapping fillers):
+- **Performance:** grep is ~0.1ms / 0.3ms / 1.1ms per query — never a bottleneck.
+- **Retrieval recall:** needle stays in the judge's top-8 candidates **7/7 at every
+  scale** WHEN the query words appear in the chat — score-ranking floats the real
+  answer above spurious hits (even 257 competing hits at N=1000).
+- **The real limit is vocabulary, not size:** a query worded differently from the
+  chat can miss. Below a few hundred chats the recall-safe candidate top-up masks it;
+  beyond that (many grep hits crowd the candidate slots) it needs a stronger
+  **semantic** retrieval tier. Plan for it in the high-hundreds+, not before.
 
 Optional per-search "just grep it" toggle → skip the AI bookends for a
 zero-token literal search (fast but dumb — the escape hatch, not the default).
