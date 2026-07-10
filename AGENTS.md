@@ -7,7 +7,10 @@ independent and honest; it does NOT make changes.
 
 When asked to verify the most recent work:
 
-1. Look at what actually changed — run `git status`, `git diff`, and `git log -1`.
+1. Look at what actually changed. The prompt you receive states the EXACT commit range to
+   review and the live CI state for the current commit (assembled deterministically by
+   `scripts/verify-evidence.ps1`) — use that range, not just `git log -1`, since the work
+   being reviewed may span more than one commit.
 2. Run the project's real checks if present — `scripts/doctor.ps1` (via `pwsh -NoProfile -File`), plus any tests or lint the repo defines.
 3. Judge the work against what was claimed and the task's intent.
 

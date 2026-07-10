@@ -23,7 +23,28 @@ $ErrorActionPreference = 'Continue'
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 
-$prompt = 'Independently verify the most recent work in this repository. Inspect the git diff and run any obvious project checks. Output VERDICT on one line as one of PASS, FAIL, INSUFFICIENT, BLOCKED, or OUT_OF_SCOPE, then EVIDENCE as 2-4 bullets of what you actually checked, then NOT PROVEN listing anything you could not verify. Be honest; never PASS without evidence. Do not make any changes.'
+# Evidence bundle (roadmap #4): the exact commit range + diff stat + live CI state, assembled
+# deterministically so the verifier is told PRECISELY what "the most recent work" means instead
+# of guessing (a real ambiguity the old vague prompt had). Best-effort: if assembly fails for any
+# reason, fall back to the original generic prompt rather than blocking verification.
+$evidence = $null
+try {
+  $ej = & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'verify-evidence.ps1') -Json 2>$null
+  if ($ej) { $evidence = $ej | ConvertFrom-Json }
+} catch { $evidence = $null }
+
+if ($evidence -and $evidence.range) {
+  $rangeNote = "Review EXACTLY this commit range: $($evidence.range) ($($evidence.range_kind))."
+  $ciNote = switch ($evidence.ci_state) {
+    'passed'  { 'CI already ran and PASSED for the current commit -- you may cite this as execution evidence, but still read the diff yourself for logic/reasoning issues.' }
+    'failed'  { 'CI ran and FAILED for the current commit -- treat this as a strong signal against PASS.' }
+    'pending' { 'CI is still running for the current commit -- note this as NOT PROVEN rather than assuming a result.' }
+    default   { 'Live CI status is not available for this repo/commit right now.' }
+  }
+  $prompt = "Independently verify the work in this repository. $rangeNote $ciNote Inspect the diff yourself and run any obvious project checks. Output VERDICT on one line as one of PASS, FAIL, INSUFFICIENT, BLOCKED, or OUT_OF_SCOPE, then EVIDENCE as 2-4 bullets of what you actually checked, then NOT PROVEN listing anything you could not verify. Be honest; never PASS without evidence. Do not make any changes."
+} else {
+  $prompt = 'Independently verify the most recent work in this repository. Inspect the git diff and run any obvious project checks. Output VERDICT on one line as one of PASS, FAIL, INSUFFICIENT, BLOCKED, or OUT_OF_SCOPE, then EVIDENCE as 2-4 bullets of what you actually checked, then NOT PROVEN listing anything you could not verify. Be honest; never PASS without evidence. Do not make any changes.'
+}
 
 function Invoke-Codex {
   # Run in a job so an out-of-usage hang can be timed out and fall back.
@@ -45,7 +66,11 @@ function Invoke-Codex {
 function Invoke-Agy {
   $agy = Join-Path $env:LOCALAPPDATA 'agy\bin\agy.exe'
   if (-not (Test-Path $agy)) { return $null }
-  $diff = & git diff HEAD~1 HEAD 2>&1 | Out-String
+  # Use the SAME evidence-derived range/diff as the primary path (roadmap #4), so both verifiers
+  # see the correctly-scoped work instead of agy always defaulting to just the last commit.
+  $rangeLabel = 'HEAD~1..HEAD'; $diff = $null
+  if ($evidence -and $evidence.range) { $rangeLabel = $evidence.range; $diff = $evidence.diff }
+  if (-not $diff) { $diff = (& git diff HEAD~1 HEAD 2>&1 | Out-String) }
   if (-not $diff.Trim()) { $diff = '(no committed diff found)' }
   # agy takes the diff inline (it ignores stdin). Cap it well under the Windows
   # command-line arg limit (~32 KB); note truncation honestly if it happens.
@@ -53,9 +78,9 @@ function Invoke-Agy {
   $truncNote = ''
   if ($diff.Length -gt $max) { $diff = $diff.Substring(0, $max); $truncNote = "`n[diff truncated at $max chars]" }
   $instruction = @"
-You are an independent verifier. The git diff of the latest committed work is included below. You cannot run tests or commands, so you must state that functionality is not proven by you. Output VERDICT on one line (one of PASS, FAIL, INSUFFICIENT, BLOCKED, OUT_OF_SCOPE), then EVIDENCE as 2-4 bullets of what the diff actually shows, then NOT PROVEN listing what you could not verify. Be honest; never PASS without evidence. Make no changes.
+You are an independent verifier. The git diff of the work being reviewed is included below. You cannot run tests or commands, so you must state that functionality is not proven by you. Output VERDICT on one line (one of PASS, FAIL, INSUFFICIENT, BLOCKED, OUT_OF_SCOPE), then EVIDENCE as 2-4 bullets of what the diff actually shows, then NOT PROVEN listing what you could not verify. Be honest; never PASS without evidence. Make no changes.
 
-=== GIT DIFF (HEAD~1..HEAD) ===
+=== GIT DIFF ($rangeLabel) ===
 $diff$truncNote
 "@
   $out = & $agy -p $instruction 2>&1 | Out-String
@@ -76,5 +101,10 @@ if ($WriteFile) {
   # An independent agent reading the code (read-only sandbox) is review_only: it did not
   # execute the product on a clean machine. The Overview shows it amber ("reviewed, not
   # run"), never CI's executed-green.
-  "=== Verification run $stamp ===`nTYPE: review_only`n$result`n" | Out-File -FilePath $path -Encoding utf8
+  # VERIFIED_SHA anchors the NEXT run's evidence range ("since the last recorded verification").
+  # Purely informational for evidence-scoping (roadmap #4) -- it is NOT a TYPE:/VERDICT: line, so
+  # it plays no part in any pass/fail or trust decision (the origin seam, roadmap #3, is untouched).
+  $headForRecord = & git rev-parse HEAD 2>$null
+  $evidenceNote = if ($evidence) { "`n=== Evidence provided to the verifier ===`nRange reviewed: $($evidence.range_kind) ($(if ($evidence.range) { $evidence.range } else { 'HEAD only' }))`nCI state for HEAD: $($evidence.ci_state)$(if ($evidence.ci_detail) { " ($($evidence.ci_detail))" })`nDiff stat:`n$($evidence.diff_stat)`n" } else { '' }
+  "=== Verification run $stamp ===`nVERIFIED_SHA: $headForRecord`nTYPE: review_only`n$result`n$evidenceNote" | Out-File -FilePath $path -Encoding utf8
 }
