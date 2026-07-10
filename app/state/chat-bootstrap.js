@@ -30,24 +30,36 @@ function bootstrapCanonical(opts) {
   // Do NOT create chats.json without the untouched legacy snapshot.
   if (!Array.isArray(legacySnapshot)) return { ok: false, error: 'snapshot_required' };
 
-  // If a canonical store already exists (or a recoverable prior generation),
-  // never re-migrate or overwrite it.
-  const existing = cs.readStore(chatsFile);
-  if (!existing.ok) return { ok: false, error: existing.error };
-  if (existing.store) return { ok: true, already: true, revision: existing.store.revision };
-
-  // Stable project identity (fails closed on project-id conflict).
+  // Stable project identity FIRST (fails closed on project-id conflict), so an
+  // existing store can be verified against the active project before we trust it.
   const pid = cs.resolveProjectId(projectDir, { now });
   if (!pid.ok) return { ok: false, error: pid.error };
 
-  // backup.json is optional, but a PRESENT-yet-corrupt/malformed one fails closed
-  // rather than being ignored (that would silently drop the disk safety net).
+  // If a canonical store already exists (or a recoverable prior generation), never
+  // re-migrate or overwrite it — but it MUST belong to the active project. A
+  // foreign-project chats.json is rejected, never accepted as already:true.
+  const existing = cs.readStore(chatsFile);
+  if (!existing.ok) return { ok: false, error: existing.error };
+  if (existing.store) {
+    if (existing.store.projectId !== pid.projectId) {
+      return { ok: false, error: 'project_mismatch', storeProjectId: existing.store.projectId, activeProjectId: pid.projectId };
+    }
+    return { ok: true, already: true, revision: existing.store.revision, projectId: pid.projectId };
+  }
+
+  // backup.json is optional (a MISSING one is a legitimate empty source), but a
+  // PRESENT one must be a valid legacy envelope: a non-array object with an array
+  // `chats`. Anything else ({}, null, [], "x", {savedAt:123}, {chats:null}) is
+  // malformed and fails closed — it is NOT silently treated as an empty backup.
   let backupChats = [];
   if (typeof backupFile === 'string' && backupFile) {
     const b = atomic.readJson(backupFile);
     if (b.ok) {
-      if (b.data && Array.isArray(b.data.chats)) backupChats = b.data.chats;
-      else if (b.data && b.data.chats !== undefined) return { ok: false, error: 'backup_malformed' };
+      const d = b.data;
+      if (d === null || typeof d !== 'object' || Array.isArray(d) || !Array.isArray(d.chats)) {
+        return { ok: false, error: 'backup_malformed' };
+      }
+      backupChats = d.chats;
     } else if (!b.missing) {
       return { ok: false, error: 'backup_unreadable: ' + b.error };
     }

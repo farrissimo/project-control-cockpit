@@ -775,28 +775,36 @@ function chatsBackupPath() { return path.join(chatsDir(), 'backup.json'); }
 ipcMain.handle('pcc:saveChatsBackup', () => ({ ok: false, error: 'disabled_canonical_store' }));
 
 // ---- canonical chat store (Phase 2A S4): main-owned; the ONLY chat writer. ----
-const chatStore = require('./state/chat-store');
 const chatBootstrap = require('./state/chat-bootstrap');
+const chatService = require('./state/chat-service');
 function canonicalChatsPath() { return path.join(chatsDir(), 'chats.json'); }
 
-// Read the canonical store (recovers from the prior generation only on corruption).
-ipcMain.handle('pcc:chatsRead', () => chatStore.readStore(canonicalChatsPath()));
+// Read the canonical store, BOUND to the active project (a foreign-project store
+// is rejected, never served as current). Recovers from the prior generation only
+// on corruption.
+ipcMain.handle('pcc:chatsRead', () => chatService.readCanonical({ chatsFile: canonicalChatsPath(), projectDir }));
 
 // One-time migration bootstrap: creates chats.json ONLY when handed the untouched
-// legacy localStorage snapshot AND no store exists yet; fail closed otherwise.
+// legacy localStorage snapshot AND no store exists yet; fail closed otherwise
+// (incl. a foreign-project existing store -> project_mismatch).
 ipcMain.handle('pcc:chatsBootstrap', (_e, legacySnapshot) => chatBootstrap.bootstrapCanonical({
   chatsFile: canonicalChatsPath(), backupFile: chatsBackupPath(), projectDir, legacySnapshot,
 }));
 
 // Command-shaped mutations — the ONLY way to change chats. Each carries the
-// caller's expectedRevision (optimistic concurrency). There is NO whole-store or
-// whole-chat replacement IPC.
-ipcMain.handle('pcc:chatsCreate', (_e, expectedRevision, args) => chatStore.createChat(canonicalChatsPath(), expectedRevision, args));
-ipcMain.handle('pcc:chatsAppend', (_e, expectedRevision, args) => chatStore.appendMessage(canonicalChatsPath(), expectedRevision, args));
-ipcMain.handle('pcc:chatsUpdateMeta', (_e, expectedRevision, args) => chatStore.updateChatMetadata(canonicalChatsPath(), expectedRevision, args));
-ipcMain.handle('pcc:chatsRename', (_e, expectedRevision, args) => chatStore.renameChat(canonicalChatsPath(), expectedRevision, args));
-ipcMain.handle('pcc:chatsDelete', (_e, expectedRevision, args) => chatStore.deleteChat(canonicalChatsPath(), expectedRevision, args));
-ipcMain.handle('pcc:chatsSetActive', (_e, expectedRevision, args) => chatStore.setActiveChat(canonicalChatsPath(), expectedRevision, args));
+// caller's expectedProjectId AND expectedRevision. main resolves the CURRENT
+// active project and rejects a command whose expectedProjectId does not match it
+// (so a delayed Project-A command cannot mutate Project B after a switch, even if
+// revisions coincide). There is NO whole-store / whole-chat replacement IPC.
+function _svcArgs(expectedProjectId, expectedRevision, args) {
+  return { chatsFile: canonicalChatsPath(), projectDir, expectedProjectId, expectedRevision, args };
+}
+ipcMain.handle('pcc:chatsCreate', (_e, epid, rev, args) => chatService.createChat(_svcArgs(epid, rev, args)));
+ipcMain.handle('pcc:chatsAppend', (_e, epid, rev, args) => chatService.appendMessage(_svcArgs(epid, rev, args)));
+ipcMain.handle('pcc:chatsUpdateMeta', (_e, epid, rev, args) => chatService.updateChatMetadata(_svcArgs(epid, rev, args)));
+ipcMain.handle('pcc:chatsRename', (_e, epid, rev, args) => chatService.renameChat(_svcArgs(epid, rev, args)));
+ipcMain.handle('pcc:chatsDelete', (_e, epid, rev, args) => chatService.deleteChat(_svcArgs(epid, rev, args)));
+ipcMain.handle('pcc:chatsSetActive', (_e, epid, rev, args) => chatService.setActiveChat(_svcArgs(epid, rev, args)));
 ipcMain.handle('pcc:loadChatsBackup', () => {
   try {
     const p = chatsBackupPath();

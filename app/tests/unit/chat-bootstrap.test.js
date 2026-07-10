@@ -12,6 +12,7 @@ const crypto = require('crypto');
 
 const boot = require('../../state/chat-bootstrap');
 const cs = require('../../state/chat-store');
+const atomic = require('../../state/atomic-store');
 
 const msg = (cls, text, ts) => ({ cls, text, ts });
 
@@ -82,6 +83,52 @@ test('after bootstrap, only command mutations (with revision CAS) change the sto
   const ok = cs.appendMessage(p.chatsFile, rev, { chatId: 'a', message: { id: 'm1', cls: 'user', text: 'hi', ts: 2 } }, { now: 3 });
   assert.equal(ok.ok, true);
   assert.equal(cs.readStore(p.chatsFile).store.chats[0].messages.length, 1);
+});
+
+// ---- S4.1: strict backup-envelope validation ----
+
+test('a PRESENT-but-malformed backup envelope fails closed and writes NO chats.json', () => {
+  for (const raw of ['{}', 'null', '[]', '"unexpected"', '{"savedAt":123}', '{"chats":null}', '{"chats":42}']) {
+    const p = tmpProject();
+    fs.writeFileSync(p.backupFile, raw, 'utf8');
+    const r = boot.bootstrapCanonical({ chatsFile: p.chatsFile, backupFile: p.backupFile, projectDir: p.dir, legacySnapshot: [], now: 1 });
+    assert.equal(r.ok, false, 'raw=' + raw);
+    assert.match(r.error, /backup_malformed/, 'raw=' + raw);
+    assert.equal(fs.existsSync(p.chatsFile), false, 'no chats.json for raw=' + raw);
+  }
+});
+
+test('a MISSING backup.json is a legitimate empty source (store created from snapshot only)', () => {
+  const p = tmpProject(); // no backup file written
+  const r = boot.bootstrapCanonical({ chatsFile: p.chatsFile, backupFile: p.backupFile, projectDir: p.dir, legacySnapshot: [{ id: 'a', name: 'A', messages: [] }], now: 1 });
+  assert.equal(r.ok, true); assert.equal(r.created, true);
+  assert.equal(cs.readStore(p.chatsFile).store.chats.length, 1);
+});
+
+test('a valid empty envelope {"chats":[]} is accepted', () => {
+  const p = tmpProject();
+  fs.writeFileSync(p.backupFile, JSON.stringify({ savedAt: 5, chats: [] }), 'utf8');
+  const r = boot.bootstrapCanonical({ chatsFile: p.chatsFile, backupFile: p.backupFile, projectDir: p.dir, legacySnapshot: [{ id: 'a', name: 'A', messages: [] }], now: 1 });
+  assert.equal(r.ok, true); assert.equal(r.created, true);
+});
+
+// ---- S4.1: project identity on bootstrap ----
+
+test('bootstrap REJECTS a foreign-project existing chats.json (project_mismatch)', () => {
+  const p = tmpProject(); // project-state.json project_id = 'test-proj'
+  atomic.writeJsonAtomic(p.chatsFile, { schemaVersion: 1, projectId: 'OTHER-project', revision: 1, createdAt: 1, updatedAt: 1, activeChatId: null, chats: [] });
+  const r = boot.bootstrapCanonical({ chatsFile: p.chatsFile, backupFile: p.backupFile, projectDir: p.dir, legacySnapshot: [], now: 2 });
+  assert.equal(r.ok, false);
+  assert.match(r.error, /project_mismatch/);
+  assert.equal(r.storeProjectId, 'OTHER-project');
+  assert.equal(r.activeProjectId, 'test-proj');
+});
+
+test('bootstrap returns already:true (with matching projectId) for the active project store', () => {
+  const p = tmpProject();
+  boot.bootstrapCanonical({ chatsFile: p.chatsFile, backupFile: p.backupFile, projectDir: p.dir, legacySnapshot: [{ id: 'a', name: 'A', messages: [] }], now: 1 });
+  const r = boot.bootstrapCanonical({ chatsFile: p.chatsFile, backupFile: p.backupFile, projectDir: p.dir, legacySnapshot: [{ id: 'a', name: 'A', messages: [] }], now: 2 });
+  assert.equal(r.ok, true); assert.equal(r.already, true); assert.equal(r.projectId, 'test-proj');
 });
 
 // ---- production isolation guard ----

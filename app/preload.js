@@ -33,12 +33,14 @@ contextBridge.exposeInMainWorld('pcc', {
   // mutations (each carries expectedRevision). No whole-store/whole-chat replace.
   chatsRead: () => ipcRenderer.invoke('pcc:chatsRead'),
   chatsBootstrap: (legacySnapshot) => ipcRenderer.invoke('pcc:chatsBootstrap', legacySnapshot),
-  chatsCreate: (expectedRevision, args) => ipcRenderer.invoke('pcc:chatsCreate', expectedRevision, args),
-  chatsAppend: (expectedRevision, args) => ipcRenderer.invoke('pcc:chatsAppend', expectedRevision, args),
-  chatsUpdateMeta: (expectedRevision, args) => ipcRenderer.invoke('pcc:chatsUpdateMeta', expectedRevision, args),
-  chatsRename: (expectedRevision, args) => ipcRenderer.invoke('pcc:chatsRename', expectedRevision, args),
-  chatsDelete: (expectedRevision, args) => ipcRenderer.invoke('pcc:chatsDelete', expectedRevision, args),
-  chatsSetActive: (expectedRevision, args) => ipcRenderer.invoke('pcc:chatsSetActive', expectedRevision, args),
+  // Mutations carry expectedProjectId AND expectedRevision so a delayed command
+  // can't cross a project switch. main rejects on either mismatch.
+  chatsCreate: (expectedProjectId, expectedRevision, args) => ipcRenderer.invoke('pcc:chatsCreate', expectedProjectId, expectedRevision, args),
+  chatsAppend: (expectedProjectId, expectedRevision, args) => ipcRenderer.invoke('pcc:chatsAppend', expectedProjectId, expectedRevision, args),
+  chatsUpdateMeta: (expectedProjectId, expectedRevision, args) => ipcRenderer.invoke('pcc:chatsUpdateMeta', expectedProjectId, expectedRevision, args),
+  chatsRename: (expectedProjectId, expectedRevision, args) => ipcRenderer.invoke('pcc:chatsRename', expectedProjectId, expectedRevision, args),
+  chatsDelete: (expectedProjectId, expectedRevision, args) => ipcRenderer.invoke('pcc:chatsDelete', expectedProjectId, expectedRevision, args),
+  chatsSetActive: (expectedProjectId, expectedRevision, args) => ipcRenderer.invoke('pcc:chatsSetActive', expectedProjectId, expectedRevision, args),
   listProjects: () => ipcRenderer.invoke('pcc:listProjects'),
   getActiveProject: () => ipcRenderer.invoke('pcc:getActiveProject'),
   setActiveProject: (dir) => ipcRenderer.invoke('pcc:setActiveProject', dir),
