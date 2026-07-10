@@ -27,8 +27,18 @@ contextBridge.exposeInMainWorld('pcc', {
   persistChat: (chatId, messages) => ipcRenderer.invoke('pcc:persistChat', chatId, messages),
   deleteChatFiles: (chatId) => ipcRenderer.invoke('pcc:deleteChatFiles', chatId),
   searchChats: (query, chats) => ipcRenderer.invoke('pcc:searchChats', query, chats),
-  saveChatsBackup: (chats) => ipcRenderer.invoke('pcc:saveChatsBackup', chats),
+  saveChatsBackup: (chats) => ipcRenderer.invoke('pcc:saveChatsBackup', chats), // DISABLED no-op (S4); canonical store is the writer
   loadChatsBackup: () => ipcRenderer.invoke('pcc:loadChatsBackup'),
+  // Canonical chat store (Phase 2A S4). Read + one-time bootstrap + command-shaped
+  // mutations (each carries expectedRevision). No whole-store/whole-chat replace.
+  chatsRead: () => ipcRenderer.invoke('pcc:chatsRead'),
+  chatsBootstrap: (legacySnapshot) => ipcRenderer.invoke('pcc:chatsBootstrap', legacySnapshot),
+  chatsCreate: (expectedRevision, args) => ipcRenderer.invoke('pcc:chatsCreate', expectedRevision, args),
+  chatsAppend: (expectedRevision, args) => ipcRenderer.invoke('pcc:chatsAppend', expectedRevision, args),
+  chatsUpdateMeta: (expectedRevision, args) => ipcRenderer.invoke('pcc:chatsUpdateMeta', expectedRevision, args),
+  chatsRename: (expectedRevision, args) => ipcRenderer.invoke('pcc:chatsRename', expectedRevision, args),
+  chatsDelete: (expectedRevision, args) => ipcRenderer.invoke('pcc:chatsDelete', expectedRevision, args),
+  chatsSetActive: (expectedRevision, args) => ipcRenderer.invoke('pcc:chatsSetActive', expectedRevision, args),
   listProjects: () => ipcRenderer.invoke('pcc:listProjects'),
   getActiveProject: () => ipcRenderer.invoke('pcc:getActiveProject'),
   setActiveProject: (dir) => ipcRenderer.invoke('pcc:setActiveProject', dir),

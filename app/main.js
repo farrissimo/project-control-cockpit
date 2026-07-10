@@ -767,14 +767,36 @@ ipcMain.handle('pcc:persistChat', (_e, chatId, messages) => {
 // list is ALSO mirrored to a plain file, and the renderer restores from it whenever localStorage
 // comes up empty. This is the real source of truth for "never lose a chat".
 function chatsBackupPath() { return path.join(chatsDir(), 'backup.json'); }
-ipcMain.handle('pcc:saveChatsBackup', (_e, chats) => {
-  try {
-    if (!Array.isArray(chats) || chats.length === 0) return { ok: false };
-    fs.mkdirSync(chatsDir(), { recursive: true });
-    fs.writeFileSync(chatsBackupPath(), JSON.stringify({ savedAt: Date.now(), chats }), 'utf8');
-    return { ok: true };
-  } catch (e) { return { ok: false, text: e.message }; }
-});
+// DISABLED (Phase 2A S4): the old whole-array backup.json OVERWRITE writer is
+// retired. A partial renderer list could clobber the on-disk safety net here, so
+// NO startup path may reach it. The canonical, main-owned store (chats.json,
+// mutated only by revision-checked command IPC) is the sole chat writer now. Kept
+// as a hard no-op so any lingering renderer call cannot write backup.json.
+ipcMain.handle('pcc:saveChatsBackup', () => ({ ok: false, error: 'disabled_canonical_store' }));
+
+// ---- canonical chat store (Phase 2A S4): main-owned; the ONLY chat writer. ----
+const chatStore = require('./state/chat-store');
+const chatBootstrap = require('./state/chat-bootstrap');
+function canonicalChatsPath() { return path.join(chatsDir(), 'chats.json'); }
+
+// Read the canonical store (recovers from the prior generation only on corruption).
+ipcMain.handle('pcc:chatsRead', () => chatStore.readStore(canonicalChatsPath()));
+
+// One-time migration bootstrap: creates chats.json ONLY when handed the untouched
+// legacy localStorage snapshot AND no store exists yet; fail closed otherwise.
+ipcMain.handle('pcc:chatsBootstrap', (_e, legacySnapshot) => chatBootstrap.bootstrapCanonical({
+  chatsFile: canonicalChatsPath(), backupFile: chatsBackupPath(), projectDir, legacySnapshot,
+}));
+
+// Command-shaped mutations — the ONLY way to change chats. Each carries the
+// caller's expectedRevision (optimistic concurrency). There is NO whole-store or
+// whole-chat replacement IPC.
+ipcMain.handle('pcc:chatsCreate', (_e, expectedRevision, args) => chatStore.createChat(canonicalChatsPath(), expectedRevision, args));
+ipcMain.handle('pcc:chatsAppend', (_e, expectedRevision, args) => chatStore.appendMessage(canonicalChatsPath(), expectedRevision, args));
+ipcMain.handle('pcc:chatsUpdateMeta', (_e, expectedRevision, args) => chatStore.updateChatMetadata(canonicalChatsPath(), expectedRevision, args));
+ipcMain.handle('pcc:chatsRename', (_e, expectedRevision, args) => chatStore.renameChat(canonicalChatsPath(), expectedRevision, args));
+ipcMain.handle('pcc:chatsDelete', (_e, expectedRevision, args) => chatStore.deleteChat(canonicalChatsPath(), expectedRevision, args));
+ipcMain.handle('pcc:chatsSetActive', (_e, expectedRevision, args) => chatStore.setActiveChat(canonicalChatsPath(), expectedRevision, args));
 ipcMain.handle('pcc:loadChatsBackup', () => {
   try {
     const p = chatsBackupPath();

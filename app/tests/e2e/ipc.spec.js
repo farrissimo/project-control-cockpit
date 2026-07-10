@@ -16,7 +16,8 @@ const call = (method, ...args) =>
 test('bridge exposes exactly the expected channels', async () => {
   const keys = await page.evaluate(() => Object.keys(window.pcc).sort());
   expect(keys).toEqual([
-    'addProject', 'approveJob', 'authorityLog', 'authorityState', 'autoNameChat', 'backup', 'cancelJob', 'ciStatus',
+    'addProject', 'approveJob', 'authorityLog', 'authorityState', 'autoNameChat', 'backup', 'cancelJob',
+    'chatsAppend', 'chatsBootstrap', 'chatsCreate', 'chatsDelete', 'chatsRead', 'chatsRename', 'chatsSetActive', 'chatsUpdateMeta', 'ciStatus',
     'createFlowCancel', 'createFlowPickLocation', 'createFlowSave', 'createFlowSend', 'createFlowStart',
     'deleteChatFiles', 'detections', 'endJob', 'engineStatus', 'getActiveProject', 'getMemory', 'getModels',
     'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
@@ -141,18 +142,18 @@ test('persistChat persists a transcript and refuses empty; deleteChatFiles is sa
   expect(delMissing.ok).toBe(true); // removing a non-existent record is a no-op, not an error
 });
 
-// Durable chat backup: the full chat list round-trips through a plain file so a localStorage reset
-// can't lose it. saveChatsBackup persists; loadChatsBackup returns it; a blank list is refused.
-test('chats backup round-trips through a file and refuses a blank save', async () => {
+// Phase 2A S4: the old whole-array backup WRITER is DISABLED. saveChatsBackup is a
+// hard no-op so a partial renderer list can never overwrite backup.json; the
+// canonical main-owned store (chats.json) is the only writer. loadChatsBackup
+// still READS any pre-existing backup (migration input), it just can't be written.
+test('the old saveChatsBackup writer is disabled and cannot overwrite backup.json', async () => {
   const chats = [{ id: 'x1', name: 'Kept chat', started: true, messages: [{ cls: 'user', text: 'hi' }] }];
   const saved = await call('saveChatsBackup', chats);
-  expect(saved.ok).toBe(true);
-  const loaded = await call('loadChatsBackup');
+  expect(saved.ok).toBe(false);
+  expect(saved.error).toBe('disabled_canonical_store');
+  const loaded = await call('loadChatsBackup'); // read path still works
   expect(loaded.ok).toBe(true);
   expect(Array.isArray(loaded.chats)).toBe(true);
-  expect(loaded.chats.some((c) => c.id === 'x1')).toBe(true); // recovered from disk
-  const blank = await call('saveChatsBackup', []);
-  expect(blank.ok).toBe(false); // never overwrite the backup with nothing
 });
 
 // searchChats: validates input, returns an honest empty on no corpus, and never throws when the
