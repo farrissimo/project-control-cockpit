@@ -216,10 +216,80 @@ test('an unknown message-level field is preserved', () => {
   assert.equal(r.store.chats[0].messages[0].edited, true);
 });
 
+// ---- input-boundary validation (fail closed, never normalize) ----
+
+test('an id-bearing chat with non-array messages FAILS closed (never treated as empty)', () => {
+  for (const bad of [
+    { id: 'a', messages: { draft: 'important' } },
+    { id: 'a', messages: 'corrupt-but-preserved-state' },
+    { id: 'a', messages: null },
+  ]) {
+    const r = mig.reconcileChats([bad], []);
+    assert.equal(r.ok, false, JSON.stringify(bad));
+    assert.equal(r.malformed.some((m) => m.reason === 'messages_not_array' && m.id === 'a'), true);
+  }
+});
+
+test('a non-array localChats or backupChats source FAILS closed', () => {
+  assert.match(mig.reconcileChats(null, []).error, /malformed_input/);
+  assert.match(mig.reconcileChats({}, []).error, /malformed_input/);
+  const r = mig.reconcileChats([], 'nope');
+  assert.equal(r.ok, false);
+  assert.equal(r.malformed.some((m) => m.source === 'backup' && m.reason === 'source_not_an_array'), true);
+});
+
+test('primitive / null message entries FAIL closed', () => {
+  for (const badMsg of [null, 'x', 42, true]) {
+    const r = mig.reconcileChats([{ id: 'a', messages: [badMsg] }], []);
+    assert.equal(r.ok, false, JSON.stringify(badMsg));
+    assert.equal(r.malformed.some((m) => m.reason === 'message_not_object'), true);
+  }
+});
+
+test('a message with wrong-typed identity fields FAILS closed (no guessing / no now)', () => {
+  const r = mig.reconcileChats([{ id: 'a', messages: [{ cls: 'user', text: 'hi', ts: 'not-a-number' }] }], []);
+  assert.equal(r.ok, false);
+  assert.equal(r.malformed.some((m) => m.reason === 'message_field_type'), true);
+});
+
+test('duplicate message ids within one chat FAIL closed', () => {
+  const r = mig.reconcileChats([{ id: 'a', messages: [
+    { cls: 'user', text: 'x', ts: 1, id: 'm1' },
+    { cls: 'assistant', text: 'y', ts: 2, id: 'm1' },
+  ] }], []);
+  assert.equal(r.ok, false);
+  assert.equal(r.malformed.some((m) => m.reason === 'duplicate_message_id'), true);
+});
+
+test('planMigration requires a nonempty string projectId and produces NO store otherwise', () => {
+  const good = [chat('a', [msg('user', 'hi', 1)])];
+  for (const pid of [undefined, null, '', 123, {}]) {
+    const r = mig.planMigration({ localChats: good, backupChats: [], projectId: pid, now: 1 });
+    assert.equal(r.ok, false, String(pid));
+    assert.match(r.error, /invalid_project_id/);
+    assert.equal(r.store, undefined, 'no store on invalid projectId');
+  }
+});
+
+test('every validation failure produces NO store', () => {
+  const cases = [
+    { localChats: 'x', backupChats: [], projectId: 'p' },
+    { localChats: [{ id: 'a', messages: null }], backupChats: [], projectId: 'p' },
+    { localChats: [{ id: 'a', messages: [7] }], backupChats: [], projectId: 'p' },
+  ];
+  for (const c of cases) {
+    const r = mig.planMigration(Object.assign({ now: 1 }, c));
+    assert.equal(r.ok, false, JSON.stringify(c));
+    assert.equal(r.store, undefined);
+  }
+});
+
 // ---- buildStore ----
 
 test('buildStore produces a schema-v1 store, assigns deterministic message ids', () => {
-  const s1 = mig.buildStore({ chats: [chat('a', [msg('user', 'hi', 1)])], projectId: 'p', now: 500 });
+  const b1 = mig.buildStore({ chats: [chat('a', [msg('user', 'hi', 1)])], projectId: 'p', now: 500 });
+  assert.equal(b1.ok, true);
+  const s1 = b1.store;
   assert.equal(s1.schemaVersion, 1);
   assert.equal(s1.projectId, 'p');
   assert.equal(s1.revision, 1);
@@ -228,17 +298,49 @@ test('buildStore produces a schema-v1 store, assigns deterministic message ids',
   assert.match(mid, /^m-/);
   assert.equal(s1.chats[0].started, true, 'a chat with messages is started');
   // Deterministic: same input -> same message id.
-  const s2 = mig.buildStore({ chats: [chat('a', [msg('user', 'hi', 1)])], projectId: 'p', now: 999 });
+  const s2 = mig.buildStore({ chats: [chat('a', [msg('user', 'hi', 1)])], projectId: 'p', now: 999 }).store;
   assert.equal(s2.chats[0].messages[0].id, mid);
 });
 
-test('buildStore preserves existing message ids and normalizes empty chats', () => {
+test('buildStore preserves existing message ids and defaults empty chats', () => {
   const withId = { id: 'a', name: 'A', messages: [{ id: 'keep-me', cls: 'user', text: 'x', ts: 1 }] };
   const empty = { id: 'b', name: 'New chat', messages: [] };
-  const s = mig.buildStore({ chats: [withId, empty], projectId: 'p', now: 7 });
+  const s = mig.buildStore({ chats: [withId, empty], projectId: 'p', now: 7 }).store;
   assert.equal(s.chats[0].messages[0].id, 'keep-me');
   assert.equal(s.chats[1].started, false, 'empty chat is not started');
   assert.equal(s.chats[1].createdAt, 7);
+});
+
+test('buildStore is a structured API: non-array chats or bad projectId return a failure, never throw', () => {
+  for (const badChats of [{}, 'x', 123, null, undefined]) {
+    const b = mig.buildStore({ chats: badChats, projectId: 'p', now: 1 });
+    assert.equal(b.ok, false, JSON.stringify(badChats));
+    assert.match(b.error, /chats_not_an_array/);
+    assert.equal(b.store, undefined);
+  }
+  const b2 = mig.buildStore({ chats: [], projectId: '', now: 1 });
+  assert.equal(b2.ok, false); assert.match(b2.error, /invalid_project_id/);
+  // A malformed chat passed DIRECTLY to buildStore fails closed, never throws.
+  for (const badChat of [{ id: 'a', messages: {} }, { id: 'a', messages: [7] }, { id: 'a', messages: [], started: 'yes' }, { messages: [] }]) {
+    const b = mig.buildStore({ chats: [badChat], projectId: 'p', now: 1 });
+    assert.equal(b.ok, false, JSON.stringify(badChat));
+    assert.match(b.error, /malformed_chats/);
+    assert.equal(b.store, undefined);
+  }
+});
+
+test('a chat with a wrong-typed KNOWN field (started/createdAt) FAILS closed, never coerced', () => {
+  for (const bad of [
+    { id: 'a', messages: [], started: 'yes' },
+    { id: 'a', messages: [], createdAt: 'bad' },
+    { id: 'a', messages: [], updatedAt: 'bad' },
+    { id: 'a', messages: [], name: 42 },
+    { id: 'a', messages: [], nameLocked: 'true' },
+  ]) {
+    const r = mig.reconcileChats([bad], []);
+    assert.equal(r.ok, false, JSON.stringify(bad));
+    assert.equal(r.malformed.some((m) => /chat_field_type:/.test(m.reason)), true);
+  }
 });
 
 test('planMigration end-to-end merges prefix histories into one store', () => {

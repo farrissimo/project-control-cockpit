@@ -8,15 +8,24 @@
 // and backup.json. Per-chat transcripts are recovery EVIDENCE only, never an
 // automatic authority, so they are not consumed here.
 //
+// INPUT VALIDATION (fail closed, before any reconcile/build): localChats and
+// backupChats must be arrays; every non-disposable chat must be an object with a
+// usable string id; every id-bearing chat must have an ARRAY messages; every
+// message must be an object with legacy-typed identity fields (cls:string,
+// text:string, ts:number) and, when present, a unique string id within the chat;
+// projectId must be a nonempty string before a store is produced. A malformed real
+// value is NEVER silently normalized to now/empty/default — it fails closed.
+//
 // RECONCILE RULES, per matching chat id (message identity = cls + text + ts):
 //   - present in only one source            -> accept it
-//   - identical histories                   -> accept (metadata: newer wins)
+//   - identical histories                   -> accept; metadata is LOSSLESSLY
+//                                              field-merged (conflict on difference)
 //   - one history is a strict PREFIX of the -> accept the LONGER, record provenance
-//     other
+//     other; overlap + metadata field-merged losslessly
 //   - histories diverge at a shared index,  -> CONFLICT
 //     or earlier messages differ
-// ANY conflict FAILS the whole migration: no canonical store is produced, both
-// sources are preserved for the owner to reconcile. (Fail closed — never guess.)
+// ANY conflict or malformation FAILS the whole migration: no canonical store is
+// produced, both sources are preserved for the owner to reconcile. (Never guess.)
 
 const crypto = require('crypto');
 const { SCHEMA_VERSION } = require('./chat-store');
@@ -138,21 +147,69 @@ function _isDisposableBlank(c) {
   return true;
 }
 
+// Validate an id-bearing chat's messages: messages MUST be an array; every entry
+// MUST be an object with legacy-typed identity fields (cls:string, text:string,
+// ts:number); a present message id MUST be a nonempty string and unique within the
+// chat. Fails closed (never normalizes a malformed value). Returns { ok } | { ok:false, reason }.
+function _validateMessages(c) {
+  if (!Array.isArray(c.messages)) return { ok: false, reason: 'messages_not_array' };
+  const seenMsgIds = new Set();
+  for (const m of c.messages) {
+    if (!m || typeof m !== 'object' || Array.isArray(m)) return { ok: false, reason: 'message_not_object' };
+    if (typeof m.cls !== 'string' || typeof m.text !== 'string' || typeof m.ts !== 'number') {
+      return { ok: false, reason: 'message_field_type' };
+    }
+    if (m.id !== undefined) {
+      if (typeof m.id !== 'string' || !m.id) return { ok: false, reason: 'message_id_type' };
+      if (seenMsgIds.has(m.id)) return { ok: false, reason: 'duplicate_message_id' };
+      seenMsgIds.add(m.id);
+    }
+  }
+  return { ok: true };
+}
+
+// Validate an id-bearing chat: valid messages AND correctly-typed KNOWN fields.
+// A present-but-wrong-typed known field (e.g. started:'yes', createdAt:'bad') is
+// malformed and fails closed — never silently coerced/replaced. Unknown fields are
+// left to the lossless field-merge; absent known fields get legitimate defaults.
+function _validateChat(c) {
+  const vm = _validateMessages(c);
+  if (!vm.ok) return vm;
+  const wrong = (k, t) => c[k] !== undefined && typeof c[k] !== t;
+  if (wrong('name', 'string')) return { ok: false, reason: 'chat_field_type:name' };
+  if (wrong('started', 'boolean')) return { ok: false, reason: 'chat_field_type:started' };
+  if (wrong('nameLocked', 'boolean')) return { ok: false, reason: 'chat_field_type:nameLocked' };
+  if (wrong('buildChat', 'boolean')) return { ok: false, reason: 'chat_field_type:buildChat' };
+  if (wrong('buildName', 'string')) return { ok: false, reason: 'chat_field_type:buildName' };
+  if (wrong('createdAt', 'number')) return { ok: false, reason: 'chat_field_type:createdAt' };
+  if (wrong('updatedAt', 'number')) return { ok: false, reason: 'chat_field_type:updatedAt' };
+  return { ok: true };
+}
+
 function reconcileChats(localChats, backupChats) {
-  const byId = new Map();
   const malformed = [];
+  // 0. Each source MUST be an array. A non-array source is malformed, not "empty".
+  if (!Array.isArray(localChats)) malformed.push({ source: 'local', reason: 'source_not_an_array' });
+  if (!Array.isArray(backupChats)) malformed.push({ source: 'backup', reason: 'source_not_an_array' });
+  if (malformed.length) return { ok: false, error: 'malformed_input', malformed, conflicts: [], conflictDetails: [] };
+
+  const byId = new Map();
   // Index one source, FAIL CLOSED on anything that could silently drop data: a
-  // content-bearing chat with no usable id, or a duplicate id within the source
-  // (the map would otherwise keep only the last). A truly-empty, id-less "New
-  // chat" is disposable, not data, so it is skipped without failing.
+  // content-bearing chat with no usable id, a duplicate id within the source, or an
+  // id-bearing chat whose messages/message-entries are structurally malformed. A
+  // truly-empty, id-less "New chat" is disposable, not data, so it is skipped.
   const indexSource = (list, label) => {
     const seen = new Set();
-    for (const c of list || []) {
-      if (!c || typeof c !== 'object') { malformed.push({ source: label, reason: 'not_an_object' }); continue; }
+    for (const c of list) {
+      if (!c || typeof c !== 'object' || Array.isArray(c)) { malformed.push({ source: label, reason: 'not_an_object' }); continue; }
       if (typeof c.id !== 'string' || !c.id) {
         if (!_isDisposableBlank(c)) malformed.push({ source: label, reason: 'missing_id_with_state' });
         continue; // pristine default blank without an id -> ignore (not data)
       }
+      // id-bearing chat: messages must be a valid array of valid messages, and
+      // known chat fields must be correctly typed.
+      const vm = _validateChat(c);
+      if (!vm.ok) { malformed.push({ source: label, id: c.id, reason: vm.reason }); continue; }
       if (seen.has(c.id)) { malformed.push({ source: label, id: c.id, reason: 'duplicate_id_in_source' }); continue; }
       seen.add(c.id);
       const e = byId.get(c.id) || {}; e[label] = c; byId.set(c.id, e);
@@ -196,13 +253,29 @@ function _deriveMsgId(chatId, i, m) {
   return 'm-' + h.slice(0, 16);
 }
 
-// Build a schema-v1 canonical store object from reconciled chats. Assigns message
-// ids where absent; normalizes required fields. Does NOT write anything.
+// Build a schema-v1 canonical store from reconciled chats. Structured API — never
+// throws and never produces a store from malformed input: a non-array `chats` or a
+// missing/invalid projectId returns { ok:false, error }. Assigns message ids where
+// absent and defaults ABSENT (not malformed) required fields. Returns
+// { ok:true, store } | { ok:false, error }.
 function buildStore(opts) {
   const now = (opts && typeof opts.now === 'number') ? opts.now : Date.now();
   const projectId = opts && opts.projectId;
-  const chats = (opts && opts.chats ? opts.chats : []).map((c) => {
-    // Preserve every field on the reconciled chat (known + unknown); only NORMALIZE
+  if (typeof projectId !== 'string' || !projectId) return { ok: false, error: 'invalid_project_id' };
+  if (!Array.isArray(opts && opts.chats)) return { ok: false, error: 'chats_not_an_array' };
+  // buildStore is a structured, self-contained API: validate EVERY chat before
+  // mapping, so a direct call with malformed input fails closed rather than
+  // throwing a raw .map error or silently normalizing an inner malformed value.
+  const invalid = [];
+  for (const c of opts.chats) {
+    if (!c || typeof c !== 'object' || Array.isArray(c)) { invalid.push({ reason: 'not_an_object' }); continue; }
+    if (typeof c.id !== 'string' || !c.id) { invalid.push({ reason: 'missing_id' }); continue; }
+    const vc = _validateChat(c);
+    if (!vc.ok) invalid.push({ id: c.id, reason: vc.reason });
+  }
+  if (invalid.length) return { ok: false, error: 'malformed_chats', invalid };
+  const chats = opts.chats.map((c) => {
+    // Preserve every field on the reconciled chat (known + unknown); only default
     // the required ones. Spread first so nothing is dropped, then overlay.
     const messages = (c.messages || []).map((m, i) => Object.assign({}, m, {
       id: m.id || _deriveMsgId(c.id, i, m),
@@ -218,17 +291,27 @@ function buildStore(opts) {
     });
   });
   return {
-    schemaVersion: SCHEMA_VERSION, projectId: projectId || null,
-    revision: 1, createdAt: now, updatedAt: now, activeChatId: null, chats,
+    ok: true,
+    store: {
+      schemaVersion: SCHEMA_VERSION, projectId,
+      revision: 1, createdAt: now, updatedAt: now, activeChatId: null, chats,
+    },
   };
 }
 
-// Full plan: reconcile then build. On conflict, returns the conflict unchanged
-// (no store) so the caller writes NOTHING and preserves both sources.
+// Full plan: validate projectId, reconcile, then build. On ANY validation failure
+// or conflict, returns the failure unchanged (NO store) so the caller writes
+// nothing and preserves both sources.
 function planMigration(opts) {
+  const projectId = opts && opts.projectId;
+  if (typeof projectId !== 'string' || !projectId) {
+    return { ok: false, error: 'invalid_project_id' };
+  }
   const r = reconcileChats(opts && opts.localChats, opts && opts.backupChats);
   if (!r.ok) return r;
-  return { ok: true, store: buildStore({ chats: r.chats, projectId: opts && opts.projectId, now: opts && opts.now }), provenance: r.provenance };
+  const b = buildStore({ chats: r.chats, projectId, now: opts && opts.now });
+  if (!b.ok) return b;
+  return { ok: true, store: b.store, provenance: r.provenance };
 }
 
 module.exports = { reconcileChats, buildStore, planMigration };
