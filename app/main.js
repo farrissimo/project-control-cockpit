@@ -1081,7 +1081,24 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 }
 
+// Single-instance lock (2026-07-10 data-loss fix). WITHOUT this, every desktop-shortcut click
+// launches a SEPARATE copy of the app; multiple copies share one localStorage and race their
+// writes, which silently corrupted chat history — a project's chats got overwritten by a stale
+// instance's empty "New chat", and closing one window left the others running as ghosts. Now a
+// second launch just focuses the existing window and exits: one app, one owner of the storage.
+// (window-all-closed already quits the single instance cleanly.)
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
+  });
+}
+
 app.whenReady().then(() => {
+  if (!gotSingleInstanceLock) return; // a second copy: never build a window or touch storage
   // Load the persisted per-chat build authority (needs app.getPath, so do it here). Any
   // session already past its idle/hard deadline is dropped on load.
   try { authority.load(Date.now()); } catch (e) { /* start with an empty authority set */ }
