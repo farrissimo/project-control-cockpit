@@ -877,7 +877,7 @@ function relTime(ts) {
 function closeChatsPanel() { const p = document.getElementById('chats-panel'); if (p) p.classList.add('hidden'); }
 
 function renderChatList() {
-  const panel = document.getElementById('chats-panel');
+  const panel = document.getElementById('chats-list');
   const btn = document.getElementById('chats-btn');
   if (btn) btn.textContent = 'Chats (' + chats.length + ')';
   if (!panel) return;
@@ -899,7 +899,7 @@ document.getElementById('chats-btn').addEventListener('click', (e) => {
   e.stopPropagation();
   const p = document.getElementById('chats-panel');
   p.classList.toggle('hidden');
-  if (!p.classList.contains('hidden')) renderChatList();
+  if (!p.classList.contains('hidden')) { renderChatList(); showChatList(); }
 });
 document.getElementById('chats-panel').addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]');
@@ -916,6 +916,66 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#chats-panel') || e.target.closest('#chats-btn')) return;
   closeChatsPanel();
 });
+
+// ---- Search all chats (docs/CHAT_RECALL_SPEC.md): plain-English recall ----
+// Not a keyword box. Hands the question to the worker's expand->grep->judge pipeline over the
+// LIVE chats (always fresh) and shows the genuine matches, each clickable to open that chat.
+let searchSeq = 0; // guards against a slow earlier search overwriting a newer one
+function showChatList() {
+  document.getElementById('chats-search-results').classList.add('hidden');
+  document.getElementById('chats-list').classList.remove('hidden');
+}
+function setSearchStatus(html, isErr) {
+  const box = document.getElementById('chats-search-results');
+  document.getElementById('chats-list').classList.add('hidden');
+  box.classList.remove('hidden');
+  box.innerHTML = '<div class="sr-status' + (isErr ? ' err' : '') + '">' + html + '</div>';
+}
+function renderSearchResults(query, matches) {
+  const box = document.getElementById('chats-search-results');
+  const back = '<div class="sr-back" data-act="clear-search">← back to all chats</div>';
+  if (!matches.length) {
+    box.innerHTML = back + '<div class="sr-status">No chats match “' + escapeHtml(query) + '”.</div>';
+    return;
+  }
+  box.innerHTML = back + '<div class="sr-status">' + matches.length + ' match' + (matches.length > 1 ? 'es' : '')
+    + ' for “' + escapeHtml(query) + '”</div>'
+    + matches.map((m) => '<div class="sr-hit" data-act="open" data-id="' + escapeHtml(m.chatId) + '">'
+      + '<div class="sr-hit-name">' + escapeHtml(m.chatName || 'chat') + '</div>'
+      + (m.answer ? '<div class="sr-hit-answer">' + escapeHtml(m.answer) + '</div>' : '')
+      + (m.quote ? '<div class="sr-hit-quote">“' + escapeHtml(m.quote) + '”</div>' : '')
+      + '</div>').join('');
+}
+async function runChatSearch() {
+  const q = (document.getElementById('chats-search-input').value || '').trim();
+  if (!q) { showChatList(); return; }
+  const seq = ++searchSeq;
+  setSearchStatus('Searching your chats for “' + escapeHtml(q) + '”…');
+  try {
+    // Pass the live chats (id/name/messages + any cached summary) as the corpus.
+    const corpus = chats.map((c) => ({ id: c.id, name: c.name, messages: c.messages, summary: c.summary }));
+    const res = await window.pcc.searchChats(q, corpus);
+    if (seq !== searchSeq) return; // a newer search superseded this one
+    if (res && res.ok) renderSearchResults(q, res.matches || []);
+    else setSearchStatus(escapeHtml((res && res.text) || 'Search failed.'), true);
+  } catch (e) {
+    if (seq === searchSeq) setSearchStatus('Something went wrong searching.', true);
+  }
+}
+{
+  const sb = document.getElementById('chats-search-btn');
+  const si = document.getElementById('chats-search-input');
+  const results = document.getElementById('chats-search-results');
+  if (sb) sb.addEventListener('click', runChatSearch);
+  if (si) si.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runChatSearch(); } });
+  if (si) si.addEventListener('input', () => { if (!si.value.trim()) showChatList(); });
+  if (results) results.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-act]');
+    if (!el) return;
+    if (el.dataset.act === 'clear-search') { si.value = ''; showChatList(); }
+    else if (el.dataset.act === 'open') { switchChat(el.dataset.id); }
+  });
+}
 
 form.addEventListener('submit', (e) => { e.preventDefault(); const t = input.value; input.value = ''; sendMessage(t); });
 input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });

@@ -84,6 +84,24 @@
   .chat-mini { background: transparent; border: none; color: #7a7f87; cursor: pointer; font-size: 13px;
     padding: 4px 6px; border-radius: 6px; }
   .chat-mini:hover { background: #23262d; color: #dbe8ff; }
+  /* Search all chats (docs/CHAT_RECALL_SPEC.md) — plain-English recall at the top of the list */
+  #chats-search { display: flex; gap: 6px; padding: 4px 4px 8px; border-bottom: 1px solid #23262d; margin-bottom: 6px; }
+  #chats-search-input { flex: 1; min-width: 0; background: #14171c; border: 1px solid #2b2f37; color: #dbe8ff;
+    border-radius: 6px; padding: 6px 8px; font-size: 12px; }
+  #chats-search-input::placeholder { color: #6b7079; }
+  #chats-search-btn { background: #1c2637; border: 1px solid #2b2f37; color: #dbe8ff; border-radius: 6px;
+    padding: 6px 10px; font-size: 12px; cursor: pointer; }
+  #chats-search-btn:hover { background: #24324a; }
+  #chats-search-results.hidden, #chats-list.hidden { display: none; }
+  .sr-status { font-size: 12px; color: #9aa0a8; padding: 6px 4px; }
+  .sr-status.err { color: #e0796f; }
+  .sr-hit { padding: 8px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
+  .sr-hit:hover { background: #14171c; border-color: #2b2f37; }
+  .sr-hit-name { font-size: 13px; color: #dbe8ff; font-weight: 600; }
+  .sr-hit-answer { font-size: 12px; color: #cdd4de; line-height: 1.4; margin: 2px 0; }
+  .sr-hit-quote { font-size: 11px; color: #8fa6c8; font-style: italic; border-left: 2px solid #2b2f37; padding-left: 6px; }
+  .sr-back { font-size: 11px; color: #7a7f87; cursor: pointer; padding: 2px 4px; }
+  .sr-back:hover { color: #dbe8ff; }
   /* First-class chat history: the summary card slide-over (docs/CHAT_RECALL_SPEC.md) */
   #summary-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 90; }
   #summary-backdrop.hidden { display: none; }
@@ -483,7 +501,15 @@
         <select id="model-select" title="Which Claude model answers your messages. Defaults to Sonnet 5; falls back automatically if a model is unavailable."></select>
         <div class="chats-wrap">
           <button id="chats-btn" type="button" title="Your saved chats — switch, rename, or delete.">Chats</button>
-          <div id="chats-panel" class="hidden"></div>
+          <div id="chats-panel" class="hidden">
+            <div id="chats-search">
+              <input id="chats-search-input" type="text" autocomplete="off"
+                placeholder="Search all chats — ask in plain English" title="Ask in plain English, e.g. &quot;when did we decide to drop crypto?&quot;. It searches meaning, not exact words." />
+              <button id="chats-search-btn" type="button" title="Search your chat history by meaning">Search</button>
+            </div>
+            <div id="chats-search-results" class="hidden"></div>
+            <div id="chats-list"></div>
+          </div>
         </div>
         <button id="new-chat" type="button" title="Start a fresh conversation (a new saved chat).">New chat</button>
       </div>
