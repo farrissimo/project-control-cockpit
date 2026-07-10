@@ -16,13 +16,13 @@ const call = (method, ...args) =>
 test('bridge exposes exactly the expected channels', async () => {
   const keys = await page.evaluate(() => Object.keys(window.pcc).sort());
   expect(keys).toEqual([
-    'addProject', 'approveJob', 'authorityLog', 'authorityState', 'backup', 'cancelJob', 'ciStatus',
+    'addProject', 'approveJob', 'authorityLog', 'authorityState', 'autoNameChat', 'backup', 'cancelJob', 'ciStatus',
     'createFlowCancel', 'createFlowPickLocation', 'createFlowSave', 'createFlowSend', 'createFlowStart',
     'detections', 'endJob', 'engineStatus', 'getActiveProject', 'getMemory', 'getModels',
     'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
     'listProjects', 'metrics', 'newChat', 'pickFolder', 'pull', 'recentDecisions', 'requestJob',
     'runProduct', 'saveMemory', 'secondOpinion', 'send', 'setActiveProject', 'setPhaseKind',
-    'syncStatus', 'trustExtras', 'verify', 'verifyProduct', 'visionPromises',
+    'summarizeChat', 'syncStatus', 'trustExtras', 'verify', 'verifyProduct', 'visionPromises',
   ]);
 });
 
@@ -106,6 +106,26 @@ test('send routes to the faked worker and returns its reply', async () => {
   const res = await call('send', 'ping', undefined, 'test-chat-ipc', true);
   expect(res.ok).toBe(true);
   expect(res.text).toContain('FAKE-CLAUDE-REPLY');
+});
+
+// First-class chat history (docs/CHAT_RECALL_SPEC.md): the auto-name channel turns a
+// transcript into a title via the (faked) worker; an empty transcript is refused.
+test('autoNameChat returns a title from a transcript and refuses an empty one', async () => {
+  const ok = await call('autoNameChat', [{ cls: 'user', text: 'hi' }, { cls: 'bot', text: 'hello' }]);
+  expect(ok.ok).toBe(true);
+  expect(typeof ok.title).toBe('string');
+  expect(ok.title.length).toBeGreaterThan(0);
+  const empty = await call('autoNameChat', []);
+  expect(empty.ok).toBe(false);
+});
+
+// summarizeChat refuses an empty chat, and reports honestly when the worker returns
+// non-JSON (the default fake) instead of fabricating a card.
+test('summarizeChat refuses an empty chat and never fakes a card from non-JSON', async () => {
+  const empty = await call('summarizeChat', 'chat-x', []);
+  expect(empty.ok).toBe(false);
+  const nonJson = await call('summarizeChat', 'chat-x', [{ cls: 'user', text: 'hi' }]);
+  expect(nonJson.ok).toBe(false); // fake returns "FAKE-CLAUDE-REPLY...", not JSON -> honest failure
 });
 
 test('detections returns all five detector results in four-part format', async () => {
