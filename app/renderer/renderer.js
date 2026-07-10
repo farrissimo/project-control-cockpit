@@ -2037,8 +2037,15 @@ document.addEventListener('click', (e) => {
 document.getElementById('lifecycle').addEventListener('click', () => document.querySelector('.nav[data-view="lifecycle"]').click());
 
 async function boot() {
-  // Resolve the active project first so chat history loads from its namespace.
-  try { const a = await window.pcc.getActiveProject(); activeProjectPath = a && a.path; } catch (e) { /* default namespace */ }
+  // Resolve the active project first so chat history loads from its namespace. RETRY, because a
+  // transient IPC hiccup here used to leave activeProjectPath null -> the 'home' namespace ->
+  // an empty list -> a fresh "New chat" masking the real project's chats (owner report 2026-07-10).
+  // Only fall back to the default namespace if every attempt genuinely fails.
+  for (let attempt = 0; attempt < 6; attempt++) {
+    try { const a = await window.pcc.getActiveProject(); if (a && a.path) { activeProjectPath = a.path; break; } }
+    catch (e) { /* retry */ }
+    await new Promise((r) => setTimeout(r, 200));
+  }
   renderCorrections();
   initModels();
   loadProjectSwitcher();
