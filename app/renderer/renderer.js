@@ -1169,9 +1169,10 @@ async function loadAuthorityBadge() {
 
 async function loadTrust() {
   loadAuthorityBadge();
-  let d = null, x = null;
+  let d = null, x = null, ci = null;
   try { d = await window.pcc.detections(); } catch (e) { /* leave unknown */ }
   try { x = await window.pcc.trustExtras(); } catch (e) { /* leave unknown */ }
+  try { ci = await window.pcc.ciStatus(); } catch (e) { /* leave unknown — falls back to local status */ }
 
   // On the rails: no drift, no stale docs.
   const rails = railsFrom(d);
@@ -1199,9 +1200,20 @@ async function loadTrust() {
   // nicer wording. Executed proof (ci_execution / live_boundary / local_execution)
   // earns green; a fresh review_only PASS is amber "Reviewed, not run". Uses the ONE
   // shared isExecutedType so this can never diverge from the Overview again.
+  // Live CI is the STRONGEST, un-forgeable proof: a real clean-room run of the CURRENT commit
+  // (the API is queried by HEAD sha, so a pass is inherently fresh). It can't be faked by editing a
+  // local file, so when CI is definitive it takes precedence over the local record. When CI is
+  // unavailable (no remote / local-only / offline / private / rate-limited / test mode) or still
+  // running, we fall straight through to the existing local-record logic — unchanged.
   const v = x && x.verification;
   const executed = v && PCCVerification.isExecutedType(v.type);
-  if (!x) {
+  if (ci && ci.available && ci.state === 'passed') {
+    setChip('trust-verified', 'good', 'Verified (ran in CI)',
+      'The full test suite ran and passed in CI for the current commit — clean-room execution proof, not just a code read.');
+  } else if (ci && ci.available && ci.state === 'failed') {
+    setChip('trust-verified', 'bad', 'CI failing',
+      'CI ran the current commit and it did NOT pass. Do not trust this state until CI is green again.');
+  } else if (!x) {
     setChip('trust-verified', 'unknown', 'Verified', 'Could not read verification status.');
   } else if (!v || !v.present) {
     setChip('trust-verified', 'warn', 'Not verified yet', 'No independent verification recorded for the current work yet.');

@@ -16,7 +16,7 @@ const call = (method, ...args) =>
 test('bridge exposes exactly the expected channels', async () => {
   const keys = await page.evaluate(() => Object.keys(window.pcc).sort());
   expect(keys).toEqual([
-    'addProject', 'approveJob', 'authorityLog', 'authorityState', 'backup', 'cancelJob',
+    'addProject', 'approveJob', 'authorityLog', 'authorityState', 'backup', 'cancelJob', 'ciStatus',
     'createFlowCancel', 'createFlowPickLocation', 'createFlowSave', 'createFlowSend', 'createFlowStart',
     'detections', 'endJob', 'engineStatus', 'getActiveProject', 'getMemory', 'getModels',
     'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
@@ -24,6 +24,17 @@ test('bridge exposes exactly the expected channels', async () => {
     'runProduct', 'saveMemory', 'secondOpinion', 'send', 'setActiveProject', 'setPhaseKind',
     'syncStatus', 'trustExtras', 'verify', 'verifyProduct', 'visionPromises',
   ]);
+});
+
+// CI status (surface CI into the Verified chip): must be safe + honest. In test mode it never
+// hits the network and reports available:false — so it can never fabricate a green/red, and the
+// trust chip falls back to the local record. The channel must always resolve, never throw.
+test('ciStatus is offline-safe in tests and never fabricates a verdict', async () => {
+  const r = await call('ciStatus');
+  expect(r.ok).toBe(true);
+  expect(r.available).toBe(false);      // test mode: no network, no claim
+  expect(r.reason).toBe('test_mode');
+  expect(r.state).toBeUndefined();      // no state means the chip uses the local record, not a fake
 });
 
 // Soak fix F3: verifyProduct must never fake a green. With no declared product-run
