@@ -29,6 +29,19 @@ const HOME_DIR = path.join(__dirname, '..');
 let projectDir = HOME_DIR;               // active project root (switchable)
 const cockpitDir = () => path.join(projectDir, '.cockpit');
 const memoryPath = () => path.join(projectDir, 'PROJECT.md');
+// Chat history storage root. In tests we isolate it to the throwaway per-launch
+// userData dir (launch.js passes --user-data-dir) so the suite can NEVER read or
+// mutate the owner's real project chats. The file-backed mirror lives in the
+// project's .cockpit ONLY in production. This fixes a real isolation defect: the
+// test app defaults projectDir=HOME_DIR, so it was restoring the real backup.json
+// (breaking "no chats yet" preconditions) AND rewriting real chat history on every
+// `npm test` / pre-commit run.
+const chatsDir = () => process.env.PCC_TEST_MODE
+  // Per-project subfolder (keyed by the active project path) so switching projects
+  // stays isolated exactly like production's per-project cockpitDir() — just rooted
+  // in the throwaway userData instead of the real repo.
+  ? path.join(app.getPath('userData'), 'chats', crypto.createHash('sha1').update(projectDir).digest('hex').slice(0, 16))
+  : path.join(cockpitDir(), 'chats');
 
 // The cross-project registry is machine/app-level (Electron userData), NOT
 // inside any repo — so it is independent of which project is active and there
@@ -727,7 +740,7 @@ ipcMain.handle('pcc:summarizeChat', async (_e, chatId, messages) => {
   const summary = chatSummary.normalizeSummary(parsed);
   const at = Date.now();
   try {
-    const dir = path.join(cockpitDir(), 'chats', chatSummary.sanitizeChatId(chatId));
+    const dir = path.join(chatsDir(), chatSummary.sanitizeChatId(chatId));
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'summary.json'), JSON.stringify({ chatId, at, summary }, null, 2), 'utf8');
     fs.writeFileSync(path.join(dir, 'summary.md'), chatSummary.renderSummaryMd(summary, at), 'utf8');
@@ -742,7 +755,7 @@ ipcMain.handle('pcc:summarizeChat', async (_e, chatId, messages) => {
 ipcMain.handle('pcc:persistChat', (_e, chatId, messages) => {
   if (!Array.isArray(messages) || messages.length === 0) return { ok: false };
   try {
-    const dir = path.join(cockpitDir(), 'chats', chatSummary.sanitizeChatId(chatId));
+    const dir = path.join(chatsDir(), chatSummary.sanitizeChatId(chatId));
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'transcript.jsonl'), messages.map((m) => JSON.stringify(m)).join('\n'), 'utf8');
     return { ok: true };
@@ -753,11 +766,11 @@ ipcMain.handle('pcc:persistChat', (_e, chatId, messages) => {
 // blank "New chat" (corruption / races / kills-mid-write), losing the chat list. So the full chat
 // list is ALSO mirrored to a plain file, and the renderer restores from it whenever localStorage
 // comes up empty. This is the real source of truth for "never lose a chat".
-function chatsBackupPath() { return path.join(cockpitDir(), 'chats', 'backup.json'); }
+function chatsBackupPath() { return path.join(chatsDir(), 'backup.json'); }
 ipcMain.handle('pcc:saveChatsBackup', (_e, chats) => {
   try {
     if (!Array.isArray(chats) || chats.length === 0) return { ok: false };
-    fs.mkdirSync(path.join(cockpitDir(), 'chats'), { recursive: true });
+    fs.mkdirSync(chatsDir(), { recursive: true });
     fs.writeFileSync(chatsBackupPath(), JSON.stringify({ savedAt: Date.now(), chats }), 'utf8');
     return { ok: true };
   } catch (e) { return { ok: false, text: e.message }; }
@@ -775,7 +788,7 @@ ipcMain.handle('pcc:loadChatsBackup', () => {
 // owner deletes a chat — tidiness + privacy.
 ipcMain.handle('pcc:deleteChatFiles', (_e, chatId) => {
   try {
-    const dir = path.join(cockpitDir(), 'chats', chatSummary.sanitizeChatId(chatId));
+    const dir = path.join(chatsDir(), chatSummary.sanitizeChatId(chatId));
     if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
     return { ok: true };
   } catch (e) { return { ok: false, text: e.message }; }
