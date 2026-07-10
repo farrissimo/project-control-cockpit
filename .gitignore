@@ -15,6 +15,9 @@
 # backup-protected-files.ps1), greppable for recall — but not committed repo truth.
 .cockpit/chats/
 
+# Local, on-demand exports of chat transcripts (personal content; never committed).
+.cockpit/chat-export/
+
 # Generated Owner Control Board dashboard (scripts/generate-dashboard.ps1,
 # pcc-pathD-001). Derived output regenerated from .cockpit/ state; not source.
 dashboard/index.html
