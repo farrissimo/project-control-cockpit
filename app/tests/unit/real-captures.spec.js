@@ -23,6 +23,30 @@ test('parseStreamJson extracts the reply from a REAL stream-json envelope (ignor
   expect(parseStreamJson(raw)).toBe('PONG');
 });
 
+// Discriminating (Codex caught the tautology): the real envelope has BOTH assistant text "PONG"
+// and a result "PONG", so equality alone can't tell which path the parser used. Mutate the real
+// lines so the two sources DISAGREE and prove the assistant-text path is the one that wins.
+test('parseStreamJson uses the assistant TEXT block, not the result fallback', () => {
+  const raw = REAL('claude-streamjson-success.txt');
+  // Change only the `result` line's value to a sentinel; assistant text stays "PONG".
+  const changedResult = raw.split('\n').map((l) => {
+    const t = l.trim(); if (!t) return l;
+    let o; try { o = JSON.parse(t); } catch (e) { return l; }
+    if (o.type === 'result') { o.result = 'RESULT_FALLBACK'; return JSON.stringify(o); }
+    return l;
+  }).join('\n');
+  expect(changedResult).toContain('RESULT_FALLBACK');       // the sentinel is really in there
+  expect(parseStreamJson(changedResult)).toBe('PONG');       // ...but the assistant text still wins
+
+  // And when there is NO assistant text, it correctly falls back to the result string.
+  const noAssistant = raw.split('\n').filter((l) => {
+    const t = l.trim(); if (!t) return true;
+    let o; try { o = JSON.parse(t); } catch (e) { return true; }
+    return o.type !== 'assistant';                            // drop assistant lines
+  }).join('\n').replace('"PONG"', '"RESULT_ONLY"');
+  expect(parseStreamJson(noAssistant)).toBe('RESULT_ONLY');
+});
+
 test('parseStreamJson never leaks a thinking block or a signature into the reply', () => {
   const out = parseStreamJson(REAL('claude-streamjson-success.txt'));
   expect(out).not.toMatch(/signature|thinking/i);
