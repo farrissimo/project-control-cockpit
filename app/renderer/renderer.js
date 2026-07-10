@@ -800,6 +800,32 @@ function renderActiveChat() {
 function loadChats() {
   try { chats = JSON.parse(localStorage.getItem(chatsKey())) || []; } catch (e) { chats = []; }
   if (!Array.isArray(chats)) chats = [];
+  // SELF-HEAL + DIAGNOSTIC (chat namespace = 'pcc.chats.v2::<active project PATH>'). If that path
+  // string drifts by FORMATTING (case / slashes / trailing separator) between when chats were saved
+  // and now, the exact-key lookup misses and a project looks empty though its chats exist on disk.
+  // Record what we saw, and — only for a formatting-only-equivalent path — recover those chats.
+  const _norm = (p) => String(p || '').toLowerCase().replace(/[\\/]+/g, '/').replace(/\/+$/, '');
+  const _nsKeys = Object.keys(localStorage).filter((k) => k.indexOf(LEGACY_CHATS_KEY + '::') === 0);
+  try {
+    localStorage.setItem('pcc.debug.lastLoad', JSON.stringify({
+      when: new Date().toISOString(), activeProjectPath: activeProjectPath, key: chatsKey(), loaded: chats.length,
+      namespaces: _nsKeys.map((k) => { let n = -1; try { n = (JSON.parse(localStorage.getItem(k)) || []).length; } catch (e) { n = -1; } return k + ' (' + n + ')'; }),
+    }));
+  } catch (e) { /* diagnostics are best-effort */ }
+  if (chats.length === 0) {
+    const _want = _norm(activeProjectPath);
+    for (const k of _nsKeys) {
+      const kPath = k.slice((LEGACY_CHATS_KEY + '::').length);
+      if (_norm(kPath) !== _want) continue; // ONLY a path that matches aside from formatting — never another project
+      let found = []; try { found = JSON.parse(localStorage.getItem(k)) || []; } catch (e) { found = []; }
+      if (Array.isArray(found) && found.length) {
+        chats = found; // re-saved under the canonical key by persistChats() below, so next boot matches directly
+        const savedA = localStorage.getItem(LEGACY_ACTIVE_KEY + '::' + kPath);
+        if (savedA) localStorage.setItem(activeChatKey(), savedA);
+        break;
+      }
+    }
+  }
   // One-time migration: adopt the pre-multi-project GLOBAL chats into this
   // (home) project's namespace, then drop the global key.
   if (chats.length === 0) {
