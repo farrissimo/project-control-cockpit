@@ -19,7 +19,7 @@ const noNotices = { drift: { signal: 'clear' }, highStakes: { signal: 'clear' },
 const cleanSync = { clean: true };
 const rulesX = (verif) => ({ verification: verif, headCommitEpoch: 100, rulesLoaded: true });
 const freshReview = { present: true, verdict: 'PASS', type: 'review_only', mtimeEpoch: 200 };
-const freshExec = { present: true, verdict: 'PASS', type: 'ci_execution', mtimeEpoch: 200 };
+const freshForgedCi = { present: true, verdict: 'PASS', type: 'ci_execution', mtimeEpoch: 200 }; // a file CANNOT prove ci_execution
 const freshLocal = { present: true, verdict: 'PASS', type: 'local_execution', mtimeEpoch: 200 };
 
 // Soak fix F3: a local_execution PASS is REAL execution proof (Healthy), but labeled
@@ -39,10 +39,18 @@ test('review-only PASS is NOT executed proof and yields "Needs proof"', () => {
   expect(m.proof.exec).not.toContain('clean machine');
 });
 
-test('executed fresh PASS + backed up + no notices + rules → Healthy', () => {
-  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshExec), sync: cleanSync, state: {}, vp: null });
+test('local_execution fresh PASS + backed up + no notices + rules → Healthy', () => {
+  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshLocal), sync: cleanSync, state: {}, vp: null });
   expect(m.cond.label).toBe('Healthy');
-  expect(m.proof.exec).toContain('clean machine');
+  expect(m.proof.exec).toContain('this machine');
+});
+
+// Origin seam: a hand-editable record claiming ci_execution is NOT trusted as executed proof —
+// so a forged clean-room claim can't reach "Healthy"; it reads as needing real proof.
+test('a FILE claiming ci_execution is not trusted as executed proof (forgery guard)', () => {
+  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshForgedCi), sync: cleanSync, state: { project: { project_name: 'X' } }, vp: null });
+  expect(m.cond.label).toBe('Needs proof');       // not Healthy — the forged CI claim earns nothing
+  expect(m.proof.exec).toBe('not surfaced in the app yet');
 });
 
 test('a FAIL verdict is Blocked', () => {
@@ -52,7 +60,7 @@ test('a FAIL verdict is Blocked', () => {
 });
 
 test('journey strip follows the lifecycle (current marked "now", earlier "done")', () => {
-  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshExec), sync: cleanSync, state: {}, vp: null });
+  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshLocal), sync: cleanSync, state: {}, vp: null });
   expect(m.journey.map((s) => s.label)).toEqual(['Define', 'Plan', 'Work a task', 'Verify']);
   expect(m.journey[2].cls).toBe('now');
   expect(m.journey[0].cls).toBe('done');
@@ -60,13 +68,13 @@ test('journey strip follows the lifecycle (current marked "now", earlier "done")
 });
 
 test('next best move defers to the lifecycle when nothing urgent', () => {
-  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshExec), sync: cleanSync, state: {}, vp: null });
+  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshLocal), sync: cleanSync, state: {}, vp: null });
   expect(m.move.main).toBe('Verify');
   expect(m.move.fromLifecycle).toBe(true);
 });
 
 test('urgent items override the lifecycle next step (dirty sync → back up)', () => {
-  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshExec), sync: { clean: false }, state: {}, vp: null });
+  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshLocal), sync: { clean: false }, state: {}, vp: null });
   expect(m.move.main).toBe('Back up the project');
   expect(m.move.fromLifecycle).toBe(false);
   expect(m.cond.label).toBe('Needs attention');
@@ -74,14 +82,14 @@ test('urgent items override the lifecycle next step (dirty sync → back up)', (
 
 test('drift notice drives review, high-stakes drives second opinion', () => {
   const drift = Object.assign({}, noNotices, { drift: { signal: 'notice' } });
-  expect(computeOverview({ lc: lcOk, det: drift, x: rulesX(freshExec), sync: cleanSync, state: {}, vp: null }).move.main).toBe('Review scope drift');
+  expect(computeOverview({ lc: lcOk, det: drift, x: rulesX(freshLocal), sync: cleanSync, state: {}, vp: null }).move.main).toBe('Review scope drift');
   const hs = Object.assign({}, noNotices, { highStakes: { signal: 'notice' } });
-  expect(computeOverview({ lc: lcOk, det: hs, x: rulesX(freshExec), sync: cleanSync, state: {}, vp: null }).move.main).toBe('Get a second opinion');
+  expect(computeOverview({ lc: lcOk, det: hs, x: rulesX(freshLocal), sync: cleanSync, state: {}, vp: null }).move.main).toBe('Get a second opinion');
 });
 
 test('missing or malformed vision promises degrade gracefully', () => {
   for (const vp of [null, { _error: 'boom' }, { promises: [] }, {}]) {
-    const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshExec), sync: cleanSync, state: {}, vp });
+    const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshLocal), sync: cleanSync, state: {}, vp });
     expect(m.vision.status).toBe('missing');
     expect(m.vision.cards).toEqual([]);
   }
@@ -89,7 +97,7 @@ test('missing or malformed vision promises degrade gracefully', () => {
 
 test('placeholder promises flag needs-review; declared status is never called proof', () => {
   const vp = { review_status: 'needs_owner_review', last_reviewed: null, promises: [{ id: 'primary-outcome', label: '(Define outcome)', declared_status: 'needs_owner_review', not_proven: 'not reviewed yet' }] };
-  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshExec), sync: cleanSync, state: {}, vp });
+  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshLocal), sync: cleanSync, state: {}, vp });
   expect(m.vision.status).toBe('ok');
   expect(m.vision.needsReview).toBe(true);
   expect(m.vision.cards[0].status).toBe('needs_owner_review');

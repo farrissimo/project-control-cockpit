@@ -3,7 +3,7 @@
 // trust strip / Overview while the phase-close gate rejected the same file). These tests
 // pin the structured behavior that every JS trust surface now shares.
 const { test, expect } = require('@playwright/test');
-const { parseVerification, isExecutedType } = require('../../renderer/verification-parse.js');
+const { parseVerification, isExecutedType, isTrustedLocalProof } = require('../../renderer/verification-parse.js');
 
 test('a stray "PASS" in prose is NOT a verdict (the fake-green hole)', () => {
   const text = 'VERIFIER: someone\nTYPE: local_execution\n\nHonestly it will PASS eventually, looks fine.\n';
@@ -31,6 +31,17 @@ test('isExecutedType includes local_execution but not review_only', () => {
   expect(isExecutedType('local_execution')).toBe(true); // real execution (local)
   expect(isExecutedType('review_only')).toBe(false);    // read, not run
   expect(isExecutedType(null)).toBe(false);
+});
+
+// Origin seam: a hand-editable record can only be TRUSTED to claim local_execution. A forged
+// ci_execution/live_boundary TYPE: line must NOT count as executed proof (clean-room/CI proof
+// comes from the live CI check, never a text line).
+test('isTrustedLocalProof trusts only local_execution (forged CI/clean-room claims are rejected)', () => {
+  expect(isTrustedLocalProof('local_execution')).toBe(true);
+  expect(isTrustedLocalProof('ci_execution')).toBe(false);   // not trustable from a file — forgery surface
+  expect(isTrustedLocalProof('live_boundary')).toBe(false);  // not trustable from a file — forgery surface
+  expect(isTrustedLocalProof('review_only')).toBe(false);
+  expect(isTrustedLocalProof(null)).toBe(false);
 });
 
 test('a mid-line VERDICT/TYPE mention in prose is not matched', () => {

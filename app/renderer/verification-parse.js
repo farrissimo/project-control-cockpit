@@ -28,12 +28,25 @@
     return { verdict: mv ? mv[1].toUpperCase() : null, type: mt ? mt[1].toLowerCase() : null };
   }
 
-  // A proof TYPE that means the code was actually RUN (not just read). local_execution
-  // counts — it ran on this machine — but it is labeled honestly elsewhere as local,
-  // never as a clean-room CI run.
+  // A proof TYPE that means the code was actually RUN (not just read). Semantic only — describes
+  // the KIND of a type, not whether a given RECORD claiming it can be trusted. local_execution
+  // counts (it ran on this machine), but it is labeled honestly elsewhere as local, never as a
+  // clean-room CI run.
   function isExecutedType(type) {
     return type === 'ci_execution' || type === 'live_boundary' || type === 'local_execution';
   }
 
-  return { parseVerification: parseVerification, isExecutedType: isExecutedType };
+  // Verification-origin seam (the fake-green hole): app/last-verification.txt is a HAND-EDITABLE
+  // record, so it can only be TRUSTED to claim proof the app itself can produce locally —
+  // local_execution (the app's own product-run via verify-product.ps1). A clean-room/CI proof
+  // (ci_execution / live_boundary) must come from a LIVE, un-forgeable observation (the GitHub CI
+  // check surfaced in the trust chip), NEVER from a TYPE: line a human or the worker could type.
+  // No legitimate writer ever puts ci_execution/live_boundary in that file, so trusting them from
+  // it is pure forgery surface. Use THIS (not isExecutedType) for any executed-green trust decision
+  // read from a record file.
+  function isTrustedLocalProof(type) {
+    return type === 'local_execution';
+  }
+
+  return { parseVerification: parseVerification, isExecutedType: isExecutedType, isTrustedLocalProof: isTrustedLocalProof };
 });

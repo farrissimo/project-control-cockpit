@@ -180,6 +180,32 @@ test('gate ALLOWS a fresh local_execution PASS (the local-first escape)', () => 
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+// Origin seam (#3): app/last-verification.txt is hand-editable, so a forged "TYPE: ci_execution"
+// (a clean-room claim no legitimate writer ever puts in that file) must NOT clear an executable
+// phase — clean-room proof comes from a live CI observation, never a text line. Only local_execution
+// (the app's own product run) is trusted from the file.
+test('gate BLOCKS an executable phase closing on a FILE-claimed ci_execution (forgery guard)', () => {
+  const dir = makeProject();
+  try {
+    recordVerdict(dir, 'PASS', 'ci_execution'); // fresh + well-formed, but a hand-editable clean-room CLAIM
+    const r = advance(dir, 'phase_close');
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('needs_execution_proof');
+    expect(currentStage(dir)).toBe('verify'); // pin did NOT move
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('gate BLOCKS an executable phase closing on a FILE-claimed live_boundary (forgery guard)', () => {
+  const dir = makeProject();
+  try {
+    recordVerdict(dir, 'PASS', 'live_boundary');
+    const r = advance(dir, 'phase_close');
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('needs_execution_proof');
+    expect(currentStage(dir)).toBe('verify');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('an ungated transition (verify -> work) needs no verdict', () => {
   const dir = makeProject();
   try {

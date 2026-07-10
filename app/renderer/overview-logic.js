@@ -39,10 +39,11 @@
       proof.verdict = v.verdict || null;
       proof.type = v.type || 'review_only';
       proof.fresh = typeof v.mtimeEpoch === 'number' && v.mtimeEpoch >= headEpoch;
-      // local_execution counts as real execution proof (the product's checks actually
-      // ran), just on this machine rather than a clean CI box (soak fix F3). Uses the ONE
-      // shared definition so the Overview and the trust strip can never diverge.
-      const executed = VP.isExecutedType(v.type);
+      // Origin seam: this record is hand-editable, so only a locally-run proof (local_execution,
+      // the product's own checks) is TRUSTED as executed here. A forged ci_execution/live_boundary
+      // TYPE: line no longer counts as executed — clean-room/CI proof comes from the live CI check,
+      // never a text line. Uses the ONE shared rule so the Overview and the trust strip never diverge.
+      const executed = VP.isTrustedLocalProof(v.type);
       if (v.verdict === 'PASS') proof.kind = executed ? 'executed' : 'review_only';
       else if (v.verdict) proof.kind = 'failing';
     }
@@ -147,10 +148,11 @@
       review: proof.kind === 'review_only' ? (proof.fresh ? 'available (matches current code)' : 'stale')
         : proof.kind === 'failing' ? ('last verdict was ' + proof.verdict)
         : proof.kind === 'executed' ? 'present' : 'missing',
+      // Origin seam: 'executed' proof from this record is now ALWAYS local_execution (a forged
+      // ci_execution/live_boundary claim is no longer trusted), so the label is always the honest
+      // local one. Clean-room/CI proof is shown on the trust light from the live CI check, not here.
       exec: (proof.kind === 'executed' && proof.fresh)
-        ? (proof.type === 'local_execution'
-          ? 'yes — the product’s checks ran on this machine (local execution, not a clean-room CI run)'
-          : 'yes — fresh, ran on a clean machine')
+        ? 'yes — the product’s checks ran on this machine (local execution, not a clean-room CI run)'
         : 'not surfaced in the app yet',
     };
 

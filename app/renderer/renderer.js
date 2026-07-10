@@ -1206,7 +1206,10 @@ async function loadTrust() {
   // unavailable (no remote / local-only / offline / private / rate-limited / test mode) or still
   // running, we fall straight through to the existing local-record logic — unchanged.
   const v = x && x.verification;
-  const executed = v && PCCVerification.isExecutedType(v.type);
+  // Origin seam: a hand-editable record can only be TRUSTED to claim local_execution. Clean-room/CI
+  // proof (green) comes from the LIVE CI check above (ci.state), never from a file's TYPE: line — so
+  // a forged "TYPE: ci_execution" can no longer light this chip green.
+  const executed = v && PCCVerification.isTrustedLocalProof(v.type);
   if (ci && ci.available && ci.state === 'passed') {
     setChip('trust-verified', 'good', 'Verified (ran in CI)',
       'The full test suite ran and passed in CI for the current commit — clean-room execution proof, not just a code read.');
@@ -1220,10 +1223,10 @@ async function loadTrust() {
   } else if (v.verdict === 'PASS' && v.mtimeEpoch >= (x.headCommitEpoch || 0) && executed) {
     // local_execution is real execution but on THIS machine — label it honestly, never
     // as a clean-room CI run.
-    const local = v.type === 'local_execution';
-    setChip('trust-verified', 'good', local ? 'Verified (ran locally)' : 'Verified (executed)',
-      local ? 'The product’s own checks ran and passed on THIS machine (local execution) — real execution, but not a clean-room CI run.'
-        : 'Independent PASS that actually ran the code (' + v.type + '), newer than the latest commit.');
+    // Only local_execution reaches here now (isTrustedLocalProof), so this is always the app's own
+    // local run — labeled honestly as local, never as a clean-room CI run (that green comes from CI above).
+    setChip('trust-verified', 'good', 'Verified (ran locally)',
+      'The product’s own checks ran and passed on THIS machine (local execution) — real execution, but not a clean-room CI run. Clean-room proof shows as “Verified (ran in CI)”.');
   } else if (v.verdict === 'PASS' && v.mtimeEpoch >= (x.headCommitEpoch || 0)) {
     setChip('trust-verified', 'warn', 'Reviewed, not run', 'A reviewer read the code and found no problems, but nothing was executed — that is not proof it runs. Execution proof comes from CI/tests.');
   } else if (v.verdict === 'PASS') {
@@ -1494,10 +1497,12 @@ async function loadProject() {
     if (trust && trust.verification && trust.verification.present) {
       const v = trust.verification;
       if (v.verdict === 'PASS') {
-        const fresh = v.mtimeEpoch >= (trust.headCommitEpoch || 0); // exact parity with the trust strip (line ~835)
-        const executed = v.type === 'ci_execution' || v.type === 'live_boundary'; // proof taxonomy (DECISION-105)
+        const fresh = v.mtimeEpoch >= (trust.headCommitEpoch || 0); // exact parity with the trust strip
+        // Origin seam: only a locally-run proof is trusted as "executed" from this record; a forged
+        // ci_execution/live_boundary claim no longer reads as executed here (CI proof lives on the trust light).
+        const executed = PCCVerification.isTrustedLocalProof(v.type);
         if (!fresh) verified = 'PASS (stale — code changed since)';
-        else if (executed) verified = 'PASS (executed — matches current code)';
+        else if (executed) verified = 'PASS (ran locally — matches current code)';
         else verified = 'PASS (review only — code read, not run)';
       } else {
         verified = v.verdict || 'unknown';

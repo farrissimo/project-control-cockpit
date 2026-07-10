@@ -92,12 +92,16 @@ if ($target.entry_gate -eq 'fresh_verification_pass') {
   # Owner policy (DECISION): "Review-only evidence can complete review work. Executable
   # phases require execution proof before they can be marked done." A review_only PASS (a
   # reviewer read the code, ran nothing) is NOT enough to close a phase that changed
-  # executable behavior — that needs a real run (local_execution | ci_execution |
-  # live_boundary). Only a phase EXPLICITLY declared review/docs/planning may close on a
-  # review_only pass. phase_kind is declared in lifecycle-state.json; absent = executable
-  # (the safe, strict default).
+  # executable behavior — that needs a real run. Only a phase EXPLICITLY declared
+  # review/docs/planning may close on a review_only pass. phase_kind is declared in
+  # lifecycle-state.json; absent = executable (the safe, strict default).
+  # ORIGIN SEAM: this record file is hand-editable, so the ONLY execution proof it can be
+  # trusted to claim is local_execution (verify-product.ps1's real app-run). A clean-room/CI
+  # proof (ci_execution / live_boundary) must come from a LIVE observation, never a TYPE: line
+  # a human or the worker could type — and no legitimate writer ever puts those in this file,
+  # so trusting them here was pure forgery surface. They are deliberately NOT accepted.
   $phaseKind = if ($state.PSObject.Properties.Name -contains 'phase_kind' -and $state.phase_kind) { ([string]$state.phase_kind).ToLower() } else { 'executable' }
-  $executedTypes = @('local_execution', 'ci_execution', 'live_boundary')
+  $executedTypes = @('local_execution')
   if ($phaseKind -eq 'executable' -and ($executedTypes -notcontains $vtype)) {
     Emit ([ordered]@{
         ok = $false; reason = 'needs_execution_proof'; from = $from; to = $To
