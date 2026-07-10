@@ -87,10 +87,17 @@ Optional per-search "just grep it" toggle → skip the AI bookends for a
 zero-token literal search (fast but dumb — the escape hatch, not the default).
 
 ## Auto-naming
-- Trigger after the first real user↔assistant exchange (not after "hi").
-- AI-generated ≤ ~6-word title from the exchange; keyword/date fallback on
-  failure. Owner can rename; a manual rename **locks** the title against future
-  auto-naming (a repeatedly-requested feature in prior art).
+- Instant PROVISIONAL name from the first message (no AI) so the list never shows
+  a wall of "New chat".
+- The real AI name is generated when you are DONE with a chat — when you **leave it**
+  (switch away / start a new one) or **generate its summary** — NOT after turn one.
+  Rationale (owner): the actual subject usually emerges near the END of a chat ("I
+  usually ask the question at or near the end"), so naming off the opening is wrong.
+- It re-names each time you leave, so the title tracks the latest state. Gated to only
+  spend a worker call when the chat has GROWN since it was last named (revisiting is
+  free). AI-generated ≤ ~6-word title; the provisional name stands if the call fails.
+- Owner can rename; a manual rename **locks** the title against all future auto-naming
+  (a repeatedly-requested feature in prior art).
 
 ## Summary card UX (owner's original idea — stands alone, no search needed)
 The auto-name and the summary card are valuable **on their own**, independent of

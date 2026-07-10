@@ -221,7 +221,6 @@ async function runSend(item) {
     thinking.remove();
     if (res.ok) { chat.started = true; save(); }
     addBubble(res.ok ? 'assistant' : 'assistant error', res.text || '(no output)', true);
-    if (res.ok) maybeAutoName(chat); // upgrade the provisional name to an AI one, once
     // Soak fix F4: a stale worker is holding this chat's session — give the owner a
     // one-click way out instead of a dead-end red error.
     if (!res.ok && res.sessionInUse) addRecoveryAction();
@@ -235,20 +234,23 @@ async function runSend(item) {
 }
 
 // ---- First-class chat history: AI auto-name + summary card (docs/CHAT_RECALL_SPEC.md) ----
-// The instant first-message name (in sendMessage) is only a PROVISIONAL label. After the first
-// real exchange we replace it with an AI title that names the prominent topic — unless the owner
-// renamed it by hand (nameLocked). Runs once per chat (autoNamed guard), best-effort: a failure
-// just keeps the provisional name. No background spend — it piggybacks on a turn the owner ran.
-async function maybeAutoName(chat) {
-  if (!chat || chat.autoNamed || chat.nameLocked) return;
+// The instant first-message name (in sendMessage) is only a PROVISIONAL label. The real AI name
+// is generated when you're DONE with a chat — when you leave it (switch away / start a new one)
+// or generate its summary — NOT after turn one, because the actual subject usually emerges near
+// the END of a chat (owner: "I usually ask the question at or near the end"). It re-names each
+// time you leave, so the title always reflects the latest state. Skips a hand-locked name; only
+// spends a worker call when the chat has GROWN since it was last named (revisiting is free).
+async function reconsiderChatName(chat) {
+  if (!chat || chat.nameLocked) return;
   const users = chat.messages.filter((m) => m.cls === 'user').length;
   const bots = chat.messages.filter((m) => m.cls !== 'user').length;
-  if (users < 1 || bots < 1) return;            // need a real exchange to name from
-  chat.autoNamed = true; save();                // mark once, even while the call is in flight
+  if (users < 1 || bots < 1) return;                 // need a real exchange to name from
+  if (chat.messages.length < (chat.namedAtLen || 0) + 2) return; // nothing meaningful added since last name
+  chat.namedAtLen = chat.messages.length; save();    // claim this length so we don't double-fire
   try {
     const r = await window.pcc.autoNameChat(chat.messages);
     if (r && r.ok && r.title && !chat.nameLocked) { chat.name = r.title; save(); renderChatList(); }
-  } catch (e) { /* keep the provisional name */ }
+  } catch (e) { /* keep the current name */ }
 }
 
 // The summary card slide-over. Opens on the 📋 button next to a chat's name; shows the last
@@ -287,7 +289,10 @@ async function generateSummary(chat) {
   try {
     const r = await window.pcc.summarizeChat(chat.id, chat.messages);
     if (r && r.ok) {
-      chat.summary = r.summary; chat.summaryAt = r.at; save();
+      chat.summary = r.summary; chat.summaryAt = r.at;
+      // A summary is a full read of the chat — adopt its title as the name (unless locked).
+      if (r.summary && r.summary.title && !chat.nameLocked) { chat.name = String(r.summary.title).slice(0, 60); chat.namedAtLen = chat.messages.length; renderChatList(); }
+      save();
       if (summaryChatId === chat.id) renderSummaryCard(chat, r.summary, r.at);
     } else if (summaryChatId === chat.id) {
       document.getElementById('summary-body').innerHTML = '<div class="sum-error">' + escapeHtml((r && r.text) || 'Could not build a summary.') + '</div>';
@@ -448,6 +453,7 @@ function addRecoveryAction() {
 
 function startNewChat() {
   if (busy) return;
+  const leaving = activeChat();            // name the chat you're leaving behind, from its full arc
   const c = newChatObj();
   chats.unshift(c);
   activeId = c.id;
@@ -458,6 +464,7 @@ function startNewChat() {
   loadTrust();
   input.value = '';
   input.focus();
+  if (leaving) reconsiderChatName(leaving); // fire-and-forget
 }
 document.getElementById('new-chat').addEventListener('click', startNewChat);
 
@@ -821,6 +828,7 @@ function switchChat(id) {
   if (busy || id === activeId) { closeChatsPanel(); return; }
   const c = chats.find((x) => x.id === id);
   if (!c) return;
+  const leaving = activeChat();            // name the chat you're done with, from its full arc
   activeId = id;
   history = c.messages;
   persistChats();
@@ -828,6 +836,7 @@ function switchChat(id) {
   renderChatList();
   loadTrust();
   closeChatsPanel();
+  if (leaving && leaving.id !== id) reconsiderChatName(leaving); // fire-and-forget; switch stays instant
 }
 
 async function renameChat(id) {
