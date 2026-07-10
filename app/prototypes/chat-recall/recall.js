@@ -65,18 +65,19 @@ function grep(terms, summarized, chats) {
   return hits.sort((a, b) => b.score - a.score);
 }
 
-// --- Stage 4: judge the top hits against the ORIGINAL question and answer (back end).
-async function judge(question, hits, chatsById, ai) {
-  const top = hits.slice(0, 4);
-  const evidence = top.map((h) => 'CHAT ' + h.chatId + ' ("' + h.chatName + '"):\n'
-    + chatsById[h.chatId].messages.map((m) => (m.cls === 'user' ? 'USER: ' : 'AI: ') + m.text).join('\n')).join('\n\n---\n\n');
+// --- Stage 4: judge a CANDIDATE set against the ORIGINAL question and answer (back end).
+// Takes an ordered list of chatIds (grep hits first, then a recall top-up). The judge is the
+// precision stage: it must pick the ONE right chat or honestly say none, quoting verbatim.
+async function judge(question, candidateIds, chatsById, ai) {
+  const evidence = candidateIds.map((id) => 'CHAT ' + id + ' ("' + chatsById[id].name + '"):\n'
+    + chatsById[id].messages.map((m) => (m.cls === 'user' ? 'USER: ' : 'AI: ') + m.text).join('\n')).join('\n\n---\n\n');
   const prompt = [
     'The user asked: "' + question + '"',
-    'Below are candidate chats from a keyword search. Some may be irrelevant noise.',
-    'Pick the ONE chat that actually answers the question (or say none do). Reply as',
-    'STRICT JSON: { "chatId": "<id or null>", "answer": "<plain-English answer>",',
-    '"quote": "<a short verbatim quote from that chat that proves it>" }.',
-    'Do not invent - the quote must appear verbatim in the chosen chat.',
+    'Below are candidate chats. Many are irrelevant noise; a keyword shortlist is imperfect,',
+    'so judge by MEANING, not word overlap. Pick the ONE chat that actually answers the',
+    'question, or say none do if the topic genuinely is not present. Reply as STRICT JSON:',
+    '{ "chatId": "<id or null>", "answer": "<plain-English answer>", "quote": "<short verbatim',
+    'quote from that chat that proves it>" }. Do not invent — the quote must appear verbatim.',
     '',
     evidence,
   ].join('\n');
@@ -85,13 +86,22 @@ async function judge(question, hits, chatsById, ai) {
 }
 
 // Run the whole pipeline for one question over a set of chats.
+// Retrieval is RECALL-safe: literal grep has vocabulary-gap holes, so we give the judge the
+// grep hits FIRST (best ranked) then top up with other chats up to a cap — the judge (proven
+// to reject noise and refuse to hallucinate) does the precision. Grep narrows/orders; it never
+// gets to silently hide the right chat. (At very large scale the cap needs a stronger retrieval
+// tier — semantic — but for dozens of chats reading a wide candidate set is cheap and robust.)
+const CANDIDATE_CAP = 8;
 async function recall(question, chats, ai, opts = {}) {
   const summarized = opts.summaries || (await Promise.all(chats.map((c) => summarize(c, ai))));
   const terms = await expandQuery(question, ai);
   const hits = grep(terms, summarized, chats);
   const chatsById = Object.fromEntries(chats.map((c) => [c.id, c]));
-  const result = hits.length ? await judge(question, hits, chatsById, ai) : { chatId: null, answer: 'No matching chat found.', quote: '' };
-  return { question, terms, hits, result, summarized };
+  const ordered = hits.map((h) => h.chatId);
+  for (const c of chats) if (!ordered.includes(c.id) && ordered.length < CANDIDATE_CAP) ordered.push(c.id);
+  const candidates = ordered.slice(0, CANDIDATE_CAP);
+  const result = candidates.length ? await judge(question, candidates, chatsById, ai) : { chatId: null, answer: 'No chats to search.', quote: '' };
+  return { question, terms, hits, candidates, result, summarized };
 }
 
 function safeJson(s) {

@@ -1,44 +1,40 @@
-// Blind runner + scorer for the chat-recall prototype.
+// Blind runner + scorer for the chat-recall prototype (wider, harder corpus).
 //
-//   node run.js --dry        deterministic stub AI, zero tokens (plumbing test)
-//   node run.js              real worker (claude -p via the claude.ai login)
-//   node run.js --stage A    single haystack (target only); default is B (decoys)
+//   node run.js --dry     deterministic stub AI, zero tokens (plumbing + keyword-only control)
+//   node run.js           real worker (claude -p via the claude.ai login)
 //
-// The pipeline is BLIND: it only ever receives the chats. GROUND_TRUTH is read
-// here, AFTER each answer, purely to score. That separation is the whole point -
-// the AI never sees the answer key it is being graded against.
+// Pipeline is BLIND: it only receives the chats. GROUND_TRUTH is read here, AFTER each
+// answer, purely to score. Summaries are built ONCE and reused across all queries (token
+// thrift + realism: one summary per chat, many searches).
 
 'use strict';
 const fx = require('./fixtures');
-const { recall, transcriptText } = require('./recall');
+const { recall, summarize } = require('./recall');
 
-const argv = process.argv.slice(2);
-const DRY = argv.includes('--dry');
-const stage = (argv.includes('--stage') ? argv[argv.indexOf('--stage') + 1] : 'B').toUpperCase();
-const chats = stage === 'A' ? fx.stageA : fx.stageB;
+const DRY = process.argv.slice(2).includes('--dry');
+const chats = fx.chats;
 
-// --- deterministic stub AI for --dry: exercises the real plumbing (grep, judge
-// selection, JSON parsing, scoring) with zero tokens and stable output.
-const STOP = new Set(['when','did','we','the','into','what','say','went','with','before','a','an','to','is','of','on','do','does','how']);
+const STOP = new Set(['when','did','we','the','into','what','say','went','with','before','a','an','to','is','of','on','do','does','how','are','for','not','that','this','it','at']);
+function words(s) { return s.toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w)); }
+
+// Deterministic stub AI for --dry: exercises the plumbing AND acts as the "dumb keyword-only"
+// control — it has no judgment, so it should FAIL the cases that need real understanding.
 function dryAI(prompt) {
   if (prompt.startsWith('Summarize the following')) {
     const body = prompt.split('TRANSCRIPT:\n')[1] || '';
-    return Promise.resolve(JSON.stringify({ title: 'stub', gist: body, decided: [], wentWrong: [], openIdeas: [], importantEvents: [] }));
+    return Promise.resolve(JSON.stringify({ title: 'stub', gist: body, decided: [], wentRight: [], wentWrong: [], openIdeas: [], importantEvents: [] }));
   }
   if (prompt.includes('Turn this question into')) {
     const q = (prompt.match(/Question: "([^"]+)"/) || [])[1] || '';
-    const terms = q.toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w));
-    return Promise.resolve(JSON.stringify([...new Set(terms)]));
+    return Promise.resolve(JSON.stringify([...new Set(words(q))]));
   }
   if (prompt.startsWith('The user asked:')) {
     const q = (prompt.match(/The user asked: "([^"]+)"/) || [])[1] || '';
-    const qWords = q.toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w));
+    const qWords = words(q);
     const blocks = prompt.split(/\n\n---\n\n/).filter((b) => b.includes('CHAT '));
     let best = null, bestScore = -1, bestQuote = '';
     for (const b of blocks) {
       const id = (b.match(/CHAT (\S+) \(/) || [])[1];
-      // Drop any instruction preamble glued to the first block: only the chat's
-      // own lines (after its "CHAT <id> (...)" header) are eligible to be quoted.
       const all = b.split('\n');
       const lines = all.slice(all.findIndex((l) => /^CHAT \S+ \(/.test(l)) + 1);
       let score = 0, quote = '';
@@ -57,32 +53,42 @@ function dryAI(prompt) {
 
 async function main() {
   const ai = DRY ? dryAI : require('./worker').askAI;
-  console.log('=== chat-recall prototype ===  mode=' + (DRY ? 'DRY(stub)' : 'REAL(claude -p)') + '  stage=' + stage + '  chats=' + chats.length + '\n');
+  console.log('=== chat-recall battery ===  mode=' + (DRY ? 'DRY(keyword-only control)' : 'REAL(claude -p)')
+    + '  chats=' + chats.length + '  queries=' + fx.GROUND_TRUTH.length + '\n');
+
+  // Build each chat's summary ONCE, reuse for every query.
+  const summaries = await Promise.all(chats.map((c) => summarize(c, ai)));
 
   let pass = 0;
+  const fails = [];
   for (const gt of fx.GROUND_TRUTH) {
-    const { terms, hits, result } = await recall(gt.query, chats, ai);
-    const evidence = ((result && result.answer) || '') + ' ' + ((result && result.quote) || '');
+    const { terms, hits, result } = await recall(gt.query, chats, ai, { summaries });
     const picked = result && result.chatId;
+    const isRealChat = !!picked && chats.some((c) => c.id === picked);
 
-    const retrieved = hits.some((h) => h.chatId === gt.expectChatId);        // did grep even surface it
-    const pickedRight = picked === gt.expectChatId;                          // did judge choose it
-    const rejectedDecoys = !(gt.rejectChatIds || []).includes(picked);       // did it avoid the tempting decoy
-    // Semantic answer quality can only be judged on a real AI answer; the stub
-    // can't fake it, so `mentioned` is N/A in --dry (plumbing) mode.
-    const mentioned = (gt.mustMention || []).every((m) => evidence.toLowerCase().includes(m.toLowerCase()));
-    const ok = retrieved && pickedRight && rejectedDecoys && (DRY || mentioned);
-    if (ok) pass++;
+    let ok, detail;
+    if (gt.expectNone) {
+      // Anti-hallucination: correct = picked nothing (null/none/not a real chat).
+      ok = !isRealChat;
+      detail = 'expectNone picked=' + picked + ' -> ' + (ok ? 'correctly found nothing' : 'HALLUCINATED a chat');
+    } else {
+      const evidence = ((result && result.answer) || '') + ' ' + ((result && result.quote) || '');
+      const retrieved = hits.some((h) => h.chatId === gt.expectChatId);
+      const pickedRight = picked === gt.expectChatId;
+      const rejectedDecoys = !(gt.rejectChatIds || []).includes(picked);
+      const mentioned = (gt.mustMention || []).every((m) => evidence.toLowerCase().includes(m.toLowerCase()));
+      ok = retrieved && pickedRight && rejectedDecoys && (DRY || mentioned);
+      detail = 'retrieved=' + retrieved + ' pickedRight=' + pickedRight + ' rejectedDecoys=' + rejectedDecoys + ' mentioned=' + (DRY ? 'n/a' : mentioned);
+    }
+    if (ok) pass++; else fails.push(gt.category);
 
-    console.log('Q: ' + gt.query);
-    console.log('   terms:      ' + JSON.stringify(terms));
-    console.log('   grep hits:  ' + hits.map((h) => h.chatId + '(' + h.score + '/' + h.tier + ')').join(', '));
-    console.log('   picked:     ' + picked + '  quote="' + ((result && result.quote) || '') + '"');
-    console.log('   answer:     ' + ((result && result.answer) || ''));
-    console.log('   SCORE: retrieved=' + retrieved + ' pickedRight=' + pickedRight
-      + ' rejectedDecoys=' + rejectedDecoys + ' mentioned=' + (DRY ? 'n/a' : mentioned) + '  => ' + (ok ? 'PASS' : 'FAIL') + '\n');
+    console.log('[' + (ok ? 'PASS' : 'FAIL') + '] (' + gt.category + ') ' + gt.query);
+    console.log('   picked: ' + picked + (result && result.quote ? '  quote="' + result.quote + '"' : ''));
+    if (!DRY && result && result.answer) console.log('   answer: ' + result.answer);
+    console.log('   ' + detail + '\n');
   }
-  console.log('=== ' + pass + '/' + fx.GROUND_TRUTH.length + ' queries passed ===');
+  console.log('=== ' + pass + '/' + fx.GROUND_TRUTH.length + ' passed ==='
+    + (fails.length ? '   FAILED: ' + fails.join(', ') : '  (clean sweep)'));
   process.exit(pass === fx.GROUND_TRUTH.length ? 0 : 1);
 }
 

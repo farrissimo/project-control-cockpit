@@ -77,7 +77,9 @@ put it). Behind it, three stages:
    `tax app, chat interface, embed, decision`.
 2. **Grep (local, free):** keyword search over `summary.md` first (fast lane). If
    empty/weak, escalate to `transcript.jsonl` (safety net). Deterministic, no
-   tokens.
+   tokens. Grep is **recall-oriented, not precision**: literal substring matching
+   has vocabulary-gap holes (proven — see battery below), so it ORDERS/narrows but
+   must never be the thing that decides. The judge (stage 3) is the precision stage.
 3. **Judge + polish (AI):** read only the handful of grep hits, compare against
    the *original* question, discard noise, answer in plain English with the date,
    a quote, and a **link to the chat**. Only touches the top hits, never the
@@ -135,12 +137,23 @@ pipeline stays **blind** to the answers.
   in CI).
 
 ### Prototype result (built, app/prototypes/chat-recall, blind, real claude -p)
-- Real AI pipeline passes **2/2** on both stages including the hard look-alike.
-- **Built-in control:** the dumb keyword-only path (`--dry` stub) *fails* the
-  hard-decoy query — it picks the *deferred* chat because keyword matching can't
-  distinguish decided-vs-parked. The real AI finisher passes it. Keyword-only
-  failing where the AI finisher succeeds, on the same input, is the evidence that
-  the finisher's judgment is what makes recall work — not the grep alone.
+- **Wider battery: 12 chats, 8 adversarial queries — real pipeline 8/8 clean sweep.**
+  Categories: canonical, went-wrong, paraphrase-gap (query shares no words with the
+  chat), negation ("decide NOT to"), role-reversal (a decoy for one query is the
+  answer for another), temporal-first, deploy, and **no-answer/anti-hallucination**
+  (a topic never discussed — must return NONE, and does).
+- **Built-in control:** the dumb keyword-only path (`--dry` stub) scores **6/8** on
+  the same corpus — it fails exactly the two cases needing judgment: the hard
+  look-alike (picks the *deferred* chat) and no-answer (hallucinates a chat, because
+  literal grep always returns *something*). Keyword-only failing where the AI finisher
+  succeeds, on the same input, is the evidence that the finisher's judgment is load-bearing.
+- **What the harder corpus caught (and the fix):** a first real run scored 6/8 —
+  went-wrong and negation returned "not found" because the literal grep missed the
+  right chat on a vocabulary gap (`retrieved=false`), so the judge never saw it. Fix:
+  make retrieval RECALL-safe — grep hits first, then top up the judge's candidate set
+  from the rest (summaries are cheap), so grep can narrow but never silently hide the
+  answer. Re-run: 8/8. **Scale caveat:** feeding a wide candidate set is robust for
+  dozens of chats; at hundreds+ the retrieval tier needs a stronger (semantic) net.
 
 ## Phasing
 - **Phase 1:** summary/name engine + durable three-tier storage + auto-name +
