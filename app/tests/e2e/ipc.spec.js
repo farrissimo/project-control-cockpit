@@ -20,8 +20,8 @@ test('bridge exposes exactly the expected channels', async () => {
     'createFlowCancel', 'createFlowPickLocation', 'createFlowSave', 'createFlowSend', 'createFlowStart',
     'deleteChatFiles', 'detections', 'endJob', 'engineStatus', 'getActiveProject', 'getMemory', 'getModels',
     'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
-    'listProjects', 'metrics', 'newChat', 'persistChat', 'pickFolder', 'pull', 'recentDecisions', 'requestJob',
-    'runProduct', 'saveMemory', 'searchChats', 'secondOpinion', 'send', 'setActiveProject', 'setPhaseKind',
+    'listProjects', 'loadChatsBackup', 'metrics', 'newChat', 'persistChat', 'pickFolder', 'pull', 'recentDecisions', 'requestJob',
+    'runProduct', 'saveChatsBackup', 'saveMemory', 'searchChats', 'secondOpinion', 'send', 'setActiveProject', 'setPhaseKind',
     'summarizeChat', 'syncStatus', 'trustExtras', 'verify', 'verifyProduct', 'visionPromises',
   ]);
 });
@@ -139,6 +139,20 @@ test('persistChat persists a transcript and refuses empty; deleteChatFiles is sa
   expect(del.ok).toBe(true);
   const delMissing = await call('deleteChatFiles', 'never-existed');
   expect(delMissing.ok).toBe(true); // removing a non-existent record is a no-op, not an error
+});
+
+// Durable chat backup: the full chat list round-trips through a plain file so a localStorage reset
+// can't lose it. saveChatsBackup persists; loadChatsBackup returns it; a blank list is refused.
+test('chats backup round-trips through a file and refuses a blank save', async () => {
+  const chats = [{ id: 'x1', name: 'Kept chat', started: true, messages: [{ cls: 'user', text: 'hi' }] }];
+  const saved = await call('saveChatsBackup', chats);
+  expect(saved.ok).toBe(true);
+  const loaded = await call('loadChatsBackup');
+  expect(loaded.ok).toBe(true);
+  expect(Array.isArray(loaded.chats)).toBe(true);
+  expect(loaded.chats.some((c) => c.id === 'x1')).toBe(true); // recovered from disk
+  const blank = await call('saveChatsBackup', []);
+  expect(blank.ok).toBe(false); // never overwrite the backup with nothing
 });
 
 // searchChats: validates input, returns an honest empty on no corpus, and never throws when the

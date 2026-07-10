@@ -31,7 +31,12 @@ let sendQueue = []; // steering: messages composed while a turn is running, sent
 function uuid() { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'c-' + Date.now() + '-' + Math.random().toString(16).slice(2); }
 function activeChat() { return chats.find((c) => c.id === activeId) || null; }
 function newChatObj() { return { id: uuid(), name: 'New chat', started: false, messages: [], createdAt: Date.now(), updatedAt: Date.now() }; }
-function persistChats() { localStorage.setItem(chatsKey(), JSON.stringify(chats)); localStorage.setItem(activeChatKey(), activeId || ''); }
+function persistChats() {
+  localStorage.setItem(chatsKey(), JSON.stringify(chats));
+  localStorage.setItem(activeChatKey(), activeId || '');
+  // Also mirror to a durable on-disk backup so a localStorage reset can't lose the chat list.
+  try { if (chats.length && !(chats.length === 1 && !chats[0].started && (chats[0].messages || []).length === 0)) window.pcc.saveChatsBackup(chats); } catch (e) { /* best effort */ }
+}
 
 const CORRECTIONS = [
   { label: 'Be concise', msg: 'Be concise.' },
@@ -797,9 +802,22 @@ function renderActiveChat() {
   scrollDown();
 }
 
-function loadChats() {
+async function loadChats() {
   try { chats = JSON.parse(localStorage.getItem(chatsKey())) || []; } catch (e) { chats = []; }
   if (!Array.isArray(chats)) chats = [];
+  // DURABLE RECOVERY: localStorage kept resetting to a blank "New chat" here (corruption / races /
+  // an app killed mid-write). If we came up empty OR with just one blank New chat, restore the real
+  // chat list from the on-disk file backup — the true source of truth for "never lose a chat".
+  const _blank = () => chats.length === 0 || (chats.length === 1 && !chats[0].started && (chats[0].messages || []).length === 0);
+  if (_blank()) {
+    try {
+      const b = await window.pcc.loadChatsBackup();
+      const bc = b && b.chats;
+      if (Array.isArray(bc) && bc.length && !(bc.length === 1 && !bc[0].started && (bc[0].messages || []).length === 0)) {
+        chats = bc; // recovered from disk; persistChats() below re-seats it into localStorage
+      }
+    } catch (e) { /* keep whatever we have */ }
+  }
   // SELF-HEAL + DIAGNOSTIC (chat namespace = 'pcc.chats.v2::<active project PATH>'). If that path
   // string drifts by FORMATTING (case / slashes / trailing separator) between when chats were saved
   // and now, the exact-key lookup misses and a project looks empty though its chats exist on disk.
@@ -2052,6 +2070,6 @@ async function boot() {
   initHeader();
   loadLifecycle();
   loadTrust();
-  loadChats();
+  await loadChats();
 }
 boot();

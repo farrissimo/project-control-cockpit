@@ -27,6 +27,8 @@ contextBridge.exposeInMainWorld('pcc', {
   persistChat: (chatId, messages) => ipcRenderer.invoke('pcc:persistChat', chatId, messages),
   deleteChatFiles: (chatId) => ipcRenderer.invoke('pcc:deleteChatFiles', chatId),
   searchChats: (query, chats) => ipcRenderer.invoke('pcc:searchChats', query, chats),
+  saveChatsBackup: (chats) => ipcRenderer.invoke('pcc:saveChatsBackup', chats),
+  loadChatsBackup: () => ipcRenderer.invoke('pcc:loadChatsBackup'),
   listProjects: () => ipcRenderer.invoke('pcc:listProjects'),
   getActiveProject: () => ipcRenderer.invoke('pcc:getActiveProject'),
   setActiveProject: (dir) => ipcRenderer.invoke('pcc:setActiveProject', dir),

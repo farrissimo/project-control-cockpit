@@ -749,6 +749,28 @@ ipcMain.handle('pcc:persistChat', (_e, chatId, messages) => {
   } catch (e) { return { ok: false, text: e.message }; }
 });
 
+// Durable chat backup (2026-07-10): localStorage proved fragile here — it kept resetting to a
+// blank "New chat" (corruption / races / kills-mid-write), losing the chat list. So the full chat
+// list is ALSO mirrored to a plain file, and the renderer restores from it whenever localStorage
+// comes up empty. This is the real source of truth for "never lose a chat".
+function chatsBackupPath() { return path.join(cockpitDir(), 'chats', 'backup.json'); }
+ipcMain.handle('pcc:saveChatsBackup', (_e, chats) => {
+  try {
+    if (!Array.isArray(chats) || chats.length === 0) return { ok: false };
+    fs.mkdirSync(path.join(cockpitDir(), 'chats'), { recursive: true });
+    fs.writeFileSync(chatsBackupPath(), JSON.stringify({ savedAt: Date.now(), chats }), 'utf8');
+    return { ok: true };
+  } catch (e) { return { ok: false, text: e.message }; }
+});
+ipcMain.handle('pcc:loadChatsBackup', () => {
+  try {
+    const p = chatsBackupPath();
+    if (!fs.existsSync(p)) return { ok: true, chats: [] };
+    const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+    return { ok: true, chats: Array.isArray(j.chats) ? j.chats : [] };
+  } catch (e) { return { ok: false, chats: [], text: e.message }; }
+});
+
 // Remove a deleted chat's on-disk record (transcript + summary) so nothing is orphaned when the
 // owner deletes a chat — tidiness + privacy.
 ipcMain.handle('pcc:deleteChatFiles', (_e, chatId) => {
