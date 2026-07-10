@@ -74,15 +74,25 @@ async function judge(question, candidateIds, chatsById, ai) {
   const prompt = [
     'The user asked: "' + question + '"',
     'Below are candidate chats. Many are irrelevant noise; a keyword shortlist is imperfect,',
-    'so judge by MEANING, not word overlap. Pick the ONE chat that actually answers the',
-    'question, or say none do if the topic genuinely is not present. Reply as STRICT JSON:',
-    '{ "chatId": "<id or null>", "answer": "<plain-English answer>", "quote": "<short verbatim',
-    'quote from that chat that proves it>" }. Do not invent — the quote must appear verbatim.',
+    'so judge by MEANING, not word overlap. Rules for what counts as a match:',
+    '- A chat matches ONLY if it genuinely answers the question AS ASKED. A chat that merely',
+    '  touches the topic but does not contain the answer is NOT a match — e.g. if asked when a',
+    '  decision was made, a chat that only CONSIDERED or DEFERRED it (no decision) does not match.',
+    '- If SEVERAL chats genuinely answer it, return them ALL, most recent first. In particular,',
+    '  an approval AND a later chat that REVERSES that same approval are BOTH matches — do not',
+    '  collapse to one and do not drop the older one just because it was later superseded.',
+    '- If none genuinely answer it, return an empty list. Never invent.',
+    'Reply as STRICT JSON: { "matches": [ { "chatId": "<id>", "answer": "<plain-English answer>",',
+    '"quote": "<short verbatim quote from that chat that proves it>" } ] }.',
+    'Every quote must appear verbatim in its chat.',
     '',
     evidence,
   ].join('\n');
   const raw = await ai(prompt);
-  return safeJson(raw);
+  const parsed = safeJson(raw) || {};
+  const matches = Array.isArray(parsed.matches) ? parsed.matches
+    : (Array.isArray(parsed) ? parsed : []);
+  return { matches };
 }
 
 // Run the whole pipeline for one question over a set of chats.
@@ -100,8 +110,8 @@ async function recall(question, chats, ai, opts = {}) {
   const ordered = hits.map((h) => h.chatId);
   for (const c of chats) if (!ordered.includes(c.id) && ordered.length < CANDIDATE_CAP) ordered.push(c.id);
   const candidates = ordered.slice(0, CANDIDATE_CAP);
-  const result = candidates.length ? await judge(question, candidates, chatsById, ai) : { chatId: null, answer: 'No chats to search.', quote: '' };
-  return { question, terms, hits, candidates, result, summarized };
+  const result = candidates.length ? await judge(question, candidates, chatsById, ai) : { matches: [] };
+  return { question, terms, hits, candidates, matches: result.matches, summarized };
 }
 
 function safeJson(s) {

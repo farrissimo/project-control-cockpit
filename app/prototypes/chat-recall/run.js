@@ -46,7 +46,9 @@ function dryAI(prompt) {
       }
       if (score > bestScore) { bestScore = score; best = id; bestQuote = quote; }
     }
-    return Promise.resolve(JSON.stringify({ chatId: best, answer: 'stub-selected ' + best, quote: bestQuote }));
+    // Keyword-only control returns just its single top pick — no judgment, so it can't
+    // reason about multiple genuine matches; that's the point of the control.
+    return Promise.resolve(JSON.stringify({ matches: best ? [{ chatId: best, answer: 'stub-selected ' + best, quote: bestQuote }] : [] }));
   }
   return Promise.resolve('{}');
 }
@@ -62,29 +64,30 @@ async function main() {
   let pass = 0;
   const fails = [];
   for (const gt of fx.GROUND_TRUTH) {
-    const { terms, hits, result } = await recall(gt.query, chats, ai, { summaries });
-    const picked = result && result.chatId;
-    const isRealChat = !!picked && chats.some((c) => c.id === picked);
+    const { matches } = await recall(gt.query, chats, ai, { summaries });
+    const pickedIds = (matches || []).map((m) => m.chatId);
+    const realPicks = pickedIds.filter((id) => chats.some((c) => c.id === id));
+    const evidence = (matches || []).map((m) => (m.answer || '') + ' ' + (m.quote || '')).join(' ');
 
     let ok, detail;
     if (gt.expectNone) {
-      // Anti-hallucination: correct = picked nothing (null/none/not a real chat).
-      ok = !isRealChat;
-      detail = 'expectNone picked=' + picked + ' -> ' + (ok ? 'correctly found nothing' : 'HALLUCINATED a chat');
+      // Anti-hallucination: correct = returned no real chat.
+      ok = realPicks.length === 0;
+      detail = 'expectNone returned=[' + pickedIds.join(', ') + '] -> ' + (ok ? 'correctly found nothing' : 'HALLUCINATED');
     } else {
-      const evidence = ((result && result.answer) || '') + ' ' + ((result && result.quote) || '');
-      const retrieved = hits.some((h) => h.chatId === gt.expectChatId);
-      const pickedRight = picked === gt.expectChatId;
-      const rejectedDecoys = !(gt.rejectChatIds || []).includes(picked);
+      const want = gt.expectChatIds || [gt.expectChatId];      // single or multi
+      const foundAll = want.every((id) => pickedIds.includes(id));
+      const rejectedDecoys = !(gt.rejectChatIds || []).some((id) => pickedIds.includes(id));
+      const noExtras = pickedIds.every((id) => want.includes(id)); // returned matches are exactly the wanted set
       const mentioned = (gt.mustMention || []).every((m) => evidence.toLowerCase().includes(m.toLowerCase()));
-      ok = retrieved && pickedRight && rejectedDecoys && (DRY || mentioned);
-      detail = 'retrieved=' + retrieved + ' pickedRight=' + pickedRight + ' rejectedDecoys=' + rejectedDecoys + ' mentioned=' + (DRY ? 'n/a' : mentioned);
+      ok = foundAll && rejectedDecoys && noExtras && (DRY || mentioned);
+      detail = 'want=[' + want.join(',') + '] got=[' + pickedIds.join(',') + '] foundAll=' + foundAll
+        + ' rejectedDecoys=' + rejectedDecoys + ' noExtras=' + noExtras + ' mentioned=' + (DRY ? 'n/a' : mentioned);
     }
     if (ok) pass++; else fails.push(gt.category);
 
     console.log('[' + (ok ? 'PASS' : 'FAIL') + '] (' + gt.category + ') ' + gt.query);
-    console.log('   picked: ' + picked + (result && result.quote ? '  quote="' + result.quote + '"' : ''));
-    if (!DRY && result && result.answer) console.log('   answer: ' + result.answer);
+    for (const m of (matches || [])) console.log('   match: ' + m.chatId + (m.quote ? '  quote="' + m.quote + '"' : ''));
     console.log('   ' + detail + '\n');
   }
   console.log('=== ' + pass + '/' + fx.GROUND_TRUTH.length + ' passed ==='

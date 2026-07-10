@@ -90,6 +90,30 @@ put it). Behind it, three stages:
    the topic is truly absent (anti-hallucination). Only touches the candidates,
    never the whole archive.
 
+### Multi-result re-validation (blind, real claude -p) — 9/9
+After switching the judge from "pick THE one chat" to "return ALL genuine matches",
+the battery (now 14 chats incl. a supersession pair, 9 queries) passes **9/9**,
+including: a multi-result query where an approval AND its later reversal must BOTH be
+returned; the hard look-alike still rejected (a discussed-but-DEFERRED chat is not a
+match to a "when did we DECIDE" query); and no-answer still returns nothing. Honest
+note: the supersession multi-return has some LLM variance (one stochastic single-run
+miss, then 5/5 on re-measure) — right the large majority of the time, not a hard
+guarantee. Dumb keyword-only control stays 6/9.
+
+### Prior art — reuse, don't reinvent (researched 2026-07-10)
+Our expand→retrieve→judge IS the mainstream **hybrid-RAG** pattern (BM25 keyword +
+semantic + LLM rerank) — not novel, which is good. The one weak tier (literal-substring
+grep, the vocabulary-gap risk) should REUSE a proven local library rather than
+hand-rolled code:
+- **Orama** — in-JS full-text + vector + hybrid search, <2kb, runs in Electron/Node.
+  Drop-in for the retrieval tier; fixes the vocab gap and scales to tens of thousands.
+- **transformers.js** — local, offline, private embeddings (fits local-first rule).
+- **sqlite-vec** — local vector store, tens of thousands of embeddings on one machine.
+- Precedents that this "smart grep" idea is well-trodden: **ck**, **mgrep**, **grepai**
+  (local-first semantic/hybrid grep tools; some ship an MCP server).
+Plan: ship Phase 2 with the current grep (proven at small scale) but keep the retrieval
+tier SWAPPABLE, and drop in Orama hybrid when real-chat scale/vocab-gap warrants it.
+
 ### Advanced, intent-aware search (Phase 3 — after basic is proven)
 A later mode detects the *intent* behind a phrase and adds interpretation on top of
 the matches. Example (owner's): "when I approved v2 but then changed my mind" — the

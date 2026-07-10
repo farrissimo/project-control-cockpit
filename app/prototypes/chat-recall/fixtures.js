@@ -89,6 +89,21 @@ const chats = [
     { cls: 'user', text: 'The app takes a moment to boot; can we speed startup?' },
     { cls: 'bot', text: 'Coalesced some detector script spawns. Perf only — no product decision.' },
   ] },
+
+  // --- supersession pair: an approval and a LATER reversal. A general search for "v1 done"
+  // should surface BOTH (not force one); which one is current is a Phase-3 advanced concern. ---
+  { id: 'v1-signoff', name: 'v1 sign-off', messages: [
+    { cls: 'user', text: 'Is v1 finished? I think we are done.' },
+    { cls: 'bot', text: 'All v1 scope is complete and verified.' },
+    { cls: 'user', text: 'Great — I approve v1 as done. Ship it.' },
+    { cls: 'bot', text: 'Decision: v1 is approved as done and shipped.' },
+  ] },
+  { id: 'v1-reopened', name: 'v1 reopened', messages: [
+    { cls: 'user', text: 'A tax deduction bug slipped through — v1 is not really done after all.' },
+    { cls: 'bot', text: 'Understood.' },
+    { cls: 'user', text: 'I changed my mind: reopen v1. We are NOT done until the deduction bug is fixed.' },
+    { cls: 'bot', text: 'Decision: v1 reopened; the earlier "v1 done" approval is reversed pending the deduction fix.' },
+  ] },
 ];
 
 // ---- ANSWER KEY (blind to the pipeline; runner-only) ----
@@ -115,6 +130,10 @@ const GROUND_TRUTH = [
 
   { category: 'deploy', query: 'What did we decide about when the full test suite runs?',
     expectChatId: 'ci-decision', mustMention: ['CI', 'push'], rejectChatIds: [] },
+
+  // Multi-result: both the approval and the later reversal match — return BOTH, don't force one.
+  { category: 'multi-supersession', query: 'When did we agree that v1 was done?',
+    expectChatIds: ['v1-signoff', 'v1-reopened'], mustMention: ['v1'], rejectChatIds: [] },
 
   // Anti-hallucination: never discussed. Must return NONE, not fabricate a chat.
   { category: 'no-answer', query: 'Which chat did we pick the color theme for the tax app?',
