@@ -92,6 +92,20 @@ zero-token literal search (fast but dumb — the escape hatch, not the default).
   failure. Owner can rename; a manual rename **locks** the title against future
   auto-naming (a repeatedly-requested feature in prior art).
 
+## Summary card UX (owner's original idea — stands alone, no search needed)
+The auto-name and the summary card are valuable **on their own**, independent of
+recall/grep. Even with zero search, being able to glance at a chat's name and pop
+its high-level summary is the "historical record" the owner asked for.
+- A small **summary button sits right next to each chat's name** in the chat list.
+- Clicking it opens the structured summary card (schema above) in an intuitive,
+  non-disruptive place — a slide-over / panel next to the chat, not a full page
+  swap — so it reads like "peek at what this chat was about" without leaving where
+  you are.
+- The card is regenerable (a "refresh summary" affordance) and shows when it was
+  last built.
+- Build order: this (name + card) is Phase 1 and ships value before any search
+  exists. Recall (Phase 2) reuses the very summaries this produces.
+
 ## Prototype & test plan (build this FIRST, before any UI)
 Goal: prove the expand→grep→judge pipeline works on a **known** payload while the
 pipeline stays **blind** to the answers.
@@ -104,10 +118,22 @@ pipeline stays **blind** to the answers.
   chats. The global grep must pick the right chat and reject the decoys. This is
   the real "which chat was it in" test — Stage A alone can't test retrieval
   because there's only one haystack.
+- **Hard look-alike decoy (the real "filter wrong answers" test):** include a
+  decoy whose keywords are near-identical to the query but whose *answer is wrong*
+  — e.g. a chat where the same build was only *deferred*, not decided. The
+  finisher must tell "we decided" from "we talked about it and parked it."
 - Fixtures carry the ground-truth answers; the pipeline never sees them (blind).
 - Deterministic parts (file layout, grep) are unit-testable; the AI bookends run
   as a real worker call in the prototype run (nondeterministic, run manually, not
   in CI).
+
+### Prototype result (built, app/prototypes/chat-recall, blind, real claude -p)
+- Real AI pipeline passes **2/2** on both stages including the hard look-alike.
+- **Built-in control:** the dumb keyword-only path (`--dry` stub) *fails* the
+  hard-decoy query — it picks the *deferred* chat because keyword matching can't
+  distinguish decided-vs-parked. The real AI finisher passes it. Keyword-only
+  failing where the AI finisher succeeds, on the same input, is the evidence that
+  the finisher's judgment is what makes recall work — not the grep alone.
 
 ## Phasing
 - **Phase 1:** summary/name engine + durable three-tier storage + auto-name +

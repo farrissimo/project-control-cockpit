@@ -74,6 +74,19 @@ const decoys = [
     ],
   },
   {
+    // HARD decoy: near-identical keywords to the target query ("build the chat
+    // interface into the tax app") but the wrong answer - here it was DEFERRED,
+    // not decided. The finisher must tell "we decided" from "we talked and parked it".
+    id: 'decoy-tax-chat-deferred',
+    name: 'Tax app UI ideas',
+    messages: [
+      { cls: 'user', text: 'Should the tax app use a chat interface like PCC has?' },
+      { cls: 'bot', text: 'It could. A chat interface for the tax app would be friendly, but it is a big build.' },
+      { cls: 'user', text: 'Hmm, let us not decide the chat interface yet. Park building the chat into the tax app for now.' },
+      { cls: 'bot', text: 'Understood - no decision made. Building the chat interface into the tax app is deferred; revisit later.' },
+    ],
+  },
+  {
     id: 'decoy-crypto',
     name: 'Crypto someday',
     messages: [
@@ -90,7 +103,9 @@ const GROUND_TRUTH = [
     expectChatId: 'target-tax-chat',
     // A correct answer must reflect this fact; scored by the judge against these.
     mustMention: ['chat interface', 'primary surface'],
-    rejectChatIds: ['decoy-pcc-ui'], // the tempting wrong hit (PCC chat, not tax app)
+    // Reject BOTH the topical trap (PCC chat) and the hard keyword-identical
+    // look-alike where the same build was only DEFERRED, never decided.
+    rejectChatIds: ['decoy-pcc-ui', 'decoy-tax-chat-deferred'],
   },
   {
     query: 'What did we say went wrong before with the tax app scope?',
