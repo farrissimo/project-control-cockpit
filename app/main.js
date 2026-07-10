@@ -16,6 +16,7 @@ const { parseVerification } = require('./renderer/verification-parse');
 const { createAuthorityStore } = require('./authority-store');
 const { decideBackup } = require('./backup-policy');
 const { parseGitHubRepo, decideCiStatus, CI_CHECK_NAME } = require('./ci-status');
+const { parseStreamJson } = require('./stream-json');
 
 // This app is the single "home" cockpit. It opens PROJECTS (self-contained
 // folders each with their own .cockpit + engine scripts + CLAUDE.md, exactly
@@ -562,24 +563,8 @@ ipcMain.handle('pcc:endJob', (_e, chatId) => authority.disable(chatId));
 // (older callers), we fall back to a locally-generated pinned id.
 // --model picks the chosen model; --fallback-model makes an unavailable model
 // fall back gracefully instead of crashing the chat.
-// Parse Claude Code's stream-json output (used when we send attachments via
-// --input-format stream-json) back into plain assistant text.
-function parseStreamJson(raw) {
-  let text = '';
-  for (const line of String(raw).split('\n')) {
-    const l = line.trim();
-    if (!l) continue;
-    try {
-      const o = JSON.parse(l);
-      if (o.type === 'assistant' && o.message && Array.isArray(o.message.content)) {
-        for (const c of o.message.content) if (c.type === 'text' && c.text) text += c.text;
-      } else if (o.type === 'result' && typeof o.result === 'string' && !text) {
-        text = o.result;
-      }
-    } catch (e) { /* ignore non-JSON lines */ }
-  }
-  return text.trim();
-}
+// parseStreamJson (the attachments/image reply parser) lives in ./stream-json.js so it can be
+// unit-tested against a REAL captured stream-json envelope, not just the simplified test fake.
 
 // `attachments` (optional): [{ kind:'image', mediaType, dataBase64 } | { kind:'text', name, content }].
 // When present, the worker is spawned in stream-json mode so images/files ride as content blocks.

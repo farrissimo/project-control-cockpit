@@ -1,0 +1,23 @@
+Reading additional input from stdin...
+OpenAI Codex v0.142.0
+--------
+workdir: C:\ProjectControlCockpit
+model: gpt-5.4
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: medium
+reasoning summaries: none
+session id: 00000000-0000-0000-0000-000000000000
+--------
+user
+Do not inspect the repo. Output exactly three lines and nothing else: first line "VERDICT: PASS", second line "EVIDENCE: format check only", third line "NOT PROVEN: no code was reviewed".
+codex
+VERDICT: PASS
+EVIDENCE: format check only
+NOT PROVEN: no code was reviewed
+tokens used
+3,310
+VERDICT: PASS
+EVIDENCE: format check only
+NOT PROVEN: no code was reviewed
