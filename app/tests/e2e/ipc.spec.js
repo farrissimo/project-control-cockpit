@@ -18,9 +18,9 @@ test('bridge exposes exactly the expected channels', async () => {
   expect(keys).toEqual([
     'addProject', 'approveJob', 'authorityLog', 'authorityState', 'autoNameChat', 'backup', 'cancelJob', 'ciStatus',
     'createFlowCancel', 'createFlowPickLocation', 'createFlowSave', 'createFlowSend', 'createFlowStart',
-    'detections', 'endJob', 'engineStatus', 'getActiveProject', 'getMemory', 'getModels',
+    'deleteChatFiles', 'detections', 'endJob', 'engineStatus', 'getActiveProject', 'getMemory', 'getModels',
     'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
-    'listProjects', 'metrics', 'newChat', 'pickFolder', 'pull', 'recentDecisions', 'requestJob',
+    'listProjects', 'metrics', 'newChat', 'persistChat', 'pickFolder', 'pull', 'recentDecisions', 'requestJob',
     'runProduct', 'saveMemory', 'secondOpinion', 'send', 'setActiveProject', 'setPhaseKind',
     'summarizeChat', 'syncStatus', 'trustExtras', 'verify', 'verifyProduct', 'visionPromises',
   ]);
@@ -126,6 +126,19 @@ test('summarizeChat refuses an empty chat and never fakes a card from non-JSON',
   expect(empty.ok).toBe(false);
   const nonJson = await call('summarizeChat', 'chat-x', [{ cls: 'user', text: 'hi' }]);
   expect(nonJson.ok).toBe(false); // fake returns "FAKE-CLAUDE-REPLY...", not JSON -> honest failure
+});
+
+// persistChat writes a transcript (no AI) and refuses empty; deleteChatFiles is safe to call
+// even when nothing exists — the recall corpus lifecycle must never throw.
+test('persistChat persists a transcript and refuses empty; deleteChatFiles is safe', async () => {
+  const ok = await call('persistChat', 'chat-persist-test', [{ cls: 'user', text: 'remember this line' }]);
+  expect(ok.ok).toBe(true);
+  const empty = await call('persistChat', 'chat-persist-test', []);
+  expect(empty.ok).toBe(false);
+  const del = await call('deleteChatFiles', 'chat-persist-test');
+  expect(del.ok).toBe(true);
+  const delMissing = await call('deleteChatFiles', 'never-existed');
+  expect(delMissing.ok).toBe(true); // removing a non-existent record is a no-op, not an error
 });
 
 test('detections returns all five detector results in four-part format', async () => {

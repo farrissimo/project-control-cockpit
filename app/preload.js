@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld('pcc', {
   // First-class chat history (docs/CHAT_RECALL_SPEC.md): AI auto-name + structured summary card.
   autoNameChat: (messages) => ipcRenderer.invoke('pcc:autoNameChat', messages),
   summarizeChat: (chatId, messages) => ipcRenderer.invoke('pcc:summarizeChat', chatId, messages),
+  persistChat: (chatId, messages) => ipcRenderer.invoke('pcc:persistChat', chatId, messages),
+  deleteChatFiles: (chatId) => ipcRenderer.invoke('pcc:deleteChatFiles', chatId),
   listProjects: () => ipcRenderer.invoke('pcc:listProjects'),
   getActiveProject: () => ipcRenderer.invoke('pcc:getActiveProject'),
   setActiveProject: (dir) => ipcRenderer.invoke('pcc:setActiveProject', dir),

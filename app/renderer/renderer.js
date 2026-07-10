@@ -221,6 +221,7 @@ async function runSend(item) {
     thinking.remove();
     if (res.ok) { chat.started = true; save(); }
     addBubble(res.ok ? 'assistant' : 'assistant error', res.text || '(no output)', true);
+    if (res.ok) persistTranscript(chat); // keep this chat greppable even if never left
     // Soak fix F4: a stale worker is holding this chat's session — give the owner a
     // one-click way out instead of a dead-end red error.
     if (!res.ok && res.sessionInUse) addRecoveryAction();
@@ -240,6 +241,12 @@ async function runSend(item) {
 // the END of a chat (owner: "I usually ask the question at or near the end"). It re-names each
 // time you leave, so the title always reflects the latest state. Skips a hand-locked name; only
 // spends a worker call when the chat has GROWN since it was last named (revisiting is free).
+// Always mirror a chat's full transcript to disk (no AI) so recall has a greppable corpus even
+// for chats never summarized. Fire-and-forget, best-effort. Called on leave and after each turn.
+function persistTranscript(chat) {
+  if (chat && chat.messages && chat.messages.length) { try { window.pcc.persistChat(chat.id, chat.messages); } catch (e) { /* best effort */ } }
+}
+
 async function reconsiderChatName(chat) {
   if (!chat || chat.nameLocked) return;
   const users = chat.messages.filter((m) => m.cls === 'user').length;
@@ -464,7 +471,7 @@ function startNewChat() {
   loadTrust();
   input.value = '';
   input.focus();
-  if (leaving) reconsiderChatName(leaving); // fire-and-forget
+  if (leaving) { persistTranscript(leaving); reconsiderChatName(leaving); } // fire-and-forget
 }
 document.getElementById('new-chat').addEventListener('click', startNewChat);
 
@@ -836,7 +843,7 @@ function switchChat(id) {
   renderChatList();
   loadTrust();
   closeChatsPanel();
-  if (leaving && leaving.id !== id) reconsiderChatName(leaving); // fire-and-forget; switch stays instant
+  if (leaving && leaving.id !== id) { persistTranscript(leaving); reconsiderChatName(leaving); } // fire-and-forget; switch stays instant
 }
 
 async function renameChat(id) {
@@ -851,6 +858,7 @@ function deleteChat(id) {
   const c = chats.find((x) => x.id === id);
   if (!c) return;
   if (!confirm('Delete "' + c.name + '"? This removes it from the list (Claude may still have the session on disk).')) return;
+  try { window.pcc.deleteChatFiles(id); } catch (e) { /* best effort — remove the on-disk record too */ }
   chats = chats.filter((x) => x.id !== id);
   if (chats.length === 0) chats.push(newChatObj());
   if (id === activeId) { activeId = chats[0].id; history = activeChat().messages; renderActiveChat(); loadTrust(); }

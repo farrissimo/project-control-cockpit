@@ -735,6 +735,29 @@ ipcMain.handle('pcc:summarizeChat', async (_e, chatId, messages) => {
   return { ok: true, summary, at };
 });
 
+// Persist a chat's FULL transcript to disk (no AI) so recall always has a greppable corpus —
+// the safety-net tier that exists even for chats you never summarized. Called on leave and after
+// each turn. Cheap, best-effort. (Search greps summaries first, falls back to these transcripts.)
+ipcMain.handle('pcc:persistChat', (_e, chatId, messages) => {
+  if (!Array.isArray(messages) || messages.length === 0) return { ok: false };
+  try {
+    const dir = path.join(cockpitDir(), 'chats', chatSummary.sanitizeChatId(chatId));
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'transcript.jsonl'), messages.map((m) => JSON.stringify(m)).join('\n'), 'utf8');
+    return { ok: true };
+  } catch (e) { return { ok: false, text: e.message }; }
+});
+
+// Remove a deleted chat's on-disk record (transcript + summary) so nothing is orphaned when the
+// owner deletes a chat — tidiness + privacy.
+ipcMain.handle('pcc:deleteChatFiles', (_e, chatId) => {
+  try {
+    const dir = path.join(cockpitDir(), 'chats', chatSummary.sanitizeChatId(chatId));
+    if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+    return { ok: true };
+  } catch (e) { return { ok: false, text: e.message }; }
+});
+
 // ---- New Project create-flow (DECISION-114): "New Project" is a new document ----
 // Clicking New Project takes the owner OUT of the cockpit into a dedicated create surface. The
 // as-yet-unsaved project lives in a SCRATCH folder that belongs to the app (userData), never
