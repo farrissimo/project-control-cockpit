@@ -70,7 +70,12 @@ function Invoke-Agy {
   # see the correctly-scoped work instead of agy always defaulting to just the last commit.
   $rangeLabel = 'HEAD~1..HEAD'; $diff = $null
   if ($evidence -and $evidence.range) { $rangeLabel = $evidence.range; $diff = $evidence.diff }
-  if (-not $diff) { $diff = (& git diff HEAD~1 HEAD 2>&1 | Out-String) }
+  # $null means "no evidence bundle to use" (fall back to the old default). An EMPTY STRING is a
+  # legitimate value (the "no new commits since last verification" case) and must NOT be
+  # overwritten with the wrong commit's diff -- PowerShell's `-not ""` is $true, so a plain
+  # truthiness check here was the bug: it silently substituted HEAD~1's diff while the range
+  # label still said "no new commits". Only fall back when $diff was never assigned at all.
+  if ($null -eq $diff) { $diff = (& git diff HEAD~1 HEAD 2>&1 | Out-String) }
   if (-not $diff.Trim()) { $diff = '(no committed diff found)' }
   # agy takes the diff inline (it ignores stdin). Cap it well under the Windows
   # command-line arg limit (~32 KB); note truncation honestly if it happens.

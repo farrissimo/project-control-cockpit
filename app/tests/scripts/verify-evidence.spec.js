@@ -74,6 +74,25 @@ test('VERIFIED_SHA equal to current HEAD -> no new commits since last verificati
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+// Codex-caught gap: git cat-file -e only proves a commit OBJECT exists somewhere in the repo's
+// database, not that it's an ancestor of HEAD. A real sha from an unrelated/orphan branch must
+// still be rejected, or the range would produce a nonsensical diff.
+test('a VERIFIED_SHA that exists but is NOT an ancestor of HEAD is rejected (ancestry check)', () => {
+  const dir = makeRepo();
+  try {
+    commit(dir, 'a.txt', 'main-first');
+    commit(dir, 'b.txt', 'main-second');
+    // an orphan branch with its own real, valid commit that shares no history with the current branch
+    execFileSync('git', ['checkout', '--orphan', 'unrelated'], { cwd: dir });
+    execFileSync('git', ['rm', '-rf', '--cached', '.'], { cwd: dir, stdio: 'ignore' });
+    const orphanSha = commit(dir, 'x.txt', 'orphan-commit');
+    execFileSync('git', ['checkout', 'master'], { cwd: dir });
+    recordVerifiedSha(dir, orphanSha); // a real, existing commit object -- but not our ancestor
+    const e = run(dir);
+    expect(e.range).toBe('HEAD~1..HEAD'); // rejected; fell back safely, not a nonsensical cross-branch diff
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('a garbage/nonexistent VERIFIED_SHA is ignored, falling back safely (never errors)', () => {
   const dir = makeRepo();
   try {

@@ -44,9 +44,15 @@ if (Test-Path -LiteralPath $lvPath -PathType Leaf) {
   $m = [regex]::Match($lvText, '(?im)^[ \t]*VERIFIED_SHA:[ \t]*([0-9a-f]{7,40})\b')
   if ($m.Success) {
     $cand = $m.Groups[1].Value
-    # only trust it if that commit actually exists in THIS repo's history
+    # Must be BOTH a real commit object AND an ancestor of HEAD (or HEAD itself). cat-file -e alone
+    # only proves the object exists somewhere in the repo's database -- a stray sha from an
+    # unrelated/orphan branch would still pass that check but produce a nonsensical range.
+    # --is-ancestor treats a commit as its own ancestor, so cand == HEAD correctly still qualifies.
     & git cat-file -e "$cand^{commit}" 2>$null
-    if ($LASTEXITCODE -eq 0) { $baseSha = $cand }
+    if ($LASTEXITCODE -eq 0) {
+      & git merge-base --is-ancestor $cand HEAD 2>$null
+      if ($LASTEXITCODE -eq 0) { $baseSha = $cand }
+    }
   }
 }
 
