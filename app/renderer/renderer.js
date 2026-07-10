@@ -221,6 +221,7 @@ async function runSend(item) {
     thinking.remove();
     if (res.ok) { chat.started = true; save(); }
     addBubble(res.ok ? 'assistant' : 'assistant error', res.text || '(no output)', true);
+    if (res.ok) maybeAutoName(chat); // upgrade the provisional name to an AI one, once
     // Soak fix F4: a stale worker is holding this chat's session — give the owner a
     // one-click way out instead of a dead-end red error.
     if (!res.ok && res.sessionInUse) addRecoveryAction();
@@ -231,6 +232,90 @@ async function runSend(item) {
     busy = false; input.focus();
     if (sendQueue.length) runSend(sendQueue.shift()); // steering: send the next queued message
   }
+}
+
+// ---- First-class chat history: AI auto-name + summary card (docs/CHAT_RECALL_SPEC.md) ----
+// The instant first-message name (in sendMessage) is only a PROVISIONAL label. After the first
+// real exchange we replace it with an AI title that names the prominent topic — unless the owner
+// renamed it by hand (nameLocked). Runs once per chat (autoNamed guard), best-effort: a failure
+// just keeps the provisional name. No background spend — it piggybacks on a turn the owner ran.
+async function maybeAutoName(chat) {
+  if (!chat || chat.autoNamed || chat.nameLocked) return;
+  const users = chat.messages.filter((m) => m.cls === 'user').length;
+  const bots = chat.messages.filter((m) => m.cls !== 'user').length;
+  if (users < 1 || bots < 1) return;            // need a real exchange to name from
+  chat.autoNamed = true; save();                // mark once, even while the call is in flight
+  try {
+    const r = await window.pcc.autoNameChat(chat.messages);
+    if (r && r.ok && r.title && !chat.nameLocked) { chat.name = r.title; save(); renderChatList(); }
+  } catch (e) { /* keep the provisional name */ }
+}
+
+// The summary card slide-over. Opens on the 📋 button next to a chat's name; shows the last
+// generated card instantly (cached on the chat) with a ↻ to regenerate, else builds one now.
+let summaryChatId = null;
+function openSummaryDrawer() {
+  document.getElementById('summary-backdrop').classList.remove('hidden');
+  document.getElementById('summary-drawer').classList.remove('hidden');
+}
+function closeSummaryDrawer() {
+  document.getElementById('summary-backdrop').classList.add('hidden');
+  document.getElementById('summary-drawer').classList.add('hidden');
+}
+function summarySection(title, items) {
+  const body = (Array.isArray(items) && items.length)
+    ? '<ul>' + items.map((x) => '<li>' + escapeHtml(x) + '</li>').join('') + '</ul>'
+    : '<p class="empty">(none)</p>';
+  return '<div class="sum-sec"><h4>' + escapeHtml(title) + '</h4>' + body + '</div>';
+}
+function renderSummaryCard(chat, s, at) {
+  document.getElementById('summary-title').textContent = chat.name || 'Summary';
+  const gist = (s && s.gist) ? '<div class="sum-sec"><h4>Gist</h4><p>' + escapeHtml(s.gist) + '</p></div>'
+    : '<div class="sum-sec"><h4>Gist</h4><p class="empty">(none)</p></div>';
+  document.getElementById('summary-body').innerHTML =
+    '<div class="sum-meta">Generated ' + relTime(at) + ' — quotes the chat, invents nothing.</div>'
+    + gist
+    + summarySection('Decided', s && s.decided)
+    + summarySection('Went right', s && s.wentRight)
+    + summarySection('Went wrong', s && s.wentWrong)
+    + summarySection('Open ideas', s && s.openIdeas)
+    + summarySection('Important events', s && s.importantEvents);
+}
+async function generateSummary(chat) {
+  document.getElementById('summary-title').textContent = chat.name || 'Summary';
+  document.getElementById('summary-body').innerHTML = '<div class="sum-loading">Reading this chat and writing a summary…</div>';
+  try {
+    const r = await window.pcc.summarizeChat(chat.id, chat.messages);
+    if (r && r.ok) {
+      chat.summary = r.summary; chat.summaryAt = r.at; save();
+      if (summaryChatId === chat.id) renderSummaryCard(chat, r.summary, r.at);
+    } else if (summaryChatId === chat.id) {
+      document.getElementById('summary-body').innerHTML = '<div class="sum-error">' + escapeHtml((r && r.text) || 'Could not build a summary.') + '</div>';
+    }
+  } catch (e) {
+    if (summaryChatId === chat.id) document.getElementById('summary-body').innerHTML = '<div class="sum-error">Something went wrong building the summary.</div>';
+  }
+}
+function showSummary(id) {
+  const chat = chats.find((c) => c.id === id);
+  if (!chat) return;
+  summaryChatId = id;
+  openSummaryDrawer();
+  if (!chat.messages || chat.messages.length === 0) {
+    document.getElementById('summary-title').textContent = chat.name || 'Summary';
+    document.getElementById('summary-body').innerHTML = '<div class="sum-loading">This chat has no messages yet.</div>';
+    return;
+  }
+  if (chat.summary) renderSummaryCard(chat, chat.summary, chat.summaryAt); // show cached instantly
+  else generateSummary(chat);                                             // first time: build it
+}
+{
+  const close = document.getElementById('summary-close');
+  const back = document.getElementById('summary-backdrop');
+  const refresh = document.getElementById('summary-refresh');
+  if (close) close.addEventListener('click', closeSummaryDrawer);
+  if (back) back.addEventListener('click', closeSummaryDrawer);
+  if (refresh) refresh.addEventListener('click', () => { const c = chats.find((x) => x.id === summaryChatId); if (c) generateSummary(c); });
 }
 
 // ---- attachments: images (paste/drop/pick) + files (pick) ----
@@ -749,7 +834,8 @@ async function renameChat(id) {
   const c = chats.find((x) => x.id === id);
   if (!c) return;
   const name = await pccPrompt('Rename this chat:', c.name);
-  if (name && name.trim()) { c.name = name.trim().slice(0, 60); persistChats(); renderChatList(); }
+  // A hand-set name LOCKS the title: auto-naming will never overwrite it (prior-art request).
+  if (name && name.trim()) { c.name = name.trim().slice(0, 60); c.nameLocked = true; persistChats(); renderChatList(); }
 }
 
 function deleteChat(id) {
@@ -784,6 +870,7 @@ function renderChatList() {
     + '<div class="chat-row-main" data-act="switch" data-id="' + c.id + '">'
     + '<div class="chat-name">' + escapeHtml(c.name) + '</div>'
     + '<div class="chat-when">' + relTime(c.updatedAt) + '</div></div>'
+    + '<button class="chat-mini" data-act="summary" data-id="' + c.id + '" title="High-level summary of this chat">📋</button>'
     + '<button class="chat-mini" data-act="rename" data-id="' + c.id + '" title="Rename">✎</button>'
     + '<button class="chat-mini" data-act="delete" data-id="' + c.id + '" title="Delete">🗑</button>'
     + '</div>'
@@ -802,6 +889,7 @@ document.getElementById('chats-panel').addEventListener('click', (e) => {
   if (!el) return;
   const id = el.dataset.id, act = el.dataset.act;
   if (act === 'switch') switchChat(id);
+  else if (act === 'summary') showSummary(id);
   else if (act === 'rename') renameChat(id);
   else if (act === 'delete') deleteChat(id);
 });

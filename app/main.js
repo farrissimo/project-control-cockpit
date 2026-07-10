@@ -17,6 +17,7 @@ const { createAuthorityStore } = require('./authority-store');
 const { decideBackup } = require('./backup-policy');
 const { parseGitHubRepo, decideCiStatus, CI_CHECK_NAME } = require('./ci-status');
 const { parseStreamJson } = require('./stream-json');
+const chatSummary = require('./chat-summary');
 
 // This app is the single "home" cockpit. It opens PROJECTS (self-contained
 // folders each with their own .cockpit + engine scripts + CLAUDE.md, exactly
@@ -674,6 +675,65 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
 }
 
 ipcMain.handle('pcc:send', (_e, message, model, workerSessionId, isFirstTurn, chatId, attachments) => askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachments));
+
+// ---- First-class chat history: AI names + structured summaries (docs/CHAT_RECALL_SPEC.md) ----
+// A chat is no longer a truncated first line. After the first real exchange we give it an AI
+// name; on demand we build a structured summary card. Both are STATELESS, READ-ONLY, one-shot
+// worker calls: a fresh random --session-id (so a chat's pinned session is never touched), the
+// read-only tool profile, plain text in/out. The summary is mirrored to git-ignored durable files
+// under .cockpit/chats/<id>/ (survives a cleared cache, is backed up, greppable for Phase-2 recall).
+function oneShotWorker(prompt) {
+  return new Promise((resolve) => {
+    const cfg = readModels();
+    const args = ['-p', '--model', cfg.default,
+      '--tools', 'Read Glob Grep', '--strict-mcp-config',
+      '--allowedTools', 'Read Glob Grep',
+      '--disallowedTools', 'AskUserQuestion Bash BashOutput KillBash PowerShell Edit Write NotebookEdit Agent Monitor Skill ToolSearch Task WebSearch WebFetch',
+      '--session-id', crypto.randomUUID()];
+    if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
+    let out = '', err = '', child;
+    try { child = spawn('claude', args, { cwd: projectDir, shell: true }); }
+    catch (e) { return resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message }); }
+    activeWorkers.add(child); // tracked so app-quit can kill it (F4)
+    child.on('error', (e) => { activeWorkers.delete(child); resolve({ ok: false, text: e.message }); });
+    child.stdout.on('data', (d) => { out += d.toString(); });
+    child.stderr.on('data', (d) => { err += d.toString(); });
+    child.on('close', (code) => {
+      activeWorkers.delete(child);
+      if (code === 0) resolve({ ok: true, text: out.trim() });
+      else resolve({ ok: false, text: (err.trim() || ('Claude exited with code ' + code)) });
+    });
+    child.stdin.write(prompt); child.stdin.end();
+  });
+}
+
+// Auto-name: cheap, runs once after the first real exchange. Returns a title only.
+ipcMain.handle('pcc:autoNameChat', async (_e, messages) => {
+  if (!Array.isArray(messages) || messages.length === 0) return { ok: false, text: 'No messages to name.' };
+  const r = await oneShotWorker(chatSummary.buildNamePrompt(messages));
+  if (!r.ok) return { ok: false, text: r.text };
+  const title = chatSummary.cleanTitle(r.text);
+  return title ? { ok: true, title } : { ok: false, text: 'No usable title returned.' };
+});
+
+// Summarize: on-demand structured card + durable three-tier mirror on disk.
+ipcMain.handle('pcc:summarizeChat', async (_e, chatId, messages) => {
+  if (!Array.isArray(messages) || messages.length === 0) return { ok: false, text: 'This chat has no messages yet.' };
+  const r = await oneShotWorker(chatSummary.buildSummaryPrompt(messages));
+  if (!r.ok) return { ok: false, text: r.text };
+  const parsed = chatSummary.safeJsonParse(r.text);
+  if (!parsed) return { ok: false, text: 'The summarizer did not return usable JSON. Try refreshing.' };
+  const summary = chatSummary.normalizeSummary(parsed);
+  const at = Date.now();
+  try {
+    const dir = path.join(cockpitDir(), 'chats', chatSummary.sanitizeChatId(chatId));
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'summary.json'), JSON.stringify({ chatId, at, summary }, null, 2), 'utf8');
+    fs.writeFileSync(path.join(dir, 'summary.md'), chatSummary.renderSummaryMd(summary, at), 'utf8');
+    fs.writeFileSync(path.join(dir, 'transcript.jsonl'), messages.map((m) => JSON.stringify(m)).join('\n'), 'utf8');
+  } catch (e) { /* durable mirror is best-effort; the card still returns to the UI */ }
+  return { ok: true, summary, at };
+});
 
 // ---- New Project create-flow (DECISION-114): "New Project" is a new document ----
 // Clicking New Project takes the owner OUT of the cockpit into a dedicated create surface. The
