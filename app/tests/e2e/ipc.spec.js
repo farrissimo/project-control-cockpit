@@ -21,7 +21,7 @@ test('bridge exposes exactly the expected channels', async () => {
     'deleteChatFiles', 'detections', 'endJob', 'engineStatus', 'getActiveProject', 'getMemory', 'getModels',
     'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
     'listProjects', 'metrics', 'newChat', 'persistChat', 'pickFolder', 'pull', 'recentDecisions', 'requestJob',
-    'runProduct', 'saveMemory', 'secondOpinion', 'send', 'setActiveProject', 'setPhaseKind',
+    'runProduct', 'saveMemory', 'searchChats', 'secondOpinion', 'send', 'setActiveProject', 'setPhaseKind',
     'summarizeChat', 'syncStatus', 'trustExtras', 'verify', 'verifyProduct', 'visionPromises',
   ]);
 });
@@ -139,6 +139,19 @@ test('persistChat persists a transcript and refuses empty; deleteChatFiles is sa
   expect(del.ok).toBe(true);
   const delMissing = await call('deleteChatFiles', 'never-existed');
   expect(delMissing.ok).toBe(true); // removing a non-existent record is a no-op, not an error
+});
+
+// searchChats: validates input, returns an honest empty on no corpus, and never throws when the
+// (faked) worker returns non-JSON — it yields no matches rather than fabricating any.
+test('searchChats validates input and degrades honestly', async () => {
+  const blank = await call('searchChats', '   ', []);
+  expect(blank.ok).toBe(false);
+  const noCorpus = await call('searchChats', 'where did we decide X', []);
+  expect(noCorpus.ok).toBe(true);
+  expect(noCorpus.matches).toEqual([]);
+  const nonJson = await call('searchChats', 'find it', [{ id: 'x', name: 'X', messages: [{ cls: 'user', text: 'hi' }] }]);
+  expect(nonJson.ok).toBe(true);              // fake worker returns non-JSON -> no matches, not a crash
+  expect(Array.isArray(nonJson.matches)).toBe(true);
 });
 
 test('detections returns all five detector results in four-part format', async () => {

@@ -18,6 +18,7 @@ const { decideBackup } = require('./backup-policy');
 const { parseGitHubRepo, decideCiStatus, CI_CHECK_NAME } = require('./ci-status');
 const { parseStreamJson } = require('./stream-json');
 const chatSummary = require('./chat-summary');
+const chatRecall = require('./chat-recall');
 
 // This app is the single "home" cockpit. It opens PROJECTS (self-contained
 // folders each with their own .cockpit + engine scripts + CLAUDE.md, exactly
@@ -756,6 +757,31 @@ ipcMain.handle('pcc:deleteChatFiles', (_e, chatId) => {
     if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
     return { ok: true };
   } catch (e) { return { ok: false, text: e.message }; }
+});
+
+// Search chat history (docs/CHAT_RECALL_SPEC.md): the "smart grep". Not a keyword box — the
+// front end expands the plain-English question, a local (free) grep narrows the corpus recall-
+// safely, and the finisher reads the candidates and returns ALL genuine matches by MEANING (or
+// nothing, never inventing). Both AI stages are the stateless read-only one-shot worker. The
+// corpus is the live chats the renderer passes (always fresh); disk files serve extractability.
+ipcMain.handle('pcc:searchChats', async (_e, query, chats) => {
+  if (typeof query !== 'string' || !query.trim()) return { ok: false, text: 'Type something to search for.' };
+  const corpus = (Array.isArray(chats) ? chats : []).filter((c) => c && c.id && Array.isArray(c.messages) && c.messages.length);
+  if (corpus.length === 0) return { ok: true, matches: [], terms: [] };
+  // 1) expand (AI, cheap) — plain English -> keyword+synonym list.
+  const exp = await oneShotWorker(chatRecall.buildExpandPrompt(query));
+  const terms = chatRecall.parseTerms(exp.ok ? exp.text : '', query);
+  // 2) grep (local, free) + recall-safe candidate set.
+  const hits = chatRecall.grep(terms, corpus);
+  const byId = Object.fromEntries(corpus.map((c) => [c.id, c]));
+  const candidateChats = chatRecall.selectCandidates(corpus, hits, chatRecall.CANDIDATE_CAP).map((id) => byId[id]);
+  // 3) judge (AI) — return every genuine match, or none.
+  const jr = await oneShotWorker(chatRecall.buildJudgePrompt(query, candidateChats));
+  if (!jr.ok) return { ok: false, text: jr.text };
+  const matches = chatRecall.parseMatches(jr.text)
+    .filter((m) => byId[m.chatId])
+    .map((m) => ({ chatId: m.chatId, chatName: byId[m.chatId].name || 'chat', answer: m.answer, quote: m.quote }));
+  return { ok: true, matches, terms };
 });
 
 // ---- New Project create-flow (DECISION-114): "New Project" is a new document ----
