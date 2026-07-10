@@ -22,19 +22,30 @@
   }
 
   // Decide CI state from a GitHub check-runs array (the API is queried BY commit sha, so any runs
-  // returned are already for the current commit — freshness is inherent). Conservative on purpose:
-  //   'passed'  — every run finished and at least one succeeded, with NO failures.
-  //   'failed'  — a run finished in a failure state.
-  //   'pending' — at least one run has not finished yet.
-  //   'none'    — no runs, or only neutral/skipped runs (nothing to claim either way).
+  // returned are already for the current commit — freshness is inherent). The verdict is tied ONLY
+  // to our OWN test suite's check (`expectedName`, the CI job name, default 'test'): an unrelated
+  // successful check (a bot, CodeQL, a second workflow) must NEVER read as "the test suite passed"
+  // — that would be a fabricated green. Conservative on purpose:
+  //   'passed'  — our test check ran, completed, and succeeded.
+  //   'failed'  — our test check ran and finished in a failure state.
+  //   'pending' — our test check exists but has not finished yet.
+  //   'none'    — our test check has not reported for this commit (or only neutral/skipped),
+  //               so there is no honest claim to make; the chip falls back to the local record.
   const FAILURE_CONCLUSIONS = ['failure', 'timed_out', 'cancelled', 'action_required', 'startup_failure'];
-  function decideCiStatus(checkRuns) {
+  function decideCiStatus(checkRuns, expectedName) {
+    const want = String(expectedName || 'test').toLowerCase();
     if (!Array.isArray(checkRuns) || checkRuns.length === 0) return 'none';
-    if (checkRuns.some((r) => r && r.status !== 'completed')) return 'pending';
-    if (checkRuns.some((r) => r && FAILURE_CONCLUSIONS.indexOf(r.conclusion) !== -1)) return 'failed';
-    if (checkRuns.some((r) => r && r.conclusion === 'success')) return 'passed';
-    return 'none'; // all neutral/skipped — no honest claim to make
+    // Only our named test check can justify a pass/fail claim. Unrelated checks are ignored.
+    const mine = checkRuns.filter((r) => r && String(r.name || '').toLowerCase() === want);
+    if (mine.length === 0) return 'none';                                        // our suite hasn't reported
+    if (mine.some((r) => r.status !== 'completed')) return 'pending';
+    if (mine.some((r) => FAILURE_CONCLUSIONS.indexOf(r.conclusion) !== -1)) return 'failed';
+    if (mine.some((r) => r.conclusion === 'success')) return 'passed';
+    return 'none';                                                               // ran but neutral/skipped
   }
 
-  return { parseGitHubRepo: parseGitHubRepo, decideCiStatus: decideCiStatus };
+  // The CI job/check name that IS the execution proof (.github/workflows/ci.yml -> jobs.test).
+  const CI_CHECK_NAME = 'test';
+
+  return { parseGitHubRepo: parseGitHubRepo, decideCiStatus: decideCiStatus, CI_CHECK_NAME: CI_CHECK_NAME };
 });

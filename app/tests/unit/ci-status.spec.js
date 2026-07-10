@@ -22,34 +22,52 @@ test('parseGitHubRepo returns null for non-GitHub or empty remotes (local-only p
   expect(parseGitHubRepo('/some/local/path')).toBeNull();
 });
 
+// The verdict is tied to our named 'test' check (default expectedName). These use name:'test'.
 test('decideCiStatus: no runs → none (no claim either way)', () => {
   expect(decideCiStatus([])).toBe('none');
   expect(decideCiStatus(null)).toBe('none');
   expect(decideCiStatus(undefined)).toBe('none');
 });
 
-test('decideCiStatus: any unfinished run → pending (never a premature green)', () => {
-  expect(decideCiStatus([{ status: 'in_progress' }])).toBe('pending');
-  expect(decideCiStatus([{ status: 'completed', conclusion: 'success' }, { status: 'queued' }])).toBe('pending');
+test('decideCiStatus: our test check unfinished → pending (never a premature green)', () => {
+  expect(decideCiStatus([{ name: 'test', status: 'in_progress' }])).toBe('pending');
+  expect(decideCiStatus([{ name: 'test', status: 'queued' }])).toBe('pending');
 });
 
-test('decideCiStatus: a failure conclusion → failed (honest red)', () => {
-  expect(decideCiStatus([{ status: 'completed', conclusion: 'failure' }])).toBe('failed');
-  expect(decideCiStatus([
-    { status: 'completed', conclusion: 'success' },
-    { status: 'completed', conclusion: 'timed_out' },
-  ])).toBe('failed');
+test('decideCiStatus: our test check failed → failed (honest red)', () => {
+  expect(decideCiStatus([{ name: 'test', status: 'completed', conclusion: 'failure' }])).toBe('failed');
+  expect(decideCiStatus([{ name: 'test', status: 'completed', conclusion: 'timed_out' }])).toBe('failed');
 });
 
-test('decideCiStatus: all complete + a success + no failures → passed', () => {
-  expect(decideCiStatus([{ status: 'completed', conclusion: 'success' }])).toBe('passed');
+test('decideCiStatus: our test check ran + succeeded → passed', () => {
+  expect(decideCiStatus([{ name: 'test', status: 'completed', conclusion: 'success' }])).toBe('passed');
+});
+
+// The hole Codex caught: an UNRELATED successful check must NEVER read as "the test suite passed".
+test('decideCiStatus: unrelated success but our test check absent → none (no fabricated green)', () => {
+  expect(decideCiStatus([{ name: 'CodeQL', status: 'completed', conclusion: 'success' }])).toBe('none');
+  expect(decideCiStatus([{ name: 'Dependabot', status: 'completed', conclusion: 'success' }])).toBe('none');
+});
+
+test('decideCiStatus: unrelated checks are ignored; only our test check drives the verdict', () => {
+  // our test passed; an unrelated bot failed → still passed (claim is specifically "test suite passed")
   expect(decideCiStatus([
-    { status: 'completed', conclusion: 'success' },
-    { status: 'completed', conclusion: 'skipped' },
+    { name: 'test', status: 'completed', conclusion: 'success' },
+    { name: 'some-bot', status: 'completed', conclusion: 'failure' },
   ])).toBe('passed');
+  // our test still running while an unrelated check finished → pending, not green
+  expect(decideCiStatus([
+    { name: 'test', status: 'in_progress' },
+    { name: 'CodeQL', status: 'completed', conclusion: 'success' },
+  ])).toBe('pending');
 });
 
-test('decideCiStatus: only neutral/skipped → none (nothing was actually proven)', () => {
-  expect(decideCiStatus([{ status: 'completed', conclusion: 'neutral' }])).toBe('none');
-  expect(decideCiStatus([{ status: 'completed', conclusion: 'skipped' }])).toBe('none');
+test('decideCiStatus: our test check ran but neutral/skipped → none (nothing actually proven)', () => {
+  expect(decideCiStatus([{ name: 'test', status: 'completed', conclusion: 'neutral' }])).toBe('none');
+  expect(decideCiStatus([{ name: 'test', status: 'completed', conclusion: 'skipped' }])).toBe('none');
+});
+
+test('decideCiStatus: expectedName is honored (case-insensitive)', () => {
+  expect(decideCiStatus([{ name: 'build', status: 'completed', conclusion: 'success' }], 'build')).toBe('passed');
+  expect(decideCiStatus([{ name: 'TEST', status: 'completed', conclusion: 'success' }])).toBe('passed');
 });

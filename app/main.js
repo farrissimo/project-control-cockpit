@@ -15,7 +15,7 @@ const { spawn, spawnSync, exec, execFile } = require('child_process');
 const { parseVerification } = require('./renderer/verification-parse');
 const { createAuthorityStore } = require('./authority-store');
 const { decideBackup } = require('./backup-policy');
-const { parseGitHubRepo, decideCiStatus } = require('./ci-status');
+const { parseGitHubRepo, decideCiStatus, CI_CHECK_NAME } = require('./ci-status');
 
 // This app is the single "home" cockpit. It opens PROJECTS (self-contained
 // folders each with their own .cockpit + engine scripts + CLAUDE.md, exactly
@@ -888,7 +888,7 @@ ipcMain.handle('pcc:ciStatus', async () => {
     if (res.status === 404) return { ok: true, available: false, reason: 'not_found_or_private' };
     if (!res.ok) return { ok: true, available: false, reason: 'http_' + res.status };
     const body = await res.json();
-    return { ok: true, available: true, state: decideCiStatus(body && body.check_runs), sha: head.out };
+    return { ok: true, available: true, state: decideCiStatus(body && body.check_runs, CI_CHECK_NAME), sha: head.out };
   } catch (e) {
     return { ok: true, available: false, reason: 'unreachable' }; // offline / DNS / abort — never a red
   }
