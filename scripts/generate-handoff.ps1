@@ -50,7 +50,15 @@ if (Test-Path -LiteralPath $vPath -PathType Leaf) {
   $m = [regex]::Match($vtext, '(?im)^[ \t]*VERDICT:[ \t]*(PASS|FAIL|INSUFFICIENT|BLOCKED|OUT_OF_SCOPE)\b')
   if ($m.Success) {
     $vt = [regex]::Match($vtext, '(?im)^[ \t]*TYPE:[ \t]*(review_only|local_execution|ci_execution|live_boundary)\b')
-    $typeStr = if ($vt.Success) { " [$($vt.Groups[1].Value.ToLower())]" } else { '' }
+    $typeStr = ''
+    if ($vt.Success) {
+      $ty = $vt.Groups[1].Value.ToLower()
+      # Origin seam (roadmap #3): this record is hand-editable, so it can only be TRUSTED to claim
+      # review_only/local_execution. A ci_execution/live_boundary line is an unverifiable clean-room
+      # CLAIM from a text file — the briefing must not present it as real CI proof (that comes only
+      # from the live CI check), or a forged label would mislead a fresh session.
+      $typeStr = if ($ty -eq 'ci_execution' -or $ty -eq 'live_boundary') { " [claimed $ty - unverified from this file]" } else { " [$ty]" }
+    }
     $verdict = "$($m.Groups[1].Value.ToUpper())$typeStr (from $vPath)"
   }
 }
