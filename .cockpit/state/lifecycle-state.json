@@ -1,7 +1,7 @@
 {
   "lane": "app-build-decision-102",
   "current_stage": "work",
-  "active_task": "Owner/Visionary Overview (DECISION-107) DONE: Project page leads with a deterministic meaning layer (condition, needs-owner, next move, journey-from-lifecycle, vision promises, honest proof), and every new project is born with it + a fresh vision-promises.json. Owner directive: STOP and assess next steps now.",
-  "note": "Set 2026-07-07. Done: DECISION-105 (CI+taxonomy), 106 (kit travels), 107 (owner overview + standardization). Next: owner-led assessment. Deferred queue: real boundary captures, evidence-status/live-CI-in-app (turns proof card green), changed-files view, lean file-attach.",
-  "updated_at": "2026-07-07T14:30:00-06:00"
+  "active_task": "Crisis Recovery / truth-surface hardening (owner directive 2026-07-10): every visible claim must prove source + read-time + freshness, never silently reassuring when stale. Feature work stopped until the boot-visible truth surface is audited. In progress: live truth-ledger of the chat screen; fixed the failing CI test + a real test-isolation leak that let `npm test` rewrite the owner's real chat backup.",
+  "note": "Set 2026-07-10. Superseded the stale 2026-07-07 pin (DECISION-107), which this screen was still showing as 'current' — itself a trust defect. Phase 0 done (incident bundle C:\\PCC-Incidents\\20260710-115113). CI fix pushed as 88c95cb (257/257 local green). Next: finish the truth-surface audit (Phase 1).",
+  "updated_at": "2026-07-10T12:20:00-06:00"
 }
