@@ -16,7 +16,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { readJson, readPrevJson, writeJsonAtomic } = require('../../state/atomic-store');
+const { readJson, readPrevJson, writeJsonAtomic, writeTextAtomic } = require('../../state/atomic-store');
 
 function tmpDir() { return fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-atomic-')); }
 
@@ -204,4 +204,40 @@ test('a short (partial) fs.writeSync still writes the COMPLETE file (loops to co
   assert.equal(w.ok, true);
   assert.deepEqual(readJson(file).data, data, 'complete content despite 8-byte short writes');
   assert.equal(leftoverTemps(dir, 'chats.json').length, 0);
+});
+
+// ---- writeTextAtomic (durable raw-text write, e.g. PROJECT.md) ----
+
+test('writeTextAtomic writes text and retains the prior generation in .prev', () => {
+  const dir = tmpDir();
+  const file = path.join(dir, 'PROJECT.md');
+  assert.equal(writeTextAtomic(file, 'v1').ok, true);
+  assert.equal(fs.readFileSync(file, 'utf8'), 'v1');
+  assert.equal(fs.existsSync(file + '.prev'), false, 'no .prev on first write');
+  assert.equal(writeTextAtomic(file, 'v2').ok, true);
+  assert.equal(fs.readFileSync(file, 'utf8'), 'v2');
+  assert.equal(fs.readFileSync(file + '.prev', 'utf8'), 'v1', 'prior generation retained');
+  assert.equal(leftoverTemps(dir, 'PROJECT.md').length, 0);
+});
+
+test('writeTextAtomic rejects a non-string and never touches the file', () => {
+  const dir = tmpDir();
+  const file = path.join(dir, 'PROJECT.md');
+  writeTextAtomic(file, 'keep');
+  assert.equal(writeTextAtomic(file, null).ok, false);
+  assert.equal(writeTextAtomic(file, 42).ok, false);
+  assert.equal(fs.readFileSync(file, 'utf8'), 'keep', 'file unchanged by a rejected write');
+});
+
+test('writeTextAtomic FAILS CLOSED when the current file is unreadable (never overwrites it)', () => {
+  const dir = tmpDir();
+  const file = path.join(dir, 'PROJECT.md');
+  writeTextAtomic(file, 'current');
+  const r = withPatch(fs, 'readFileSync', (orig) => (p, ...rest) => {
+    if (p === file) throw new Error('EBUSY');
+    return orig(p, ...rest);
+  }, () => writeTextAtomic(file, 'new'));
+  assert.equal(r.ok, false);
+  assert.match(r.error, /prev_preserve_failed|unreadable/);
+  assert.equal(leftoverTemps(dir, 'PROJECT.md').length, 0, 'temp cleaned up on failure');
 });

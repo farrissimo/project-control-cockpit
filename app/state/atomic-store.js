@@ -167,4 +167,43 @@ function writeJsonAtomic(file, data) {
   return { ok: true };
 }
 
-module.exports = { readJson, readPrevJson, writeJsonAtomic };
+// Durable atomic TEXT write — same guarantees as writeJsonAtomic but for a raw
+// string (e.g. the owner-curated PROJECT.md), so an interrupted write can never
+// truncate the file and the immediately-prior generation is retained in <file>.prev.
+// Unlike JSON there is no shape to validate: any existing current is valid bytes and
+// is preserved before the atomic rename. Returns { ok } | { ok:false, error }; never
+// throws. If the current exists but is unreadable, FAILS CLOSED (never overwrite a
+// possibly-good, momentarily-unreadable file).
+function writeTextAtomic(file, text) {
+  if (typeof text !== 'string') return { ok: false, error: 'writeTextAtomic expects a string' };
+  const dir = path.dirname(file);
+  const base = path.basename(file);
+  const buf = Buffer.from(text, 'utf8');
+
+  try { fs.mkdirSync(dir, { recursive: true }); }
+  catch (e) { return { ok: false, error: 'mkdir_failed: ' + e.message }; }
+
+  const targetTmp = _uniqueTmp(dir, base, 'new');
+  try { _writeFsync(targetTmp, buf); }
+  catch (e) { _cleanup(targetTmp); return { ok: false, error: 'temp_write_failed: ' + e.message }; }
+
+  // Preserve the existing current (any bytes) to `.prev` BEFORE replacing it.
+  if (fs.existsSync(file)) {
+    let curRaw;
+    try { curRaw = fs.readFileSync(file); }
+    catch (e) { _cleanup(targetTmp); return { ok: false, error: 'prev_preserve_failed: current unreadable: ' + e.message }; }
+    const prevTmp = _uniqueTmp(dir, base, 'prev');
+    try { _writeFsync(prevTmp, curRaw); }
+    catch (e) { _cleanup(prevTmp); _cleanup(targetTmp); return { ok: false, error: 'prev_preserve_failed: ' + e.message }; }
+    try { fs.renameSync(prevTmp, file + '.prev'); }
+    catch (e) { _cleanup(prevTmp); _cleanup(targetTmp); return { ok: false, error: 'prev_install_failed: ' + e.message }; }
+  }
+
+  try { fs.renameSync(targetTmp, file); }
+  catch (e) { _cleanup(targetTmp); return { ok: false, error: 'rename_failed: ' + e.message }; }
+
+  _fsyncDir(dir);
+  return { ok: true };
+}
+
+module.exports = { readJson, readPrevJson, writeJsonAtomic, writeTextAtomic };

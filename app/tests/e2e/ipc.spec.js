@@ -5,6 +5,23 @@
 // that the button-level E2E might mask.
 const { test, expect } = require('@playwright/test');
 const { launchApp, closeApp } = require('../helpers/launch');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const crypto = require('crypto');
+
+// The owner's REAL PROJECT.md (HOME_DIR = repo root = app/..). Write tests must NEVER touch it.
+const REAL_PROJECT_MD = path.join(__dirname, '..', '..', '..', 'PROJECT.md');
+function sha256(f) { return fs.existsSync(f) ? crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex') : null; }
+function makeTempPccProject(name) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-mem-'));
+  fs.mkdirSync(path.join(dir, '.cockpit', 'state'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'CLAUDE.md'), '# Rules\n');
+  fs.writeFileSync(path.join(dir, 'PROJECT.md'), 'ORIGINAL BRIEF ' + name + '\n');
+  fs.writeFileSync(path.join(dir, '.cockpit', 'state', 'project-state.json'), JSON.stringify({ project_name: name }));
+  return dir;
+}
 
 let app, page;
 test.beforeAll(async () => { ({ app, page } = await launchApp()); });
@@ -82,20 +99,35 @@ test('getMemory reads PROJECT.md', async () => {
   expect(typeof r.text).toBe('string');
 });
 
-test('saveMemory round-trips without changing the file', async () => {
-  const before = (await call('getMemory')).text;
-  const res = await call('saveMemory', before); // write identical content back
-  expect(res.ok).toBe(true);
-  const after = (await call('getMemory')).text;
-  expect(after).toBe(before);
-});
-
-test('saveMemory rejects a non-string without touching the file (negative)', async () => {
-  const before = (await call('getMemory')).text;
-  const res = await page.evaluate(() => window.pcc.saveMemory(null));
-  expect(res.ok).toBe(false);
-  const after = (await call('getMemory')).text;
-  expect(after).toBe(before); // PROJECT.md was NOT overwritten with "null"
+// I5: saveMemory WRITE tests run against a THROWAWAY project (own app instance) so they
+// never touch the owner's real PROJECT.md — and they assert the real one is untouched.
+// The write is atomic (retains PROJECT.md.prev) and rejects a non-string.
+test('saveMemory writes atomically to the ACTIVE project only, never the real PROJECT.md (I5)', async () => {
+  const proj = makeTempPccProject('MemProj');
+  const realBefore = sha256(REAL_PROJECT_MD);
+  const { app: app2, page: page2 } = await launchApp();
+  try {
+    const call2 = (m, ...a) => page2.evaluate(([mm, aa]) => window.pcc[mm](...aa), [m, a]);
+    await call2('addProject', proj);
+    await call2('setActiveProject', proj);
+    const before = (await call2('getMemory')).text;
+    expect(before).toContain('ORIGINAL BRIEF');
+    // Round-trip an edit against the THROWAWAY project's PROJECT.md.
+    const w = await call2('saveMemory', before + 'EDITED');
+    expect(w.ok).toBe(true);
+    expect((await call2('getMemory')).text).toBe(before + 'EDITED');
+    // Atomic write retained a prior generation.
+    expect(fs.existsSync(path.join(proj, 'PROJECT.md.prev'))).toBe(true);
+    // A non-string is rejected without touching the file.
+    const neg = await page2.evaluate(() => window.pcc.saveMemory(null));
+    expect(neg.ok).toBe(false);
+    expect((await call2('getMemory')).text).toBe(before + 'EDITED');
+  } finally {
+    await closeApp(app2);
+    try { fs.rmSync(proj, { recursive: true, force: true }); } catch (e) { /* best effort */ }
+  }
+  // The owner's REAL PROJECT.md was never touched by these writes.
+  expect(sha256(REAL_PROJECT_MD)).toBe(realBefore);
 });
 
 test('newChat resets the pinned session', async () => {

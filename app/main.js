@@ -29,7 +29,22 @@ const chatRecall = require('./chat-recall');
 const HOME_DIR = path.join(__dirname, '..');
 let projectDir = HOME_DIR;               // active project root (switchable)
 const cockpitDir = () => path.join(projectDir, '.cockpit');
-const memoryPath = () => path.join(projectDir, 'PROJECT.md');
+// PROJECT.md path. In TEST MODE, when the active project is the HOME repo (the real
+// codebase), redirect to a throwaway shadow under userData — SEEDED once from the
+// real file — so the suite exercises the real read/write path but can NEVER write
+// (or rotate a .prev over) the owner's actual PROJECT.md. Same isolation principle
+// as chatsDir(). A switched-to real project (projectDir !== HOME_DIR) is untouched.
+const memoryPath = () => {
+  if (process.env.PCC_TEST_MODE && projectDir === HOME_DIR) {
+    const shadow = path.join(app.getPath('userData'), 'PROJECT.home-test.md');
+    if (!fs.existsSync(shadow)) {
+      try { fs.copyFileSync(path.join(HOME_DIR, 'PROJECT.md'), shadow); }
+      catch (e) { try { fs.writeFileSync(shadow, ''); } catch (_) { /* best effort seed */ } }
+    }
+    return shadow;
+  }
+  return path.join(projectDir, 'PROJECT.md');
+};
 // Chat history storage root. In tests we isolate it to the throwaway per-launch
 // userData dir (launch.js passes --user-data-dir) so the suite can NEVER read or
 // mutate the owner's real project chats. The file-backed mirror lives in the
@@ -209,8 +224,10 @@ ipcMain.handle('pcc:saveMemory', (_e, text) => {
   // Reject non-strings: a stray null/undefined must never overwrite PROJECT.md
   // with the literal "null"/"undefined" (the old String(text) coercion would).
   if (typeof text !== 'string') return { ok: false, error: 'saveMemory expects a string' };
-  try { fs.writeFileSync(memoryPath(), text, 'utf8'); return { ok: true }; }
-  catch (e) { return { ok: false, error: e.message }; }
+  // Atomic + retains a prior generation, so an interrupted write can never truncate
+  // the owner's curated PROJECT.md and the last good copy survives in PROJECT.md.prev.
+  const w = atomicStore.writeTextAtomic(memoryPath(), text);
+  return w.ok ? { ok: true } : { ok: false, error: w.error };
 });
 
 // Independent verification: drive Codex CLI's supported non-interactive mode
