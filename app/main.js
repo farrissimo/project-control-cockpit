@@ -14,6 +14,7 @@ const crypto = require('crypto');
 const { spawn, spawnSync, exec, execFile } = require('child_process');
 const { parseVerification, matchesCurrentCommit } = require('./renderer/verification-parse');
 const { createAuthorityStore } = require('./authority-store');
+const atomicStore = require('./state/atomic-store'); // durable write: atomic rename + retained .prev
 const { decideBackup } = require('./backup-policy');
 const { parseGitHubRepo, decideCiStatus, CI_CHECK_NAME } = require('./ci-status');
 const { parseStreamJson } = require('./stream-json');
@@ -75,9 +76,35 @@ function projectName(dir) {
   return path.basename(dir);
 }
 
+// True when the LAST readRegistry() had to fall back to HOME-only because BOTH the
+// current file and its prior generation were unreadable. Startup uses it to avoid
+// overwriting (and destroying) a still-forensically-recoverable corrupt registry.
+let registryDegraded = false;
+
 function readRegistry() {
-  let reg = { active: null, projects: [] };
-  try { reg = JSON.parse(fs.readFileSync(registryPath(), 'utf8')) || reg; } catch (e) { /* first run */ }
+  const def = { active: null, projects: [] };
+  let reg = def;
+  registryDegraded = false;
+  // Read via the atomic primitive: a parseable current is used; a CORRUPT current
+  // recovers from the retained prior generation (.prev) rather than silently
+  // resetting to empty — the old code's `catch -> {projects:[]}` dropped EVERY
+  // registered project on a single bad/partial write. A genuinely missing file is
+  // first run (default). If BOTH current and .prev are unreadable we start from HOME
+  // only but do NOT overwrite the file here, so a still-recoverable file is preserved.
+  const cur = atomicStore.readJson(registryPath());
+  if (cur.ok && cur.data && typeof cur.data === 'object' && !Array.isArray(cur.data)) {
+    reg = cur.data;
+  } else if (!cur.missing) {
+    const prev = atomicStore.readPrevJson(registryPath());
+    if (prev.ok && prev.data && typeof prev.data === 'object' && !Array.isArray(prev.data)) {
+      reg = prev.data;
+      console.warn('[registry] current unreadable (' + cur.error + '); recovered the project list from the prior generation.');
+    } else {
+      registryDegraded = true;
+      console.error('[registry] current AND prior generation unreadable (' + cur.error + '); starting from HOME only and NOT overwriting on disk.');
+    }
+  }
+  if (!reg || typeof reg !== 'object') reg = def;
   if (!Array.isArray(reg.projects)) reg.projects = [];
   // HOME is always present, first, and de-duplicated.
   reg.projects = reg.projects.filter((p) => typeof p === 'string' && p !== HOME_DIR && fs.existsSync(p));
@@ -87,8 +114,14 @@ function readRegistry() {
   return reg;
 }
 
+// Atomic + retains one prior generation, so a partial/interrupted write can never
+// truncate the registry, and a bad write leaves the last good one in .prev. Returns
+// { ok } | { ok:false, error } — callers surface a real persistence failure instead
+// of telling the owner "saved" when nothing reached disk.
 function writeRegistry(reg) {
-  try { fs.writeFileSync(registryPath(), JSON.stringify(reg, null, 2), 'utf8'); } catch (e) { /* best effort */ }
+  const w = atomicStore.writeJsonAtomic(registryPath(), reg);
+  if (!w.ok) console.error('[registry] write failed:', w.error);
+  return w;
 }
 
 // PCC drives Claude Code through the owner's claude.ai LOGIN, not a paid API key
@@ -502,9 +535,14 @@ ipcMain.handle('pcc:setActiveProject', (_e, dir) => {
   const reg = readRegistry();
   if (typeof dir !== 'string' || !reg.projects.includes(dir)) return { ok: false, error: 'Unknown project.' };
   if (!isPccProject(dir)) return { ok: false, error: 'Not a PCC project (missing .cockpit / scripts / CLAUDE.md).' };
+  // Persist FIRST: only actually switch the session if the selection reached disk,
+  // so a failed save never leaves the session and the switcher pointing at different
+  // projects (Codex). On failure nothing changes.
+  reg.active = dir;
+  const w = writeRegistry(reg);
+  if (!w.ok) return { ok: false, error: 'Could not save the selection; not switching: ' + w.error };
   projectDir = dir;
   sessionId = null;                 // don't carry a worker session across projects
-  reg.active = dir; writeRegistry(reg);
   return { ok: true, active: projectEntry(dir) };
 });
 
@@ -515,7 +553,8 @@ ipcMain.handle('pcc:addProject', (_e, dir) => {
   if (!isPccProject(dir)) return { ok: false, error: 'Not a PCC project. A project needs its own .cockpit, scripts/, and CLAUDE.md (create one with "New project").' };
   const reg = readRegistry();
   if (!reg.projects.includes(dir)) reg.projects.push(dir);
-  writeRegistry(reg);
+  const w = writeRegistry(reg);
+  if (!w.ok) return { ok: false, error: 'Could not save the project to the registry: ' + w.error };
   return { ok: true, project: projectEntry(dir) };
 });
 
@@ -993,11 +1032,15 @@ ipcMain.handle('pcc:createFlowSave', async (_e, name, location) => {
   // 3. register + make active
   const reg = readRegistry();
   if (!reg.projects.includes(target)) reg.projects.push(target);
-  reg.active = target; writeRegistry(reg);
-  projectDir = target; sessionId = null;
-  // 4. done — discard scratch, close the create-flow
+  reg.active = target;
+  const w = writeRegistry(reg);
+  // 4. done — discard scratch, close the create-flow (regardless of the registry write).
   rmScratch(createFlow.scratchDir);
   createFlow.active = false; createFlow.saving = false; createFlow.scratchDir = null; createFlow.chatId = null; createFlow.started = false;
+  // Persist FIRST: only switch the session to the new project if it reached the
+  // registry, so projectDir never diverges from the persisted active project.
+  if (!w.ok) return { ok: false, error: 'Project created on disk, but could not save it to the registry (re-add it from "Open existing"): ' + w.error };
+  projectDir = target; sessionId = null;
   return { ok: true, project: projectEntry(target) };
 });
 
@@ -1196,7 +1239,11 @@ app.whenReady().then(() => {
   try {
     const reg = readRegistry();
     if (reg.active && isPccProject(reg.active)) projectDir = reg.active;
-    writeRegistry(reg); // normalizes (ensures HOME present) on first run
+    // Normalize (ensure HOME present) on first run — but NEVER overwrite a registry
+    // whose current AND prior generation were both unreadable: that would destroy a
+    // still-recoverable file. In the degraded case we run this session from HOME
+    // in-memory and leave the corrupt file untouched for manual recovery.
+    if (!registryDegraded) writeRegistry(reg);
   } catch (e) { /* stay on HOME_DIR */ }
   createWindow();
   app.on('activate', () => {

@@ -111,3 +111,30 @@ test('chat history is isolated between projects', async () => {
   const keys = await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('pcc.chats.v2::')));
   expect(keys.length).toBeGreaterThanOrEqual(2);
 });
+
+// I2: a corrupt/partial registry write must NOT silently drop every registered
+// project. The atomic writer keeps a prior generation (.prev); readRegistry recovers
+// from it instead of resetting to HOME-only. Self-contained app so it can corrupt +
+// reload without disturbing the shared session above.
+test('registry recovers the project list from .prev when the current file is corrupt (I2)', async () => {
+  const proj = makeTempProject('RecoverMe');
+  const { app: app2, page: page2 } = await launchApp();
+  try {
+    const call2 = (m, ...a) => page2.evaluate(([mm, aa]) => window.pcc[mm](...aa), [m, a]);
+    await call2('addProject', proj);         // write: current has proj, .prev = pre-add
+    await call2('setActiveProject', proj);   // write: .prev now INCLUDES proj
+    const regFile = path.join(app2._pccUserDataDir, 'projects.json');
+    expect(fs.existsSync(regFile + '.prev')).toBe(true);
+    // Corrupt the CURRENT registry (unparseable); leave .prev intact.
+    fs.writeFileSync(regFile, '{ corrupt registry not json', 'utf8');
+    await page2.reload();
+    await page2.waitForLoadState('domcontentloaded');
+    // Recovered from .prev — proj is still registered, NOT reset to HOME-only.
+    const list = await call2('listProjects');
+    const paths = list.projects.map((p) => p.path);
+    expect(paths).toContain(proj);
+  } finally {
+    await closeApp(app2);
+    try { fs.rmSync(proj, { recursive: true, force: true }); } catch (e) { /* best effort */ }
+  }
+});
