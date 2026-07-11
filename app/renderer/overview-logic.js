@@ -52,6 +52,10 @@
     }
     const notice = (key) => !!(det && det[key] && det[key].signal === 'notice');
     const syncDirty = !!(sync && !sync._error && sync.clean === false);
+    // Backup state UNKNOWN (git could not be read, or the fact is missing): we must
+    // NOT let the ladder fall through to "Healthy — backed up" over a state we could
+    // not confirm (CRIT-2). Treated like an urgent item, below dirty.
+    const syncUnknown = !sync || !!sync._error;
     const factsReadable = !!(lc && lc.signal === 'ok' && det && x);
 
     // Current lifecycle stage. Proof only becomes relevant once there is built work
@@ -84,6 +88,8 @@
       cond = { label: 'Needs proof', cls: 'warn', why: why, safe: 'Yes, with caution.' };
     } else if (syncDirty) {
       cond = { label: 'Needs attention', cls: 'warn', why: 'Work is not fully backed up (uncommitted, untracked, or unpushed changes).', safe: 'Yes, but back up soon.' };
+    } else if (syncUnknown) {
+      cond = { label: 'Needs attention', cls: 'warn', why: 'Could not read git/backup status, so “backed up” cannot be confirmed — check that git is available.', safe: 'Yes, but confirm your work is backed up.' };
     } else if (notice('drift') || notice('highStakes') || notice('staleDocs') || notice('bloat')) {
       const which = notice('drift') ? 'possible scope drift' : notice('highStakes') ? 'a high-stakes change' : notice('staleDocs') ? 'stale docs' : 'a bloat signal';
       cond = { label: 'Needs attention', cls: 'warn', why: 'A signal is raised: ' + which + '. See the evidence below / Signals tab.', safe: 'Yes, with caution.' };
@@ -99,6 +105,7 @@
     let needs;
     if (proof.kind === 'failing') needs = { main: 'Verification needs a look', sub: 'Last verdict: ' + proof.verdict + '.', attn: true };
     else if (syncDirty) needs = { main: 'Backup needed', sub: 'Some work isn’t saved to the remote yet.', attn: true };
+    else if (syncUnknown) needs = { main: 'Check backup status', sub: 'Git status could not be read, so backup can’t be confirmed.', attn: true };
     else if (needProof) needs = { main: 'Verification needed', sub: 'The current code has no fresh executed proof.', attn: true };
     else if (notice('drift') || notice('highStakes')) needs = { main: 'Review needed', sub: notice('drift') ? 'A scope-drift signal is raised.' : 'A high-stakes change is flagged.', attn: true };
     else if (visionNeedsReview) needs = { main: 'Confirm the project’s vision', sub: 'The vision promises haven’t been reviewed as your real intent yet — confirm them so the build has a north star.', attn: true };
@@ -107,6 +114,7 @@
     // ---- NEXT BEST MOVE (urgent overrides, else the lifecycle's own next step) ----
     let move;
     if (syncDirty) move = { main: 'Back up the project', sub: 'Some work isn’t saved to the remote yet.', fromLifecycle: false };
+    else if (syncUnknown) move = { main: 'Check git / backup', sub: 'Git status could not be read, so backup can’t be confirmed.', fromLifecycle: false };
     else if (needProof) move = { main: 'Get execution proof', sub: 'The current code has no fresh executed verification.', fromLifecycle: false };
     else if (notice('drift')) move = { main: 'Review scope drift', sub: 'Changes may be outside the declared boundary.', fromLifecycle: false };
     else if (notice('highStakes')) move = { main: 'Get a second opinion', sub: 'This touches something costly to get wrong.', fromLifecycle: false };

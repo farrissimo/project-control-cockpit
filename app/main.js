@@ -1072,8 +1072,15 @@ ipcMain.handle('pcc:ciStatus', async () => {
 });
 
 ipcMain.handle('pcc:syncStatus', async () => {
-  const branch = (await git(['rev-parse', '--abbrev-ref', 'HEAD'])).out;
+  const branchR = await git(['rev-parse', '--abbrev-ref', 'HEAD']);
   const porcelain = await git(['status', '--porcelain']);
+  // Fail closed: if git cannot report the branch OR the working tree, we CANNOT
+  // claim clean / backed up. Return a structured error (never clean:true) so no
+  // consumer paints "everything is backed up / Healthy" over a tree git never read.
+  if (branchR.failed || porcelain.failed) {
+    return { _error: 'git_unreadable', branch: branchR.out || null, mode: readBackupPolicy() };
+  }
+  const branch = branchR.out;
   const lines = porcelain.out ? porcelain.out.split('\n') : [];
   const untracked = lines.filter((l) => l.startsWith('??')).length;
   const dirty = lines.filter((l) => l && !l.startsWith('??')).length;

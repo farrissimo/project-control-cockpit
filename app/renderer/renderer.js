@@ -1882,6 +1882,13 @@ async function loadSync() {
   statusEl.className = 'sync-status muted'; statusEl.textContent = 'Checking…';
   let s = null;
   try { s = await window.pcc.syncStatus(); } catch (e) { statusEl.textContent = 'Could not read git status.'; return; }
+  // Fail closed: git could not read the tree -> backup state is UNKNOWN. Never fall
+  // through to "everything is backed up" over a state git never read (CRIT-2).
+  if (!s || s._error) {
+    statusEl.className = 'sync-status warn';
+    statusEl.textContent = 'Could not read git status — backup state unknown. Check that git is available in this project.';
+    return;
+  }
   let cls = 'good', msg;
   if (s.clean && s.behind === 0) {
     // Honest per backup tier (owner policy): only a pushed remote is "backed up off-machine".

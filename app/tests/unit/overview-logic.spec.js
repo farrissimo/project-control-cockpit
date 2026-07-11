@@ -17,6 +17,7 @@ const lcOk = {
 };
 const noNotices = { drift: { signal: 'clear' }, highStakes: { signal: 'clear' }, staleDocs: { signal: 'clear' }, bloat: { signal: 'clear' }, untracked: { signal: 'clear' }, repoSync: { signal: 'clear' } };
 const cleanSync = { clean: true };
+const unknownSync = { _error: 'git_unreadable' }; // syncStatus fails closed when git can't read the tree
 const rulesX = (verif) => ({ verification: verif, headCommitEpoch: 100, rulesLoaded: true });
 // Freshness is now COMMIT-BOUND: main sets verification.matchesCurrent (VERIFIED_SHA == HEAD and clean tree).
 const freshReview = { present: true, verdict: 'PASS', type: 'review_only', matchesCurrent: true };
@@ -41,6 +42,15 @@ test('an executed PASS that no longer matches current code is NOT Healthy (commi
   expect(m.cond.label).toBe('Needs proof');            // not Healthy — the proof no longer covers current code
   expect(m.proof.exec).toBe('not surfaced in the app yet'); // a stale executed PASS is NOT surfaced as current execution proof
   expect(m.cond.why.toLowerCase()).toContain('current code');
+});
+
+// CRIT-2 fix: when git can't be read, syncStatus fails closed (_error) and the Overview
+// must NOT fall through to "Healthy — backed up" over a backup state it could not confirm.
+test('unknown backup status (git unreadable) is NOT Healthy — never a false "backed up" (CRIT-2)', () => {
+  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshLocal), sync: unknownSync, state: {}, vp: null });
+  expect(m.cond.label).toBe('Needs attention');
+  expect(m.cond.why.toLowerCase()).toContain('backed up');
+  expect(m.needs.main.toLowerCase()).toContain('backup');
 });
 
 test('review-only PASS is NOT executed proof and yields "Needs proof"', () => {
