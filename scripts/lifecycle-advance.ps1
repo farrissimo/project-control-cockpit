@@ -70,20 +70,32 @@ if ($target.entry_gate -eq 'fresh_verification_pass') {
     if ($mt.Success) { $vtype = $mt.Groups[1].Value.ToLower() }
     $fileEpoch = [int][double]::Parse((Get-Item -LiteralPath $verifyPath).LastWriteTimeUtc.Subtract([datetime]'1970-01-01').TotalSeconds)
   }
-  $headEpoch = 0
-  $h = & git log -1 --format=%ct 2>$null
-  if ($h) { $headEpoch = [int]$h }
-  $fresh = ($fileEpoch -ge $headEpoch)
+  # Freshness: the recorded PASS must be at least as new as HEAD's commit. If git
+  # cannot report HEAD's commit time we CANNOT prove freshness, so fail CLOSED
+  # (treat as not fresh). The old code defaulted $headEpoch = 0 on any git failure,
+  # which made $fresh = ($fileEpoch -ge 0) TRIVIALLY TRUE — a git-timestamp failure
+  # silently defeated the staleness half of the DECISION-012 gate (false green).
+  $headEpoch = $null
+  try {
+    $h = & git log -1 --format=%ct 2>$null
+    if ($LASTEXITCODE -eq 0 -and $h) {
+      $val = [long]0
+      if ([long]::TryParse((([string]($h | Select-Object -First 1)).Trim()), [ref]$val)) { $headEpoch = $val }
+    }
+  } catch { $headEpoch = $null }
+  $headKnown = ($null -ne $headEpoch)
+  $fresh = $headKnown -and ($fileEpoch -ge $headEpoch)
 
   if (-not $hasRecord -or $verdict -ne 'PASS' -or -not $vtype -or -not $fresh) {
     $why = if (-not $hasRecord) { 'no verification record exists yet' }
       elseif (-not $verdict) { 'the record has no structured "VERDICT:" line' }
       elseif ($verdict -ne 'PASS') { "the last verdict was $verdict" }
       elseif (-not $vtype) { 'the record has no recognized "TYPE:" line (review_only | local_execution | ci_execution | live_boundary)' }
+      elseif (-not $headKnown) { "git could not report HEAD's commit time, so the PASS's freshness cannot be proven (failing closed)" }
       else { 'the last PASS is older than the latest commit (stale)' }
     Emit ([ordered]@{
         ok = $false; reason = 'needs_verification'; from = $from; to = $To
-        verdict = $verdict; type = $vtype; fresh = $fresh
+        verdict = $verdict; type = $vtype; fresh = $fresh; head_time_known = $headKnown
         message = "Cannot advance to '$($target.label)': $why. Run an independent verification (a fresh, typed PASS) first."
       })
     return

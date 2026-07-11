@@ -28,6 +28,21 @@ function makeProject() {
   return dir;
 }
 
+// Same as makeProject but WITHOUT git init — so `git log -1 --format=%ct` fails
+// (not a git repository). Used to prove the freshness gate fails CLOSED when git
+// cannot report HEAD's commit time, instead of defaulting to "trivially fresh."
+function makeProjectNoGit() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-lc-nogit-'));
+  fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
+  fs.mkdirSync(path.join(dir, '.cockpit', 'state'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'app'), { recursive: true });
+  fs.copyFileSync(path.join(REPO, 'scripts', 'lifecycle-advance.ps1'), path.join(dir, 'scripts', 'lifecycle-advance.ps1'));
+  fs.copyFileSync(path.join(REPO, '.cockpit', 'state', 'lifecycle-model.json'), path.join(dir, '.cockpit', 'state', 'lifecycle-model.json'));
+  fs.writeFileSync(path.join(dir, '.cockpit', 'state', 'lifecycle-state.json'),
+    JSON.stringify({ lane: 'test', current_stage: 'verify', active_task: 'x' }));
+  return dir;
+}
+
 function advance(dir, to) {
   const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/lifecycle-advance.ps1', '-To', to, '-Json'],
     { cwd: dir, encoding: 'utf8', timeout: 20000 });
@@ -203,6 +218,25 @@ test('gate BLOCKS an executable phase closing on a FILE-claimed live_boundary (f
     expect(r.ok).toBe(false);
     expect(r.reason).toBe('needs_execution_proof');
     expect(currentStage(dir)).toBe('verify');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// I8 (Part 7 hardening): freshness fails CLOSED when git can't report HEAD's time.
+// A fresh, well-formed local_execution PASS that WOULD clear the gate is refused
+// when git cannot report HEAD's commit time — the staleness half of the gate must
+// not be defeated by a git failure (the old code defaulted headEpoch=0 -> always
+// "fresh"). Same record in a real git repo passes (proven by the test above), so
+// this isolates the git-unknown case.
+test('gate FAILS CLOSED when git cannot report HEAD time (no false-fresh)', () => {
+  const dir = makeProjectNoGit();
+  try {
+    recordVerdict(dir, 'PASS', 'local_execution'); // would pass with a working git HEAD
+    const r = advance(dir, 'phase_close');
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('needs_verification');
+    expect(r.fresh).toBe(false);
+    expect(r.head_time_known).toBe(false);
+    expect(currentStage(dir)).toBe('verify'); // pin did NOT move
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
