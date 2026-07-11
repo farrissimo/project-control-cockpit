@@ -56,6 +56,11 @@
     // NOT let the ladder fall through to "Healthy — backed up" over a state we could
     // not confirm (CRIT-2). Treated like an urgent item, below dirty.
     const syncUnknown = !sync || !!sync._error;
+    // A detector that CRASHED reports signal:'unknown' (main.js runDetector). An
+    // errored check is NOT an all-clear — the ladder must not fall through to Healthy
+    // as if it were "no signal". (The trust strip's railsFrom already treats unknown
+    // as unknown; the Overview must too.)
+    const detectorUnknown = ['drift', 'highStakes', 'staleDocs', 'bloat'].some((k) => det && det[k] && det[k].signal === 'unknown');
     const factsReadable = !!(lc && lc.signal === 'ok' && det && x);
 
     // Current lifecycle stage. Proof only becomes relevant once there is built work
@@ -93,6 +98,8 @@
     } else if (notice('drift') || notice('highStakes') || notice('staleDocs') || notice('bloat')) {
       const which = notice('drift') ? 'possible scope drift' : notice('highStakes') ? 'a high-stakes change' : notice('staleDocs') ? 'stale docs' : 'a bloat signal';
       cond = { label: 'Needs attention', cls: 'warn', why: 'A signal is raised: ' + which + '. See the evidence below / Signals tab.', safe: 'Yes, with caution.' };
+    } else if (detectorUnknown) {
+      cond = { label: 'Needs attention', cls: 'warn', why: 'A background check could not run, so its signal is UNKNOWN — treat with caution until it runs (an errored check is not an all-clear).', safe: 'Yes, with caution.' };
     } else if (x && !x.rulesLoaded) {
       cond = { label: 'Needs attention', cls: 'warn', why: 'Standing rules (CLAUDE.md) are not loading.', safe: 'Yes, with caution.' };
     } else if (preWork) {

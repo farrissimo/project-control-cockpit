@@ -53,6 +53,15 @@ test('unknown backup status (git unreadable) is NOT Healthy — never a false "b
   expect(m.needs.main.toLowerCase()).toContain('backup');
 });
 
+// I7: a detector that CRASHED (signal:'unknown') must not be treated as "no signal" and
+// let the ladder reach Healthy — an errored check is not an all-clear.
+test('a crashed detector (signal unknown) is NOT an all-clear — never Healthy (I7)', () => {
+  const detCrashed = Object.assign({}, noNotices, { drift: { signal: 'unknown' } });
+  const m = computeOverview({ lc: lcOk, det: detCrashed, x: rulesX(freshLocal), sync: cleanSync, state: {}, vp: null });
+  expect(m.cond.label).toBe('Needs attention');
+  expect(m.cond.why.toLowerCase()).toContain('could not run');
+});
+
 test('review-only PASS is NOT executed proof and yields "Needs proof"', () => {
   const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshReview), sync: cleanSync, state: { project: { project_name: 'X' } }, vp: null });
   expect(m.cond.label).toBe('Needs proof');
