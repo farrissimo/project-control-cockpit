@@ -20,6 +20,7 @@ $ErrorActionPreference = 'Continue'
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
+. (Join-Path $PSScriptRoot 'lib/atomic-write.ps1')  # Write-JsonAtomic (atomic + retained .prev)
 
 $modelPath = '.cockpit/state/lifecycle-model.json'
 $statePath = '.cockpit/state/lifecycle-state.json'
@@ -151,6 +152,15 @@ $state.current_stage = $To
 if ($To -eq 'work') { $state | Add-Member -NotePropertyName phase_kind -NotePropertyValue 'executable' -Force }
 $state | Add-Member -NotePropertyName note -NotePropertyValue "Advanced $from -> $To via the app." -Force
 $state | Add-Member -NotePropertyName updated_at -NotePropertyValue ((Get-Date).ToString('yyyy-MM-ddTHH:mm:sszzz')) -Force
-($state | ConvertTo-Json -Depth 6) | Out-File -FilePath $statePath -Encoding utf8
+# Atomic + retained .prev: the "you are here" pin is a single-authority file and an
+# interrupted write must never truncate it or lose the prior stage. A write failure
+# here is surfaced as an honest ok:false (never a false ok:true below).
+try {
+  Write-JsonAtomic -Path $statePath -Json ($state | ConvertTo-Json -Depth 6)
+} catch {
+  Emit ([ordered]@{ ok = $false; reason = 'write_failed'; from = $from; to = $To
+      message = "The transition to '$($target.label)' was legal and gated, but persisting the new stage failed: $($_.Exception.Message)" })
+  return
+}
 
 Emit ([ordered]@{ ok = $true; from = $from; to = $To; label = $target.label; message = "Advanced from '$from' to '$($target.label)'."; vision_unconfirmed = ($null -ne $visionWarning); warning = $visionWarning })

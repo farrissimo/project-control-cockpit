@@ -291,7 +291,11 @@ ipcMain.handle('pcc:setPhaseKind', (_e, kind) => {
     const st = JSON.parse(fs.readFileSync(p, 'utf8'));
     st.phase_kind = kind;
     st.updated_at = new Date().toISOString();
-    fs.writeFileSync(p, JSON.stringify(st, null, 2));
+    // Atomic + retained .prev: lifecycle-state.json is the single-authority pin and
+    // has a second writer (scripts/lifecycle-advance.ps1); a torn write here must
+    // never truncate it or lose the prior generation.
+    const w = atomicStore.writeJsonAtomic(p, st);
+    if (!w.ok) return { ok: false, message: 'Could not set phase kind: ' + w.error };
     return { ok: true, phase_kind: kind };
   } catch (e) { return { ok: false, message: 'Could not set phase kind: ' + e.message }; }
 });

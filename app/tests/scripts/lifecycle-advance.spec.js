@@ -16,6 +16,9 @@ function makeProject() {
   fs.mkdirSync(path.join(dir, '.cockpit', 'state'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'app'), { recursive: true });
   fs.copyFileSync(path.join(REPO, 'scripts', 'lifecycle-advance.ps1'), path.join(dir, 'scripts', 'lifecycle-advance.ps1'));
+  // lifecycle-advance.ps1 dot-sources scripts/lib/atomic-write.ps1 for the pin write.
+  fs.mkdirSync(path.join(dir, 'scripts', 'lib'), { recursive: true });
+  fs.copyFileSync(path.join(REPO, 'scripts', 'lib', 'atomic-write.ps1'), path.join(dir, 'scripts', 'lib', 'atomic-write.ps1'));
   fs.copyFileSync(path.join(REPO, '.cockpit', 'state', 'lifecycle-model.json'), path.join(dir, '.cockpit', 'state', 'lifecycle-model.json'));
   fs.writeFileSync(path.join(dir, '.cockpit', 'state', 'lifecycle-state.json'),
     JSON.stringify({ lane: 'test', current_stage: 'verify', active_task: 'x' }));
@@ -37,6 +40,9 @@ function makeProjectNoGit() {
   fs.mkdirSync(path.join(dir, '.cockpit', 'state'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'app'), { recursive: true });
   fs.copyFileSync(path.join(REPO, 'scripts', 'lifecycle-advance.ps1'), path.join(dir, 'scripts', 'lifecycle-advance.ps1'));
+  // lifecycle-advance.ps1 dot-sources scripts/lib/atomic-write.ps1 for the pin write.
+  fs.mkdirSync(path.join(dir, 'scripts', 'lib'), { recursive: true });
+  fs.copyFileSync(path.join(REPO, 'scripts', 'lib', 'atomic-write.ps1'), path.join(dir, 'scripts', 'lib', 'atomic-write.ps1'));
   fs.copyFileSync(path.join(REPO, '.cockpit', 'state', 'lifecycle-model.json'), path.join(dir, '.cockpit', 'state', 'lifecycle-model.json'));
   fs.writeFileSync(path.join(dir, '.cockpit', 'state', 'lifecycle-state.json'),
     JSON.stringify({ lane: 'test', current_stage: 'verify', active_task: 'x' }));
@@ -237,6 +243,27 @@ test('gate FAILS CLOSED when git cannot report HEAD time (no false-fresh)', () =
     expect(r.fresh).toBe(false);
     expect(r.head_time_known).toBe(false);
     expect(currentStage(dir)).toBe('verify'); // pin did NOT move
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// I3 (Part 7 hardening): the pin write is atomic and retains the prior generation.
+// After a successful advance, lifecycle-state.json holds the new stage AND
+// lifecycle-state.json.prev holds the immediately-prior good copy (the pre-advance
+// stage), so an interrupted future write can never destroy the last good pin.
+test('advancing the pin writes atomically and retains .prev (prior stage recoverable)', () => {
+  const dir = makeProject();
+  try {
+    const statePath = path.join(dir, '.cockpit', 'state', 'lifecycle-state.json');
+    const before = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    expect(before.current_stage).toBe('verify');
+    const r = advance(dir, 'work'); // ungated, always legal
+    expect(r.ok).toBe(true);
+    // new target advanced
+    expect(JSON.parse(fs.readFileSync(statePath, 'utf8')).current_stage).toBe('work');
+    // prior generation retained and recoverable
+    const prevPath = statePath + '.prev';
+    expect(fs.existsSync(prevPath)).toBe(true);
+    expect(JSON.parse(fs.readFileSync(prevPath, 'utf8')).current_stage).toBe('verify');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
