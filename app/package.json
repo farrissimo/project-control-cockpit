@@ -8,7 +8,7 @@
     "test": "playwright test",
     "test:e2e": "playwright test tests/e2e",
     "test:scripts": "playwright test tests/scripts",
-    "test:unit": "node --test \"tests/unit/**/*.test.js\"",
+    "test:unit": "node tests/run-unit.js",
     "test:external-smoke": "playwright test -c playwright.external.config.js",
     "postinstall": "node tools/install-git-hooks.js"
   },
