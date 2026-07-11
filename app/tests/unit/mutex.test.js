@@ -6,7 +6,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { createMutex } = require('../../state/mutex');
+const { createMutex, runExclusiveBound } = require('../../state/mutex');
 
 const yield_ = () => new Promise((r) => setImmediate(r));
 
@@ -47,6 +47,46 @@ test('a rejecting section propagates its error but does NOT wedge the queue', as
   await assert.rejects(m.runExclusive(async () => { throw new Error('boom'); }), /boom/);
   const after = await m.runExclusive(async () => 'ok');
   assert.strictEqual(after, 'ok');
+});
+
+// runExclusiveBound — GPT secondary-verification #4 defect: serializing the two
+// lifecycle handlers introduced a delay before they read the switchable global
+// `projectDir`, so a queued op could mutate whatever project became active during
+// its wait. This reproduces the exact sequence: op captured for Project A, waits
+// behind a held section, active switches to B, section opens -> must FAIL CLOSED
+// (project_changed) and touch NEITHER project.
+test('runExclusiveBound: a queued op fails closed if the active project changed while it waited', async () => {
+  const m = createMutex();
+  let active = 'A';
+  const touched = [];
+
+  // Occupy the mutex so the guarded op below has to queue behind it.
+  let releaseHold;
+  const hold = m.runExclusive(() => new Promise((r) => { releaseHold = r; }));
+  await yield_(); // let the held section actually start (mutex runs it on a microtask)
+
+  // Requested while A is active; binds to A. fn would record which project it ran on.
+  const op = runExclusiveBound(m, () => active,
+    (requested) => { touched.push(requested); return { ok: true, ran: requested }; },
+    () => ({ ok: false, reason: 'project_changed' }));
+
+  // Owner switches to B while the op is still queued, then the holder releases.
+  active = 'B';
+  releaseHold();
+  await hold;
+  const res = await op;
+
+  assert.deepStrictEqual(res, { ok: false, reason: 'project_changed' });
+  assert.deepStrictEqual(touched, []); // fn never ran -> neither A nor B was mutated
+});
+
+test('runExclusiveBound: runs against the captured context when the project is unchanged', async () => {
+  const m = createMutex();
+  const active = 'A';
+  const res = await runExclusiveBound(m, () => active,
+    (requested) => ({ ok: true, ran: requested }),
+    () => ({ ok: false, reason: 'project_changed' }));
+  assert.deepStrictEqual(res, { ok: true, ran: 'A' });
 });
 
 // The concrete lifecycle case: writer A changes field "phase_kind", writer B (a

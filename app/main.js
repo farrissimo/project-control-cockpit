@@ -15,7 +15,7 @@ const { spawn, spawnSync, exec, execFile } = require('child_process');
 const { parseVerification, matchesCurrentCommit } = require('./renderer/verification-parse');
 const { createAuthorityStore } = require('./authority-store');
 const atomicStore = require('./state/atomic-store'); // durable write: atomic rename + retained .prev
-const { createMutex } = require('./state/mutex'); // serialize the two lifecycle-state.json writers
+const { createMutex, runExclusiveBound } = require('./state/mutex'); // serialize the two lifecycle-state.json writers
 // lifecycle-state.json has two in-process writers (pcc:setPhaseKind's direct write and
 // pcc:lifecycleAdvance's spawned child); this mutex serializes them so neither can
 // clobber the other's field (Part 7 hardening I3, concurrency half).
@@ -290,21 +290,30 @@ ipcMain.handle('pcc:runProduct', () => {
 // Serialized against pcc:lifecycleAdvance through lifecycleMutex: the read-modify-
 // write below cannot overlap a spawned advance (which also rewrites the whole file),
 // so neither writer can clobber the other's field.
-ipcMain.handle('pcc:setPhaseKind', (_e, kind) => lifecycleMutex.runExclusive(async () => {
-  try {
-    const allowed = ['executable', 'review', 'docs', 'planning'];
-    if (!allowed.includes(kind)) return { ok: false, message: 'Unknown phase kind: ' + kind };
-    const p = path.join(projectDir, '.cockpit', 'state', 'lifecycle-state.json');
-    if (!fs.existsSync(p)) return { ok: false, message: 'No lifecycle state to update.' };
-    const st = JSON.parse(fs.readFileSync(p, 'utf8'));
-    st.phase_kind = kind;
-    st.updated_at = new Date().toISOString();
-    // Atomic + retained .prev: lifecycle-state.json is the single-authority pin.
-    const w = atomicStore.writeJsonAtomic(p, st);
-    if (!w.ok) return { ok: false, message: 'Could not set phase kind: ' + w.error };
-    return { ok: true, phase_kind: kind };
-  } catch (e) { return { ok: false, message: 'Could not set phase kind: ' + e.message }; }
-}));
+// runExclusiveBound binds this op to the project active at REQUEST time: it is
+// serialized against pcc:lifecycleAdvance (so the two lifecycle-state.json writers
+// can't clobber each other), AND if the active project is switched while this waits
+// in the queue, it fails closed (project_changed) instead of mutating the wrong
+// project — projectDir is a switchable global not serialized with this mutex.
+ipcMain.handle('pcc:setPhaseKind', (_e, kind) => runExclusiveBound(
+  lifecycleMutex, () => projectDir,
+  (requestedDir) => {
+    try {
+      const allowed = ['executable', 'review', 'docs', 'planning'];
+      if (!allowed.includes(kind)) return { ok: false, message: 'Unknown phase kind: ' + kind };
+      const p = path.join(requestedDir, '.cockpit', 'state', 'lifecycle-state.json');
+      if (!fs.existsSync(p)) return { ok: false, message: 'No lifecycle state to update.' };
+      const st = JSON.parse(fs.readFileSync(p, 'utf8'));
+      st.phase_kind = kind;
+      st.updated_at = new Date().toISOString();
+      // Atomic + retained .prev: lifecycle-state.json is the single-authority pin.
+      const w = atomicStore.writeJsonAtomic(p, st);
+      if (!w.ok) return { ok: false, message: 'Could not set phase kind: ' + w.error };
+      return { ok: true, phase_kind: kind };
+    } catch (e) { return { ok: false, message: 'Could not set phase kind: ' + e.message }; }
+  },
+  () => ({ ok: false, reason: 'project_changed', message: 'The active project changed before this could run — the phase kind was not applied. Try again in the current project.' })
+));
 
 // Upgrade Existing Project (DECISION-111), slice 1 — detection. New projects get the
 // fixed engine automatically; existing ones carry the old engine (split-brain that
@@ -412,16 +421,25 @@ ipcMain.handle('pcc:lifecycle', async () => runDetector('scripts/lifecycle-statu
 // the whole child lifetime (spawn -> exit), so the child's read-modify-write of
 // lifecycle-state.json cannot interleave with a setPhaseKind write. The execFile
 // timeout (20s) bounds the hold, so a hung child can never wedge the mutex forever.
-ipcMain.handle('pcc:lifecycleAdvance', (_e, toStageId) => lifecycleMutex.runExclusive(() => new Promise((resolve) => {
-  if (typeof toStageId !== 'string' || !/^[a-z_]+$/.test(toStageId)) {
-    return resolve({ ok: false, reason: 'bad_input', message: 'Invalid stage id.' });
-  }
-  execFile('pwsh', ['-NoProfile', '-File', 'scripts/lifecycle-advance.ps1', '-To', toStageId, '-Json'],
-    { cwd: projectDir, timeout: 20000, windowsHide: true, maxBuffer: 4 * 1024 * 1024 }, (err, stdout) => {
-      try { resolve(JSON.parse((stdout || '').trim())); }
-      catch (e) { resolve({ ok: false, reason: 'error', message: 'Advance could not run: ' + (err ? err.message : 'no output') }); }
-    });
-})));
+// Bound to the request-time project (same rationale as setPhaseKind): the mutex is
+// held for the whole child lifetime (spawn -> exit, bounded by the 20s execFile
+// timeout so a hung child can't wedge it), and if the active project was switched
+// while this waited in the queue it fails closed rather than running the advance
+// (with cwd) against the wrong project.
+ipcMain.handle('pcc:lifecycleAdvance', (_e, toStageId) => runExclusiveBound(
+  lifecycleMutex, () => projectDir,
+  (requestedDir) => new Promise((resolve) => {
+    if (typeof toStageId !== 'string' || !/^[a-z_]+$/.test(toStageId)) {
+      return resolve({ ok: false, reason: 'bad_input', message: 'Invalid stage id.' });
+    }
+    execFile('pwsh', ['-NoProfile', '-File', 'scripts/lifecycle-advance.ps1', '-To', toStageId, '-Json'],
+      { cwd: requestedDir, timeout: 20000, windowsHide: true, maxBuffer: 4 * 1024 * 1024 }, (err, stdout) => {
+        try { resolve(JSON.parse((stdout || '').trim())); }
+        catch (e) { resolve({ ok: false, reason: 'error', message: 'Advance could not run: ' + (err ? err.message : 'no output') }); }
+      });
+  }),
+  () => ({ ok: false, reason: 'project_changed', message: 'The active project changed before this could run — the stage was not advanced. Try again in the current project.' })
+));
 
 // Run the detectors in PARALLEL (they're independent read-only scripts), so the
 // Signals tab / trust strip stay snappy as more detectors are added.

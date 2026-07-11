@@ -33,4 +33,20 @@ function createMutex() {
   return { runExclusive };
 }
 
-module.exports = { createMutex };
+// Run `fn` under `mutex`, but BOUND to the context captured NOW (at request time),
+// not when the queue finally opens. `read()` is sampled synchronously before
+// enqueueing; if it differs by the time the section starts (e.g. the switchable
+// active project changed while this waited behind another lifecycle op), `onChanged`
+// is returned INSTEAD of running fn — so a queued operation never acts on a context
+// it was not requested for. This closes the "serialization delays the context read
+// past a project switch" race that plain runExclusive would introduce for handlers
+// that read a mutable global (projectDir). fn receives the captured context.
+function runExclusiveBound(mutex, read, fn, onChanged) {
+  const captured = read();
+  return mutex.runExclusive(() => {
+    if (read() !== captured) return onChanged(captured, read());
+    return fn(captured);
+  });
+}
+
+module.exports = { createMutex, runExclusiveBound };
