@@ -107,6 +107,53 @@ test('a pending (un-approved) request is NOT restored across a restart', () => {
   expect(restarted.authorizeSend('chat-1', MIN)).toBe(false);
 });
 
+// --- fail closed on a malformed persisted store (I6): a corrupt entry must NOT grant build ---
+
+test('a persisted entry missing its deadlines is DROPPED on load (never perpetual build)', () => {
+  const disk = memStorage();
+  // A parseable but malformed authority store: an entry with a name but NO deadlines.
+  // The old code kept it (now > undefined === false => never expired) and authorizeSend
+  // returned true — perpetual build authority from a corrupt file. It must fail closed.
+  disk.write({ version: 1, chats: { 'chat-1': { name: 'ghost' } } });
+  const a = createAuthorityStore({ storage: disk });
+  a.load(MIN);
+  expect(a.stateFor('chat-1', MIN).mode).toBe('read_only');
+  expect(a.authorizeSend('chat-1', MIN)).toBe(false);
+});
+
+test('non-finite deadlines (NaN/Infinity) are dropped on load', () => {
+  const disk = memStorage();
+  disk.write({ version: 1, chats: {
+    a: { name: 'x', idleExpiresAt: Infinity, hardExpiresAt: Infinity },
+    b: { name: 'y', idleExpiresAt: 999, hardExpiresAt: NaN },
+    ok: { name: 'z', idleExpiresAt: 10 * MIN, hardExpiresAt: HARD },
+  } });
+  const s = createAuthorityStore({ storage: disk });
+  s.load(MIN);
+  expect(s.authorizeSend('a', MIN)).toBe(false);   // Infinity deadline -> dropped
+  expect(s.authorizeSend('b', MIN)).toBe(false);   // NaN deadline -> dropped
+  expect(s.authorizeSend('ok', MIN)).toBe(true);   // valid entry survives
+});
+
+test('a persisted __proto__/constructor entry cannot pollute the prototype or grant build', () => {
+  const disk = memStorage();
+  // Own keys (computed) that would touch the prototype chain if copied to a plain object.
+  disk.write({ version: 1, chats: {
+    ['__proto__']: { name: 'pwn', idleExpiresAt: 60000, hardExpiresAt: 120000 },
+    ['constructor']: { name: 'pwn2', idleExpiresAt: 60000, hardExpiresAt: 120000 },
+    good: { name: 'ok', idleExpiresAt: 10 * MIN, hardExpiresAt: HARD },
+  } });
+  const s = createAuthorityStore({ storage: disk });
+  s.load(1000);
+  expect(s.authorizeSend('__proto__', 1000)).toBe(false);   // dropped — no prototype grant
+  expect(s.authorizeSend('constructor', 1000)).toBe(false); // dropped
+  expect(s.stateFor('__proto__', 1000).mode).toBe('read_only');
+  expect(s.authorizeSend('good', 1000)).toBe(true);         // the legitimate entry still works
+  // The global prototype was NOT mutated: an unrelated FRESH store grants nothing by default.
+  const fresh = createAuthorityStore({ storage: memStorage() });
+  expect(fresh.authorizeSend('anything', 1000)).toBe(false);
+});
+
 // --- retained invariants: sliding idle + absolute hard cap, chat-scoped renewal ---
 
 test('an authorized send renews the idle window (long interview survives past the first 30 min)', () => {

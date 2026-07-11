@@ -33,8 +33,12 @@
     const hardCapMs = opts.hardCapMs || HARD_CAP_MS;
     const storage = opts.storage || memStorage();
 
-    // chatId -> { name, idleExpiresAt, hardExpiresAt }  (PERSISTED — the authorized set)
-    let authorized = {};
+    // chatId -> { name, idleExpiresAt, hardExpiresAt }  (PERSISTED — the authorized set).
+    // Null-prototype so a persisted key can never reach Object.prototype (a store is
+    // untrusted input; see load()).
+    let authorized = Object.create(null);
+    // Keys that would touch the prototype chain — never accepted from a persisted store.
+    const UNSAFE_KEY = new Set(['__proto__', 'constructor', 'prototype']);
     // { type, name, chatId } | null  (TRANSIENT — an un-approved request must NOT survive restart)
     let pending = null;
     const log = [];
@@ -66,7 +70,21 @@
       load(now) {
         let data = null;
         try { data = storage.read(); } catch (e) { data = null; }
-        authorized = (data && data.chats && typeof data.chats === 'object') ? data.chats : {};
+        const raw = (data && data.chats && typeof data.chats === 'object' && !Array.isArray(data.chats)) ? data.chats : {};
+        // FAIL CLOSED on a malformed entry (Part 1 rule 4). A valid authorization has
+        // BOTH finite deadlines — that is exactly what approve() writes. An entry
+        // missing/NaN/Infinity a deadline must be DROPPED, not retained: otherwise
+        // `now > undefined` (or `> NaN`) is false, expireOne never drops it, and
+        // authorizeSend would grant PERPETUAL build (command-execution) authority
+        // from a corrupt store. A dropped entry simply falls back to read_only.
+        authorized = Object.create(null);
+        for (const id of Object.keys(raw)) {
+          if (UNSAFE_KEY.has(id)) continue; // a persisted key must never reach the prototype chain (prototype pollution)
+          const a = raw[id];
+          if (a && typeof a === 'object' && Number.isFinite(a.idleExpiresAt) && Number.isFinite(a.hardExpiresAt)) {
+            authorized[id] = a;
+          }
+        }
         pending = null; // never restore an un-approved request across a restart
         expireAll(now);
       },
