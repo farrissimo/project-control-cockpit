@@ -15,6 +15,11 @@ const { spawn, spawnSync, exec, execFile } = require('child_process');
 const { parseVerification, matchesCurrentCommit } = require('./renderer/verification-parse');
 const { createAuthorityStore } = require('./authority-store');
 const atomicStore = require('./state/atomic-store'); // durable write: atomic rename + retained .prev
+const { createMutex } = require('./state/mutex'); // serialize the two lifecycle-state.json writers
+// lifecycle-state.json has two in-process writers (pcc:setPhaseKind's direct write and
+// pcc:lifecycleAdvance's spawned child); this mutex serializes them so neither can
+// clobber the other's field (Part 7 hardening I3, concurrency half).
+const lifecycleMutex = createMutex();
 const { decideBackup } = require('./backup-policy');
 const { parseGitHubRepo, decideCiStatus, CI_CHECK_NAME } = require('./ci-status');
 const { parseStreamJson } = require('./stream-json');
@@ -282,7 +287,10 @@ ipcMain.handle('pcc:runProduct', () => {
 // may close on review-only evidence. Writes phase_kind into lifecycle-state.json; the
 // gate (scripts/lifecycle-advance.ps1) reads it. Starting a new work phase resets it to
 // 'executable' so a stale "review" can never let real code close on a review.
-ipcMain.handle('pcc:setPhaseKind', (_e, kind) => {
+// Serialized against pcc:lifecycleAdvance through lifecycleMutex: the read-modify-
+// write below cannot overlap a spawned advance (which also rewrites the whole file),
+// so neither writer can clobber the other's field.
+ipcMain.handle('pcc:setPhaseKind', (_e, kind) => lifecycleMutex.runExclusive(async () => {
   try {
     const allowed = ['executable', 'review', 'docs', 'planning'];
     if (!allowed.includes(kind)) return { ok: false, message: 'Unknown phase kind: ' + kind };
@@ -291,14 +299,12 @@ ipcMain.handle('pcc:setPhaseKind', (_e, kind) => {
     const st = JSON.parse(fs.readFileSync(p, 'utf8'));
     st.phase_kind = kind;
     st.updated_at = new Date().toISOString();
-    // Atomic + retained .prev: lifecycle-state.json is the single-authority pin and
-    // has a second writer (scripts/lifecycle-advance.ps1); a torn write here must
-    // never truncate it or lose the prior generation.
+    // Atomic + retained .prev: lifecycle-state.json is the single-authority pin.
     const w = atomicStore.writeJsonAtomic(p, st);
     if (!w.ok) return { ok: false, message: 'Could not set phase kind: ' + w.error };
     return { ok: true, phase_kind: kind };
   } catch (e) { return { ok: false, message: 'Could not set phase kind: ' + e.message }; }
-});
+}));
 
 // Upgrade Existing Project (DECISION-111), slice 1 — detection. New projects get the
 // fixed engine automatically; existing ones carry the old engine (split-brain that
@@ -402,7 +408,11 @@ ipcMain.handle('pcc:lifecycle', async () => runDetector('scripts/lifecycle-statu
 // AND the entry gate (phase_close needs a fresh independent PASS), so the app
 // can't move state past verification. execFile — the stage id is validated and
 // passed as an argument, never through a shell.
-ipcMain.handle('pcc:lifecycleAdvance', (_e, toStageId) => new Promise((resolve) => {
+// Serialized against pcc:setPhaseKind through lifecycleMutex: the mutex is held for
+// the whole child lifetime (spawn -> exit), so the child's read-modify-write of
+// lifecycle-state.json cannot interleave with a setPhaseKind write. The execFile
+// timeout (20s) bounds the hold, so a hung child can never wedge the mutex forever.
+ipcMain.handle('pcc:lifecycleAdvance', (_e, toStageId) => lifecycleMutex.runExclusive(() => new Promise((resolve) => {
   if (typeof toStageId !== 'string' || !/^[a-z_]+$/.test(toStageId)) {
     return resolve({ ok: false, reason: 'bad_input', message: 'Invalid stage id.' });
   }
@@ -411,7 +421,7 @@ ipcMain.handle('pcc:lifecycleAdvance', (_e, toStageId) => new Promise((resolve) 
       try { resolve(JSON.parse((stdout || '').trim())); }
       catch (e) { resolve({ ok: false, reason: 'error', message: 'Advance could not run: ' + (err ? err.message : 'no output') }); }
     });
-}));
+})));
 
 // Run the detectors in PARALLEL (they're independent read-only scripts), so the
 // Signals tab / trust strip stay snappy as more detectors are added.
