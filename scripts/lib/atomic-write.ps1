@@ -34,14 +34,17 @@
   cross-file inconsistency, and each file now retains its own recoverable .prev.
 #>
 
-Set-StrictMode -Version Latest
-
 function Write-JsonAtomic {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)][string]$Path,
     [Parameter(Mandatory = $true)][string]$Json
   )
+  # Scope strict mode to THIS function only. This file is dot-sourced, and a
+  # top-level Set-StrictMode would leak into the caller's scope (dot-source runs in
+  # the current scope) — imposing strict-mode on consuming scripts that legitimately
+  # reference optional/absent object properties (e.g. finalize-worker-handback.ps1).
+  Set-StrictMode -Version Latest
 
   # 1. Validate the payload before touching disk. Empty/whitespace or non-JSON is
   #    refused — it must never replace a good file.

@@ -5,6 +5,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot 'lib/atomic-write.ps1')  # Write-JsonAtomic (atomic + retained .prev)
+
 function Fail {
   param([string]$Message)
   Write-Error $Message
@@ -93,8 +95,15 @@ if ($verification.verdict -eq "PASS") {
   $projectState.last_verified_handoff = if ($ArchivedDirectivePath) { $ArchivedDirectivePath } else { $taskState.current_directive_path }
 }
 
-$taskState | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $taskStatePath
-$projectState | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $projectStatePath
+# Persist both canonical state files atomically, each retaining its prior .prev.
+# Per-file crash-safe + recoverable; the post-update validate-cockpit-state.ps1
+# below is the cross-file consistency backstop (see finalize-worker-handback.ps1).
+try {
+  Write-JsonAtomic -Path $taskStatePath -Json ($taskState | ConvertTo-Json -Depth 10)
+  Write-JsonAtomic -Path $projectStatePath -Json ($projectState | ConvertTo-Json -Depth 10)
+} catch {
+  Fail "Failed to persist canonical state atomically: $($_.Exception.Message)"
+}
 
 Write-Output "State advanced for task '$($taskState.task_id)': verdict $($verification.verdict) -> task_status '$($taskState.task_status)'."
 

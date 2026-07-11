@@ -6,10 +6,27 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot 'lib/atomic-write.ps1')  # Write-JsonAtomic (atomic + retained .prev)
+
 function Fail {
   param([string]$Message)
   Write-Error $Message
   exit 1
+}
+
+# Persist the two canonical state files atomically, each retaining its prior .prev.
+# Each write is individually crash-safe and recoverable; the two are still two
+# operations, so a kill strictly BETWEEN them leaves task advanced + project stale —
+# but neither file can be truncated/lost, and the caller runs
+# validate-cockpit-state.ps1 immediately after to catch any cross-file inconsistency.
+function Save-State {
+  param($TaskState, $ProjectState)
+  try {
+    Write-JsonAtomic -Path $taskStatePath -Json ($TaskState | ConvertTo-Json -Depth 10)
+    Write-JsonAtomic -Path $projectStatePath -Json ($ProjectState | ConvertTo-Json -Depth 10)
+  } catch {
+    Fail "Failed to persist canonical state atomically: $($_.Exception.Message)"
+  }
 }
 
 function Read-Json {
@@ -92,8 +109,7 @@ if ($repeatedFailure) {
   $projectState.next_expected_action = "Task '$($taskState.task_id)' is blocked after repeated failure. Owner decision required."
   $projectState.updated_at = $timestamp
 
-  $taskState | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $taskStatePath
-  $projectState | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $projectStatePath
+  Save-State $taskState $projectState
   Write-Output "Step 1/4: task '$($taskState.task_id)' set to 'blocked' (repeated failure at attempt $($taskState.attempts); no further unattended handback)."
 
   # A logging failure here must never abort or change the outcome of an
@@ -115,8 +131,7 @@ if ($repeatedFailure) {
   $projectState.next_expected_action = "Worker evidence for task '$($taskState.task_id)' is in .cockpit/result/worker-result.md. Codex reviews and issues a verification verdict."
   $projectState.updated_at = $timestamp
 
-  $taskState | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $taskStatePath
-  $projectState | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $projectStatePath
+  Save-State $taskState $projectState
   Write-Output "Step 1/4: task '$($taskState.task_id)' set to 'returned_for_verification' (attempt $($taskState.attempts))."
 
   if ($wasRetry) {
