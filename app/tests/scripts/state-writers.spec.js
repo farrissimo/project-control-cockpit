@@ -20,6 +20,8 @@ function makeCockpit() {
   fs.mkdirSync(path.join(dir, '.cockpit', 'result'), { recursive: true });
   fs.copyFileSync(path.join(REPO, 'scripts', 'advance-cockpit-state.ps1'), path.join(dir, 'scripts', 'advance-cockpit-state.ps1'));
   fs.copyFileSync(path.join(REPO, 'scripts', 'lib', 'atomic-write.ps1'), path.join(dir, 'scripts', 'lib', 'atomic-write.ps1'));
+  // advance-cockpit-state.ps1 now dot-sources the write-ahead journal helper (I1).
+  fs.copyFileSync(path.join(REPO, 'scripts', 'lib', 'state-journal.ps1'), path.join(dir, 'scripts', 'lib', 'state-journal.ps1'));
   return dir;
 }
 

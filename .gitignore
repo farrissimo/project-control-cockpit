@@ -6,6 +6,11 @@
 # Not project truth; recreated/cleared automatically each cycle.
 .cockpit/state/codex-watcher.lock
 
+# Write-ahead journal for the paired task/project-state write (Part 7 I1). Exists only
+# momentarily during a paired write; a crash-leftover is replayed+cleared on the next
+# writer run. Transient recovery state, never committed.
+.cockpit/state/.state-update.journal.json
+
 # Transient hand-off inbox: bootstrap-project.ps1 drops new project paths here and
 # the app consumes+clears them. Runtime bridge, not project truth.
 .cockpit/state/scaffolded-inbox.json

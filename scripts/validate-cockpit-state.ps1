@@ -29,6 +29,16 @@ $projectStatePath = ".cockpit/state/project-state.json"
 $taskStatePath = ".cockpit/state/task-state.json"
 $verificationPath = ".cockpit/result/verification-result.json"
 
+# A lingering write-ahead journal means a paired task/project-state write was
+# interrupted and not yet replayed (Part 7 I1). Until the next handback/advance run
+# auto-completes it (Resume-StateJournal), the two canonical files may be mid-update —
+# so surface it (doctor.ps1 composes this check) rather than validating possibly-
+# partial state as clean. A normal run clears the journal before this check runs.
+$journalPath = ".cockpit/state/.state-update.journal.json"
+if (Test-Path -LiteralPath $journalPath) {
+  Fail "Pending state update: a write-ahead journal exists at $journalPath — a paired task/project-state write was interrupted and has not completed. It auto-completes on the next handback/advance run; inspect it before relying on the current state."
+}
+
 $projectState = Read-Json $projectStatePath
 $taskState = Read-Json $taskStatePath
 $verification = Read-Json $verificationPath

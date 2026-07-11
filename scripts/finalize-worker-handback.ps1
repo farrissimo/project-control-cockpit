@@ -6,7 +6,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-. (Join-Path $PSScriptRoot 'lib/atomic-write.ps1')  # Write-JsonAtomic (atomic + retained .prev)
+. (Join-Path $PSScriptRoot 'lib/state-journal.ps1')  # Write-PairedStateAtomic / Resume-StateJournal (+ Write-JsonAtomic)
 
 function Fail {
   param([string]$Message)
@@ -14,19 +14,17 @@ function Fail {
   exit 1
 }
 
-# Persist the two canonical state files atomically, each retaining its prior .prev.
-# HONEST SCOPE (Part 7 I1 remainder — NOT fully closed): each write is individually
-# crash-safe and recoverable, but the two are still two operations — a kill strictly
-# BETWEEN them leaves task advanced + project stale. The caller runs
-# validate-cockpit-state.ps1 after, but that is NOT a reliable detector of the split
-# (it skips a still-null project verdict, and does not run if the process dies
-# mid-write). Neither file can be truncated/lost; the cross-file window is bounded
-# only by the pre-task backup, not automatically detected or repaired.
+# Persist the two canonical state files as ONE journaled transaction (Part 7 I1):
+# Write-PairedStateAtomic records both intended payloads in a write-ahead journal,
+# applies both atomic writes, then clears the journal. A kill at any point leaves a
+# journal that Resume-StateJournal (run at the top of this script) replays to
+# completion on the next run — so the two-file update is atomic-in-effect, not just
+# two independently-atomic writes.
 function Save-State {
   param($TaskState, $ProjectState)
   try {
-    Write-JsonAtomic -Path $taskStatePath -Json ($TaskState | ConvertTo-Json -Depth 10)
-    Write-JsonAtomic -Path $projectStatePath -Json ($ProjectState | ConvertTo-Json -Depth 10)
+    Write-PairedStateAtomic -TaskStatePath $taskStatePath -ProjectStatePath $projectStatePath `
+      -TaskState $TaskState -ProjectState $ProjectState -JournalPath (Get-StateJournalPath)
   } catch {
     Fail "Failed to persist canonical state atomically: $($_.Exception.Message)"
   }
@@ -54,6 +52,11 @@ function Read-Json {
 
 $taskStatePath = ".cockpit/state/task-state.json"
 $projectStatePath = ".cockpit/state/project-state.json"
+
+# Complete any interrupted PRIOR paired write before reading state, so this run starts
+# from a consistent, fully-committed base (Part 7 I1 journal replay). No-op when none.
+try { [void](Resume-StateJournal -TaskStatePath $taskStatePath -ProjectStatePath $projectStatePath -JournalPath (Get-StateJournalPath)) }
+catch { Fail "Aborted before handback: a pending state-update journal could not be completed; the canonical files may be mid-update. $($_.Exception.Message)" }
 
 $taskState = Read-Json $taskStatePath
 $projectState = Read-Json $projectStatePath

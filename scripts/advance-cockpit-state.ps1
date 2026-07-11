@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-. (Join-Path $PSScriptRoot 'lib/atomic-write.ps1')  # Write-JsonAtomic (atomic + retained .prev)
+. (Join-Path $PSScriptRoot 'lib/state-journal.ps1')  # Write-PairedStateAtomic / Resume-StateJournal (+ Write-JsonAtomic)
 
 function Fail {
   param([string]$Message)
@@ -28,6 +28,11 @@ function Read-Json {
 $projectStatePath = ".cockpit/state/project-state.json"
 $taskStatePath = ".cockpit/state/task-state.json"
 $verificationPath = ".cockpit/result/verification-result.json"
+
+# Complete any interrupted PRIOR paired write before reading state, so this run starts
+# from a consistent, fully-committed base (Part 7 I1 journal replay). No-op when none.
+try { [void](Resume-StateJournal -TaskStatePath $taskStatePath -ProjectStatePath $projectStatePath -JournalPath (Get-StateJournalPath)) }
+catch { Fail "Aborted: a pending state-update journal could not be completed; the canonical files may be mid-update. $($_.Exception.Message)" }
 
 $projectState = Read-Json $projectStatePath
 $taskState = Read-Json $taskStatePath
@@ -95,17 +100,14 @@ if ($verification.verdict -eq "PASS") {
   $projectState.last_verified_handoff = if ($ArchivedDirectivePath) { $ArchivedDirectivePath } else { $taskState.current_directive_path }
 }
 
-# Persist both canonical state files atomically, each retaining its prior .prev.
-# HONEST SCOPE (Part 7 I1 remainder — NOT fully closed): this is PER-FILE crash-
-# safety, NOT cross-file transactionality. A kill strictly between the two writes
-# leaves task advanced + project stale. validate-cockpit-state.ps1 (below) is NOT a
-# reliable detector of that split: it skips the project verdict while it is still
-# null, and it does not run at all if the process dies mid-write. The residual
-# cross-file window is bounded only by the pre-task backup snapshot — not
-# automatically detected or repaired.
+# Persist both canonical state files as ONE journaled transaction (Part 7 I1):
+# Write-PairedStateAtomic records both intended payloads in a write-ahead journal,
+# applies both atomic writes, then clears the journal — so a kill between the two
+# writes leaves a journal that Resume-StateJournal (at the top of this script) replays
+# to completion on the next run. The two-file update is thus atomic-in-effect.
 try {
-  Write-JsonAtomic -Path $taskStatePath -Json ($taskState | ConvertTo-Json -Depth 10)
-  Write-JsonAtomic -Path $projectStatePath -Json ($projectState | ConvertTo-Json -Depth 10)
+  Write-PairedStateAtomic -TaskStatePath $taskStatePath -ProjectStatePath $projectStatePath `
+    -TaskState $taskState -ProjectState $projectState -JournalPath (Get-StateJournalPath)
 } catch {
   Fail "Failed to persist canonical state atomically: $($_.Exception.Message)"
 }
