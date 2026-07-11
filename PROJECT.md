@@ -1,157 +1,128 @@
 # PROJECT.md — current project brief
 
 Read this first. Always-current summary so a new session starts fully oriented,
-with no re-briefing from the owner.
+with no re-briefing from the owner. (Last refreshed 2026-07-11 at commit 2fb1639.)
 
 ## What this is
 PCC (Project Control Cockpit): a local-first desktop app (Electron) for building
 projects WITH LLMs while preventing the usual failure modes — fake completion,
 drift, lost context between chats, repeating yourself, and constant babysitting.
 #1 rule: reduce owner babysitting. The chat is the interface; verified truth in
-files is the source of truth. Direction of record: docs/DECISIONS.md ->
-DECISION-102 (supersedes DECISION-087's read-only web dashboard). Full ranked
-feature plan and status: docs/COCKPIT_ROADMAP.md.
+files is the source of truth. Product shape: DECISION-102 (chat-centered
+local-first desktop app over a standardized project-lifecycle + detection
+engine). Full ranked feature plan: docs/COCKPIT_ROADMAP.md. Governing engineering
+contract: docs/ENGINEERING_ASSURANCE_PLAN.md (read Part 1 before touching
+integrity-critical code).
 
 ## Owner
-Visionary / product lead, NOT a coder or an engineer. Plain-language, concise, no cheerleading,
-no fake "done", never make him repeat himself. Standing rules are in CLAUDE.md.
-Standing orders: keep going by default (stop only when genuinely unsure or at a
-real milestone); research the web for existing solutions before building (don't
-reinvent the wheel); snapshot (commit) as you go; on every update show the full
-roadmap grid with progress, ranked by his priority.
+Visionary / product lead, NOT a coder or an engineer. Plain-language, concise, no
+cheerleading, no fake "done", never make him repeat himself. Standing rules are in
+CLAUDE.md. Standing orders: keep going by default (stop only when genuinely unsure
+or at a real milestone); research the web for existing solutions before building
+(don't reinvent the wheel); snapshot (commit) as you go.
+
+## Where we are now (verified state)
+- **Branch `main` is the working line.** HEAD == origin/main == 2fb1639, working
+  tree clean, pushed and in sync. (The old `feat/cockpit-desktop-app` and
+  `fix/data-truth-recovery` branches are historical; recovery was fast-forwarded
+  into main.)
+- **The truth-surface crisis recovery is DONE and merged.** After an incident where
+  PCC showed state the owner couldn't trust, feature work was stopped for a 10-phase
+  overhaul: every visible claim must prove source + read-time + freshness and fail
+  CLOSED rather than paint green over unknown/stale state. Chat data was made
+  atomic + recoverable; the Part 7 audit then found and fixed the same disease on
+  the verification and backup surfaces. **All 2 critical + 8 important Part 7
+  findings are closed** (docs/PART7_HARDENING_AUDIT.md); only tech-debt T1/T2/T3
+  remain (non-blocking; T3 = the backup push-failure branch has no test — the one
+  with residual risk).
+- **Tests:** node:test unit suite 104/104; full Playwright suite 313/313.
+- **CI:** GitHub Actions (`.github/workflows/ci.yml`, windows-latest, job `test`)
+  runs the unit suite + full Playwright suite + `npm audit` on every push. Green on
+  the current commit. CI is the independent, clean-machine execution proof.
+- **Latest shipped:** Hardening Slice 1 — a fresh-run **release gate** (2fb1639,
+  CI-green, self-PASS). See "Release gate" below.
+- doctor.ps1 is all-OK with one benign WARN (the git-ignored `.cockpit/` stores:
+  `chats`, `chat-export`, `evidence`).
 
 ## Architecture
 - The app (app/) is a pure consumer of the repo / .cockpit file bridge; it never
-  reaches into script internals. Extractability test: delete app/, keep .cockpit
+  reaches into script internals. **Extractability test:** delete app/, keep .cockpit
   and scripts, and everything still runs from the CLI.
-- Worker = Claude Code, driven via its supported non-interactive mode `claude -p`
-  (prompt over stdin, `--continue` keeps context) — NOT by wrapping the
-  interactive terminal, so a Claude Code update can't brick it.
-- Verifier = Codex CLI `codex exec` (primary); Antigravity CLI `agy` (fallback).
-  Mechanical work -> local tools; LLM only for irreducible judgment (token-thrift).
+- **Worker** = Claude Code, driven via its supported non-interactive mode
+  (prompt over stdin, session-id continuity) — NOT by wrapping the interactive
+  terminal, so a Claude Code update can't brick it.
+- **Verification** = Codex CLI (`codex exec`, read-only sandbox) is the primary
+  independent verifier of the actual diff; ChatGPT reading the GitHub repo is the
+  owner's secondary verifier (the owner is not a coder and doesn't verify code
+  himself). Mechanical work → local deterministic tools; the LLM is spent only on
+  irreducible judgment.
+- **One authority per state domain.** Canonical writers are atomic (validate →
+  temp → atomic replace → retain `.prev`); the paired task/project write is a
+  write-ahead-journaled transaction (scripts/lib/state-journal.ps1).
 
-## What's built (branch: feat/cockpit-desktop-app; main untouched)
-Launch from the Desktop "PCC Cockpit" shortcut or `npm start --prefix app`:
-- Chat wired to Claude (`claude -p`), conversation persists across restarts. Chat history: many named chats ("Chats" panel — switch/rename/delete), each pinned to its own Claude session id so switching resumes the right thread and no background claude call can hijack it. Model switcher (default Sonnet 5, editable list in .cockpit/state/models.json, auto-fallback so a retired model never crashes the chat) + "New chat" (clean start). Quick buttons add to your message (send once). Copy blocks render with a Copy button. Uses the claude.ai login, not a paid API key (DECISION-003).
-- Left sidebar: Chat / Project / Rules / Memory / Lifecycle / Signals / Verify.
-- Owner/Visionary Overview (DECISION-107): the Project page now LEADS with a
-  deterministic meaning layer — overall condition (Healthy / Needs proof / Needs
-  attention / Blocked / Unknown), a "needs you" card, one next best move, a journey
-  strip rendered from the REAL lifecycle (no second model), vision-promise cards
-  (declared owner intent, shown as declared self-assessment — visually distinct
-  from proof), and an honest proof card (review-only vs executed; CI "runs on
-  GitHub, not yet surfaced in-app"). Logic is a pure, unit-tested function
-  (app/renderer/overview-logic.js); zero-LLM. Existing tabs/sections remain as
-  evidence/drill-down. Every new project is born with the Overview and a fresh
-  placeholder .cockpit/state/vision-promises.json (needs owner review; never
-  PCC's own promises).
-- Chat renders copy blocks (fenced ``` code) with a working Copy button; the worker is told it's a text-only channel (no interactive AskUserQuestion picker) and not to narrate tool failures.
-- Lifecycle bar (top): "You are here -> Next action -> Decision required", from real state.
-- Live trust strip (top, always visible): On the rails / Backed up / Verified / Rules loaded. Each chip is green only when a real deterministic check says so; "Verified" stays amber unless a fresh independent PASS newer than HEAD exists (never faked).
-- Lifecycle view: the standardized stage map (define → plan → work → verify → phase-close → milestone → handoff → rollover) from .cockpit/state/lifecycle-model.json, with a "you are here" pin (lifecycle-state.json) and only the LEGAL next steps shown (scripts/lifecycle-status.ps1). It never auto-advances by itself, but is now ACTIONABLE: each legal next step has an "Advance" button (scripts/lifecycle-advance.ps1 moves the pin, enforcing the model's legal transitions). GATED: advancing into phase-close requires a fresh independent PASS (declared "entry_gate" on the stage) — the app blocks it and offers "Verify now & advance", which runs the real verifier (records the verdict), and only advances on a fresh PASS. This makes DECISION-012's "no done without an independent PASS" a hard, in-app rule instead of a manual convention.
-- One-click corrections under the chat (Be concise, No cheerleading, Stay in scope, Show evidence, Stop reacting, Push back, Check prior art, Rabbit-hole check, Capture decisions, Copy block).
-- Standing rules auto-load from CLAUDE.md; the Rules view shows them.
-- Project memory: this PROJECT.md, editable in the Memory view, auto-read each session. Plus recent-decisions carry-forward — the Project view surfaces the latest agreements from docs/DECISIONS.md (scripts/recent-decisions.ps1), and the handoff embeds the 3 most recent, so settled decisions are never re-derived.
-- New-chat handoff: one-click "Generate handoff" in the Project view (scripts/generate-handoff.ps1) builds a ready-to-paste briefing from real repo truth (git state, phase, honest verification status, standing orders) so a fresh chat never needs re-briefing.
-- Verify view: Hard checks (git + scripts/doctor.ps1, deterministic, work today) plus independent review (Codex/agy) via scripts/verify-work.ps1.
-- Signals view: the DECISION-102 honest-detection system. Shipped detectors: untracked-files (scripts/detect-untracked.ps1, git-only, respects .gitignore), chat-rollover (turns/time/repeats from the app's own chat history), out-of-scope/drift (scripts/detect-drift.ps1, branch changes vs the declared boundary), stale-docs (scripts/detect-stale-docs.ps1, changed code vs a declared doc-freshness rule list), repo-sync (scripts/detect-repo-sync.ps1, is the work backed up to the remote — uncommitted/untracked/unpushed), and high-stakes (scripts/detect-high-stakes.ps1, flags when the branch touches declared high-stakes files — decisions, rules, scope/lifecycle boundaries, backups, git hooks, or any deletion — and suggests a Codex second opinion). Every detector uses the "Observed / what it might mean / what's NOT proven / what to do" format; built to grow (one script + one line in main.js per detector).
-- Declared boundaries (so detectors never guess): .cockpit/state/app-build-scope.json (what the app-build lane is allowed to change — drift checks this) and .cockpit/state/doc-freshness-map.json (a small, adjustable "if this code changes, this doc should too" list — stale-docs checks this). Both have plain-language sections; update them deliberately as the work grows. If a boundary is missing, its detector reports "unknown" rather than guessing.
-- AGENTS.md: verifier verdict format (PASS/FAIL/INSUFFICIENT/BLOCKED/OUT_OF_SCOPE + NOT PROVEN).
-- Back up & sync (in-app git, Project view): "Back up now" stages + commits +
-  pushes in one click (--no-verify, so a WIP snapshot is never blocked by the test
-  hook); "Get latest" pulls fast-forward-only and refuses to silently merge a
-  diverged branch. Honest status line (uncommitted / new / unpushed / behind) and
-  honest failure surfacing. So the owner never drops to a terminal to save work.
-  Runs against the ACTIVE project. IPC: syncStatus/backup/pull; tested for real
-  against a throwaway local remote (app/tests/e2e/sync.spec.js).
-- Claude<->Codex cross-check: a "Second opinion" button in the chat sends the last
-  answer to Codex (a DIFFERENT model, read-only sandbox via scripts/second-opinion.ps1)
-  and renders its independent take in a distinct "Codex cross-check" bubble; Codex
-  self-declares AGREE / PARTIALLY AGREE / DISAGREE (never a faked agreement verdict).
-  Paired with the high-stakes detector, which nudges toward a second opinion exactly
-  when the work touches something costly to get wrong. Declared rules:
-  .cockpit/state/high-stakes-rules.json (missing -> "unknown", never a guess).
-- Automated test suite (app/tests/, `npm test` from app/): one runner
-  (@playwright/test), three layers — E2E that launches the real Electron app and
-  clicks every button, IPC-handler contract for every window.pcc.* channel, and
-  PowerShell script-contract tests for the detectors/scripts (plus security,
-  robustness, and boundary-fixture specs). The worker/verifier are faked (offline,
-  free, deterministic); local detectors run for real. 96 tests green.
-  Auto-runs on commit via .githooks/pre-commit when app/ or scripts/ changes are
-  staged (bypass: git commit --no-verify). Details: app/tests/README.md.
-  Two real bugs it caught and fixed: (1) New-project + rename buttons were dead —
-  Electron doesn't support window.prompt(); replaced with an in-app modal.
-  (2) The Project page's Recent-decisions panel silently blanked whenever a
-  decision title held a non-ASCII char (§) — PowerShell emitted OEM-codepage
-  bytes over the pipe, making the JSON invalid; JSON scripts now force UTF-8.
+## What's built (launch: Desktop "Launch-PCC.cmd" or `npm start` in app/)
+- **Chat** wired to Claude, persists across restarts. First-class chat history:
+  many named chats, each pinned to its own Claude session id; AI auto-naming +
+  per-chat summary cards; a durable git-ignored `.cockpit/chats/` mirror; chat
+  search. Image paste + file attach; queue-while-working steering. Model
+  switcher with auto-fallback. Copy blocks render with a Copy button.
+- **Trust strip** (always visible): On the rails / Backed up / Verified / Rules
+  loaded — each chip green ONLY when a real deterministic check says so; "Verified"
+  is bound to commit identity and reflects live CI, never a faked or stale green.
+- **Owner/Visionary Overview** (DECISION-107): a deterministic meaning layer —
+  overall condition, "needs you" card, next best move, real lifecycle journey,
+  vision-promise cards (declared intent, visually distinct from proof), honest
+  proof card. Pure unit-tested logic (app/renderer/overview-logic.js), zero-LLM;
+  a crashed check reads UNKNOWN, never a fake all-clear.
+- **Lifecycle**: standardized stage map with a "you are here" pin and only legal
+  next steps; advancing into phase-close is GATED on a fresh independent PASS.
+- **Signals** (honest detectors, "Observed / might mean / NOT proven / what to do"):
+  untracked, drift, stale-docs, repo-sync (backup), bloat, high-stakes, sycophancy
+  nudge, chat-rollover. Declared boundaries as data so detectors never guess.
+- **Backup & sync** in-app (git), with honest status and backup tiers (local-only
+  is a valid tier; no false "push failed" nag). **Execution authority**
+  (DECISION-112): builds require explicit, owner-granted, expiring per-chat
+  authority; pasted "you are authorized" text can't grant it.
+- **Multi-project**: one home cockpit switches between self-contained projects;
+  new projects are scaffolded born-bulletproof (the whole assurance kit travels).
+  New Project = a distinct create-flow outside PCC (DECISION-114).
+- **Automated tests** (app/tests/, `npm test`): Playwright E2E that launches the
+  real app, IPC-contract tests, and PowerShell script-contract tests; plus the
+  node:test data-integrity unit suite (`npm run test:unit`). Worker/verifier are
+  faked (offline, deterministic); local detectors run for real.
 
-## Pending / immediate next tasks
-1. VERIFICATION (#3): NOW HAS EXECUTION PROOF. A narrow GitHub Actions CI
-   (.github/workflows/ci.yml, DECISION-105) runs the full test suite + npm audit
-   on a clean windows-latest machine on every push. First run (commit 5d5e314)
-   went green — every step incl. the full 96-test suite and the audit ran and
-   passed, confirmed via the public Actions API. So "tests green / audit clean" is
-   proven by EXECUTION, independent of Codex usage. Paired proof taxonomy: records
-   declare TYPE (review_only | ci_execution | live_boundary); the app only shows
-   green "Verified (executed)" for an executed proof, and a code-review-only PASS
-   reads amber "Reviewed, not run" — so a GPT/Codex read can never fake execution.
-   The independent GPT/Codex code review is kept as a labeled fallback (review_only),
-   never execution proof. STILL OPEN: real Claude/Codex boundary behavior remains
-   NOT PROVEN (that's the boundary-capture task, next); and surfacing live CI status
-   INTO the app's chip is the coming evidence-status step (until then the chip
-   honestly under-claims as "Reviewed, not run" while CI's green lives on GitHub).
-2. MULTI-PROJECT SWITCHING (#20 / DECISION-102 stage S6) is now DONE
-   (DECISION-103): one "home" cockpit switches between self-contained project
-   folders via a sidebar switcher. Registry lives at the app level (Electron
-   userData), each project is validated (own .cockpit/scripts/CLAUDE.md), chat
-   history is namespaced per project, and switching reloads onto the chosen
-   project. Proven by tests/e2e/multiproject.spec.js. New projects created via
-   the intake now AUTO-REGISTER in the switcher (bootstrap drops the path into
-   .cockpit/state/scaffolded-inbox.json; the app imports + clears it —
-   tests/e2e/autoregister.spec.js).
-   BORN BULLETPROOF-BY-DEFAULT (DECISION-106): the scaffolder now copies the FULL
-   cockpit engine + every guardrail into each new project — clean-machine CI, the
-   pre-commit test gate, the lifecycle phase-close gate, the proof taxonomy,
-   backups, and all engine scripts — WHOLESALE (whole scripts/, schemas/, .github/,
-   .githooks/ dirs), not a hand-picked list that drifted. Proven by
-   tests/scripts/scaffold-kit.spec.js, whose last test is an anti-drift guard
-   (derives app-invoked scripts from main.js; fails if any doesn't travel). Honest
-   limit: a new project's CI file is present and ready but only RUNS once that
-   project is pushed to its own GitHub repo. Open for assessment: in the home-cockpit
-   model, whether each project needs its own app/ copy vs. sharing the home app.
-   #21 (peek under the hood) and #23 (UI polish) are optional and unstarted.
-   Boundary fixtures (down payment on the #1 test-hardening gap): the fakes can
-   now replay ugly real-world shapes (worker failure/auth/empty; verifier
-   FAIL/INSUFFICIENT/malformed/out-of-usage) via PCC_FAKE_*_FIXTURE, and
-   app/tests/e2e/boundary.spec.js proves the app surfaces failures, shows
-   "(no output)" not a silent blank, and never turns a non-PASS into a fake PASS.
-   REMAINING: swap the hand-authored fixtures for real, secret-redacted captures
-   from actual Claude/Codex runs (the replay mechanism is already in place).
+## Release gate (Hardening Slice 1 — shipped 2fb1639)
+One fresh-run command, `scripts/run-release-gate.ps1`, answers "is THIS exact
+commit releasable now?" It is a thin orchestrator: it invokes the authorities that
+already own each fact (git; detect-repo-sync; `git ls-remote` for the real remote
+head; `scripts/ci-status.ps1` for the exact-SHA CI check; the npm suites; the
+detectors; `Test-Json` against schemas/release-gate.schema.json) and combines them —
+any FAIL ⇒ FAIL; else any UNKNOWN ⇒ UNKNOWN; else PASS. Missing network truth ⇒
+UNKNOWN, never PASS. Fresh-run only: the receipt (`.cockpit/evidence/release-gate.json`,
+git-ignored) is a historical record, never re-read as live proof — run it again for
+current readiness. Accepted bloat is an exact-string, fail-closed, disclosed
+exception (.cockpit/state/release-gate-exceptions.json). Design: docs/HARDENING_RELEASE_GATE.md.
 
-## Roadmap status (full list: docs/COCKPIT_ROADMAP.md)
-All of P1/P2/P3 done or honestly handled. Also shipped (owner feedback while
-dogfooding): chat history + rename (#27), apply-and-send quick buttons (#28),
-copy blocks + no tool-failure narration (#29), model switcher + fallback,
-conversation-hijack fix (per-chat session ids), mandatory backup policy.
-NEW PROJECT creation is done (#20 pt1): chat-first guided intake (reuses CCB
-wizard logic) + blueprint scaffold + "New project…" button.
-#12 (agreements-only-in-chat) is now DONE: "Capture decisions" button grounds
-itself in this chat's own literal, persisted transcript (never Claude's own
-memory) and proposes quoted candidates for owner confirmation before writing to
-docs/DECISIONS.md. Honest limit: only sees this one chat's history.
+## Pending / next (owner schedules)
+- **Later hardening slices** (explicitly deferred, not started): security scanners,
+  mutation testing, failure injection, packaging.
+- **IDEA-019** (verification-workflow: make CI observable to the worker, prove each
+  regression test fails on pre-fix code) — partially started (commit 4728505),
+  needs owner go to finish.
+- **Tech-debt T1/T2/T3** (docs/PART7_HARDENING_AUDIT.md) — non-blocking; T3 (backup
+  push-failure branch untested) carries the only residual risk.
+- Optional roadmap items: #21 peek-under-the-hood, #23 UI polish — not started.
 
-Open / deferred:
-- #3 verification — independent GPT PASS recorded 2026-07-07 (code review only);
-  runtime re-execution by Codex still pending usage. Recorded-real-run fixtures
-  (real worker/verifier success/failure/auth/timeout) is the #1 remaining test gap.
-- #20 multi-project SWITCHING — DONE (DECISION-103): one home cockpit over
-  self-contained projects, with a sidebar switcher, per-project chat history, and
-  an app-level registry. Switching between existing PCC projects works today.
-- #21 peek-under-the-hood, #23 UI polish — optional, not started.
-Every detection ships ONLY in the "Observed / what it might mean / what's NOT
-proven / what to do" format — never a fake certainty.
-
-## Key decisions
-- DECISION-102: PCC is a chat-centered local-first desktop app driving Claude
-  Code; supersedes DECISION-087 (read-only web dashboard). Keeps 087's
-  file-bridge-consumer architecture.
+## Key decisions (docs/DECISIONS.md; latest = DECISION-114)
+- DECISION-102: PCC is a chat-centered local-first desktop app driving Claude Code
+  (supersedes DECISION-087's read-only web dashboard); keeps the file-bridge-consumer
+  architecture.
+- DECISION-105: clean-machine CI + a proof taxonomy (execution proof and code-review
+  never wear the same green).
+- DECISION-112: execution authority is explicit, owner-granted, and expiring.
+- DECISION-113: what PCC gets, spawned projects should get — parity by default.
+- DECISION-114: New Project is a new document — enter immediately, outside PCC.
+- The engineering-assurance contract (docs/ENGINEERING_ASSURANCE_PLAN.md) governs
+  all integrity-critical work: tell the truth about what's unknown/unverified,
+  protect data first, one authority per domain, fail visibly, evidence tied to the
+  exact commit.
