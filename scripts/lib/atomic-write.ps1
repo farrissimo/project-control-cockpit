@@ -29,9 +29,14 @@
   Windows, where directory fsync is unavailable anyway.
 
   SCOPE: per-CALL atomicity only. Consistency ACROSS two Write-JsonAtomic calls
-  (e.g. task-state.json + project-state.json) is the caller's concern; PCC's state
-  writers run scripts/validate-cockpit-state.ps1 immediately after to catch any
-  cross-file inconsistency, and each file now retains its own recoverable .prev.
+  (e.g. task-state.json + project-state.json) is NOT provided and is the caller's
+  concern. NOTE (do not repeat the old false claim): validate-cockpit-state.ps1 is
+  NOT a reliable cross-file backstop — it does not run if the process stops between
+  the two writes, and even when it runs it skips a still-null project verdict
+  (validate-cockpit-state.ps1:58), so a task-advanced / project-stale split can pass
+  it. Each file does retain its own recoverable .prev; the cross-file window is
+  bounded only by the pre-task backup, not automatically detected or repaired.
+  (Part 7 I1 remainder — OPEN.)
 #>
 
 function Write-JsonAtomic {
