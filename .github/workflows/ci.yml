@@ -36,6 +36,15 @@ jobs:
       - name: Install from lockfile (clean)
         run: npm ci
 
+      # The node:test unit suite (tests/unit/*.test.js: atomic-store, chat-store,
+      # chat-migrate, chat-bootstrap, chat-service — the data-integrity primitives)
+      # runs ONLY under `node --test`. Playwright's `npm test` does NOT pick up
+      # *.test.js, so without this step those core units get no CI proof. Runs
+      # first: it is fast and deterministic, so a real regression fails fast before
+      # the slower Electron suite.
+      - name: Run the node:test unit suite (data-integrity primitives)
+        run: npm run test:unit
+
       - name: Run the full test suite (Electron E2E + IPC + PowerShell scripts)
         run: npm test
 
