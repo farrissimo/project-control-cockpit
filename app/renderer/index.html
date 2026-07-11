@@ -282,6 +282,8 @@
   .ov-step.now { color: var(--info); border-color: var(--info); font-weight: 600; background: rgba(138,180,255,.08); }
 
   .ov-review-banner { font-size: 12px; color: var(--warning-text); background: var(--warning-bg); border: 1px solid var(--warning-border); border-radius: 10px; padding: 8px 12px; }
+  .chat-recovery { font-size: 13px; color: var(--warning-text); background: var(--warning-bg); border: 1px solid var(--warning-border); border-radius: 10px; padding: 10px 14px; margin: 6px 0; }
+  #chat-recovery.hidden { display: none; }
   .ov-promises { display: flex; flex-wrap: wrap; gap: 10px; }
   .ov-promise { flex: 1 1 240px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
   .ov-promise-label { font-size: 13px; font-weight: 600; color: var(--text); }
@@ -514,6 +516,7 @@
         <button id="new-chat" type="button" title="Start a fresh conversation (a new saved chat).">New chat</button>
       </div>
       <div id="chat-health" title="Project health at a glance. Click any tile to open the full detail in the Signals tab."></div>
+      <div id="chat-recovery" class="chat-recovery hidden" data-testid="recovery-banner" role="alert"></div>
       <div id="log"></div>
       <div id="corrections"></div>
       <div id="attachments" class="hidden"></div>

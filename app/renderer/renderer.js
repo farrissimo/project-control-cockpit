@@ -7,6 +7,7 @@ const input = document.getElementById('input');
 const form = document.getElementById('composer');
 const sendBtn = document.getElementById('send');
 const correctionsBar = document.getElementById('corrections');
+const recoveryBanner = document.getElementById('chat-recovery');
 
 // Chat history: many named conversations, each pinned to its own id (which is
 // also the Claude session id, so switching resumes the right thread). `history`
@@ -33,6 +34,7 @@ let sendQueue = []; // steering: messages composed while a turn is running, sent
 let storeRevision = null;
 let storeProjectId = null;
 let chatLoadError = null;           // non-null => the canonical store could not be loaded (fail visibly)
+let servedGeneration = 'current';   // 'current' | 'prev' — 'prev' means we are showing the last good generation (recovery); mutations are blocked
 const namedAtLen = new Map();       // renderer-local: last auto-named message count, by chatId (not persisted)
 const sessionIds = new Map();       // renderer-local: re-minted worker session id, by chatId (not persisted)
 const turnsStarted = new Set();     // renderer-local: chatIds that have had a worker turn (drives isFirstTurn)
@@ -62,7 +64,7 @@ function applyStore(store) {
   cacheChats();
 }
 
-// Re-read the canonical store and adopt it. Returns { ok } | { ok:false, error }.
+// Re-read the canonical store and adopt it. Returns { ok, served } | { ok:false, error }.
 async function refreshCanonical() {
   let r;
   try { r = await window.pcc.chatsRead(); } catch (e) { r = { ok: false, error: e.message }; }
@@ -72,15 +74,41 @@ async function refreshCanonical() {
     // must fail VISIBLY — never silently adopt it as an empty chat list (the
     // false-empty hazard this recovery exists to eliminate).
     if (!Array.isArray(r.store.chats)) return { ok: false, error: 'store_shape_invalid' };
-    applyStore(r.store); return { ok: true };
+    applyStore(r.store);
+    // served:'prev' => the current generation is damaged and this is the last good
+    // one (recovery). Surface it visibly and block mutations; never pass recovered
+    // data off as ordinary current state.
+    setRecoveryState(r.served);
+    return { ok: true, served: r.served };
   }
   return { ok: false, error: (r && r.error) || 'read_failed' };
+}
+
+// Reflect the served generation in the UI. A 'prev' read is a RECOVERY view: show a
+// persistent banner and disable the composer so nothing is edited from a recovered
+// (previous-generation) view; mutations are also hard-blocked in chatCmd. 'current'
+// clears the banner and restores the composer (unless a turn is in flight).
+function setRecoveryState(served) {
+  servedGeneration = (served === 'prev') ? 'prev' : 'current';
+  const inRecovery = servedGeneration === 'prev';
+  if (recoveryBanner) {
+    recoveryBanner.textContent = inRecovery
+      ? '⚠ Recovered view — the current chat file is damaged, so this is your last good saved history. Editing is disabled until it is recovered; nothing shown here will be changed.'
+      : '';
+    recoveryBanner.classList.toggle('hidden', !inRecovery);
+  }
+  if (input) input.disabled = inRecovery;
+  if (sendBtn) sendBtn.disabled = inRecovery || busy;
 }
 
 // Run a command-shaped mutation through the canonical IPC, then resync from the
 // store. Carries identity + revision so a stale or cross-project command is
 // rejected by main. On conflict we resync to the latest and report it.
 async function chatCmd(method, args) {
+  // Serving the prior generation (recovery) means the CURRENT store is damaged.
+  // Block EVERY mutation so the store is never advanced from a recovered view —
+  // it stays read-only until the damaged current generation is deliberately recovered.
+  if (servedGeneration === 'prev') return { ok: false, error: 'recovery_mode' };
   if (storeProjectId == null || !Number.isInteger(storeRevision)) return { ok: false, error: 'not_ready' };
   let r;
   try { r = await window.pcc[method](storeProjectId, storeRevision, args); }
@@ -276,6 +304,10 @@ async function sendMessage(text, displayText) {
   const msg = (text || '').trim();
   const outbound = attachments.slice(); // snapshot the composer's attachments for THIS send
   if (!msg && outbound.length === 0) return;
+  // In recovery (showing the prior generation), the store is read-only. Refuse the
+  // send with a clear reason rather than optimistically show a bubble that then
+  // fails to persist.
+  if (servedGeneration === 'prev') { addBubbleUI('assistant error', 'Editing is disabled while showing recovered history — the current chat file must be recovered first.'); return; }
   const shown = (displayText || msg).trim();
   const chat = activeChat();
   if (!chat) return;
@@ -959,8 +991,11 @@ async function loadChats() {
   // 3. Read the canonical store (the authority).
   const r = await refreshCanonical();
   if (!r.ok) return showChatLoadError('Could not load your chats: ' + r.error);
-  // 4. Genuinely-empty project: seed a first chat via the command IPC and make it active.
-  if (chats.length === 0 && storeProjectId != null && Number.isInteger(storeRevision)) {
+  // 4. Genuinely-empty project: seed a first chat via the command IPC and make it
+  //    active. NEVER while in recovery (servedGeneration==='prev'): the current
+  //    generation is damaged and the store is read-only, so we must not attempt any
+  //    mutation — not even this seed, which would otherwise bypass the chatCmd gate.
+  if (servedGeneration !== 'prev' && chats.length === 0 && storeProjectId != null && Number.isInteger(storeRevision)) {
     const nid = uuid();
     const cr = await window.pcc.chatsCreate(storeProjectId, storeRevision, { id: nid, name: 'New chat' });
     if (cr && cr.ok) { await refreshCanonical(); await chatCmd('chatsSetActive', { chatId: nid }); }

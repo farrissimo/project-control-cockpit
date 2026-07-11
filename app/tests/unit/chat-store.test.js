@@ -154,6 +154,57 @@ test('a command that would produce an INVALID store fails closed WITHOUT writing
   assert.equal(cs.readStore(file).store.revision, rev, 'revision did not advance');
 });
 
+// ---- S6.1: dangling activeChatId + finite timestamps ----
+
+test('validateStore rejects a dangling non-null activeChatId (no silent substitution)', () => {
+  const { file, ids } = seed(2);
+  const base = cs.readStore(file).store;
+  assert.equal(cs.validateStore(Object.assign({}, base, { activeChatId: 'no-such-chat' })).error, 'active_chat_dangling');
+  // null (no selection) or a reference to an existing chat is valid.
+  assert.equal(cs.validateStore(Object.assign({}, base, { activeChatId: null })).ok, true);
+  assert.equal(cs.validateStore(Object.assign({}, base, { activeChatId: ids[0] })).ok, true);
+});
+
+test('readStore treats a dangling activeChatId as invalid and falls back to the valid .prev', () => {
+  const { file } = seed(2);                 // valid current + valid .prev
+  const cur = cs.readStore(file).store;
+  cur.activeChatId = 'ghost';               // points at a chat that does not exist
+  fs.writeFileSync(file, JSON.stringify(cur), 'utf8');
+  const rd = cs.readStore(file);
+  assert.equal(rd.served, 'prev', 'an internally inconsistent current must not be served');
+  assert.match(rd.currentError, /invalid:active_chat_dangling/);
+});
+
+test('validateStore rejects NaN/Infinity timestamps (Number.isFinite, not typeof number)', () => {
+  const { file } = seed(1);
+  const base = cs.readStore(file).store;
+  // JSON cannot represent NaN/Infinity, so these model the exact vector: an
+  // in-memory store assembled by a mutation, checked BEFORE serialization.
+  assert.equal(cs.validateStore(Object.assign({}, base, { createdAt: NaN })).error, 'store_timestamps');
+  assert.equal(cs.validateStore(Object.assign({}, base, { updatedAt: Infinity })).error, 'store_timestamps');
+  const chatBad = JSON.parse(JSON.stringify(base)); chatBad.chats[0].updatedAt = NaN;
+  assert.equal(cs.validateStore(chatBad).error, 'chat_timestamps');
+  const msgBad = JSON.parse(JSON.stringify(base));
+  msgBad.chats[0].messages = [{ id: 'm', cls: 'user', text: 'x', ts: 1 }];
+  msgBad.chats[0].messages[0].ts = Infinity;
+  assert.equal(cs.validateStore(msgBad).error, 'message_ts');
+});
+
+test('a mutation carrying a NaN/Infinity message ts CANNOT change the current file', () => {
+  for (const badTs of [NaN, Infinity, -Infinity]) {
+    const { file, rev, ids } = seed(1);
+    const before = fs.readFileSync(file, 'utf8');
+    // appendMessage coerces only NON-number ts to now; NaN/Infinity ARE typeof
+    // number, so they pass through and must be caught by the pre-write validation.
+    const r = cs.appendMessage(file, rev, { chatId: ids[0], message: { id: 'm-x', cls: 'user', text: 'x', ts: badTs } }, nextNow());
+    assert.equal(r.ok, false, 'ts=' + badTs);
+    assert.equal(r.error, 'would_corrupt', 'ts=' + badTs);
+    assert.match(r.detail, /message_ts/);
+    assert.equal(fs.readFileSync(file, 'utf8'), before, 'current file byte-for-byte unchanged for ts=' + badTs);
+    assert.equal(cs.readStore(file).store.revision, rev, 'revision did not advance for ts=' + badTs);
+  }
+});
+
 // ---- createChat + CAS ----
 
 test('createChat appends and bumps revision; returns the id', () => {

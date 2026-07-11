@@ -60,7 +60,12 @@ function _validateChatShape(c) {
   if (typeof c.id !== 'string' || !c.id) return 'chat_id';
   if (typeof c.name !== 'string') return 'chat_name';
   if (typeof c.started !== 'boolean') return 'chat_started';
-  if (typeof c.createdAt !== 'number' || typeof c.updatedAt !== 'number') return 'chat_timestamps';
+  // Number.isFinite (not typeof === 'number'): NaN and Infinity ARE typeof number
+  // but are not real timestamps, and JSON serialization turns them into null — so
+  // a typeof check would admit an in-memory NaN/Infinity that then corrupts the
+  // persisted value. Reject them here (composes with _commit's pre-write check to
+  // guarantee a NaN/Infinity timestamp can never reach the file).
+  if (!Number.isFinite(c.createdAt) || !Number.isFinite(c.updatedAt)) return 'chat_timestamps';
   if (!Array.isArray(c.messages)) return 'chat_messages_not_array';
   const seen = new Set();
   for (const m of c.messages) {
@@ -71,7 +76,7 @@ function _validateChatShape(c) {
     if (typeof m.id !== 'string' || !m.id) return 'message_id';
     if (seen.has(m.id)) return 'duplicate_message_id';
     seen.add(m.id);
-    if (typeof m.ts !== 'number') return 'message_ts';
+    if (!Number.isFinite(m.ts)) return 'message_ts';
     if (m.cls !== undefined && typeof m.cls !== 'string') return 'message_cls';
     if (m.text !== undefined && typeof m.text !== 'string') return 'message_text';
   }
@@ -88,7 +93,7 @@ function validateStore(store) {
   if (store.schemaVersion !== SCHEMA_VERSION) return { ok: false, error: 'schema_version', detail: store.schemaVersion };
   if (!(store.projectId === null || (typeof store.projectId === 'string' && store.projectId))) return { ok: false, error: 'project_id' };
   if (!Number.isInteger(store.revision) || store.revision < 1) return { ok: false, error: 'revision', detail: store.revision };
-  if (typeof store.createdAt !== 'number' || typeof store.updatedAt !== 'number') return { ok: false, error: 'store_timestamps' };
+  if (!Number.isFinite(store.createdAt) || !Number.isFinite(store.updatedAt)) return { ok: false, error: 'store_timestamps' };
   if (!(store.activeChatId === null || typeof store.activeChatId === 'string')) return { ok: false, error: 'active_chat_id' };
   if (!Array.isArray(store.chats)) return { ok: false, error: 'chats_not_an_array' };
   const ids = new Set();
@@ -97,6 +102,14 @@ function validateStore(store) {
     if (reason) return { ok: false, error: reason, chatId: (_isPlainObject(c) ? c.id : undefined) };
     if (ids.has(c.id)) return { ok: false, error: 'duplicate_chat_id', chatId: c.id };
     ids.add(c.id);
+  }
+  // A NON-null activeChatId MUST reference an existing chat. A dangling selection
+  // is an internally inconsistent store — fail closed rather than let a consumer
+  // silently substitute a different chat (e.g. the first) for the missing id. The
+  // module's own writers uphold this (setActiveChat rejects unknown ids; deleteChat
+  // clears the selection when it removes the active chat).
+  if (store.activeChatId !== null && !ids.has(store.activeChatId)) {
+    return { ok: false, error: 'active_chat_dangling', chatId: store.activeChatId };
   }
   return { ok: true };
 }
