@@ -1554,9 +1554,14 @@ async function loadTrust() {
   // proof (green) comes from the LIVE CI check above (ci.state), never from a file's TYPE: line — so
   // a forged "TYPE: ci_execution" can no longer light this chip green.
   const executed = v && PCCVerification.isTrustedLocalProof(v.type);
-  if (ci && ci.available && ci.state === 'passed') {
+  if (ci && ci.available && ci.state === 'passed' && x && x.gitKnown && !x.dirty) {
     setChip('trust-verified', 'good', 'Verified (ran in CI)',
       'The full test suite ran and passed in CI for the current commit — clean-room execution proof, not just a code read.');
+  } else if (ci && ci.available && ci.state === 'passed') {
+    // CI passed the committed HEAD, but the working tree has uncommitted changes CI
+    // never saw (or git state is unknown) — do NOT paint that as fully verified.
+    setChip('trust-verified', 'warn', 'CI passed — uncommitted changes',
+      'CI ran and passed the latest COMMIT, but there are uncommitted local changes it did not see (or git state could not be read). Commit and push to get them covered.');
   } else if (ci && ci.available && ci.state === 'failed') {
     setChip('trust-verified', 'bad', 'CI failing',
       'CI ran the current commit and it did NOT pass. Do not trust this state until CI is green again.');
@@ -1564,17 +1569,17 @@ async function loadTrust() {
     setChip('trust-verified', 'unknown', 'Verified', 'Could not read verification status.');
   } else if (!v || !v.present) {
     setChip('trust-verified', 'warn', 'Not verified yet', 'No independent verification recorded for the current work yet.');
-  } else if (v.verdict === 'PASS' && v.mtimeEpoch >= (x.headCommitEpoch || 0) && executed) {
+  } else if (v.verdict === 'PASS' && v.matchesCurrent && executed) {
     // local_execution is real execution but on THIS machine — label it honestly, never
     // as a clean-room CI run.
     // Only local_execution reaches here now (isTrustedLocalProof), so this is always the app's own
     // local run — labeled honestly as local, never as a clean-room CI run (that green comes from CI above).
     setChip('trust-verified', 'good', 'Verified (ran locally)',
       'The product’s own checks ran and passed on THIS machine (local execution) — real execution, but not a clean-room CI run. Clean-room proof shows as “Verified (ran in CI)”.');
-  } else if (v.verdict === 'PASS' && v.mtimeEpoch >= (x.headCommitEpoch || 0)) {
+  } else if (v.verdict === 'PASS' && v.matchesCurrent) {
     setChip('trust-verified', 'warn', 'Reviewed, not run', 'A reviewer read the code and found no problems, but nothing was executed — that is not proof it runs. Execution proof comes from CI/tests.');
   } else if (v.verdict === 'PASS') {
-    setChip('trust-verified', 'warn', 'Verified (stale)', 'Last verdict was PASS but it predates the latest commit — re-verify.');
+    setChip('trust-verified', 'warn', 'Verified (stale)', 'Last verdict was PASS but it does not match the current code — a newer commit or uncommitted changes since the check. Re-verify.');
   } else if (v.verdict) {
     setChip('trust-verified', 'bad', 'Verified: ' + v.verdict, 'Last recorded verdict was ' + v.verdict + '.');
   } else {
@@ -1841,7 +1846,7 @@ async function loadProject() {
     if (trust && trust.verification && trust.verification.present) {
       const v = trust.verification;
       if (v.verdict === 'PASS') {
-        const fresh = v.mtimeEpoch >= (trust.headCommitEpoch || 0); // exact parity with the trust strip
+        const fresh = !!v.matchesCurrent; // commit-bound: VERIFIED_SHA == HEAD and clean tree (parity with the trust strip)
         // Origin seam: only a locally-run proof is trusted as "executed" from this record; a forged
         // ci_execution/live_boundary claim no longer reads as executed here (CI proof lives on the trust light).
         const executed = PCCVerification.isTrustedLocalProof(v.type);

@@ -3,7 +3,7 @@
 // trust strip / Overview while the phase-close gate rejected the same file). These tests
 // pin the structured behavior that every JS trust surface now shares.
 const { test, expect } = require('@playwright/test');
-const { parseVerification, isExecutedType, isTrustedLocalProof } = require('../../renderer/verification-parse.js');
+const { parseVerification, isExecutedType, isTrustedLocalProof, matchesCurrentCommit } = require('../../renderer/verification-parse.js');
 
 test('a stray "PASS" in prose is NOT a verdict (the fake-green hole)', () => {
   const text = 'VERIFIER: someone\nTYPE: local_execution\n\nHonestly it will PASS eventually, looks fine.\n';
@@ -42,6 +42,24 @@ test('isTrustedLocalProof trusts only local_execution (forged CI/clean-room clai
   expect(isTrustedLocalProof('live_boundary')).toBe(false);  // not trustable from a file — forgery surface
   expect(isTrustedLocalProof('review_only')).toBe(false);
   expect(isTrustedLocalProof(null)).toBe(false);
+});
+
+test('VERIFIED_SHA is parsed from its own line (and only a real hex sha)', () => {
+  const text = 'VERIFIED_SHA: e8a19b03d8c7c17de717af85d554ee3e6432a0c2\nTYPE: local_execution\n\nVERDICT: PASS\n';
+  expect(parseVerification(text).sha).toBe('e8a19b03d8c7c17de717af85d554ee3e6432a0c2');
+  expect(parseVerification('VERDICT: PASS').sha).toBeNull(); // absent => null
+  expect(parseVerification('a VERIFIED_SHA: deadbeef mentioned mid-sentence').sha).toBeNull(); // not at line start
+});
+
+// CRIT-1: commit-bound freshness. Green ONLY when the recorded sha == HEAD and the tree is clean.
+test('matchesCurrentCommit is true only for an exact sha match on a clean tree', () => {
+  const sha = 'e8a19b03d8c7c17de717af85d554ee3e6432a0c2';
+  expect(matchesCurrentCommit(sha, sha, false)).toBe(true);          // matches, clean
+  expect(matchesCurrentCommit(sha, sha, true)).toBe(false);          // uncommitted edits => not current (the old proxy's blind spot)
+  expect(matchesCurrentCommit(sha, 'a'.repeat(40), false)).toBe(false); // HEAD moved on
+  expect(matchesCurrentCommit(null, sha, false)).toBe(false);        // record has no sha => cannot prove
+  expect(matchesCurrentCommit(sha, null, false)).toBe(false);        // git unknown => fail closed
+  expect(matchesCurrentCommit(sha.toUpperCase(), sha, false)).toBe(true); // case-insensitive
 });
 
 test('a mid-line VERDICT/TYPE mention in prose is not matched', () => {

@@ -12,7 +12,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { spawn, spawnSync, exec, execFile } = require('child_process');
-const { parseVerification } = require('./renderer/verification-parse');
+const { parseVerification, matchesCurrentCommit } = require('./renderer/verification-parse');
 const { createAuthorityStore } = require('./authority-store');
 const { decideBackup } = require('./backup-policy');
 const { parseGitHubRepo, decideCiStatus, CI_CHECK_NAME } = require('./ci-status');
@@ -388,10 +388,12 @@ ipcMain.handle('pcc:detections', () => {
 // Trust-strip extras: the two honest facts the always-visible strip needs
 // beyond the detectors. "Rules loaded" is just whether CLAUDE.md exists (the
 // rules DO auto-load into every Claude session; this proves they are present,
-// not that the AI obeyed them). Verification is read from the file the
-// scheduled run writes, and is only called fresh if it is newer than HEAD -
-// so the strip never claims "verified" for work committed after the check.
-ipcMain.handle('pcc:trustExtras', () => new Promise((resolve) => {
+// not that the AI obeyed them). Verification freshness is COMMIT-BOUND (Part 1
+// rule 7): the record covers the current code only if its VERIFIED_SHA equals HEAD
+// AND the working tree is clean — so the strip never claims "verified / matches
+// current code" over a newer commit OR uncommitted edits. If git cannot be read,
+// matchesCurrent is false (fail closed — never a false green over an unknown tree).
+ipcMain.handle('pcc:trustExtras', async () => {
   const rulesLoaded = fs.existsSync(path.join(projectDir, 'CLAUDE.md'));
   const vPath = path.join(projectDir, 'app', 'last-verification.txt');
   let verification = { present: false };
@@ -403,14 +405,30 @@ ipcMain.handle('pcc:trustExtras', () => new Promise((resolve) => {
       // stray "PASS" in prose can't read as a verdict on the trust strip / Overview.
       // TYPE default review_only is the conservative honest assumption when unstated.
       const parsed = parseVerification(text);
-      verification = { present: true, verdict: parsed.verdict, type: parsed.type || 'review_only', mtimeEpoch: Math.floor(st.mtimeMs / 1000) };
+      verification = { present: true, verdict: parsed.verdict, type: parsed.type || 'review_only', sha: parsed.sha || null, mtimeEpoch: Math.floor(st.mtimeMs / 1000) };
     }
   } catch (e) { /* leave present:false */ }
-  exec('git log -1 --format=%ct', { cwd: projectDir, timeout: 10000, windowsHide: true }, (err, stdout) => {
-    const headEpoch = parseInt((stdout || '').trim(), 10) || 0;
-    resolve({ rulesLoaded, verification, headCommitEpoch: headEpoch });
-  });
-}));
+  // Resolve HEAD sha + working-tree dirtiness, checking .failed on every git call so
+  // a git failure cannot masquerade as "clean / matches" (CRIT-2 lesson).
+  let headSha = null, dirty = false, gitKnown = false, headCommitEpoch = 0;
+  const head = await git(['rev-parse', 'HEAD']);
+  if (!head.failed && head.out) {
+    headSha = head.out;
+    const ct = await git(['log', '-1', '--format=%ct']);
+    if (!ct.failed) headCommitEpoch = parseInt(ct.out, 10) || 0;
+    const status = await git(['status', '--porcelain']);
+    if (!status.failed) { gitKnown = true; dirty = status.out.length > 0; }
+  }
+  if (verification.present) {
+    verification.gitKnown = gitKnown;
+    // Only a KNOWN git state can prove a match; unknown => false (fail closed).
+    verification.matchesCurrent = gitKnown ? matchesCurrentCommit(verification.sha, headSha, dirty) : false;
+  }
+  // Expose the tree state so the CI-green chip can ALSO refuse to claim "verified"
+  // over uncommitted edits: CI runs the committed HEAD, so a passing CI run does not
+  // cover a dirty working tree. gitKnown=false => tree state unknown (fail closed).
+  return { rulesLoaded, verification, headCommitEpoch, dirty, gitKnown };
+});
 
 // Model config: an editable list + default + fallback chain, so the app never
 // hard-codes models. If the chosen model is retired/unavailable, Claude Code's

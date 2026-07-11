@@ -33,12 +33,15 @@
 
     // Proof status, straight from the verification taxonomy.
     const v = x && x.verification;
-    const headEpoch = (x && x.headCommitEpoch) || 0;
     const proof = { kind: 'missing', fresh: false, verdict: null, type: null };
     if (v && v.present) {
       proof.verdict = v.verdict || null;
       proof.type = v.type || 'review_only';
-      proof.fresh = typeof v.mtimeEpoch === 'number' && v.mtimeEpoch >= headEpoch;
+      // Commit-bound freshness comes pre-computed by main (matchesCurrent): the record
+      // proves the current code only when its VERIFIED_SHA == HEAD and the tree is
+      // clean. Replaces the old mtime-vs-commit-time proxy that stayed fresh over
+      // uncommitted edits. Unknown/absent => false (fail closed).
+      proof.fresh = v.matchesCurrent === true;
       // Origin seam: this record is hand-editable, so only a locally-run proof (local_execution,
       // the product's own checks) is TRUSTED as executed here. A forged ci_execution/live_boundary
       // TYPE: line no longer counts as executed — clean-room/CI proof comes from the live CI check,
@@ -77,7 +80,7 @@
     } else if (needProof) {
       const why = proof.kind === 'missing' ? 'No independent verification is recorded for the current work.'
         : proof.kind === 'review_only' ? 'The latest verification is review-only — the code was read, not executed. CI runs on GitHub, but live CI status is not yet surfaced here.'
-        : 'The recorded verification predates the latest commit (stale) — re-verify.';
+        : 'The recorded verification does not match the current code — a newer commit or uncommitted changes since the check (stale) — re-verify.';
       cond = { label: 'Needs proof', cls: 'warn', why: why, safe: 'Yes, with caution.' };
     } else if (syncDirty) {
       cond = { label: 'Needs attention', cls: 'warn', why: 'Work is not fully backed up (uncommitted, untracked, or unpushed changes).', safe: 'Yes, but back up soon.' };

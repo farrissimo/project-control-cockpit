@@ -25,7 +25,27 @@
     text = String(text || '');
     const mv = text.match(new RegExp('^[ \\t]*VERDICT:[ \\t]*(' + VERDICTS + ')\\b', 'im'));
     const mt = text.match(new RegExp('^[ \\t]*TYPE:[ \\t]*(' + TYPES + ')\\b', 'im'));
-    return { verdict: mv ? mv[1].toUpperCase() : null, type: mt ? mt[1].toLowerCase() : null };
+    // VERIFIED_SHA: the commit HEAD was at when the verification ran (written by
+    // verify-work.ps1). Used ONLY to bind freshness to commit identity (see
+    // matchesCurrentCommit) — never as a verdict/type.
+    const ms = text.match(/^[ \t]*VERIFIED_SHA:[ \t]*([0-9a-fA-F]{7,40})\b/im);
+    return {
+      verdict: mv ? mv[1].toUpperCase() : null,
+      type: mt ? mt[1].toLowerCase() : null,
+      sha: ms ? ms[1].toLowerCase() : null,
+    };
+  }
+
+  // Commit-bound freshness (assurance plan Part 1 rule 7): a recorded verification
+  // covers the CURRENT code ONLY if its VERIFIED_SHA equals the current HEAD sha AND
+  // the working tree has no uncommitted changes. A missing recorded sha, an unknown
+  // HEAD (null — git could not be read), a moved HEAD, or a dirty tree all mean "not
+  // proven for current code" -> false. This replaces the old mtime-vs-commit-TIME
+  // proxy, which stayed green over uncommitted edits (they never move HEAD's time).
+  function matchesCurrentCommit(recordSha, headSha, dirty) {
+    if (!recordSha || !headSha) return false;
+    if (dirty) return false;
+    return String(recordSha).toLowerCase() === String(headSha).toLowerCase();
   }
 
   // A proof TYPE that means the code was actually RUN (not just read). Semantic only — describes
@@ -48,5 +68,5 @@
     return type === 'local_execution';
   }
 
-  return { parseVerification: parseVerification, isExecutedType: isExecutedType, isTrustedLocalProof: isTrustedLocalProof };
+  return { parseVerification: parseVerification, isExecutedType: isExecutedType, isTrustedLocalProof: isTrustedLocalProof, matchesCurrentCommit: matchesCurrentCommit };
 });

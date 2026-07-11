@@ -183,6 +183,13 @@ test('trustExtras reports rulesLoaded + verification + head epoch', async () => 
   expect(x.rulesLoaded).toBe(true);
   expect(x).toHaveProperty('verification');
   expect(typeof x.headCommitEpoch).toBe('number');
+  // Commit-bound freshness is computed and surfaced (boolean when a record is present).
+  if (x.verification && x.verification.present) {
+    expect(typeof x.verification.matchesCurrent).toBe('boolean');
+  }
+  // Working-tree state is surfaced so the CI-green chip can refuse to verify over uncommitted edits.
+  expect(typeof x.dirty).toBe('boolean');
+  expect(typeof x.gitKnown).toBe('boolean');
 });
 
 test('lifecycle returns a stage result', async () => {

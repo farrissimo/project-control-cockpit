@@ -18,9 +18,11 @@ const lcOk = {
 const noNotices = { drift: { signal: 'clear' }, highStakes: { signal: 'clear' }, staleDocs: { signal: 'clear' }, bloat: { signal: 'clear' }, untracked: { signal: 'clear' }, repoSync: { signal: 'clear' } };
 const cleanSync = { clean: true };
 const rulesX = (verif) => ({ verification: verif, headCommitEpoch: 100, rulesLoaded: true });
-const freshReview = { present: true, verdict: 'PASS', type: 'review_only', mtimeEpoch: 200 };
-const freshForgedCi = { present: true, verdict: 'PASS', type: 'ci_execution', mtimeEpoch: 200 }; // a file CANNOT prove ci_execution
-const freshLocal = { present: true, verdict: 'PASS', type: 'local_execution', mtimeEpoch: 200 };
+// Freshness is now COMMIT-BOUND: main sets verification.matchesCurrent (VERIFIED_SHA == HEAD and clean tree).
+const freshReview = { present: true, verdict: 'PASS', type: 'review_only', matchesCurrent: true };
+const freshForgedCi = { present: true, verdict: 'PASS', type: 'ci_execution', matchesCurrent: true }; // a file CANNOT prove ci_execution
+const freshLocal = { present: true, verdict: 'PASS', type: 'local_execution', matchesCurrent: true };
+const staleLocal = { present: true, verdict: 'PASS', type: 'local_execution', matchesCurrent: false }; // executed PASS, but code moved since (new commit or uncommitted edits)
 
 // Soak fix F3: a local_execution PASS is REAL execution proof (Healthy), but labeled
 // honestly as local (this machine), never as a clean-room CI run.
@@ -29,6 +31,16 @@ test('local_execution PASS counts as executed proof but is labeled honestly (F3)
   expect(m.cond.label).toBe('Healthy');
   expect(m.proof.exec).toContain('this machine');
   expect(m.proof.exec).not.toContain('clean machine'); // must not overclaim CI
+});
+
+// CRIT-1 fix: an executed (local_execution) PASS whose VERIFIED_SHA no longer matches
+// HEAD or whose tree is dirty (matchesCurrent:false) must NOT read as Healthy — the old
+// mtime-vs-commit-time proxy stayed green over uncommitted edits.
+test('an executed PASS that no longer matches current code is NOT Healthy (commit-bound freshness)', () => {
+  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(staleLocal), sync: cleanSync, state: {}, vp: null });
+  expect(m.cond.label).toBe('Needs proof');            // not Healthy — the proof no longer covers current code
+  expect(m.proof.exec).toBe('not surfaced in the app yet'); // a stale executed PASS is NOT surfaced as current execution proof
+  expect(m.cond.why.toLowerCase()).toContain('current code');
 });
 
 test('review-only PASS is NOT executed proof and yields "Needs proof"', () => {
@@ -54,7 +66,7 @@ test('a FILE claiming ci_execution is not trusted as executed proof (forgery gua
 });
 
 test('a FAIL verdict is Blocked', () => {
-  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX({ present: true, verdict: 'FAIL', type: 'review_only', mtimeEpoch: 200 }), sync: cleanSync, state: {}, vp: null });
+  const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX({ present: true, verdict: 'FAIL', type: 'review_only', matchesCurrent: true }), sync: cleanSync, state: {}, vp: null });
   expect(m.cond.label).toBe('Blocked');
   expect(m.cond.safe.toLowerCase()).toContain('no');
 });
