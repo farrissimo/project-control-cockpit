@@ -13,7 +13,16 @@ The chat-data recovery (S1–S6.1) is solid and fails closed. The audit found th
 
 **2 critical, 8 important, 3 tech-debt.** Only the critical + important enter the hardening queue below (your decision to schedule).
 
-> **STATUS (2026-07-11): the critical + important queue is COMPLETE.** All 2 critical (CRIT-1 09b236a, CRIT-2 5ce4cf8) and all 8 important — I6 0a08f9c, I2 c0cc689, I7 eca3bf6, I5 49b6750, I4 280c6c7, I8 f107692, I3 ccd902e, I1 d40af30 — shipped (each Codex-PASS + pushed). Tech-debt T1/T2/T3 left as non-blocking (T3 = the untested push-failure branch, still open). The atomic-write primitive is now shared by both JS (app/state/atomic-store.js) and PowerShell (scripts/lib/atomic-write.ps1) writers. Separately, CI (.github/workflows/ci.yml) now also runs the node:test unit suite (96f0783), closing the gap where the data-integrity primitives had no CI proof.
+> **STATUS (2026-07-11, corrected after GPT secondary verification):** the queue is MOSTLY shipped, but **I1 and I3 are only PARTIALLY closed** — the earlier "COMPLETE" claim was inaccurate and is retracted.
+>
+> - **Fully shipped (Codex-PASS + pushed):** CRIT-1 09b236a, CRIT-2 5ce4cf8, I6 0a08f9c, I2 c0cc689, I7 eca3bf6, I5 49b6750, I4 280c6c7, **I8 f107692**.
+> - **PARTIAL — durability half done, consistency/concurrency half OPEN:**
+>   - **I3 ccd902e** — lifecycle-state.json writes are now atomic + retain `.prev` (torn-write/durability half). NOT closed: the two writers (main.js `setPhaseKind`, spawned `lifecycle-advance.ps1`) still do whole-object read-modify-write with **no revision/CAS/lock**, so the interleaved lost-update in the original finding is still reachable (atomic-store.js itself relies on a single writer, which this file does not have). The I3 test covers one writer only.
+>   - **I1 d40af30** — task/project-state writes are now atomic + retain `.prev`. NOT closed: a kill strictly between the two writes still leaves task advanced + project stale, and `validate-cockpit-state.ps1` is **not** a reliable backstop (it skips a still-null project verdict — validate-cockpit-state.ps1:58 — and does not run at all on the crash path). The earlier "validator backstop" wording was false and has been corrected in the scripts.
+> - Tech-debt T1/T2/T3 remain non-blocking (T3 push-failure branch still untested).
+> - The atomic-write primitive is now shared by JS (app/state/atomic-store.js) + PowerShell (scripts/lib/atomic-write.ps1). CI (.github/workflows/ci.yml) now also runs the node:test unit suite (96f0783).
+>
+> **Remaining to truly close I1/I3** (owner decision — see the reopened notes): give lifecycle-state.json real single-writer/CAS protection (I3); make the task/project cross-file update either transactional or reliably detected+repaired on boot (I1). These are the assurance-plan "revision/concurrency protection" (class 9) and "cross-file consistency" requirements, which the atomic+`.prev` queue-item-4 prescription did not by itself satisfy.
 
 ---
 

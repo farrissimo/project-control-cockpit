@@ -15,10 +15,13 @@ function Fail {
 }
 
 # Persist the two canonical state files atomically, each retaining its prior .prev.
-# Each write is individually crash-safe and recoverable; the two are still two
-# operations, so a kill strictly BETWEEN them leaves task advanced + project stale —
-# but neither file can be truncated/lost, and the caller runs
-# validate-cockpit-state.ps1 immediately after to catch any cross-file inconsistency.
+# HONEST SCOPE (Part 7 I1 remainder — NOT fully closed): each write is individually
+# crash-safe and recoverable, but the two are still two operations — a kill strictly
+# BETWEEN them leaves task advanced + project stale. The caller runs
+# validate-cockpit-state.ps1 after, but that is NOT a reliable detector of the split
+# (it skips a still-null project verdict, and does not run if the process dies
+# mid-write). Neither file can be truncated/lost; the cross-file window is bounded
+# only by the pre-task backup, not automatically detected or repaired.
 function Save-State {
   param($TaskState, $ProjectState)
   try {

@@ -96,8 +96,13 @@ if ($verification.verdict -eq "PASS") {
 }
 
 # Persist both canonical state files atomically, each retaining its prior .prev.
-# Per-file crash-safe + recoverable; the post-update validate-cockpit-state.ps1
-# below is the cross-file consistency backstop (see finalize-worker-handback.ps1).
+# HONEST SCOPE (Part 7 I1 remainder — NOT fully closed): this is PER-FILE crash-
+# safety, NOT cross-file transactionality. A kill strictly between the two writes
+# leaves task advanced + project stale. validate-cockpit-state.ps1 (below) is NOT a
+# reliable detector of that split: it skips the project verdict while it is still
+# null, and it does not run at all if the process dies mid-write. The residual
+# cross-file window is bounded only by the pre-task backup snapshot — not
+# automatically detected or repaired.
 try {
   Write-JsonAtomic -Path $taskStatePath -Json ($taskState | ConvertTo-Json -Depth 10)
   Write-JsonAtomic -Path $projectStatePath -Json ($projectState | ConvertTo-Json -Depth 10)
