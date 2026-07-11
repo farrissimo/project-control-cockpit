@@ -1769,15 +1769,16 @@ async function loadOwnerOverview() {
   // Fetch every fact in parallel — detections alone spawns several PowerShell
   // detectors, so sequential awaits would leave the overview on "Loading…" for
   // seconds. Each failure degrades to null (computeOverview handles nulls).
-  const [lc, det, x, sync, state, vp] = await Promise.all([
+  const [lc, det, x, sync, state, vp, ci] = await Promise.all([
     window.pcc.lifecycle().catch(() => null),
     window.pcc.detections().catch(() => null),
     window.pcc.trustExtras().catch(() => null),
     window.pcc.syncStatus().catch(() => null),
     window.pcc.getState().catch(() => null),
     window.pcc.visionPromises().catch(() => null),
+    window.pcc.ciStatus().catch(() => null), // live CI = clean-room execution proof (same source as the trust strip)
   ]);
-  const data = { lc, det, x, sync, state, vp };
+  const data = { lc, det, x, sync, state, vp, ci };
 
   let m;
   try { m = PCCOverview.computeOverview(data); }

@@ -24,6 +24,12 @@ const freshReview = { present: true, verdict: 'PASS', type: 'review_only', match
 const freshForgedCi = { present: true, verdict: 'PASS', type: 'ci_execution', matchesCurrent: true }; // a file CANNOT prove ci_execution
 const freshLocal = { present: true, verdict: 'PASS', type: 'local_execution', matchesCurrent: true };
 const staleLocal = { present: true, verdict: 'PASS', type: 'local_execution', matchesCurrent: false }; // executed PASS, but code moved since (new commit or uncommitted edits)
+// Live CI (clean-room execution proof of the current commit). x carries the git state the
+// CI-precedence needs (same gate as the trust strip: known git + clean tree).
+const ciPass = { available: true, state: 'passed' };
+const xCI = (verif, git) => Object.assign({ verification: verif, headCommitEpoch: 100, rulesLoaded: true }, git);
+const gitClean = { gitKnown: true, dirty: false };
+const gitDirty = { gitKnown: true, dirty: true };
 
 // Soak fix F3: a local_execution PASS is REAL execution proof (Healthy), but labeled
 // honestly as local (this machine), never as a clean-room CI run.
@@ -82,6 +88,36 @@ test('a FILE claiming ci_execution is not trusted as executed proof (forgery gua
   const m = computeOverview({ lc: lcOk, det: noNotices, x: rulesX(freshForgedCi), sync: cleanSync, state: { project: { project_name: 'X' } }, vp: null });
   expect(m.cond.label).toBe('Needs proof');       // not Healthy — the forged CI claim earns nothing
   expect(m.proof.exec).toBe('not surfaced in the app yet');
+});
+
+// FIX (Owner Overview <-> trust strip agreement): live CI is clean-room execution proof of
+// the CURRENT commit and takes precedence over the local record — exactly like the trust
+// strip's "Verified (ran in CI)" light. Before this, the Overview showed "Needs proof" while
+// the trust light showed green for the same passing-CI commit (two surfaces disagreeing).
+test('live CI pass on a clean tree is executed proof → Healthy, even over a review-only local record', () => {
+  const m = computeOverview({ lc: lcOk, det: noNotices, x: xCI(freshReview, gitClean), sync: cleanSync, state: {}, vp: null, ci: ciPass });
+  expect(m.cond.label).toBe('Healthy');
+  expect(m.proof.exec).toContain('CI');
+  expect(m.needs.attn).toBe(false);
+});
+
+test('live CI pass counts even with NO local verification record → Healthy', () => {
+  const m = computeOverview({ lc: lcOk, det: noNotices, x: xCI(null, gitClean), sync: cleanSync, state: {}, vp: null, ci: ciPass });
+  expect(m.cond.label).toBe('Healthy');
+});
+
+// Same gate as the trust strip: CI ran the COMMIT, not uncommitted local edits — a dirty
+// tree must NOT let CI light the Overview green.
+test('CI pass with a DIRTY tree does not count (uncommitted changes CI never saw)', () => {
+  const m = computeOverview({ lc: lcOk, det: noNotices, x: xCI(freshReview, gitDirty), sync: cleanSync, state: {}, vp: null, ci: ciPass });
+  expect(m.cond.label).toBe('Needs proof');
+  expect(m.proof.exec).toBe('not surfaced in the app yet');
+});
+
+// Backward compatible: no CI input → unchanged local-record behavior (review-only = Needs proof).
+test('no CI input leaves the local-record behavior unchanged (review-only = Needs proof)', () => {
+  const m = computeOverview({ lc: lcOk, det: noNotices, x: xCI(freshReview, gitClean), sync: cleanSync, state: {}, vp: null });
+  expect(m.cond.label).toBe('Needs proof');
 });
 
 test('a FAIL verdict is Blocked', () => {

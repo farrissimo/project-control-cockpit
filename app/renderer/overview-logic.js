@@ -28,7 +28,7 @@
 
   function computeOverview(d) {
     d = d || {};
-    const lc = d.lc, det = d.det, x = d.x, sync = d.sync, state = d.state, vp = d.vp;
+    const lc = d.lc, det = d.det, x = d.x, sync = d.sync, state = d.state, vp = d.vp, ci = d.ci;
     const projName = (state && state.project && state.project.project_name) || 'This project';
 
     // Proof status, straight from the verification taxonomy.
@@ -50,6 +50,16 @@
       if (v.verdict === 'PASS') proof.kind = executed ? 'executed' : 'review_only';
       else if (v.verdict) proof.kind = 'failing';
     }
+    // Live CI is the STRONGEST, un-forgeable execution proof of the CURRENT commit: a real
+    // clean-room run queried by HEAD sha (so a pass is inherently fresh), and it cannot be
+    // faked by editing the hand-editable local record. Exactly like the trust strip's
+    // Verified light (renderer.js), when CI is definitive it TAKES PRECEDENCE over the
+    // local record — without this the Overview under-reported "Needs proof" while the trust
+    // light showed "Verified (ran in CI)" for the same commit (two owner-facing surfaces
+    // disagreeing). Requires a clean tree + known git state, same gate as the trust light,
+    // so uncommitted changes CI never saw are not covered.
+    const ciPassedFresh = !!(ci && ci.available && ci.state === 'passed' && x && x.gitKnown && !x.dirty);
+    if (ciPassedFresh) { proof.kind = 'executed'; proof.fresh = true; proof.verdict = proof.verdict || 'PASS'; proof.ci = true; }
     const notice = (key) => !!(det && det[key] && det[key].signal === 'notice');
     const syncDirty = !!(sync && !sync._error && sync.clean === false);
     // Backup state UNKNOWN (git could not be read, or the fact is missing): we must
@@ -88,7 +98,7 @@
       cond = { label: 'Blocked', cls: 'bad', why: 'The last recorded verification verdict was ' + proof.verdict + '.', safe: 'No — resolve the failing verification first.' };
     } else if (needProof) {
       const why = proof.kind === 'missing' ? 'No independent verification is recorded for the current work.'
-        : proof.kind === 'review_only' ? 'The latest verification is review-only — the code was read, not executed. CI runs on GitHub, but live CI status is not yet surfaced here.'
+        : proof.kind === 'review_only' ? 'The latest verification is review-only — the code was read, not executed — and CI is not currently reporting a pass for the current commit.'
         : 'The recorded verification does not match the current code — a newer commit or uncommitted changes since the check (stale) — re-verify.';
       cond = { label: 'Needs proof', cls: 'warn', why: why, safe: 'Yes, with caution.' };
     } else if (syncDirty) {
@@ -166,11 +176,14 @@
       review: proof.kind === 'review_only' ? (proof.fresh ? 'available (matches current code)' : 'stale')
         : proof.kind === 'failing' ? ('last verdict was ' + proof.verdict)
         : proof.kind === 'executed' ? 'present' : 'missing',
-      // Origin seam: 'executed' proof from this record is now ALWAYS local_execution (a forged
-      // ci_execution/live_boundary claim is no longer trusted), so the label is always the honest
-      // local one. Clean-room/CI proof is shown on the trust light from the live CI check, not here.
+      // Executed proof is either a live CI pass for the current commit (clean-room, the
+      // strongest) or the product's own local checks. Labeled honestly for each; a forged
+      // ci_execution/live_boundary TYPE: line in the local record is still never trusted
+      // (that path yields local_execution wording only).
       exec: (proof.kind === 'executed' && proof.fresh)
-        ? 'yes — the product’s checks ran on this machine (local execution, not a clean-room CI run)'
+        ? (proof.ci
+          ? 'yes — the CI test check passed for the current commit (clean-room execution proof, not just a code read)'
+          : 'yes — the product’s checks ran on this machine (local execution, not a clean-room CI run)')
         : 'not surfaced in the app yet',
     };
 
