@@ -147,6 +147,15 @@ test('renameChat sets name + nameLocked; empty name rejected', () => {
   assert.match(cs.renameChat(file, r.revision, { chatId: 'chat-0', name: '   ' }, nextNow()).error, /empty_name/);
 });
 
+test('renameChat with lock:false sets the name WITHOUT locking (auto-naming)', () => {
+  const { file, rev } = seed(1);
+  const r = cs.renameChat(file, rev, { chatId: 'chat-0', name: 'Auto Title', lock: false }, nextNow());
+  assert.equal(r.ok, true);
+  const chat = cs.readStore(file).store.chats[0];
+  assert.equal(chat.name, 'Auto Title');
+  assert.notEqual(chat.nameLocked, true, 'auto-name must not lock the title');
+});
+
 test('updateChatMetadata accepts only whitelisted fields', () => {
   const { file, rev } = seed(1);
   const ok = cs.updateChatMetadata(file, rev, { chatId: 'chat-0', fields: { started: true, buildChat: true } }, nextNow());

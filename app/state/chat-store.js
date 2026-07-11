@@ -191,7 +191,9 @@ function renameChat(file, expectedRevision, args, opts) {
   const name = String((args && args.name) || '').trim();
   if (!name) return { ok: false, error: 'empty_name' };
   chat.name = name.slice(0, 200);
-  chat.nameLocked = true;
+  // A hand-set name LOCKS the title (default). Auto-naming passes { lock:false } so
+  // the title can still be refined later without being treated as owner intent.
+  if (!args || args.lock !== false) chat.nameLocked = true;
   chat.updatedAt = now;
   return _commit(file, L.store, now);
 }

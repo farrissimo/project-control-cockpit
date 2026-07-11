@@ -27,15 +27,60 @@ let history = [];
 let busy = false;
 let attachments = []; // composer attachments for the NEXT send: {kind:'image',mediaType,dataBase64,name} | {kind:'text',name,content}
 let sendQueue = []; // steering: messages composed while a turn is running, sent in order when it finishes
+// Canonical chat store (Phase 2A S5): chats.json (main-owned) is the AUTHORITY.
+// localStorage is a disposable cache only. These track the identity + revision the
+// renderer must present on every mutation (optimistic concurrency + project binding).
+let storeRevision = null;
+let storeProjectId = null;
+let chatLoadError = null;           // non-null => the canonical store could not be loaded (fail visibly)
+const namedAtLen = new Map();       // renderer-local: last auto-named message count, by chatId (not persisted)
+const sessionIds = new Map();       // renderer-local: re-minted worker session id, by chatId (not persisted)
+const turnsStarted = new Set();     // renderer-local: chatIds that have had a worker turn (drives isFirstTurn)
 
 function uuid() { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'c-' + Date.now() + '-' + Math.random().toString(16).slice(2); }
 function activeChat() { return chats.find((c) => c.id === activeId) || null; }
 function newChatObj() { return { id: uuid(), name: 'New chat', started: false, messages: [], createdAt: Date.now(), updatedAt: Date.now() }; }
-function persistChats() {
-  localStorage.setItem(chatsKey(), JSON.stringify(chats));
-  localStorage.setItem(activeChatKey(), activeId || '');
-  // Also mirror to a durable on-disk backup so a localStorage reset can't lose the chat list.
-  try { if (chats.length && !(chats.length === 1 && !chats[0].started && (chats[0].messages || []).length === 0)) window.pcc.saveChatsBackup(chats); } catch (e) { /* best effort */ }
+// localStorage is now a DISPOSABLE CACHE, never authority — the canonical
+// main-owned store (chats.json) is the source of truth. We mirror the last read
+// here only so a redraw is instant; boot captures the untouched legacy snapshot
+// ONCE (to seed the store) and after that we never read localStorage as authority.
+function cacheChats() {
+  try {
+    localStorage.setItem(chatsKey(), JSON.stringify(chats));
+    localStorage.setItem(activeChatKey(), activeId || '');
+  } catch (e) { /* cache is best-effort */ }
+}
+
+// Adopt a canonical store snapshot as the in-memory view.
+function applyStore(store) {
+  chats = Array.isArray(store.chats) ? store.chats : [];
+  storeRevision = store.revision;
+  storeProjectId = store.projectId;
+  const want = store.activeChatId;
+  activeId = (want && chats.some((c) => c.id === want)) ? want : ((chats[0] && chats[0].id) || null);
+  history = activeChat() ? activeChat().messages : [];
+  cacheChats();
+}
+
+// Re-read the canonical store and adopt it. Returns { ok } | { ok:false, error }.
+async function refreshCanonical() {
+  let r;
+  try { r = await window.pcc.chatsRead(); } catch (e) { r = { ok: false, error: e.message }; }
+  if (r && r.ok && r.store) { applyStore(r.store); return { ok: true }; }
+  return { ok: false, error: (r && r.error) || 'read_failed' };
+}
+
+// Run a command-shaped mutation through the canonical IPC, then resync from the
+// store. Carries identity + revision so a stale or cross-project command is
+// rejected by main. On conflict we resync to the latest and report it.
+async function chatCmd(method, args) {
+  if (storeProjectId == null || !Number.isInteger(storeRevision)) return { ok: false, error: 'not_ready' };
+  let r;
+  try { r = await window.pcc[method](storeProjectId, storeRevision, args); }
+  catch (e) { r = { ok: false, error: e.message }; }
+  if (r && r.ok) { await refreshCanonical(); return r; }
+  if (r && r.conflict) { await refreshCanonical(); }
+  return r || { ok: false, error: 'cmd_failed' };
 }
 
 const CORRECTIONS = [
@@ -51,7 +96,6 @@ const CORRECTIONS = [
 ];
 
 function scrollDown() { log.scrollTop = log.scrollHeight; }
-function save() { const c = activeChat(); if (c) c.updatedAt = Date.now(); persistChats(); }
 function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 // In-app replacement for window.prompt(). Electron does NOT support prompt() —
@@ -156,7 +200,8 @@ function renderAssistant(text) {
   return html;
 }
 
-function addBubble(cls, text, persist) {
+// Create + show a bubble in the log (NO persistence).
+function addBubbleUI(cls, text) {
   const el = document.createElement('div');
   el.className = 'bubble ' + cls;
   const isAssistant = cls.indexOf('assistant') !== -1 && cls.indexOf('thinking') === -1;
@@ -164,8 +209,41 @@ function addBubble(cls, text, persist) {
   else { el.textContent = text; }
   log.appendChild(el);
   scrollDown();
-  if (persist) { history.push({ cls, text, ts: Date.now() }); save(); }
   return el;
+}
+
+// Show a message AND persist it to the canonical store via the append command.
+// The UI bubble shows immediately; a persistence failure is surfaced honestly —
+// the message is never silently dropped or written to a competing authority.
+// Show a message AND persist it to a SPECIFIC chat (targetChatId is captured by the
+// caller; it must NOT re-read activeChat() here — the active chat can change during
+// an awaited worker turn, which would otherwise append to the wrong chat). Returns
+// { ok, el }: callers that must not proceed on an unsaved message check `ok`.
+async function appendMessage(cls, text, targetChatId) {
+  const el = addBubbleUI(cls, text);
+  const chatId = targetChatId || (activeChat() && activeChat().id);
+  if (!chatId) return { ok: false, el };
+  // Fixed message id => the append is IDEMPOTENT (chat-store no-ops a duplicate id).
+  // So on a revision CONFLICT (two appends raced the same revision) we can safely
+  // re-read + retry the SAME message: it is never duplicated and never lost.
+  const message = { id: uuid(), cls, text, ts: Date.now() };
+  let r;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    r = await chatCmd('chatsAppend', { chatId, message });
+    if (r && r.ok) return { ok: true, el };   // persisted (or idempotent no-op)
+    if (!r || !r.conflict) break;             // a non-conflict error -> stop and surface
+    // conflict: chatCmd already refreshed storeRevision; loop retries with the same id
+  }
+  addBubbleUI('assistant error', '(could not save that message: ' + ((r && r.error) || 'unknown') + ')');
+  return { ok: false, el };
+}
+
+// Back-compat shim used only by incidental notices during the S5 conversion:
+// persist=false -> UI only; persist=true -> canonical append. Callers on the hot
+// send path await appendMessage() directly so appends serialize cleanly.
+function addBubble(cls, text, persist) {
+  if (persist) { appendMessage(cls, text); return log.lastChild; }
+  return addBubbleUI(cls, text);
 }
 
 // Delegated copy handler for code blocks in assistant bubbles.
@@ -194,45 +272,55 @@ async function sendMessage(text, displayText) {
   const shown = (displayText || msg).trim();
   const chat = activeChat();
   if (!chat) return;
+  const chatId = chat.id;
+  // Snapshot (pre-append) whether this is a fresh unnamed chat — used to decide the
+  // provisional name AFTER the prompt is safely persisted.
+  const wasFreshNewChat = !!shown && chat.name === 'New chat' && (chat.messages || []).filter((m) => m.cls === 'user').length === 0;
   const welcome = log.querySelector('.welcome');
   if (welcome) welcome.remove();
-  // Auto-name a fresh chat from its first message (like Claude Code's Recents).
-  if (shown && chat.name === 'New chat' && chat.messages.filter((m) => m.cls === 'user').length === 0) {
-    chat.name = shown.replace(/\s+/g, ' ').slice(0, 40) + (shown.length > 40 ? '…' : '');
+  // Persist the prompt FIRST. If it cannot be saved to the canonical store, DO NOT
+  // run the worker AND DO NOT advance the store in any other way (no rename) — that
+  // would mutate history from a prompt that isn't in it. Fail visibly; owner retries.
+  const attachNote = outbound.length ? (shown ? '\n\n' : '') + '📎 ' + outbound.length + ' attachment' + (outbound.length > 1 ? 's' : '') + ': ' + outbound.map((a) => a.name || a.kind).join(', ') : '';
+  const saved = await appendMessage('user', shown + attachNote, chatId);
+  if (!saved.ok) return; // appendMessage already surfaced the error; nothing else advances
+  // Provisional name for a fresh chat (refined later by AI auto-name). Persisted
+  // UNLOCKED, and ONLY now that the prompt is safely in the canonical store.
+  if (wasFreshNewChat) {
+    await chatCmd('chatsRename', { chatId, name: shown.replace(/\s+/g, ' ').slice(0, 40) + (shown.length > 40 ? '…' : ''), lock: false });
     renderChatList();
   }
-  // Show the message (plus a plain note of what was attached) immediately, then clear the composer.
-  const attachNote = outbound.length ? (shown ? '\n\n' : '') + '📎 ' + outbound.length + ' attachment' + (outbound.length > 1 ? 's' : '') + ': ' + outbound.map((a) => a.name || a.kind).join(', ') : '';
-  addBubble('user', shown + attachNote, true);
   attachments = []; renderAttachments();
-  const item = { msg, outbound, chat };
+  const item = { msg, outbound, chatId }; // by ID: refresh-after-mutation replaces chat objects
   if (busy) { sendQueue.push(item); return; } // a turn is running — send this one when it finishes
   runSend(item);
 }
 
 // Run one turn against the worker, then drain the next queued message (if any).
 async function runSend(item) {
-  const chat = item.chat;
+  const chatId = item.chatId;
+  if (!chats.find((c) => c.id === chatId)) { return; }
   busy = true; input.focus();
-  const thinking = addBubble('assistant thinking', 'Claude is working…', false);
+  const thinking = addBubbleUI('assistant thinking', 'Claude is working…');
   try {
-    // Two IDs, kept separate on purpose: the WORKER session id is chat.sessionId when set
-    // (after a recovery re-mint) else chat.id — so a stale-locked session can be replaced
-    // without losing history (soak fix F4). The stable chat.id is passed as the AUTHORITY key,
-    // so build permission tracks the chat itself and never desyncs when the worker session is
-    // re-minted. isFirstTurn is read now (not at compose time) so a queued follow-up correctly
-    // resumes the session the previous turn just opened.
-    const res = await window.pcc.send(item.msg, getSelectedModel(), chat.sessionId || chat.id, !chat.started, chat.id, item.outbound);
+    // Two IDs, kept separate on purpose: the WORKER session id is the re-minted id
+    // from sessionIds (after a recovery re-mint) else the stable chatId — so a
+    // stale-locked session can be replaced without losing history. The stable
+    // chatId is the AUTHORITY key so build permission tracks the chat itself.
+    // isFirstTurn comes from turnsStarted (renderer-local) — the canonical store's
+    // `started` means "has messages", which is not the same as "had a worker turn".
+    const isFirstTurn = !turnsStarted.has(chatId);
+    const workerSession = sessionIds.get(chatId) || chatId;
+    const res = await window.pcc.send(item.msg, getSelectedModel(), workerSession, isFirstTurn, chatId, item.outbound);
     thinking.remove();
-    if (res.ok) { chat.started = true; save(); }
-    addBubble(res.ok ? 'assistant' : 'assistant error', res.text || '(no output)', true);
-    if (res.ok) persistTranscript(chat); // keep this chat greppable even if never left
-    // Soak fix F4: a stale worker is holding this chat's session — give the owner a
-    // one-click way out instead of a dead-end red error.
+    if (res.ok) turnsStarted.add(chatId);
+    await appendMessage(res.ok ? 'assistant' : 'assistant error', res.text || '(no output)', chatId);
+    if (res.ok) { const cc = chats.find((c) => c.id === chatId); if (cc) persistTranscript(cc); }
+    // A stale worker is holding this chat's session — offer a one-click way out.
     if (!res.ok && res.sessionInUse) addRecoveryAction();
   } catch (err) {
     thinking.remove();
-    addBubble('assistant error', 'Something went wrong: ' + err.message, true);
+    await appendMessage('assistant error', 'Something went wrong: ' + err.message, chatId);
   } finally {
     busy = false; input.focus();
     if (sendQueue.length) runSend(sendQueue.shift()); // steering: send the next queued message
@@ -254,14 +342,20 @@ function persistTranscript(chat) {
 
 async function reconsiderChatName(chat) {
   if (!chat || chat.nameLocked) return;
-  const users = chat.messages.filter((m) => m.cls === 'user').length;
-  const bots = chat.messages.filter((m) => m.cls !== 'user').length;
+  const msgs = chat.messages || [];
+  const users = msgs.filter((m) => m.cls === 'user').length;
+  const bots = msgs.filter((m) => m.cls !== 'user').length;
   if (users < 1 || bots < 1) return;                 // need a real exchange to name from
-  if (chat.messages.length < (chat.namedAtLen || 0) + 2) return; // nothing meaningful added since last name
-  chat.namedAtLen = chat.messages.length; save();    // claim this length so we don't double-fire
+  const chatId = chat.id;
+  if (msgs.length < (namedAtLen.get(chatId) || 0) + 2) return; // nothing meaningful added since last name
+  namedAtLen.set(chatId, msgs.length);               // claim (renderer-local) so we don't double-fire
   try {
-    const r = await window.pcc.autoNameChat(chat.messages);
-    if (r && r.ok && r.title && !chat.nameLocked) { chat.name = r.title; save(); renderChatList(); }
+    const r = await window.pcc.autoNameChat(msgs);
+    const cur = chats.find((c) => c.id === chatId);
+    if (r && r.ok && r.title && cur && !cur.nameLocked) {
+      await chatCmd('chatsRename', { chatId, name: r.title, lock: false }); // unlocked auto-name
+      renderChatList();
+    }
   } catch (e) { /* keep the current name */ }
 }
 
@@ -301,10 +395,13 @@ async function generateSummary(chat) {
   try {
     const r = await window.pcc.summarizeChat(chat.id, chat.messages);
     if (r && r.ok) {
-      chat.summary = r.summary; chat.summaryAt = r.at;
+      chat.summary = r.summary; chat.summaryAt = r.at; // in-memory drawer cache (disk copy is authoritative)
       // A summary is a full read of the chat — adopt its title as the name (unless locked).
-      if (r.summary && r.summary.title && !chat.nameLocked) { chat.name = String(r.summary.title).slice(0, 60); chat.namedAtLen = chat.messages.length; renderChatList(); }
-      save();
+      if (r.summary && r.summary.title && !chat.nameLocked) {
+        await chatCmd('chatsRename', { chatId: chat.id, name: String(r.summary.title).slice(0, 60), lock: false });
+        namedAtLen.set(chat.id, (chat.messages || []).length);
+        renderChatList();
+      }
       if (summaryChatId === chat.id) renderSummaryCard(chat, r.summary, r.at);
     } else if (summaryChatId === chat.id) {
       document.getElementById('summary-body').innerHTML = '<div class="sum-error">' + escapeHtml((r && r.text) || 'Could not build a summary.') + '</div>';
@@ -437,13 +534,12 @@ async function initModels() {
 // worker doesn't free claude's session lock (a force-kill can't clean it up), so the
 // real fix is to give THIS chat a fresh worker session id — keeping its visible history
 // — or start a brand-new chat. Either escapes the stale lock.
-function recoverThisChat() {
+async function recoverThisChat() {
   const chat = activeChat();
   if (!chat) return;
-  chat.sessionId = uuid(); // fresh claude session, decoupled from the chat's identity
-  chat.started = false;    // next send opens the new session cleanly
-  save();
-  addBubble('assistant', 'Fresh worker session started for this chat — your history is kept. Send your message again.', true);
+  sessionIds.set(chat.id, uuid()); // fresh claude session, decoupled from the chat's identity
+  turnsStarted.delete(chat.id);    // next send opens the new session cleanly (isFirstTurn=true)
+  await appendMessage('assistant', 'Fresh worker session started for this chat — your history is kept. Send your message again.', chat.id);
 }
 function addRecoveryAction() {
   const div = document.createElement('div');
@@ -463,20 +559,19 @@ function addRecoveryAction() {
   log.scrollTop = log.scrollHeight;
 }
 
-function startNewChat() {
+async function startNewChat() {
   if (busy) return;
   const leaving = activeChat();            // name the chat you're leaving behind, from its full arc
-  const c = newChatObj();
-  chats.unshift(c);
-  activeId = c.id;
-  history = c.messages;
-  persistChats();
+  const newId = uuid();
+  const cr = await chatCmd('chatsCreate', { id: newId, name: 'New chat' });
+  if (!cr.ok) { addBubbleUI('assistant error', 'Could not start a new chat: ' + (cr.error || 'unknown')); return; }
+  await chatCmd('chatsSetActive', { chatId: newId }); // refresh adopts the new active chat
   renderActiveChat();
   renderChatList();
   loadTrust();
   input.value = '';
   input.focus();
-  if (leaving) { persistTranscript(leaving); reconsiderChatName(leaving); } // fire-and-forget
+  if (leaving && leaving.id !== newId) { persistTranscript(leaving); reconsiderChatName(leaving); } // fire-and-forget
 }
 document.getElementById('new-chat').addEventListener('click', startNewChat);
 
@@ -646,9 +741,9 @@ async function resumeBuildForActiveChat() {
   if (!ok) { await window.pcc.cancelJob(); loadTrust(); return; }
   const appr = await window.pcc.approveJob();
   if (!appr || !appr.ok) { await window.pcc.cancelJob(); loadTrust(); return; }
-  c.buildChat = true; c.buildName = name; persistChats();
+  await chatCmd('chatsUpdateMeta', { chatId: c.id, fields: { buildChat: true, buildName: name } });
   loadTrust();
-  addBubble('assistant', 'Build session enabled for this chat — it can now run commands and write files. Send your next message.', true);
+  await appendMessage('assistant', 'Build session enabled for this chat — it can now run commands and write files. Send your next message.', c.id);
 }
 {
   const authorityResumeBtn = document.getElementById('authority-resume');
@@ -691,9 +786,10 @@ function makeSecondOpinionButton() {
   b.title = "Have Codex (a different model) independently review Claude's latest answer — a real cross-check, not self-agreement.";
   b.addEventListener('click', async () => {
     if (busy) return;
+    const chatId = activeChat() && activeChat().id; // capture: persist the review to THIS chat
     const assistants = history.filter((m) => m.cls === 'assistant');
     const lastA = assistants.length ? assistants[assistants.length - 1] : null;
-    if (!lastA || !(lastA.text || '').trim()) { addBubble('assistant error', 'No answer to review yet — ask something first.', true); return; }
+    if (!lastA || !(lastA.text || '').trim()) { await appendMessage('assistant error', 'No answer to review yet — ask something first.', chatId); return; }
     const idx = history.lastIndexOf(lastA);
     let question = '';
     for (let i = idx - 1; i >= 0; i--) { if (history[i].cls === 'user') { question = history[i].text; break; } }
@@ -707,10 +803,10 @@ function makeSecondOpinionButton() {
     try {
       const res = await window.pcc.secondOpinion(prompt);
       thinking.remove();
-      addBubble(res.ok ? 'assistant codex' : 'assistant error', (res.ok ? 'Codex second opinion:\n\n' : '') + (res.text || '(no output)'), true);
+      await appendMessage(res.ok ? 'assistant codex' : 'assistant error', (res.ok ? 'Codex second opinion:\n\n' : '') + (res.text || '(no output)'), chatId);
     } catch (e) {
       thinking.remove();
-      addBubble('assistant error', 'Second opinion failed: ' + e.message, true);
+      await appendMessage('assistant error', 'Second opinion failed: ' + e.message, chatId);
     } finally {
       busy = false; sendBtn.disabled = false;
       if (sendQueue.length) runSend(sendQueue.shift()); // drain anything queued during the review
@@ -749,10 +845,10 @@ function makeCaptureDecisionsButton() {
   b.className = 'corr';
   b.textContent = 'Capture decisions';
   b.title = 'Scans THIS chat\'s own transcript (not memory) for agreements you made, and proposes them - quoted, never invented - for you to confirm before writing to docs/DECISIONS.md.';
-  b.addEventListener('click', () => {
+  b.addEventListener('click', async () => {
     if (busy) return;
     const { text, truncated, count } = buildChatTranscript();
-    if (!count) { addBubble('assistant error', 'Nothing to scan yet - this chat has no messages.', true); return; }
+    if (!count) { await appendMessage('assistant error', 'Nothing to scan yet - this chat has no messages.'); return; }
     const note = truncated ? '\n(Transcript truncated to the most recent ~' + CAPTURE_TRANSCRIPT_MAX_CHARS + ' characters - only what fits below was scanned.)' : '';
     const prompt = 'Scan the transcript of THIS chat below (verbatim, provided fresh - do not rely on your own memory of the conversation) for any concrete decision or agreement the owner made that is not yet recorded in docs/DECISIONS.md. '
       + 'Only use what was actually said - do not infer or invent a decision that was not explicitly stated. '
@@ -802,87 +898,76 @@ function renderActiveChat() {
   scrollDown();
 }
 
-async function loadChats() {
-  try { chats = JSON.parse(localStorage.getItem(chatsKey())) || []; } catch (e) { chats = []; }
-  if (!Array.isArray(chats)) chats = [];
-  // DURABLE RECOVERY: localStorage kept resetting to a blank "New chat" here (corruption / races /
-  // an app killed mid-write). If we came up empty OR with just one blank New chat, restore the real
-  // chat list from the on-disk file backup — the true source of truth for "never lose a chat".
-  const _blank = () => chats.length === 0 || (chats.length === 1 && !chats[0].started && (chats[0].messages || []).length === 0);
-  if (_blank()) {
-    try {
-      const b = await window.pcc.loadChatsBackup();
-      const bc = b && b.chats;
-      if (Array.isArray(bc) && bc.length && !(bc.length === 1 && !bc[0].started && (bc[0].messages || []).length === 0)) {
-        chats = bc; // recovered from disk; persistChats() below re-seats it into localStorage
-      }
-    } catch (e) { /* keep whatever we have */ }
-  }
-  // SELF-HEAL + DIAGNOSTIC (chat namespace = 'pcc.chats.v2::<active project PATH>'). If that path
-  // string drifts by FORMATTING (case / slashes / trailing separator) between when chats were saved
-  // and now, the exact-key lookup misses and a project looks empty though its chats exist on disk.
-  // Record what we saw, and — only for a formatting-only-equivalent path — recover those chats.
-  const _norm = (p) => String(p || '').toLowerCase().replace(/[\\/]+/g, '/').replace(/\/+$/, '');
-  const _nsKeys = Object.keys(localStorage).filter((k) => k.indexOf(LEGACY_CHATS_KEY + '::') === 0);
-  try {
-    localStorage.setItem('pcc.debug.lastLoad', JSON.stringify({
-      when: new Date().toISOString(), activeProjectPath: activeProjectPath, key: chatsKey(), loaded: chats.length,
-      namespaces: _nsKeys.map((k) => { let n = -1; try { n = (JSON.parse(localStorage.getItem(k)) || []).length; } catch (e) { n = -1; } return k + ' (' + n + ')'; }),
-    }));
-  } catch (e) { /* diagnostics are best-effort */ }
-  if (chats.length === 0) {
-    const _want = _norm(activeProjectPath);
-    for (const k of _nsKeys) {
+// READ-ONLY gather of this project's chats from localStorage — the UNTOUCHED
+// legacy snapshot that seeds the one-time migration into the canonical store.
+// Includes the formatting-drift self-heal and the pre-multi-project / pre-history
+// keys so nothing is missed. NEVER mutates localStorage (the snapshot must be
+// untouched, and localStorage is now only a disposable cache).
+function captureLegacySnapshot() {
+  const parse = (raw) => { try { const v = JSON.parse(raw); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
+  const norm = (p) => String(p || '').toLowerCase().replace(/[\\/]+/g, '/').replace(/\/+$/, '');
+  const blank = (arr) => arr.length === 0 || (arr.length === 1 && !arr[0].started && (arr[0].messages || []).length === 0);
+  let snap = parse(localStorage.getItem(chatsKey()));
+  if (blank(snap)) {                       // formatting-drift self-heal (same project, different path spelling)
+    const want = norm(activeProjectPath);
+    for (const k of Object.keys(localStorage).filter((k) => k.indexOf(LEGACY_CHATS_KEY + '::') === 0)) {
       const kPath = k.slice((LEGACY_CHATS_KEY + '::').length);
-      if (_norm(kPath) !== _want) continue; // ONLY a path that matches aside from formatting — never another project
-      let found = []; try { found = JSON.parse(localStorage.getItem(k)) || []; } catch (e) { found = []; }
-      if (Array.isArray(found) && found.length) {
-        chats = found; // re-saved under the canonical key by persistChats() below, so next boot matches directly
-        const savedA = localStorage.getItem(LEGACY_ACTIVE_KEY + '::' + kPath);
-        if (savedA) localStorage.setItem(activeChatKey(), savedA);
-        break;
-      }
+      if (norm(kPath) !== want) continue;  // ONLY a formatting-equivalent path — never another project
+      const found = parse(localStorage.getItem(k));
+      if (found.length) { snap = found; break; }
     }
   }
-  // One-time migration: adopt the pre-multi-project GLOBAL chats into this
-  // (home) project's namespace, then drop the global key.
-  if (chats.length === 0) {
-    let legacy = [];
-    try { legacy = JSON.parse(localStorage.getItem(LEGACY_CHATS_KEY)) || []; } catch (e) { legacy = []; }
-    if (Array.isArray(legacy) && legacy.length) {
-      chats = legacy;
-      localStorage.removeItem(LEGACY_CHATS_KEY);
-      localStorage.removeItem(LEGACY_ACTIVE_KEY);
-    }
-  }
-  // One-time migration: fold a pre-history single conversation into one chat.
-  if (chats.length === 0) {
-    let old = [];
-    try { old = JSON.parse(localStorage.getItem(OLD_HISTORY_KEY)) || []; } catch (e) { old = []; }
+  if (blank(snap)) { const g = parse(localStorage.getItem(LEGACY_CHATS_KEY)); if (g.length) snap = g; } // pre-multi-project global
+  if (blank(snap)) {                       // pre-history single conversation -> one chat
+    const old = parse(localStorage.getItem(OLD_HISTORY_KEY));
     if (old.length) {
       const first = old.find((m) => m.cls === 'user');
-      const nm = first ? first.text.replace(/\s+/g, ' ').slice(0, 40) : 'Imported chat';
-      chats.push({ id: uuid(), name: nm, started: true, messages: old, createdAt: Date.now(), updatedAt: Date.now() });
-      localStorage.removeItem(OLD_HISTORY_KEY);
+      const nm = first ? String(first.text).replace(/\s+/g, ' ').slice(0, 40) : 'Imported chat';
+      snap = [{ id: uuid(), name: nm, started: true, messages: old, createdAt: Date.now(), updatedAt: Date.now() }];
     }
   }
-  if (chats.length === 0) chats.push(newChatObj());
-  const savedActive = localStorage.getItem(activeChatKey());
-  activeId = (savedActive && chats.some((c) => c.id === savedActive)) ? savedActive : chats[0].id;
-  history = activeChat().messages;
-  persistChats();
+  return Array.isArray(snap) ? snap : [];
+}
+
+function showChatLoadError(msg) {
+  chatLoadError = msg;
+  chats = []; activeId = null; history = []; storeRevision = null; storeProjectId = null;
+  try { log.innerHTML = ''; } catch (e) { /* ignore */ }
+  addBubbleUI('assistant error', msg);
+  try { renderChatList(); } catch (e) { /* ignore */ }
+}
+
+async function loadChats() {
+  chatLoadError = null;
+  // 1. Capture the untouched legacy localStorage snapshot (read-only).
+  const legacy = captureLegacySnapshot();
+  // 2. Bootstrap the canonical store ONCE from the snapshot + on-disk backup. A
+  //    conflict/malformation means localStorage and backup disagree or are malformed
+  //    — fail visibly rather than guess; both sources are preserved on disk.
+  let boot;
+  try { boot = await window.pcc.chatsBootstrap(legacy); } catch (e) { boot = { ok: false, error: e.message }; }
+  if (!boot || !boot.ok) {
+    return showChatLoadError('Your chat history could not be safely migrated (' + ((boot && boot.error) || 'unknown') + '). Nothing was changed and both copies are preserved — please have the owner reconcile before continuing.');
+  }
+  // 3. Read the canonical store (the authority).
+  const r = await refreshCanonical();
+  if (!r.ok) return showChatLoadError('Could not load your chats: ' + r.error);
+  // 4. Genuinely-empty project: seed a first chat via the command IPC and make it active.
+  if (chats.length === 0 && storeProjectId != null && Number.isInteger(storeRevision)) {
+    const nid = uuid();
+    const cr = await window.pcc.chatsCreate(storeProjectId, storeRevision, { id: nid, name: 'New chat' });
+    if (cr && cr.ok) { await refreshCanonical(); await chatCmd('chatsSetActive', { chatId: nid }); }
+  }
   renderActiveChat();
   renderChatList();
 }
 
-function switchChat(id) {
+async function switchChat(id) {
   if (busy || id === activeId) { closeChatsPanel(); return; }
-  const c = chats.find((x) => x.id === id);
-  if (!c) return;
+  if (!chats.find((x) => x.id === id)) return;
   const leaving = activeChat();            // name the chat you're done with, from its full arc
-  activeId = id;
-  history = c.messages;
-  persistChats();
+  const r = await chatCmd('chatsSetActive', { chatId: id }); // refresh adopts the new active chat
+  if (!r.ok) { addBubbleUI('assistant error', 'Could not switch chats: ' + (r.error || 'unknown')); return; }
   renderActiveChat();
   renderChatList();
   loadTrust();
@@ -891,23 +976,31 @@ function switchChat(id) {
 }
 
 async function renameChat(id) {
-  const c = chats.find((x) => x.id === id);
-  if (!c) return;
-  const name = await pccPrompt('Rename this chat:', c.name);
+  const cur = chats.find((x) => x.id === id);
+  if (!cur) return;
+  const name = await pccPrompt('Rename this chat:', cur.name);
   // A hand-set name LOCKS the title: auto-naming will never overwrite it (prior-art request).
-  if (name && name.trim()) { c.name = name.trim().slice(0, 60); c.nameLocked = true; persistChats(); renderChatList(); }
+  if (name && name.trim()) {
+    await chatCmd('chatsRename', { chatId: id, name: name.trim().slice(0, 60) }); // default lock:true
+    renderChatList();
+  }
 }
 
-function deleteChat(id) {
+async function deleteChat(id) {
   const c = chats.find((x) => x.id === id);
   if (!c) return;
   if (!confirm('Delete "' + c.name + '"? This removes it from the list (Claude may still have the session on disk).')) return;
   try { window.pcc.deleteChatFiles(id); } catch (e) { /* best effort — remove the on-disk record too */ }
-  chats = chats.filter((x) => x.id !== id);
-  if (chats.length === 0) chats.push(newChatObj());
-  if (id === activeId) { activeId = chats[0].id; history = activeChat().messages; renderActiveChat(); loadTrust(); }
-  persistChats();
+  const r = await chatCmd('chatsDelete', { chatId: id });
+  if (!r.ok) { addBubbleUI('assistant error', 'Could not delete chat: ' + (r.error || 'unknown')); return; }
+  // Keep the UI non-empty: if that was the last chat, seed a fresh one canonically.
+  if (chats.length === 0) {
+    const nid = uuid();
+    if ((await chatCmd('chatsCreate', { id: nid, name: 'New chat' })).ok) await chatCmd('chatsSetActive', { chatId: nid });
+  }
+  renderActiveChat();
   renderChatList();
+  loadTrust();
 }
 
 function relTime(ts) {

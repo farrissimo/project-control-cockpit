@@ -20,11 +20,18 @@ test.afterAll(async () => { await closeApp(app); });
 const call = (method, ...args) =>
   page.evaluate(([m, a]) => window.pcc[m](...a), [method, args]);
 
-test('bootstrap -> read -> mutate through IPC, with identity + revision enforcement', async () => {
-  // Fresh throwaway userData: no canonical store yet. Bootstrap with a snapshot.
-  const snapshot = [{ id: 'c1', name: 'First', started: false, messages: [] }];
-  const boot = await call('chatsBootstrap', snapshot);
-  expect(boot.ok).toBe(true); // created (or already, if a prior test seeded it)
+test('read -> mutate through IPC, with identity + revision enforcement', async () => {
+  // The S5 renderer bootstraps + seeds + sets-active the store during boot; let
+  // those async mutations settle so the revision we read is stable (poll until two
+  // consecutive reads agree), otherwise our create would race the boot revision.
+  let rev0 = -1;
+  for (let i = 0; i < 40; i++) {
+    const a = (await call('chatsRead')).store.revision;
+    await page.waitForTimeout(150);
+    const b = (await call('chatsRead')).store.revision;
+    if (a === b) { rev0 = b; break; }
+  }
+  expect(rev0).toBeGreaterThanOrEqual(0);
 
   const read = await call('chatsRead');
   expect(read.ok).toBe(true);
@@ -39,8 +46,8 @@ test('bootstrap -> read -> mutate through IPC, with identity + revision enforcem
   expect(created.ok).toBe(true);
   expect(created.chatId).toBe('c2');
 
-  // Append a message through IPC.
-  const appended = await call('chatsAppend', pid, created.revision, { chatId: 'c1', message: { id: 'm1', cls: 'user', text: 'hi', ts: 1 } });
+  // Append a message to that chat through IPC.
+  const appended = await call('chatsAppend', pid, created.revision, { chatId: 'c2', message: { id: 'm1', cls: 'user', text: 'hi', ts: 1 } });
   expect(appended.ok).toBe(true);
 
   // A stale expectedRevision is rejected (conflict).
@@ -53,7 +60,7 @@ test('bootstrap -> read -> mutate through IPC, with identity + revision enforcem
   expect(wrongPid.ok).toBe(false);
   expect(String(wrongPid.error)).toMatch(/project_mismatch/);
 
-  // The store still reflects only the legitimate mutations.
+  // The store reflects only the legitimate mutations.
   const after = await call('chatsRead');
   expect(after.store.chats.some((c) => c.id === 'c2')).toBe(true);
   expect(after.store.chats.some((c) => c.id === 'c3' || c.id === 'c4')).toBe(false);
