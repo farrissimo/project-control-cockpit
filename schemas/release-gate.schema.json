@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "release-gate.schema.json",
+  "title": "PCC release-gate evidence receipt (one fresh run)",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema", "generated_at", "commit", "commit_at_end", "branch",
+    "head_stable", "tree_clean_start", "tree_clean_end",
+    "backup_sync", "remote_head", "ci", "suites", "detectors",
+    "exceptions_applied", "evidence_valid", "verdict"
+  ],
+  "properties": {
+    "schema": { "const": "release-gate/v1" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "commit_at_end": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "branch": { "type": "string", "minLength": 1 },
+    "head_stable": { "type": "boolean" },
+    "tree_clean_start": { "type": "boolean" },
+    "tree_clean_end": { "type": "boolean" },
+    "backup_sync": {
+      "type": "object",
+      "required": ["signal", "source"],
+      "properties": {
+        "signal": { "enum": ["clear", "notice", "unknown"] },
+        "source": { "type": "string" }
+      }
+    },
+    "remote_head": {
+      "type": "object",
+      "required": ["state", "local_sha", "remote_sha"],
+      "properties": {
+        "state": { "enum": ["match", "mismatch", "unavailable"] },
+        "local_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "remote_sha": { "type": ["string", "null"] }
+      }
+    },
+    "ci": {
+      "type": "object",
+      "required": ["status", "sha"],
+      "properties": {
+        "status": { "enum": ["passed", "failed", "cancelled", "skipped", "pending", "missing", "unreachable", "ambiguous", "no_remote", "not_github", "unknown"] },
+        "sha": { "type": ["string", "null"] }
+      }
+    },
+    "suites": {
+      "type": "object",
+      "required": ["unit", "full", "audit"],
+      "properties": {
+        "unit": { "$ref": "#/definitions/suite" },
+        "full": { "$ref": "#/definitions/suite" },
+        "audit": { "$ref": "#/definitions/suite" }
+      }
+    },
+    "detectors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["detector", "signal", "items"],
+        "properties": {
+          "detector": { "type": "string", "minLength": 1 },
+          "signal": { "enum": ["clear", "notice", "unknown"] },
+          "items": { "type": "array" }
+        }
+      }
+    },
+    "exceptions_applied": { "type": "array" },
+    "evidence_valid": { "type": "boolean" },
+    "verdict": {
+      "type": "object",
+      "required": ["overall", "reasons"],
+      "properties": {
+        "overall": { "enum": ["PASS", "FAIL", "UNKNOWN"] },
+        "reasons": { "type": "array" }
+      }
+    }
+  },
+  "definitions": {
+    "suite": {
+      "type": "object",
+      "required": ["command", "exit", "status"],
+      "properties": {
+        "command": { "type": "string" },
+        "exit": { "type": ["integer", "null"] },
+        "status": { "enum": ["passed", "failed", "unavailable"] }
+      }
+    }
+  }
+}

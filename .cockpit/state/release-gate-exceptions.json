@@ -1,0 +1,15 @@
+{
+  "exceptions_id": "release-gate-exceptions-v1",
+  "title": "Release-gate approved bloat exception (exact, fail-closed)",
+  "plain_language": {
+    "what_this_is": "The ONE detector notice the release gate tolerates: the two known oversized source files, owner-accepted, split deferred. Acceptance is by EXACT full-string set equality — the bloat detector must report signal 'notice' with EXACTLY these two item strings and nothing else. Any change to wording, path, line count, threshold, or an added/removed item breaks the match and FAILS the gate.",
+    "why_fail_closed": "No substring or regex matching. This is deliberately brittle so a real change to those files (or a new large file) re-fails the gate and forces a fresh, deliberate acceptance instead of silently staying green.",
+    "how_to_update": "If those files legitimately change, re-run scripts/detect-bloat.ps1 and paste the new exact item strings here — an explicit, reviewable owner decision."
+  },
+  "approved_by": "owner",
+  "bloat_notice_items": [
+    "large file: app/main.js (1313 lines > 600)",
+    "large file: app/renderer/renderer.js (2231 lines > 600)"
+  ],
+  "updated_at": "2026-07-11T12:00:00-06:00"
+}

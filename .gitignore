@@ -27,6 +27,12 @@
 # pcc-pathD-001). Derived output regenerated from .cockpit/ state; not source.
 dashboard/index.html
 
+# Generated release-gate evidence (scripts/run-release-gate.ps1). A machine-readable
+# record of one exact-SHA gate run; regenerated on demand, not committed repo truth.
+# (If it were committed, generating it would dirty the tree and the gate would fail
+# itself.)
+.cockpit/evidence/
+
 # Electron dependencies for the desktop app (app/). Reinstalled via npm install; not source.
 app/node_modules/
 
