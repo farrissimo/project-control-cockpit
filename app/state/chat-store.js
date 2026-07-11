@@ -38,18 +38,99 @@ const ALLOWED_META_FIELDS = ['started', 'buildChat', 'buildName'];
 
 function _now(opts) { return (opts && typeof opts.now === 'number') ? opts.now : Date.now(); }
 
+// ---- structural validation (the persisted-store schema authority) ----
+//
+// atomic-store guarantees only that a file is PARSEABLE JSON; it says nothing
+// about shape. This is the SINGLE place that decides whether a parsed object is a
+// structurally valid v1 store. Without it, a parseable-but-malformed store (e.g.
+// chats is a string, or a chat is missing its messages array) would be served to
+// the renderer as authoritative — which silently renders as an EMPTY chat list
+// (false-empty) and, worse, masks a good prior generation. So a structurally
+// invalid store must NEVER be served as 'current' or mutated in place.
+//
+// Layering: this checks SHAPE only. Project-identity binding (projectId must match
+// the ACTIVE project) is a separate concern owned by chat-service, so a
+// legitimately null projectId (an initStore with no id) is shape-valid here.
+
+function _isPlainObject(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
+
+// Returns null if the chat is well-shaped, else a short reason string.
+function _validateChatShape(c) {
+  if (!_isPlainObject(c)) return 'chat_not_object';
+  if (typeof c.id !== 'string' || !c.id) return 'chat_id';
+  if (typeof c.name !== 'string') return 'chat_name';
+  if (typeof c.started !== 'boolean') return 'chat_started';
+  if (typeof c.createdAt !== 'number' || typeof c.updatedAt !== 'number') return 'chat_timestamps';
+  if (!Array.isArray(c.messages)) return 'chat_messages_not_array';
+  const seen = new Set();
+  for (const m of c.messages) {
+    if (!_isPlainObject(m)) return 'message_not_object';
+    // id + ts are what appendMessage/buildStore GUARANTEE (id required; ts always
+    // coerced to a number). cls/text are pass-through, so validate them only when
+    // present — requiring them would reject a message this module itself writes.
+    if (typeof m.id !== 'string' || !m.id) return 'message_id';
+    if (seen.has(m.id)) return 'duplicate_message_id';
+    seen.add(m.id);
+    if (typeof m.ts !== 'number') return 'message_ts';
+    if (m.cls !== undefined && typeof m.cls !== 'string') return 'message_cls';
+    if (m.text !== undefined && typeof m.text !== 'string') return 'message_text';
+  }
+  // Optional metadata — typed only when present (matches this module's writers).
+  if (c.nameLocked !== undefined && typeof c.nameLocked !== 'boolean') return 'chat_nameLocked';
+  if (c.buildChat !== undefined && typeof c.buildChat !== 'boolean') return 'chat_buildChat';
+  if (c.buildName !== undefined && typeof c.buildName !== 'string') return 'chat_buildName';
+  return null;
+}
+
+// Returns { ok:true } | { ok:false, error, detail?, chatId? }. Never throws.
+function validateStore(store) {
+  if (!_isPlainObject(store)) return { ok: false, error: 'store_not_object' };
+  if (store.schemaVersion !== SCHEMA_VERSION) return { ok: false, error: 'schema_version', detail: store.schemaVersion };
+  if (!(store.projectId === null || (typeof store.projectId === 'string' && store.projectId))) return { ok: false, error: 'project_id' };
+  if (!Number.isInteger(store.revision) || store.revision < 1) return { ok: false, error: 'revision', detail: store.revision };
+  if (typeof store.createdAt !== 'number' || typeof store.updatedAt !== 'number') return { ok: false, error: 'store_timestamps' };
+  if (!(store.activeChatId === null || typeof store.activeChatId === 'string')) return { ok: false, error: 'active_chat_id' };
+  if (!Array.isArray(store.chats)) return { ok: false, error: 'chats_not_an_array' };
+  const ids = new Set();
+  for (const c of store.chats) {
+    const reason = _validateChatShape(c);
+    if (reason) return { ok: false, error: reason, chatId: (_isPlainObject(c) ? c.id : undefined) };
+    if (ids.has(c.id)) return { ok: false, error: 'duplicate_chat_id', chatId: c.id };
+    ids.add(c.id);
+  }
+  return { ok: true };
+}
+
 // ---- read ----
 
 // Returns { ok, store, served } where served is 'current' | 'prev' | 'none'.
-// Falls back to the prior generation ONLY when the current file is
-// unreadable/corrupt (a missing store is 'none', not a fallback).
+// Falls back to the prior generation when the current file is unreadable/corrupt
+// OR parseable-but-structurally-invalid (a missing store is 'none', not a
+// fallback). A store is served ONLY if it passes validateStore — a malformed
+// current can never be presented as authoritative, and can never shadow a valid
+// .prev.
 function readStore(file) {
   const cur = atomic.readJson(file);
-  if (cur.ok) return { ok: true, store: cur.data, served: 'current' };
+  if (cur.ok) {
+    const v = validateStore(cur.data);
+    if (v.ok) return { ok: true, store: cur.data, served: 'current' };
+    // Parseable but structurally invalid — treat exactly like a corrupt current.
+    return _servePrev(file, 'invalid:' + v.error);
+  }
   if (cur.missing) return { ok: true, store: null, served: 'none' };
+  return _servePrev(file, cur.error);
+}
+
+// Serve the prior generation ONLY if it too is a structurally valid store; else
+// fail closed (never return a malformed .prev as though it were good data).
+function _servePrev(file, currentError) {
   const prev = atomic.readPrevJson(file);
-  if (prev.ok) return { ok: true, store: prev.data, served: 'prev', currentError: cur.error };
-  return { ok: false, error: 'store_and_prev_unreadable', currentError: cur.error, prevError: prev.error };
+  if (prev.ok) {
+    const pv = validateStore(prev.data);
+    if (pv.ok) return { ok: true, store: prev.data, served: 'prev', currentError };
+    return { ok: false, error: 'store_and_prev_unreadable', currentError, prevError: 'invalid:' + pv.error };
+  }
+  return { ok: false, error: 'store_and_prev_unreadable', currentError, prevError: prev.error };
 }
 
 // ---- project identity (Codex: stable id, not a path hash; minted file is
@@ -110,6 +191,11 @@ function _load(file, expectedRevision, opts) {
   if (store.schemaVersion !== SCHEMA_VERSION) {
     return { ok: false, error: 'schema_mismatch', needsMigration: true, currentSchema: store.schemaVersion };
   }
+  // Parseable + correct schemaVersion is NOT enough: a structurally malformed
+  // store (e.g. chats not an array) would make the command throw mid-mutation.
+  // Validate the full shape and FAIL CLOSED before touching any chat.
+  const v = validateStore(store);
+  if (!v.ok) return { ok: false, error: 'store_invalid', detail: v.error, chatId: v.chatId };
   if (opts && opts.expectedProjectId && store.projectId !== opts.expectedProjectId) {
     return { ok: false, error: 'project_mismatch', storeProjectId: store.projectId };
   }
@@ -129,6 +215,14 @@ function _load(file, expectedRevision, opts) {
 function _commit(file, store, now) {
   store.revision += 1;
   store.updatedAt = now;
+  // Validate the FULLY-MUTATED store BEFORE writing. Every command mutator funnels
+  // through here, and they pass caller data through (a bad-typed message field, a
+  // non-string chat id/name, a wrong-typed metadata value). A command that would
+  // produce a structurally invalid store must FAIL CLOSED without touching disk —
+  // never write-then-discover-on-reread, which would leave an invalid CURRENT
+  // generation that only .prev could recover.
+  const v = validateStore(store);
+  if (!v.ok) return { ok: false, error: 'would_corrupt', detail: v.error, chatId: v.chatId };
   const w = atomic.writeJsonAtomic(file, store);
   if (!w.ok) return { ok: false, error: 'write_failed: ' + w.error };
   const back = readStore(file);
@@ -225,6 +319,7 @@ function setActiveChat(file, expectedRevision, args, opts) {
 
 module.exports = {
   SCHEMA_VERSION,
+  validateStore,
   readStore, resolveProjectId, initStore,
   createChat, appendMessage, updateChatMetadata, renameChat, deleteChat, setActiveChat,
 };

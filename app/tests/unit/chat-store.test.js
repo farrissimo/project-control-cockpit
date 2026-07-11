@@ -73,6 +73,87 @@ test('a mutation against a CORRUPT current generation FAILS CLOSED (never commit
   assert.equal(atomic.readJson(file).ok, false, 'corrupt current left untouched — not overwritten from prev');
 });
 
+// ---- structural validation (S6 recovery-exit closeout) ----
+//
+// The write path is strict but the read/validate path was loose: readStore served
+// ANY parseable JSON as authoritative, and a non-array chats rendered as a silent
+// empty chat list (false-empty). These tests pin the fix: a store is served/mutated
+// ONLY if it is a structurally valid v1 store; a malformed one fails closed.
+
+test('validateStore accepts a well-formed v1 store (incl. a null projectId)', () => {
+  const { file } = seed(2);
+  const good = cs.readStore(file).store;
+  assert.equal(cs.validateStore(good).ok, true);
+  // null projectId is shape-valid; identity binding is chat-service's concern.
+  assert.equal(cs.validateStore(Object.assign({}, good, { projectId: null })).ok, true);
+});
+
+test('validateStore rejects each structural malformation class', () => {
+  const { file } = seed(1);
+  const base = cs.readStore(file).store;
+  const bad = (mut) => { const s = JSON.parse(JSON.stringify(base)); mut(s); return cs.validateStore(s).error; };
+  assert.equal(cs.validateStore(42).error, 'store_not_object');
+  assert.equal(cs.validateStore(null).error, 'store_not_object');
+  assert.equal(cs.validateStore([]).error, 'store_not_object');
+  assert.equal(bad((s) => { s.schemaVersion = 2; }), 'schema_version');
+  assert.equal(bad((s) => { s.projectId = ''; }), 'project_id');
+  assert.equal(bad((s) => { s.revision = 0; }), 'revision');
+  assert.equal(bad((s) => { s.revision = 1.5; }), 'revision');
+  assert.equal(bad((s) => { s.createdAt = 'x'; }), 'store_timestamps');
+  assert.equal(bad((s) => { s.activeChatId = 5; }), 'active_chat_id');
+  assert.equal(bad((s) => { s.chats = 'nope'; }), 'chats_not_an_array');
+  assert.equal(bad((s) => { s.chats = [null]; }), 'chat_not_object');
+  assert.equal(bad((s) => { delete s.chats[0].messages; }), 'chat_messages_not_array');
+  assert.equal(bad((s) => { s.chats[0].messages = [{ id: 'm', cls: 'user', text: 'hi' }]; }), 'message_ts'); // ts missing
+  assert.equal(bad((s) => { s.chats[0].messages = [{ cls: 'user', text: 'hi', ts: 1 }]; }), 'message_id');
+  assert.equal(bad((s) => { s.chats[0].messages = [{ id: 'm', text: 42, ts: 1 }]; }), 'message_text'); // wrong-typed when present
+  assert.equal(bad((s) => { s.chats.push(JSON.parse(JSON.stringify(base.chats[0]))); }), 'duplicate_chat_id');
+});
+
+test('readStore treats a parseable-but-INVALID current like a corrupt one: serves valid .prev', () => {
+  const { file } = seed(2);              // current (rev3) + valid .prev (rev2) exist
+  // Structurally invalid but perfectly parseable JSON (chats is a string).
+  fs.writeFileSync(file, JSON.stringify({ schemaVersion: 1, projectId: 'proj-test', revision: 9, createdAt: 1, updatedAt: 1, activeChatId: null, chats: 'corrupt' }), 'utf8');
+  const rd = cs.readStore(file);
+  assert.equal(rd.ok, true);
+  assert.equal(rd.served, 'prev', 'a malformed current must never be served as current');
+  assert.equal(Array.isArray(rd.store.chats), true);
+  assert.match(rd.currentError, /invalid:chats_not_an_array/);
+});
+
+test('readStore FAILS CLOSED when current is invalid and there is no valid .prev', () => {
+  const file = tmpFile();
+  cs.initStore(file, 'proj-test', nextNow());   // creates current, NO .prev yet
+  fs.writeFileSync(file, JSON.stringify({ schemaVersion: 1, projectId: 'p', revision: 1, createdAt: 1, updatedAt: 1, activeChatId: null, chats: { not: 'an array' } }), 'utf8');
+  const rd = cs.readStore(file);
+  assert.equal(rd.ok, false, 'no valid generation anywhere -> fail closed, never a false-empty served store');
+  assert.equal(rd.error, 'store_and_prev_unreadable');
+});
+
+test('a mutation against a parseable-but-INVALID current FAILS CLOSED (store_invalid), never throws', () => {
+  const { file, rev } = seed(1);
+  fs.writeFileSync(file, JSON.stringify({ schemaVersion: 1, projectId: 'proj-test', revision: rev, createdAt: 1, updatedAt: 1, activeChatId: null, chats: 'corrupt' }), 'utf8');
+  const r = cs.appendMessage(file, rev, { chatId: 'chat-0', message: { id: 'm', cls: 'user', text: 'hi', ts: 1 } }, nextNow());
+  assert.equal(r.ok, false);
+  assert.equal(r.error, 'store_invalid');
+  assert.match(r.detail, /chats_not_an_array/);
+});
+
+test('a command that would produce an INVALID store fails closed WITHOUT writing (current untouched)', () => {
+  const { file, rev, ids } = seed(1);
+  const before = fs.readFileSync(file, 'utf8');
+  // appendMessage passes cls/text through verbatim (only ts is coerced), so a
+  // non-string cls would make the resulting store structurally invalid. _commit
+  // must reject it before any write.
+  const r = cs.appendMessage(file, rev, { chatId: ids[0], message: { id: 'm-bad', cls: 42, text: 'x', ts: 1 } }, nextNow());
+  assert.equal(r.ok, false);
+  assert.equal(r.error, 'would_corrupt');
+  assert.match(r.detail, /message_cls/);
+  // The current generation on disk is byte-for-byte unchanged — nothing was persisted.
+  assert.equal(fs.readFileSync(file, 'utf8'), before, 'no write occurred; current generation intact');
+  assert.equal(cs.readStore(file).store.revision, rev, 'revision did not advance');
+});
+
 // ---- createChat + CAS ----
 
 test('createChat appends and bumps revision; returns the id', () => {

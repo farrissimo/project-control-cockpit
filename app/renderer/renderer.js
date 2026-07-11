@@ -66,7 +66,14 @@ function applyStore(store) {
 async function refreshCanonical() {
   let r;
   try { r = await window.pcc.chatsRead(); } catch (e) { r = { ok: false, error: e.message }; }
-  if (r && r.ok && r.store) { applyStore(r.store); return { ok: true }; }
+  if (r && r.ok && r.store) {
+    // Defense in depth: main is the schema authority and no longer serves a
+    // structurally-invalid store, but if a non-array chats ever reached here we
+    // must fail VISIBLY — never silently adopt it as an empty chat list (the
+    // false-empty hazard this recovery exists to eliminate).
+    if (!Array.isArray(r.store.chats)) return { ok: false, error: 'store_shape_invalid' };
+    applyStore(r.store); return { ok: true };
+  }
   return { ok: false, error: (r && r.error) || 'read_failed' };
 }
 
