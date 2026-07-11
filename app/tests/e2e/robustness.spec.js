@@ -48,3 +48,26 @@ test('steering: composer stays usable mid-turn; a second message queues and both
     await closeApp(app);
   }
 });
+
+// I4: the live trust strip is a boot/action snapshot. A worker turn can commit/push/
+// edit the repo, so it must be refreshed when a turn completes — otherwise the chips
+// show a stale snapshot as current. We plant a sentinel in the Verified chip (nothing
+// else re-renders it during a turn) and prove the post-turn refresh replaces it.
+test('the trust strip refreshes after a worker turn completes (no stale snapshot)', async () => {
+  const { app, page } = await launchApp();
+  try {
+    await expect(page.locator('.bubble.assistant.thinking')).toHaveCount(0, { timeout: 20000 });
+    await expect(page.locator('#trust-verified')).toBeVisible();
+    await page.evaluate(() => { document.getElementById('trust-verified').innerHTML = 'STALE-SENTINEL'; });
+    await expect(page.locator('#trust-verified')).toHaveText('STALE-SENTINEL');
+    await page.locator('#input').fill('do a turn');
+    await page.locator('#send').click();
+    await page.waitForSelector('.bubble.assistant:not(.thinking)', { timeout: 20000 });
+    // The completed turn triggered a trust refresh, which re-rendered the chip. Give it
+    // real headroom: loadTrust awaits detections (a PowerShell spawn) + trustExtras (git)
+    // before it re-renders, which can take several seconds on a loaded machine.
+    await expect(page.locator('#trust-verified')).not.toHaveText('STALE-SENTINEL', { timeout: 25000 });
+  } finally {
+    await closeApp(app);
+  }
+});

@@ -362,7 +362,15 @@ async function runSend(item) {
     await appendMessage('assistant error', 'Something went wrong: ' + err.message, chatId);
   } finally {
     busy = false; input.focus();
-    if (sendQueue.length) runSend(sendQueue.shift()); // steering: send the next queued message
+    if (sendQueue.length) {
+      runSend(sendQueue.shift()); // steering: send the next queued message
+    } else {
+      // The send burst is done. A worker turn (esp. a build turn) can commit, push,
+      // or edit files, which moves the git-derived trust chips (Verified / backup /
+      // CI). Refresh the trust strip so it never shows a stale snapshot as current
+      // after a turn (I4 audit: boot/action snapshot, no post-turn invalidation).
+      loadTrust();
+    }
   }
 }
 
