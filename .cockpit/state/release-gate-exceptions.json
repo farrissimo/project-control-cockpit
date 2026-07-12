@@ -8,8 +8,8 @@
   },
   "approved_by": "owner",
   "bloat_notice_items": [
-    "large file: app/main.js (1313 lines > 600)",
+    "large file: app/main.js (1297 lines > 600)",
     "large file: app/renderer/renderer.js (2231 lines > 600)"
   ],
-  "updated_at": "2026-07-11T12:00:00-06:00"
+  "updated_at": "2026-07-11T18:30:00-06:00"
 }
