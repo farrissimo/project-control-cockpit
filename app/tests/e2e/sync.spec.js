@@ -81,3 +81,32 @@ test('pull reports up to date', async () => {
   expect(r.ok).toBe(true);
   expect(r.text).toMatch(/up to date|already/i);
 });
+
+// T3 (docs/PART7_HARDENING_AUDIT.md): the backup PUSH-FAILURE path. If a regression ever
+// dropped the push.failed check, PCC would claim "backed up" while the commit never left
+// the machine. Force a real, deterministic, OFFLINE push failure (origin -> a nonexistent
+// path) and prove the handler is honest: ok:false, says "Push FAILED", and NEVER claims
+// "backed up". Runs LAST and reuses the shared app — it just SWITCHES that app to a fresh
+// broken-remote project (no second app instance, so no single-instance ambiguity), which
+// is safe because every earlier test already ran against `proj`.
+test('backup reports a PUSH FAILURE honestly and never claims "backed up"', async () => {
+  const p2 = makeGitProject();
+  // Break the remote AFTER upstream tracking is set: @{u} still resolves locally (so the
+  // app decides to push), but `git push` fails because origin now points nowhere.
+  execFileSync('git', ['remote', 'set-url', 'origin', path.join(p2.base, 'does-not-exist.git')], { cwd: p2.work });
+  try {
+    expect((await call('addProject', p2.work)).ok).toBe(true);
+    expect((await call('setActiveProject', p2.work)).ok).toBe(true);
+    fs.writeFileSync(path.join(p2.work, 'unpushed.txt'), 'not backed up yet\n');
+    const r = await call('backup', 'push should fail');
+    expect(r.ok).toBe(false);                 // honest failure, not a false success
+    expect(r.text).toMatch(/Push FAILED/);    // the app's stable contract text (not git's wording)
+    expect(r.text).not.toMatch(/backed up/i); // must NOT claim off-machine backup
+    // The commit is real but local-only: sync still shows unpushed work, never "clean".
+    const s = await call('syncStatus');
+    expect(s.ahead).toBeGreaterThanOrEqual(1);
+    expect(s.clean).toBe(false);
+  } finally {
+    try { fs.rmSync(p2.base, { recursive: true, force: true }); } catch (e) { /* best effort */ }
+  }
+});

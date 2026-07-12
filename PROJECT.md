@@ -32,9 +32,9 @@ or at a real milestone); research the web for existing solutions before building
   CLOSED rather than paint green over unknown/stale state. Chat data was made
   atomic + recoverable; the Part 7 audit then found and fixed the same disease on
   the verification and backup surfaces. **All 2 critical + 8 important Part 7
-  findings are closed** (docs/PART7_HARDENING_AUDIT.md); only tech-debt T1/T2/T3
-  remain (non-blocking; T3 = the backup push-failure branch has no test — the one
-  with residual risk).
+  findings are closed** (docs/PART7_HARDENING_AUDIT.md); **T3 is now also closed**
+  (the backup push-failure path is tested — sync.spec.js). Only tech-debt T1/T2
+  remain, both non-blocking (documentation/wording only; no residual data risk).
 - **Tests:** node:test unit suite 104/104; full Playwright suite 313/313.
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`, windows-latest, job `test`)
   runs the unit suite + full Playwright suite + `npm audit` on every push. Green on
@@ -109,8 +109,9 @@ exception (.cockpit/state/release-gate-exceptions.json). Design: docs/HARDENING_
 - **IDEA-019** (verification-workflow: make CI observable to the worker, prove each
   regression test fails on pre-fix code) — partially started (commit 4728505),
   needs owner go to finish.
-- **Tech-debt T1/T2/T3** (docs/PART7_HARDENING_AUDIT.md) — non-blocking; T3 (backup
-  push-failure branch untested) carries the only residual risk.
+- **Tech-debt T1/T2** (docs/PART7_HARDENING_AUDIT.md) — non-blocking; wording/docs
+  only, no residual data risk. (T3, the untested backup push-failure branch, is now
+  closed — it has a test.)
 - Optional roadmap items: #21 peek-under-the-hood, #23 UI polish — not started.
 
 ## Key decisions (docs/DECISIONS.md; latest = DECISION-114)
