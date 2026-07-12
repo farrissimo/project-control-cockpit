@@ -22,6 +22,7 @@ const { createMutex, runExclusiveBound } = require('./state/mutex'); // serializ
 const lifecycleMutex = createMutex();
 const { decideBackup } = require('./backup-policy');
 const { fetchCiChip } = require('./ci-status');
+const { singleFlight } = require('./single-flight'); // coalesce concurrent detector refreshes (soak W3)
 const { parseStreamJson } = require('./stream-json');
 const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
@@ -443,29 +444,23 @@ ipcMain.handle('pcc:lifecycleAdvance', (_e, toStageId) => runExclusiveBound(
 
 // Run the detectors in PARALLEL (they're independent read-only scripts), so the
 // Signals tab / trust strip stay snappy as more detectors are added.
-// COALESCED (soak finding W3): each call spawns 6 pwsh processes, and a soak showed
-// 12 rapid "Refresh" clicks spawning 129 concurrent pwsh. While a batch is in
-// flight, every caller (incl. the Project page's two callers) gets the SAME run,
-// so impatience can no longer storm the machine. A fresh click AFTER it finishes
-// still re-runs, so an explicit refresh is never stale.
-let detectionsInFlight = null;
-ipcMain.handle('pcc:detections', () => {
-  if (detectionsInFlight) return detectionsInFlight;
-  const run = (async () => {
-    const [untracked, drift, staleDocs, repoSync, bloat, highStakes] = await Promise.all([
-      runDetector('scripts/detect-untracked.ps1'),
-      runDetector('scripts/detect-drift.ps1'),
-      runDetector('scripts/detect-stale-docs.ps1'),
-      runDetector('scripts/detect-repo-sync.ps1'),
-      runDetector('scripts/detect-bloat.ps1'),
-      runDetector('scripts/detect-high-stakes.ps1'),
-    ]);
-    return { untracked, drift, staleDocs, repoSync, bloat, highStakes };
-  })();
-  detectionsInFlight = run;
-  run.finally(() => { if (detectionsInFlight === run) detectionsInFlight = null; });
-  return run;
+// COALESCED via the singleFlight seam (soak finding W3, unit-proven in
+// single-flight.test.js): each call spawns 6 pwsh processes, and a soak showed 12 rapid
+// "Refresh" clicks spawning 129 concurrent pwsh. While a batch is in flight every caller
+// (incl. the Project page's two callers) gets the SAME run, so impatience can no longer
+// storm the machine; a fresh click AFTER it settles still re-runs, so a refresh is never stale.
+const runDetections = singleFlight(async () => {
+  const [untracked, drift, staleDocs, repoSync, bloat, highStakes] = await Promise.all([
+    runDetector('scripts/detect-untracked.ps1'),
+    runDetector('scripts/detect-drift.ps1'),
+    runDetector('scripts/detect-stale-docs.ps1'),
+    runDetector('scripts/detect-repo-sync.ps1'),
+    runDetector('scripts/detect-bloat.ps1'),
+    runDetector('scripts/detect-high-stakes.ps1'),
+  ]);
+  return { untracked, drift, staleDocs, repoSync, bloat, highStakes };
 });
+ipcMain.handle('pcc:detections', () => runDetections());
 
 // Trust-strip extras: the two honest facts the always-visible strip needs
 // beyond the detectors. "Rules loaded" is just whether CLAUDE.md exists (the

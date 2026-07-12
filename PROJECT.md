@@ -52,9 +52,17 @@ or at a real milestone); research the web for existing solutions before building
 - **Recently closed (durable milestones):** Phase 1 Slice 1 — the fresh-run
   **release gate** (see "Release gate" below); Phase 2 Slice 1 — **CI-authority
   convergence** (`scripts/ci-status.ps1` is the single exact-SHA CI truth; the bloat
-  exception was refreshed to match); and **T3** — the backup push-failure path is now
-  tested (sync.spec.js). Each was verified and pushed at the time; current
-  releasability is always a fresh-run/live question — run the release gate.
+  exception was refreshed to match); Phase 3 Slice 1 — **CI workflow supply-chain
+  hardening** (least-privilege `permissions`, SHA-pinned actions, github-actions-only
+  Dependabot); Phase 4 Slice 1 — **targeted mutation proof** (scripts/run-mutation-proof.ps1
+  + manifest prove 5 integrity tests actually fail when their behavior is broken:
+  5 KILLED / 0 SURVIVED / 0 INVALID; docs/MUTATION_PROOF.md); and **T3** — the backup
+  push-failure path is tested (sync.spec.js). Also **repaired the recurring soak-lite
+  false-failure**: the coalescing seam was extracted to app/single-flight.js (unit-proven)
+  and the E2E now waits on semantic completion (status cleared + signal cards present),
+  not a fixed sleep or character count — so the release gate no longer false-FAILs on it.
+  Each was verified and pushed at the time; current releasability is always a fresh-run/
+  live question — run the release gate.
 - doctor.ps1 is all-OK with one benign WARN (the git-ignored `.cockpit/` stores:
   `chats`, `chat-export`, `evidence`).
 
@@ -118,15 +126,18 @@ current readiness. Accepted bloat is an exact-string, fail-closed, disclosed
 exception (.cockpit/state/release-gate-exceptions.json). Design: docs/HARDENING_RELEASE_GATE.md.
 
 ## Pending / next (owner schedules)
-- **Next required high-confidence-release phase: Phase 3 — free dependency &
-  security checks** (not started; do NOT begin without an explicit owner go).
+- **Next required high-confidence-release phase: Phase 5 — targeted failure
+  injection** (prove PCC fails closed / recovers when real dependencies and
+  persistence boundaries fail, not just when source logic is mutated). A small
+  targeted proof, not a chaos framework.
 - **IDEA-019** (verification-workflow) remains a proposal / backlog item. Its
   "make CI observable to the worker" portion has been PARTLY addressed by the
-  Phase 2 CI-authority convergence (commit 4728505 was an early start). The
-  regression red→green proof — each regression test demonstrably failing on the
-  pre-fix code — is still UNIMPLEMENTED. Needs an owner go to finish.
-- **Later hardening slices beyond Phase 3** (explicitly deferred, not started):
-  mutation testing, failure injection, packaging.
+  Phase 2 CI-authority convergence. The regression red→green proof — each
+  regression test demonstrably failing on the pre-fix code — is still
+  UNIMPLEMENTED. (Phase 4's mutation proof is related but distinct: it breaks
+  PRODUCTION behavior, not the tests.) Needs an owner go to finish.
+- **Later hardening slices beyond Phase 5** (explicitly deferred, not started):
+  packaging. (Security scanners shipped as Phase 3; mutation testing as Phase 4.)
 - **Tech-debt T1/T2** (docs/PART7_HARDENING_AUDIT.md) — non-blocking; wording/docs
   only, no residual data risk. (T3 is closed — the backup push-failure path has a test.)
 - Optional roadmap items: #21 peek-under-the-hood, #23 UI polish — not started.

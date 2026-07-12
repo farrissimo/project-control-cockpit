@@ -1,9 +1,12 @@
 // Soak regression (DECISION-108 / W3): a soak found that rapid-clicking the
 // process-heavy "Refresh" spawned 129 concurrent PowerShell processes, because
 // nothing coalesced concurrent detector runs. main.js now hands every caller the
-// in-flight run. This guards that rapid spam neither errors nor breaks rendering
-// (we can't reliably count OS processes in CI, so we assert the observable
-// behaviour: no crash, results still render after a burst).
+// in-flight run via the singleFlight seam (app/single-flight.js). This E2E guards the
+// observable end-to-end behaviour under spam — no crash, no errors, and the detector
+// results actually render — by waiting on SEMANTIC completion (status cleared + signal
+// cards present), never a fixed sleep or character count. The coalescing law itself
+// (concurrent callers share one batch; a call after it settles re-runs) is proven
+// deterministically as a pure unit in app/tests/unit/single-flight.test.js.
 const { test, expect } = require('@playwright/test');
 const { launchApp, closeApp } = require('../helpers/launch');
 
@@ -16,16 +19,24 @@ test.beforeAll(async () => {
 });
 test.afterAll(async () => { await closeApp(app); });
 
-test('rapid Refresh spam is coalesced: no error, still renders', async () => {
+test('rapid Refresh spam is coalesced: no error, results still render', async () => {
   await page.locator('.nav[data-view="signals"]').click();
-  await page.waitForTimeout(2500);
+  await expect(page.locator('#view-signals')).toBeVisible();
+  // Rapid spam: 15 near-instant clicks. Coalescing means these SHARE the in-flight
+  // detector batch instead of storming the machine — the coalescing law itself is
+  // proven deterministically in app/tests/unit/single-flight.test.js.
   for (let i = 0; i < 15; i++) {
     await page.locator('#signals-refresh').click({ noWaitAfter: true }).catch(() => {});
   }
-  await page.waitForTimeout(5000);
-  // The detector results still render (substantial content), and nothing errored.
-  const text = await page.locator('#view-signals').innerText();
-  expect(text.length).toBeGreaterThan(200);
+  // Deterministic SEMANTIC completion — no fixed sleeps, no character-count threshold:
+  //  1. the refresh finished — the status spinner/"Checking…" cleared to empty;
+  //  2. the detector results actually rendered — signal cards are present;
+  //  3. nothing errored on the page or console during the burst.
+  // (If a detector run had failed, status would be empty but NO .signal-card would
+  //  render — so this fails loudly on real breakage rather than masking it.)
+  await expect(page.locator('#signals-status')).toBeEmpty({ timeout: 30000 });
+  await expect(page.locator('#view-signals .signal-card').first()).toBeVisible({ timeout: 30000 });
+  expect(await page.locator('#view-signals .signal-card').count()).toBeGreaterThan(0);
   expect(errs).toEqual([]);
 });
 
