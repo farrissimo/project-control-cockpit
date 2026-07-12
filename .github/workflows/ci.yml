@@ -18,6 +18,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Least privilege: this workflow only reads the repo to run tests. It never
+# writes contents, issues, PRs, or packages, so the token gets read-only scope.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: windows-latest
@@ -25,11 +30,16 @@ jobs:
       run:
         working-directory: app
     steps:
+      # Third-party actions are pinned to a full-length commit SHA (supply-chain
+      # hardening): a moving tag like @v4 can be re-pointed at malicious code,
+      # a specific commit cannot. The trailing comment shows the trusted major
+      # version the SHA corresponds to; Dependabot (github-actions ecosystem)
+      # bumps the SHA + comment together when a new release lands.
       - name: Check out the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 (v4.3.1)
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 (v4.4.0)
         with:
           node-version: "20"
 

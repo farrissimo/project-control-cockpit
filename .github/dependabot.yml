@@ -1,0 +1,21 @@
+# Dependabot — Phase 3 Slice 1 (workflow supply-chain hardening).
+#
+# SCOPE IS DELIBERATELY NARROW: this file watches the `github-actions`
+# ecosystem ONLY. Its single job is to keep the SHA-pinned actions in
+# .github/workflows/*.yml current — when actions/checkout or actions/setup-node
+# ship a new release, Dependabot opens a PR that bumps the pinned commit SHA
+# (and its "# v4 (x.y.z)" comment) so the pin never silently rots.
+#
+# There is intentionally NO `npm` version-update entry here. Routine npm bump
+# PRs would be recurring noise for a 17-package tree. npm vulnerability coverage
+# is handled two other ways that do NOT create routine PR noise:
+#   1. `npm audit --audit-level=high` runs in CI on every push (the push gate);
+#   2. GitHub "Dependabot security updates" (a repo setting, not this file) opens
+#      PRs for npm packages ONLY when there is an actual security advisory.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 2
