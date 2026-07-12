@@ -43,3 +43,7 @@ app/last-verification.txt
 app/node_modules/
 test-results/
 playwright-report/
+
+# Ephemeral scratch for scripts/run-mutation-proof.ps1 (isolated mutation copies).
+# Nested under app/ so node_modules resolves upward; created + deleted per run. Not source.
+app/.pcc-mut-tmp/

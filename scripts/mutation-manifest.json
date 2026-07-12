@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "note": "Declarative targeted-mutation manifest for scripts/run-mutation-proof.ps1 (Phase 4 Slice 1). Each entry names ONE integrity-critical behavior, the EXACT single-site source edit that breaks it, and the EXISTING focused test that MUST catch it. Mutations are applied ONLY inside an isolated, git-ignored scratch copy of app/ (under app/.pcc-mut-tmp/, deleted at the end of each run unless -KeepTemp); real DATA and tracked source (chats, PROJECT.md, .cockpit/state, node_modules, committed files) are only READ. Line endings are normalized to LF before matching, so a multi-line `find` uses \\n. This is NOT a mutation-score tool: it proves a fixed set of test<->behavior pairings, nothing about global coverage.",
+  "mutations": [
+    {
+      "id": "M1-atomic-fail-closed-unreadable",
+      "priority": "atomic writes must fail closed and preserve the previous good generation",
+      "productBehavior": "writeJsonAtomic: when the current target EXISTS but cannot be read, FAIL CLOSED (never overwrite a possibly-good, momentarily-unreadable file).",
+      "file": "app/state/atomic-store.js",
+      "runner": "node-test",
+      "testFile": "tests/unit/atomic-store.test.js",
+      "detector": "a valid-but-UNREADABLE current target FAILS CLOSED (never silently overwritten)",
+      "find": "      _cleanup(targetTmp);\n      return { ok: false, error: 'prev_preserve_failed: current unreadable: ' + e.message };",
+      "replace": "      curRaw = Buffer.from('{}', 'utf8'); // MUTANT: swallow unreadable current and proceed (fail-open)"
+    },
+    {
+      "id": "M2-ci-exact-sha-binding",
+      "priority": "stale revision / identity mismatches must be rejected",
+      "productBehavior": "mapCiStatusToChip: a CI result may light the Verified chip green ONLY if its sha equals the requested commit sha (exact-SHA binding).",
+      "file": "app/ci-status.js",
+      "runner": "playwright",
+      "testFile": "tests/unit/ci-status.spec.js",
+      "detector": "a passed result bound to a different sha -> NOT available (sha_mismatch, never green)",
+      "find": "    const bound = !!requestedSha && !!ps.sha && String(ps.sha) === String(requestedSha);",
+      "replace": "    const bound = true; // MUTANT: ignore exact-SHA binding"
+    },
+    {
+      "id": "M3-authority-chat-scope",
+      "priority": "malformed / mis-scoped execution-authority state must not grant build authority",
+      "productBehavior": "authorizeSend: a send is build-authorized ONLY when it targets the exact chatId the owner approved (a different chat is never build and never renews).",
+      "file": "app/authority-logic.js",
+      "runner": "playwright",
+      "testFile": "tests/unit/authority-logic.spec.js",
+      "detector": "renewal is chat-SCOPED: a matching-mode send from a DIFFERENT chat is never build and never renews",
+      "find": "        const ok = mode === 'authorized_running' && !!authorizedJob && chatId === authorizedJob.chatId;",
+      "replace": "        const ok = mode === 'authorized_running' && !!authorizedJob; // MUTANT: drop chatId scoping"
+    },
+    {
+      "id": "M4-verification-forged-ci-type",
+      "priority": "unknown / unreadable verification facts must never become green",
+      "productBehavior": "isTrustedLocalProof: a hand-editable record may be trusted to claim ONLY local_execution; a forged ci_execution/live_boundary TYPE line must NOT count as executed proof.",
+      "file": "app/renderer/verification-parse.js",
+      "runner": "playwright",
+      "testFile": "tests/unit/verification-parse.spec.js",
+      "detector": "isTrustedLocalProof trusts only local_execution (forged CI/clean-room claims are rejected)",
+      "find": "    return type === 'local_execution';",
+      "replace": "    return type === 'local_execution' || type === 'ci_execution'; // MUTANT: trust a forged CI type"
+    },
+    {
+      "id": "M5-verification-dirty-tree",
+      "priority": "commit or working-tree changes must invalidate prior verification",
+      "productBehavior": "matchesCurrentCommit: a recorded verification does NOT cover current code when the working tree is dirty (uncommitted edits).",
+      "file": "app/renderer/verification-parse.js",
+      "runner": "playwright",
+      "testFile": "tests/unit/verification-parse.spec.js",
+      "detector": "matchesCurrentCommit is true only for an exact sha match on a clean tree",
+      "find": "    if (dirty) return false;",
+      "replace": "    if (dirty) { /* MUTANT: ignore a dirty working tree */ }"
+    }
+  ]
+}
