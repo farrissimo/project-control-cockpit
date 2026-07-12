@@ -1,7 +1,11 @@
 # PROJECT.md — current project brief
 
 Read this first. Always-current summary so a new session starts fully oriented,
-with no re-briefing from the owner. (Last refreshed 2026-07-11 at commit 2fb1639.)
+with no re-briefing from the owner. (Last refreshed 2026-07-12.) This file records
+DURABLE state only. The exact current commit SHA, whether local == origin/main,
+whether the working tree is clean, and the CI verdict are LIVE facts — check them
+directly every session; never trust a SHA or CI result written in this file as
+current truth.
 
 ## What this is
 PCC (Project Control Cockpit): a local-first desktop app (Electron) for building
@@ -22,10 +26,12 @@ or at a real milestone); research the web for existing solutions before building
 (don't reinvent the wheel); snapshot (commit) as you go.
 
 ## Where we are now (verified state)
-- **Branch `main` is the working line.** HEAD == origin/main == 2fb1639, working
-  tree clean, pushed and in sync. (The old `feat/cockpit-desktop-app` and
-  `fix/data-truth-recovery` branches are historical; recovery was fast-forwarded
-  into main.)
+- **`main` is the canonical working line.** The exact current SHA, whether local ==
+  origin/main, whether the tree is clean, and the CI verdict are LIVE facts — check
+  them directly (`git`, `git ls-remote`, `scripts/ci-status.ps1` for exact-SHA CI);
+  do NOT trust any SHA or CI verdict written in this file as current. (The old
+  `feat/cockpit-desktop-app` and `fix/data-truth-recovery` branches are historical;
+  recovery was fast-forwarded into main.)
 - **The truth-surface crisis recovery is DONE and merged.** After an incident where
   PCC showed state the owner couldn't trust, feature work was stopped for a 10-phase
   overhaul: every visible claim must prove source + read-time + freshness and fail
@@ -35,12 +41,20 @@ or at a real milestone); research the web for existing solutions before building
   findings are closed** (docs/PART7_HARDENING_AUDIT.md); **T3 is now also closed**
   (the backup push-failure path is tested — sync.spec.js). Only tech-debt T1/T2
   remain, both non-blocking (documentation/wording only; no residual data risk).
-- **Tests:** node:test unit suite 104/104; full Playwright suite 313/313.
+- **Tests:** node:test unit suite + full Playwright suite (run them for exact live
+  counts; both last observed green — treat counts as a run result to re-check, not a
+  stored fact).
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`, windows-latest, job `test`)
-  runs the unit suite + full Playwright suite + `npm audit` on every push. Green on
-  the current commit. CI is the independent, clean-machine execution proof.
-- **Latest shipped:** Hardening Slice 1 — a fresh-run **release gate** (2fb1639,
-  CI-green, self-PASS). See "Release gate" below.
+  runs the unit suite + full Playwright suite + `npm audit` on every push. The
+  pass/fail for any given commit is a LIVE fact — check it per exact SHA
+  (`scripts/ci-status.ps1`); do not read a stored verdict as current. CI is the
+  independent, clean-machine execution proof.
+- **Recently closed (durable milestones):** Phase 1 Slice 1 — the fresh-run
+  **release gate** (see "Release gate" below); Phase 2 Slice 1 — **CI-authority
+  convergence** (`scripts/ci-status.ps1` is the single exact-SHA CI truth; the bloat
+  exception was refreshed to match); and **T3** — the backup push-failure path is now
+  tested (sync.spec.js). Each was verified and pushed at the time; current
+  releasability is always a fresh-run/live question — run the release gate.
 - doctor.ps1 is all-OK with one benign WARN (the git-ignored `.cockpit/` stores:
   `chats`, `chat-export`, `evidence`).
 
@@ -91,7 +105,7 @@ or at a real milestone); research the web for existing solutions before building
   node:test data-integrity unit suite (`npm run test:unit`). Worker/verifier are
   faked (offline, deterministic); local detectors run for real.
 
-## Release gate (Hardening Slice 1 — shipped 2fb1639)
+## Release gate (Phase 1 Slice 1 — shipped, closed)
 One fresh-run command, `scripts/run-release-gate.ps1`, answers "is THIS exact
 commit releasable now?" It is a thin orchestrator: it invokes the authorities that
 already own each fact (git; detect-repo-sync; `git ls-remote` for the real remote
@@ -104,14 +118,17 @@ current readiness. Accepted bloat is an exact-string, fail-closed, disclosed
 exception (.cockpit/state/release-gate-exceptions.json). Design: docs/HARDENING_RELEASE_GATE.md.
 
 ## Pending / next (owner schedules)
-- **Later hardening slices** (explicitly deferred, not started): security scanners,
+- **Next required high-confidence-release phase: Phase 3 — free dependency &
+  security checks** (not started; do NOT begin without an explicit owner go).
+- **IDEA-019** (verification-workflow) remains a proposal / backlog item. Its
+  "make CI observable to the worker" portion has been PARTLY addressed by the
+  Phase 2 CI-authority convergence (commit 4728505 was an early start). The
+  regression red→green proof — each regression test demonstrably failing on the
+  pre-fix code — is still UNIMPLEMENTED. Needs an owner go to finish.
+- **Later hardening slices beyond Phase 3** (explicitly deferred, not started):
   mutation testing, failure injection, packaging.
-- **IDEA-019** (verification-workflow: make CI observable to the worker, prove each
-  regression test fails on pre-fix code) — partially started (commit 4728505),
-  needs owner go to finish.
 - **Tech-debt T1/T2** (docs/PART7_HARDENING_AUDIT.md) — non-blocking; wording/docs
-  only, no residual data risk. (T3, the untested backup push-failure branch, is now
-  closed — it has a test.)
+  only, no residual data risk. (T3 is closed — the backup push-failure path has a test.)
 - Optional roadmap items: #21 peek-under-the-hood, #23 UI polish — not started.
 
 ## Key decisions (docs/DECISIONS.md; latest = DECISION-114)
