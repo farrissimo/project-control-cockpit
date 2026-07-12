@@ -14,6 +14,8 @@ function makeRepo() {
   fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'app'), { recursive: true });
   fs.copyFileSync(path.join(REPO, 'scripts', 'verify-evidence.ps1'), path.join(dir, 'scripts', 'verify-evidence.ps1'));
+  // verify-evidence now delegates its CI note to the single authority ci-status.ps1 — it must be present.
+  fs.copyFileSync(path.join(REPO, 'scripts', 'ci-status.ps1'), path.join(dir, 'scripts', 'ci-status.ps1'));
   execFileSync('git', ['init'], { cwd: dir });
   execFileSync('git', ['config', 'user.email', 't@t.local'], { cwd: dir });
   execFileSync('git', ['config', 'user.name', 'T'], { cwd: dir });
@@ -116,12 +118,62 @@ test('single-commit repo (no prior commit at all) degrades honestly, never error
 
 // No remote configured (a throwaway/local-only repo, like the boundary and lifecycle-advance
 // sandboxes) -> the CI check must degrade instantly and offline-safe, never attempt a network call.
-test('no remote configured -> ci_state is no_remote (offline-safe, no network attempt)', () => {
+test('no remote configured -> ci_state is no_remote (via ci-status.ps1, offline-safe)', () => {
   const dir = makeRepo();
   try {
     commit(dir, 'a.txt', 'first');
     const e = run(dir);
-    expect(e.ci_state).toBe('no_remote');
+    expect(e.ci_state).toBe('no_remote'); // the authority's own no-remote result, consumed by verify-evidence
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// Delegation must degrade honestly: if the single authority is missing, verify-evidence still
+// completes and reports an honest 'unavailable' note (never a fabricated CI state, never a crash).
+test('a missing ci-status.ps1 -> ci_state unavailable (verify-evidence still completes honestly)', () => {
+  const dir = makeRepo();
+  try {
+    commit(dir, 'a.txt', 'first');
+    fs.rmSync(path.join(dir, 'scripts', 'ci-status.ps1'), { force: true });
+    const e = run(dir);
+    expect(e.ci_state).toBe('unavailable');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// Exact-SHA binding on the delegated result: a helper reporting a pass for a DIFFERENT sha must
+// never surface as 'passed' — it is treated as unavailable.
+test('a ci-status result bound to a different sha -> ci_state unavailable (never passed)', () => {
+  const dir = makeRepo();
+  try {
+    commit(dir, 'a.txt', 'first');
+    // fake helper that ignores -Sha and always claims a pass for some OTHER commit
+    fs.writeFileSync(path.join(dir, 'scripts', 'ci-status.ps1'),
+      "param([string]$Sha,[switch]$Json,[switch]$UrlOnly)\n@{ sha='deadbeefdeadbeefdeadbeefdeadbeefdeadbeef'; status='passed'; detail='x' } | ConvertTo-Json -Compress\n");
+    const e = run(dir);
+    expect(e.ci_state).toBe('unavailable');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// A helper that prints a valid 'passed' but EXITS NONZERO must not be trusted (fail closed).
+test('a ci-status helper that exits nonzero -> ci_state unavailable (never the reported pass)', () => {
+  const dir = makeRepo();
+  try {
+    const sha = commit(dir, 'a.txt', 'first');
+    fs.writeFileSync(path.join(dir, 'scripts', 'ci-status.ps1'),
+      "param([string]$Sha,[switch]$Json,[switch]$UrlOnly)\n@{ sha=$Sha; status='passed'; detail='x' } | ConvertTo-Json -Compress\nexit 1\n");
+    const e = run(dir);
+    expect(e.ci_state).toBe('unavailable');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// An unrecognised status string is not echoed through — only the known vocabulary is trusted.
+test('a ci-status helper returning a bogus status -> ci_state unavailable (whitelist)', () => {
+  const dir = makeRepo();
+  try {
+    commit(dir, 'a.txt', 'first');
+    fs.writeFileSync(path.join(dir, 'scripts', 'ci-status.ps1'),
+      "param([string]$Sha,[switch]$Json,[switch]$UrlOnly)\n@{ sha=$Sha; status='bogus'; detail='x' } | ConvertTo-Json -Compress\n");
+    const e = run(dir);
+    expect(e.ci_state).toBe('unavailable');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 

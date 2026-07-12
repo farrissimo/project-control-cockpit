@@ -18,11 +18,11 @@
   branch could be hundreds of commits -- the wrong kind of "richer"). Falls back to the single
   last commit when no prior verification is recorded, matching today's behavior.
 
-  Deterministic: git + one optional read-only GitHub API call. No LLM, no Electron/app/
-  dependency (scripts/ must keep working with app/ deleted -- CLAUDE.md's extractability rule),
-  so the CI check re-implements app/ci-status.js's same named-check-only logic independently in
-  pure PowerShell. Always exits 0; every failure degrades to an honest note, never blocks
-  verification from running.
+  Deterministic: git + the single CI authority. No LLM, no Electron/app/ dependency (scripts/ must
+  keep working with app/ deleted -- CLAUDE.md's extractability rule). The CI note is obtained by
+  INVOKING scripts/ci-status.ps1 (the one place that parses the remote, calls GitHub, and
+  interprets the named 'test' check) -- it is no longer re-implemented here. Always exits 0; every
+  failure (including a missing ci-status.ps1) degrades to an honest note, never blocks verification.
 
   Usage: pwsh -File scripts/verify-evidence.ps1 [-Json]
 #>
@@ -72,31 +72,31 @@ $maxDiff = 20000
 $diffTrunc = $false
 if ($diffFull.Length -gt $maxDiff) { $diffFull = $diffFull.Substring(0, $maxDiff); $diffTrunc = $true }
 
-# --- 2. live CI state for HEAD (best-effort, read-only; NEVER blocks verification) ---
-# Mirrors app/ci-status.js's decideCiStatus: tied to OUR named 'test' check only -- an
-# unrelated successful check (a bot, CodeQL) must never read as "the test suite passed".
-# Re-implemented here (not required from app/) so this script has no app/ dependency.
+# --- 2. live CI state for HEAD via the single CI authority scripts/ci-status.ps1 (best-effort,
+# read-only; NEVER blocks verification). Delegates ALL remote-parsing/GitHub/check interpretation
+# to that one script; a missing/unreadable ci-status.ps1 degrades to an honest 'unavailable'. ---
 $ciState = 'unavailable'; $ciDetail = ''
-try {
-  $remoteUrl = GitOut @('remote', 'get-url', 'origin')
-  if (-not $remoteUrl) { $ciState = 'no_remote' }
-  else {
-    $m2 = [regex]::Match($remoteUrl, '(?:github\.com[:/])([^/]+)/([^/.]+?)(?:\.git)?/?$')
-    if (-not $m2.Success) { $ciState = 'not_github' }
-    else {
-      $owner = $m2.Groups[1].Value; $repoName = $m2.Groups[2].Value
-      $uri = "https://api.github.com/repos/$owner/$repoName/commits/$headSha/check-runs"
-      $resp = Invoke-RestMethod -Uri $uri -Headers @{ Accept = 'application/vnd.github+json'; 'User-Agent' = 'PCC-Cockpit' } -TimeoutSec 6 -ErrorAction Stop
-      $mine = @($resp.check_runs | Where-Object { $_.name -eq 'test' })
-      if ($mine.Count -eq 0) { $ciState = 'none' }
-      elseif (@($mine | Where-Object { $_.status -ne 'completed' }).Count -gt 0) { $ciState = 'pending' }
-      elseif (@($mine | Where-Object { $_.conclusion -in @('failure', 'timed_out', 'cancelled', 'action_required', 'startup_failure') }).Count -gt 0) { $ciState = 'failed' }
-      elseif (@($mine | Where-Object { $_.conclusion -eq 'success' }).Count -gt 0) { $ciState = 'passed' }
-      else { $ciState = 'none' }
-      $ciDetail = "$owner/$repoName@$($headSha.Substring(0, [Math]::Min(9,$headSha.Length)))"
+$ciScript = Join-Path $repo 'scripts/ci-status.ps1'
+if (Test-Path -LiteralPath $ciScript -PathType Leaf) {
+  try {
+    $ciOut = & pwsh -NoProfile -File $ciScript -Sha $headSha 2>$null
+    $ciExit = $LASTEXITCODE
+    # Only the authority's known status vocabulary is trusted; anything else degrades to unavailable.
+    $ciKnown = @('passed', 'failed', 'cancelled', 'skipped', 'pending', 'missing', 'ambiguous', 'unreachable', 'no_remote', 'not_github')
+    $ciJson = if ($ciExit -eq 0) { "$ciOut" | ConvertFrom-Json } else { $null }
+    if ($ciExit -ne 0) {
+      # A nonzero exit means the helper run failed — never trust its stdout, even if it parsed.
+      $ciState = 'unavailable'; $ciDetail = "ci-status exited $ciExit"
+    } elseif ($ciJson -and ($ciJson.status -is [string]) -and ($ciKnown -contains "$($ciJson.status)") -and ("$($ciJson.sha)" -eq "$headSha")) {
+      # exact-SHA binding + known vocabulary: only trust a recognised status for THIS HEAD.
+      $ciState = "$($ciJson.status)"; $ciDetail = "$($ciJson.detail)"
+    } elseif ($ciJson -and ($ciJson.status -is [string]) -and ("$($ciJson.sha)" -ne "$headSha")) {
+      $ciState = 'unavailable'; $ciDetail = "ci-status returned a different sha ($($ciJson.sha)) than HEAD"
+    } else {
+      $ciState = 'unavailable'; $ciDetail = 'ci-status produced no usable result'
     }
-  }
-} catch { $ciState = 'unreachable'; $ciDetail = $_.Exception.Message }
+  } catch { $ciState = 'unavailable'; $ciDetail = "$($_.Exception.Message)" }
+} else { $ciState = 'unavailable'; $ciDetail = 'ci-status.ps1 not found' }
 
 $evidence = [ordered]@{
   head_sha       = $headSha

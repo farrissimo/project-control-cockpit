@@ -21,7 +21,7 @@ const { createMutex, runExclusiveBound } = require('./state/mutex'); // serializ
 // clobber the other's field (Part 7 hardening I3, concurrency half).
 const lifecycleMutex = createMutex();
 const { decideBackup } = require('./backup-policy');
-const { parseGitHubRepo, decideCiStatus, CI_CHECK_NAME } = require('./ci-status');
+const { fetchCiChip } = require('./ci-status');
 const { parseStreamJson } = require('./stream-json');
 const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
@@ -1129,37 +1129,21 @@ function git(args, timeout) {
   });
 }
 
-// Live CI status for the ACTIVE project's current commit (roadmap: surface CI into the Verified
-// chip). Read-only, best-effort, and — critically — HONEST: it only ever reports a real, current
-// pass/fail observed from GitHub's public check-runs API, and returns { available:false } for every
-// case where it cannot know (no remote / not GitHub / offline / private / rate-limited / test mode),
-// so the trust chip can never show a fabricated green OR a false red. The fetch runs HERE in the
-// main process (Node), not the renderer, so it is outside the renderer CSP. Green is inherently
-// fresh because the API is queried by the exact HEAD sha.
+// Live CI status for the ACTIVE project's current commit (surfaced into the Verified chip). It
+// now CONSUMES the single CI authority — the active project's scripts/ci-status.ps1 for the exact
+// HEAD sha — instead of talking to GitHub or interpreting CI results here (see app/ci-status.js
+// + scripts/ci-status.ps1). Read-only, async (spawns the helper, never blocks the main process),
+// and HONEST: only a real exact-SHA pass/fail from the authority ever surfaces; every unknown /
+// offline / missing-script / test-mode case is { available:false }, so the trust chip can never
+// show a fabricated green OR a false red. Project switching is automatic: it runs the ACTIVE
+// project's helper (projectDir), not HOME's.
 ipcMain.handle('pcc:ciStatus', async () => {
-  // Keep the test suite offline + deterministic (the fakebin design): never hit the network in tests.
+  // Keep the test suite offline + deterministic (the fakebin design): never spawn/network in tests.
   if (process.env.PCC_TEST_MODE) return { ok: true, available: false, reason: 'test_mode' };
   try {
-    const head = await git(['rev-parse', 'HEAD']);
-    if (head.failed || !head.out) return { ok: true, available: false, reason: 'no_git' };
-    const remote = await git(['remote', 'get-url', 'origin']);
-    if (remote.failed || !remote.out) return { ok: true, available: false, reason: 'no_remote' };
-    const gh = parseGitHubRepo(remote.out);
-    if (!gh) return { ok: true, available: false, reason: 'not_github' }; // e.g. a local-only project
-    const url = 'https://api.github.com/repos/' + gh.owner + '/' + gh.repo + '/commits/' + head.out + '/check-runs';
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 6000);
-    let res;
-    try {
-      res = await fetch(url, { signal: ctrl.signal, headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'PCC-Cockpit' } });
-    } finally { clearTimeout(timer); }
-    if (res.status === 403) return { ok: true, available: false, reason: 'rate_limited' };
-    if (res.status === 404) return { ok: true, available: false, reason: 'not_found_or_private' };
-    if (!res.ok) return { ok: true, available: false, reason: 'http_' + res.status };
-    const body = await res.json();
-    return { ok: true, available: true, state: decideCiStatus(body && body.check_runs, CI_CHECK_NAME), sha: head.out };
+    return await fetchCiChip(projectDir);
   } catch (e) {
-    return { ok: true, available: false, reason: 'unreachable' }; // offline / DNS / abort — never a red
+    return { ok: true, available: false, reason: 'unreachable' };
   }
 });
 

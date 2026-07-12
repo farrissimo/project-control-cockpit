@@ -13,7 +13,7 @@
 
   The result carries the sha it was queried for, so a consumer can bind it to the exact commit.
 #>
-param([Parameter(Mandatory)][string]$Sha, [switch]$Json)
+param([Parameter(Mandatory)][string]$Sha, [switch]$Json, [switch]$UrlOnly)
 
 $ErrorActionPreference = 'Continue'
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
@@ -25,16 +25,21 @@ $result = [ordered]@{ sha = $Sha; status = 'unknown'; detail = '' }
 $remote = GitOut @('remote', 'get-url', 'origin')
 if (-not $remote) {
   $result.status = 'no_remote'
+  # -UrlOnly: a read-only diagnostic that reports what would be queried, WITHOUT any network call
+  # (used to prove offline that the remote parse preserves dotted repo names). Never a CI verdict.
+  if ($UrlOnly) { (@{ sha = $Sha; target = 'no_remote' } | ConvertTo-Json -Compress); exit 0 }
 } else {
   $m = [regex]::Match($remote, '(?:github\.com[:/])([^/]+)/([^/]+?)(?:\.git)?/?$')
   if (-not $m.Success) {
     $result.status = 'not_github'
+    if ($UrlOnly) { (@{ sha = $Sha; target = 'not_github' } | ConvertTo-Json -Compress); exit 0 }
   } else {
     $owner = $m.Groups[1].Value; $name = $m.Groups[2].Value
+    # per_page=100 so the named 'test' check is never missed on a later page (default page size
+    # is 30). PCC commits carry 1-2 checks, so this covers every realistic case without paging.
+    $uri = "https://api.github.com/repos/$owner/$name/commits/$Sha/check-runs?per_page=100"
+    if ($UrlOnly) { (@{ sha = $Sha; target = $uri } | ConvertTo-Json -Compress); exit 0 }
     try {
-      # per_page=100 so the named 'test' check is never missed on a later page (default page size
-      # is 30). PCC commits carry 1-2 checks, so this covers every realistic case without paging.
-      $uri = "https://api.github.com/repos/$owner/$name/commits/$Sha/check-runs?per_page=100"
       $resp = Invoke-RestMethod -Uri $uri -Headers @{ Accept = 'application/vnd.github+json'; 'User-Agent' = 'PCC-Cockpit' } -TimeoutSec 8 -ErrorAction Stop
       $mine = @($resp.check_runs | Where-Object { $_.name -eq 'test' })
       $result.status =
