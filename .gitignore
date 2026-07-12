@@ -47,3 +47,8 @@ playwright-report/
 # Ephemeral scratch for scripts/run-mutation-proof.ps1 (isolated mutation copies).
 # Nested under app/ so node_modules resolves upward; created + deleted per run. Not source.
 app/.pcc-mut-tmp/
+
+# Full-project archive (a ~176MB backup snapshot of the repo dir, not source). It is
+# created by an external/backup step, not by any code in this repo — ignored so it can
+# never dirty the tree or be committed. Delete it manually if unwanted.
+/ProjectControlCockpit.zip
