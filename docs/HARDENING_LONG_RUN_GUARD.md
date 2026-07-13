@@ -39,7 +39,10 @@ lock." That was **not reproduced, and is disproven as stated.** Keep the distinc
 through. It makes "still running" a **tool-proven fact**, and it can never itself hang forever.
 
 1. **Reaps stale test processes first.** Leftover test Electrons/node from an earlier run are killed
-   before start — the exact mechanism that wedged the suite. **Safety wall:** a process is a target
+   before start as defensive hygiene. (This was once believed to be the wedge's mechanism via a
+   single-instance-lock collision; that theory was reproduced and **disproven** — see "What actually
+   caused the 7h hang" above — so this reap is cleanup, not the proven fix. The enforced defence is the
+   forward-progress abort in step 4.) **Safety wall:** a process is a target
    only when BOTH its executable name is allow-listed (`electron.exe`, `node.exe` by default) AND its
    command line carries the dedicated launch flag `--pcc-test-instance` that `tests/helpers/launch.js`
    adds to every Playwright Electron. That flag is an unmistakable token no real user process ever

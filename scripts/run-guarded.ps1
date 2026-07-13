@@ -12,9 +12,12 @@
 
   WHAT IT DOES (deterministic, no LLM, no network)
   ------------------------------------------------
-  1. KILLS STALE TEST PROCESSES first — leftover `pcc-test` electrons/node from an earlier run that
-     could wedge a fresh e2e launch (the exact 7h failure's mechanism). Safe by construction: it
-     only matches command lines containing the test-only marker(s), never the owner's real app.
+  1. KILLS STALE TEST PROCESSES first — leftover `pcc-test` electrons/node from an earlier run are
+     cleared as hygiene before a fresh e2e launch. (This was once believed to be the 7h hang's
+     mechanism via a single-instance-lock collision; that theory was reproduced and DISPROVEN — see
+     docs/HARDENING_LONG_RUN_GUARD.md — so this reap is defensive cleanup, NOT the proven fix; the
+     enforced defence is the forward-progress abort below.) Safe by construction: it only matches
+     command lines containing the test-only marker(s), never the owner's real app.
   2. RUNS the target command as a child, streaming its output to log files.
   3. SAMPLES EVIDENCE PROGRESS every -SampleSec. EVIDENCE = the child's combined output GREW (a
      reporter line, a completed test/case — "something advanced"). Output growth, NOT "a process
@@ -164,7 +167,7 @@ function Read-Since([string]$path, [long]$offset) {
   } catch { return @{ text = ''; offset = $offset } }
 }
 
-# ---- 1. reap stale test processes (the wedge fix) ----------------------------------------------
+# ---- 1. reap stale test processes (defensive hygiene; NOT the proven hang fix — see header) ----
 $killed = @()
 if (-not $NoKillStale -and $KillStalePattern.Count -gt 0 -and $KillStaleName.Count -gt 0) {
   $nameSet = @($KillStaleName | ForEach-Object { $_.ToLower() })
@@ -209,7 +212,7 @@ try {
 
 if ($state -eq 'setup-error' -or $null -eq $proc) {
   $rec = [ordered]@{
-    schema = 'run-guarded/v1'; label = $Label; state = 'setup-error'; command = $Command
+    schema = 'run-guarded/v2'; label = $Label; state = 'setup-error'; command = $Command
     started_at = (Iso $startedAt); ended_at = (Iso (Now)); exit_code = $null
     reason = 'could not start the child process'; stale_reaped = @($killed)
   }
