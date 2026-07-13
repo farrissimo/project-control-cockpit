@@ -56,8 +56,13 @@ or at a real milestone); research the web for existing solutions before building
   hardening** (least-privilege `permissions`, SHA-pinned actions, github-actions-only
   Dependabot); Phase 4 Slice 1 — **targeted mutation proof** (scripts/run-mutation-proof.ps1
   + manifest prove 5 integrity tests actually fail when their behavior is broken:
-  5 KILLED / 0 SURVIVED / 0 INVALID; docs/MUTATION_PROOF.md); and **T3** — the backup
-  push-failure path is tested (sync.spec.js). Also **repaired the recurring soak-lite
+  5 KILLED / 0 SURVIVED / 0 INVALID; docs/MUTATION_PROOF.md); Phase 5 Slice 1 —
+  **targeted failure injection** (scripts/run-failure-injection.ps1 + 6 scenarios prove
+  the REAL boundaries fail closed / recover under real injected dependency + persistence
+  failures — journal replay, corrupt journal, corrupt-chat/.prev recovery, atomic-write
+  install failure, git/remote unavailable, CI evidence malformed/mismatched/unreachable:
+  2 RECOVERED / 4 CONTAINED / 0 EXPOSED / 0 INVALID; docs/FAILURE_INJECTION.md); and
+  **T3** — the backup push-failure path is tested (sync.spec.js). Also **repaired the recurring soak-lite
   false-failure**: the coalescing seam was extracted to app/single-flight.js (unit-proven)
   and the E2E now waits on semantic completion (status cleared + signal cards present),
   not a fixed sleep or character count — so the release gate no longer false-FAILs on it.
@@ -126,18 +131,18 @@ current readiness. Accepted bloat is an exact-string, fail-closed, disclosed
 exception (.cockpit/state/release-gate-exceptions.json). Design: docs/HARDENING_RELEASE_GATE.md.
 
 ## Pending / next (owner schedules)
-- **Next required high-confidence-release phase: Phase 5 — targeted failure
-  injection** (prove PCC fails closed / recovers when real dependencies and
-  persistence boundaries fail, not just when source logic is mutated). A small
-  targeted proof, not a chaos framework.
+- **Packaging** is the last explicitly-deferred hardening slice not started
+  (security scanners shipped as Phase 3, mutation testing as Phase 4, failure
+  injection as Phase 5). No owner go yet.
+- **IDEA-020** (backlog/IDEAS.md): a one-click "Run integrity proofs" button in
+  the Verify view (runs the mutation + failure-injection proofs from the app,
+  honest summary, no LLM). Owner-approved as an idea; its own small slice.
 - **IDEA-019** (verification-workflow) remains a proposal / backlog item. Its
   "make CI observable to the worker" portion has been PARTLY addressed by the
   Phase 2 CI-authority convergence. The regression red→green proof — each
   regression test demonstrably failing on the pre-fix code — is still
   UNIMPLEMENTED. (Phase 4's mutation proof is related but distinct: it breaks
   PRODUCTION behavior, not the tests.) Needs an owner go to finish.
-- **Later hardening slices beyond Phase 5** (explicitly deferred, not started):
-  packaging. (Security scanners shipped as Phase 3; mutation testing as Phase 4.)
 - **Tech-debt T1/T2** (docs/PART7_HARDENING_AUDIT.md) — non-blocking; wording/docs
   only, no residual data risk. (T3 is closed — the backup push-failure path has a test.)
 - Optional roadmap items: #21 peek-under-the-hood, #23 UI polish — not started.

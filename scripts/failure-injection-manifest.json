@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "note": "Declarative targeted-failure-injection manifest for scripts/run-failure-injection.ps1 (Phase 5 Slice 1). Each case is a self-contained SCENARIO that runs the REAL production boundary in a throwaway temp dir/repo, records a baseline BEFORE injecting, injects a real dependency/persistence failure, proves it triggered, verifies canonical + prior-good + unrelated data, re-runs the baseline, and prints ONE JSON result. Real product data, chats, .cockpit state, the project registry, and real git history are NEVER touched. Not a chaos framework and not exhaustive fault coverage — only these hand-picked boundaries.",
+  "cases": [
+    {
+      "id": "FI-1-journal-replay",
+      "priority": "an interrupted paired-state transaction is completed by journal replay",
+      "boundary": "scripts/lib/state-journal.ps1 (Resume-StateJournal)",
+      "injectedFault": "kill after only task-state advanced; a write-ahead journal for the newer paired update remains",
+      "runner": "pwsh",
+      "scenario": "scripts/failure-injection/fi1-journal-replay.ps1",
+      "expected": "RECOVERED"
+    },
+    {
+      "id": "FI-2-journal-corrupt",
+      "priority": "a corrupt/incomplete state journal is refused (never replays garbage)",
+      "boundary": "scripts/lib/state-journal.ps1 (Resume-StateJournal)",
+      "injectedFault": "a malformed journal / invalid payload envelope",
+      "runner": "pwsh",
+      "scenario": "scripts/failure-injection/fi2-journal-corrupt.ps1",
+      "expected": "CONTAINED"
+    },
+    {
+      "id": "FI-3-chat-prev-recovery",
+      "priority": "a corrupt current chat store recovers from a valid prior generation; mutations blocked",
+      "boundary": "app/state/chat-store.js (readStore + command mutations)",
+      "injectedFault": "the current chats.json generation is structurally corrupted (valid .prev exists)",
+      "runner": "node",
+      "scenario": "scripts/failure-injection/fi3-chat-prev-recovery.js",
+      "expected": "RECOVERED"
+    },
+    {
+      "id": "FI-4-atomic-install-failure",
+      "priority": "an atomic-write prev-preserve/install failure fails closed without destroying data",
+      "boundary": "app/state/atomic-store.js (writeJsonAtomic)",
+      "injectedFault": "fs.renameSync throws when installing the .prev generation (real fs-call interception)",
+      "runner": "node",
+      "scenario": "scripts/failure-injection/fi4-atomic-install-failure.js",
+      "expected": "CONTAINED"
+    },
+    {
+      "id": "FI-5-git-remote-unavailable",
+      "priority": "unreadable git/remote truth never yields a false backed-up/synced/green claim",
+      "boundary": "scripts/detect-repo-sync.ps1 (real git against temp repos)",
+      "injectedFault": "non-repository directory and a repo with no remote",
+      "runner": "pwsh",
+      "scenario": "scripts/failure-injection/fi5-git-remote-unavailable.ps1",
+      "expected": "CONTAINED"
+    },
+    {
+      "id": "FI-6-ci-authority-unavailable",
+      "priority": "malformed / mismatched / unreachable CI evidence is never green; only exact-SHA passed is",
+      "boundary": "scripts/ci-status.ps1 (pwsh) + app/ci-status.js (mapCiStatusToChip)",
+      "injectedFault": "no-remote/not-github (real ps1) + malformed shape / mismatched sha / unavailable (real js mapper)",
+      "runner": "node",
+      "scenario": "scripts/failure-injection/fi6-ci-authority-unavailable.js",
+      "expected": "CONTAINED"
+    }
+  ]
+}
