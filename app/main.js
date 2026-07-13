@@ -541,6 +541,35 @@ function readModels() {
 
 ipcMain.handle('pcc:getModels', () => readModels());
 
+// External-tool preflight. PCC drives four command-line tools it does NOT bundle: pwsh (the whole
+// detector/lifecycle/backup/scaffold script layer), git (backup + version tracking), claude (the
+// worker), codex (the verifier). A packaged install inherits the user's PATH, so on a machine missing
+// one of these, features fail — previously either silently (detectors just degrade to UNKNOWN) or with a
+// cryptic "spawn claude ENOENT". This surfaces the gap HONESTLY and up front instead. Presence is checked
+// with `where` (no side effects — it does not execute the tool). PCC_FAKE_MISSING_TOOLS is a test seam.
+function detectTools() {
+  const fakeMissing = String(process.env.PCC_FAKE_MISSING_TOOLS || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const present = (name) => {
+    if (fakeMissing.includes(name)) return false;
+    try { return spawnSync('where', [name], { windowsHide: true, timeout: 4000 }).status === 0; }
+    catch (e) { return false; }
+  };
+  return { pwsh: present('pwsh'), git: present('git'), claude: present('claude'), codex: present('codex') };
+}
+ipcMain.handle('pcc:toolStatus', () => {
+  const present = detectTools();
+  // required: true = core features break without it. All four are effectively required for full function,
+  // but the message names WHAT breaks so a user can judge urgency.
+  const meta = {
+    pwsh:   { label: 'PowerShell 7 (pwsh)', why: 'detectors, lifecycle, backup, and New Project' },
+    claude: { label: 'Claude Code (claude)', why: 'the worker — chat and building' },
+    git:    { label: 'Git (git)', why: 'backup / sync and version tracking' },
+    codex:  { label: 'Codex CLI (codex)', why: 'the independent verifier (Verify)' },
+  };
+  const missing = Object.keys(meta).filter((k) => !present[k]).map((k) => ({ tool: k, label: meta[k].label, why: meta[k].why }));
+  return { present, missing };
+});
+
 // Start a fresh chat: assign a brand-new pinned session id, so the next
 // message starts an isolated conversation. (The renderer also clears its own
 // history.)

@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('pcc', {
   endJob: (chatId) => ipcRenderer.invoke('pcc:endJob', chatId),
   secondOpinion: (prompt) => ipcRenderer.invoke('pcc:secondOpinion', prompt),
   getModels: () => ipcRenderer.invoke('pcc:getModels'),
+  toolStatus: () => ipcRenderer.invoke('pcc:toolStatus'),
   newChat: () => ipcRenderer.invoke('pcc:newChat'),
   // First-class chat history (docs/CHAT_RECALL_SPEC.md): AI auto-name + structured summary card.
   autoNameChat: (messages) => ipcRenderer.invoke('pcc:autoNameChat', messages),

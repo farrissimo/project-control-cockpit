@@ -463,6 +463,10 @@
 </style>
 </head>
 <body>
+  <!-- External-tool preflight warning. Shown by boot() when a tool PCC drives (pwsh/git/claude/codex)
+       is missing from PATH. Fixed top bar, z-index 46 so it's visible over the #no-project overlay (45)
+       too. Honest + up front, instead of features failing silently or with a cryptic ENOENT. -->
+  <div id="tool-warning" role="alert"></div>
   <aside>
     <div class="brand">PCC</div>
     <button class="proj-switch" id="proj-switch" type="button" title="Switch between your projects, or open an existing one.">
@@ -658,6 +662,12 @@
        (a packaged install has no HOME project until the user creates or opens one). Its own style
        block + a .show class avoids fighting the global .hidden rule's specificity. -->
   <style>
+    #tool-warning { position: fixed; top: 0; left: 0; right: 0; z-index: 46; display: none;
+      font-size: 12px; color: var(--warning-text); background: var(--warning-bg);
+      border-bottom: 1px solid var(--warning-border); padding: 8px 14px; line-height: 1.5; }
+    #tool-warning.show { display: block; }
+    #tool-warning b { font-weight: 600; }
+    #tool-warning code { font-family: ui-monospace, monospace; opacity: .9; }
     #no-project { position: fixed; inset: 0; z-index: 45; display: none;
       align-items: center; justify-content: center; background: #0d1117; color: #e6edf3;
       font-family: inherit; }

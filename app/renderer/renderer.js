@@ -2249,6 +2249,21 @@ function showNoProjectState() {
   if (el) el.classList.add('show');
 }
 
+// External-tool preflight banner. If a command-line tool PCC drives (pwsh/git/claude/codex) is missing
+// from PATH, say so up front instead of letting features fail silently or with a cryptic ENOENT. This is
+// especially for a PACKAGED install on a machine that lacks one of these. Best-effort; never blocks boot.
+async function renderToolWarning() {
+  try {
+    const st = await window.pcc.toolStatus();
+    const bar = document.getElementById('tool-warning');
+    if (!bar || !st || !Array.isArray(st.missing) || st.missing.length === 0) return;
+    const items = st.missing.map((m) => '<b>' + m.label + '</b> (' + m.why + ')').join(', ');
+    bar.innerHTML = '⚠ Some tools PCC needs are not on your PATH: ' + items
+      + '. Install them and restart PCC — until then those features will not work.';
+    bar.classList.add('show');
+  } catch (e) { /* preflight is advisory; a failure here must never block the app */ }
+}
+
 async function boot() {
   // Resolve the active project first so chat history loads from its namespace. RETRY on a THROWN error
   // (a transient IPC hiccup once left activeProjectPath null -> the 'home' namespace -> an empty list ->
@@ -2266,6 +2281,7 @@ async function boot() {
     await new Promise((r) => setTimeout(r, 200));
   }
   renderCorrections();
+  renderToolWarning();   // fire-and-forget; shows in BOTH the empty state and the normal cockpit (z-index 46)
   initModels();
   loadProjectSwitcher();
   initHeader();
