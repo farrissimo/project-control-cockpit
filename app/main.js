@@ -32,8 +32,16 @@ const chatRecall = require('./chat-recall');
 // what scripts/bootstrap-project.ps1 scaffolds) and points every read, script,
 // chat, and worker call at whichever one is active. HOME_DIR is this repo — it
 // is always a registered project and the default active one.
-const HOME_DIR = path.join(__dirname, '..');
-let projectDir = HOME_DIR;               // active project root (switchable)
+// HOME_DIR — the default self-registered "home" project. In a DEV checkout the repo root beside app/
+// is a full project (has .cockpit/scripts/CLAUDE.md), so it is HOME and the default active project.
+// A PACKAGED install has no repo beside the app, so there is NO home project: HOME_DIR is null and the
+// app opens to a "create or open your first project" empty state until the user picks a folder. Nulling
+// it (rather than pointing at the asar) keeps a packaged first run honest instead of a broken active
+// project. Everything downstream treats projectDir === null as "no active project".
+// PCC_FORCE_NO_HOME lets the test suite exercise the packaged "no home project" path on a dev checkout
+// (app.isPackaged is false under Playwright), so the first-run empty state has real CI regression cover.
+const HOME_DIR = (app.isPackaged || process.env.PCC_FORCE_NO_HOME) ? null : path.join(__dirname, '..');
+let projectDir = HOME_DIR;               // active project root (switchable); null = no project open
 // ENGINE_DIR: the REFERENCE ENGINE that "New Project" clones from (scripts/, schemas/, the app
 // template, CLAUDE.md, AGENTS.md). It is a SEPARATE role from HOME_DIR (the default home project):
 // in a dev checkout they are the same repo root, but a PACKAGED install has no repo beside the app,
@@ -92,6 +100,7 @@ function isPccProject(dir) {
 }
 
 function projectName(dir) {
+  if (!dir) return '';   // no active project (packaged first run) — never path.join(null,…)
   try {
     const st = JSON.parse(fs.readFileSync(path.join(dir, '.cockpit', 'state', 'project-state.json'), 'utf8'));
     if (st && st.project_name) return st.project_name;
@@ -138,8 +147,10 @@ function readRegistry() {
   if (!Array.isArray(reg.projects)) reg.projects = [];
   // HOME is always present, first, and de-duplicated.
   reg.projects = reg.projects.filter((p) => typeof p === 'string' && p !== HOME_DIR && fs.existsSync(p));
-  reg.projects.unshift(HOME_DIR);
+  if (HOME_DIR) reg.projects.unshift(HOME_DIR);   // packaged has no HOME project — never inject null
   reg.projects = [...new Set(reg.projects)];
+  // Default active to HOME when it exists; packaged (HOME_DIR null) with no registered projects yields
+  // active = null = "no project open" (the empty state), which is a legitimate shape, not a fault.
   if (!reg.active || !reg.projects.includes(reg.active)) reg.active = HOME_DIR;
   return reg;
 }
@@ -541,7 +552,7 @@ ipcMain.handle('pcc:newChat', () => { sessionId = null; return { ok: true }; });
 // worker call at it), add an existing folder, and register a freshly-scaffolded
 // one. HOME is always present. Switching resets the local session fallback; the
 // renderer also reloads its per-project chat history.
-function projectEntry(p) { return { path: p, name: projectName(p), isHome: p === HOME_DIR }; }
+function projectEntry(p) { return { path: p, name: projectName(p), isHome: !!HOME_DIR && p === HOME_DIR }; }
 
 // File-bridge import: scripts/bootstrap-project.ps1 drops freshly-scaffolded
 // project paths into .cockpit/state/scaffolded-inbox.json of the repo it ran in

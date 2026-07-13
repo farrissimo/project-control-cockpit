@@ -693,9 +693,12 @@ function cfClose() {
   if (chatNav) chatNav.click();
 }
 
+// Returns true if the create-flow overlay opened, false if it could not start. Callers on the empty
+// state use the return value to surface a start failure (the underlying chat bubble below is hidden
+// beneath the #no-project overlay, so it would otherwise be invisible there).
 async function cfOpen() {
   const start = await window.pcc.createFlowStart();
-  if (!start || !start.ok) { addBubble('assistant error', (start && start.error) || 'Could not start a new project.', false); return; }
+  if (!start || !start.ok) { addBubble('assistant error', (start && start.error) || 'Could not start a new project.', false); return false; }
   cfLog.innerHTML = ''; cfInput.value = '';
   document.getElementById('create-flow').classList.add('open');
   cfInput.focus();
@@ -710,6 +713,7 @@ async function cfOpen() {
     + 'in this folder capturing the project (name, problem, target user, desired outcome, scope). '
     + 'Ask me the first question now.';
   cfSend(kickoff, true);
+  return true;
 }
 
 async function cfSave() {
@@ -2210,20 +2214,64 @@ document.addEventListener('click', (e) => {
 // ---- boot ----
 document.getElementById('lifecycle').addEventListener('click', () => document.querySelector('.nav[data-view="lifecycle"]').click());
 
+// First-run / no-project empty state. A packaged install has no HOME project, so on first launch
+// getActiveProject() returns a clean {path:null}. Rather than load project panes against nothing (and
+// throw on the chat path), we show a "create or open your first project" surface. Both actions end in
+// location.reload() once a project is active (cfSave / openExistingProject already reload), so the next
+// boot() runs the normal flow. NOT reached in dev, where HOME_DIR is a valid project.
+function showNoProjectState() {
+  const el = document.getElementById('no-project');
+  const err = document.getElementById('np-err');
+  const showErr = (m) => { if (err) err.textContent = m || ''; };
+  const nn = document.getElementById('np-new');
+  const no = document.getElementById('np-open');
+  // Both actions must report failures into #np-err. Reusing openExistingProject()/cfOpen()'s own error
+  // surfaces would be INVISIBLE here — showProjError writes to the hidden #proj-panel, and cfOpen's start
+  // failure writes a chat bubble UNDER this overlay. So: cfOpen returns false on a start failure (shown
+  // here), and open-existing is run inline with every non-throw failure surfaced into #np-err.
+  if (nn) nn.onclick = async () => {
+    showErr('');
+    try { const ok = await cfOpen(); if (!ok) showErr('Could not start a new project.'); }
+    catch (e) { showErr('Could not start a new project.'); }
+  };
+  if (no) no.onclick = async () => {
+    showErr('');
+    try {
+      const pick = await window.pcc.pickFolder();
+      if (!pick || !pick.path) return;                       // user cancelled the picker
+      const add = await window.pcc.addProject(pick.path);
+      if (!add || !add.ok) { showErr((add && add.error) || 'That folder is not a PCC project.'); return; }
+      const sw = await window.pcc.setActiveProject(pick.path);
+      if (sw && sw.ok) location.reload();                    // re-boot into the now-active project
+      else showErr((sw && sw.error) || 'Could not open the project.');
+    } catch (e) { showErr('Could not open a project.'); }
+  };
+  if (el) el.classList.add('show');
+}
+
 async function boot() {
-  // Resolve the active project first so chat history loads from its namespace. RETRY, because a
-  // transient IPC hiccup here used to leave activeProjectPath null -> the 'home' namespace ->
-  // an empty list -> a fresh "New chat" masking the real project's chats (owner report 2026-07-10).
-  // Only fall back to the default namespace if every attempt genuinely fails.
+  // Resolve the active project first so chat history loads from its namespace. RETRY on a THROWN error
+  // (a transient IPC hiccup once left activeProjectPath null -> the 'home' namespace -> an empty list ->
+  // a fresh "New chat" masking the real project's chats, owner report 2026-07-10). A clean result with
+  // path:null is NOT an error — it is the genuine "no project open" state (packaged first run), so we
+  // stop retrying and fall through to the empty state below.
+  let resolved = false;
   for (let attempt = 0; attempt < 6; attempt++) {
-    try { const a = await window.pcc.getActiveProject(); if (a && a.path) { activeProjectPath = a.path; break; } }
-    catch (e) { /* retry */ }
+    try {
+      const a = await window.pcc.getActiveProject();
+      resolved = true;
+      if (a && a.path) { activeProjectPath = a.path; }
+      break;                              // succeeded (with or without a project) — don't retry
+    } catch (e) { /* transient failure: retry */ }
     await new Promise((r) => setTimeout(r, 200));
   }
   renderCorrections();
   initModels();
   loadProjectSwitcher();
   initHeader();
+  // No active project (packaged first run): show the empty state and DON'T load project panes (which
+  // would run against a null project — the chat path in particular would throw and block the pane).
+  if (resolved && !activeProjectPath) { showNoProjectState(); return; }
   loadLifecycle();
   loadTrust();
   await loadChats();
