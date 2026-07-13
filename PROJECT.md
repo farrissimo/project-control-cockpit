@@ -61,8 +61,16 @@ or at a real milestone); research the web for existing solutions before building
   the REAL boundaries fail closed / recover under real injected dependency + persistence
   failures — journal replay, corrupt journal, corrupt-chat/.prev recovery, atomic-write
   install failure, git/remote unavailable, CI evidence malformed/mismatched/unreachable:
-  2 RECOVERED / 4 CONTAINED / 0 EXPOSED / 0 INVALID; docs/FAILURE_INJECTION.md); and
-  **T3** — the backup push-failure path is tested (sync.spec.js). Also **repaired the recurring soak-lite
+  2 RECOVERED / 4 CONTAINED / 0 EXPOSED / 0 INVALID; docs/FAILURE_INJECTION.md);
+  **T3** — the backup push-failure path is tested (sync.spec.js); and the **long-run hang guard**
+  (scripts/run-guarded.ps1 + docs/HARDENING_LONG_RUN_GUARD.md) — every long verification can be
+  routed through a deterministic guard that reaps stale test electrons, proves FORWARD PROGRESS
+  (output growth, plus process-tree CPU when output is silent) via a machine-readable heartbeat,
+  and ABORTS a hang at its stall window instead of waiting; it fixes the underlying wedge too (a
+  disposable test launch skips the single-instance lock, gated on the --pcc-test-instance flag +
+  a throwaway userData) and the release gate now runs the full suite through it (a guard
+  setup-error is UNKNOWN, never a false FAIL). Closes the hole where an operator could report
+  "still running" over a dead process (the ~7h incident). Also **repaired the recurring soak-lite
   false-failure**: the coalescing seam was extracted to app/single-flight.js (unit-proven)
   and the E2E now waits on semantic completion (status cleared + signal cards present),
   not a fixed sleep or character count — so the release gate no longer false-FAILs on it.
