@@ -560,6 +560,10 @@ function projectEntry(p) { return { path: p, name: projectName(p), isHome: !!HOM
 // inbox — so a project created via "New project" shows up in the switcher with no
 // manual "Open existing" step.
 function importScaffoldedInbox() {
+  if (!projectDir) return 0;   // no active project (packaged first run) — nothing to import; never
+                               // path.join(null,…). Without this, pcc:listProjects rejected on first
+                               // boot (the throw is OUTSIDE the try below) and the switcher could not
+                               // return the legitimate {active:null, projects:[]} empty shape.
   const inboxPath = path.join(projectDir, '.cockpit', 'state', 'scaffolded-inbox.json');
   let added = 0;
   try {

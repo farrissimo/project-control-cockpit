@@ -37,6 +37,19 @@ test('the empty state loads without a blocking error (no chat/trust throw on a n
   });
 });
 
+test('listProjects returns a clean empty registry with no active project (no null path.join throw)', async () => {
+  // Direct regression cover for a real defect a secondary review caught: with projectDir null,
+  // pcc:listProjects -> importScaffoldedInbox() did path.join(null,…) OUTSIDE its try and REJECTED the
+  // IPC (the renderer only hid it). It must instead return the legitimate {active:null, projects:[]}.
+  await withNoHome(async (page) => {
+    const res = await page.evaluate(() => window.pcc.listProjects());
+    expect(res).toBeTruthy();                                   // did NOT reject
+    expect(res.active === null || res.active === undefined).toBe(true);
+    expect(Array.isArray(res.projects)).toBe(true);
+    expect(res.projects.length).toBe(0);                        // no null HOME injected
+  });
+});
+
 test('with a real project (dev default), the empty state is NOT shown', async () => {
   // Regression guard the other way: the normal dev app (HOME_DIR = repo root, a valid project) must
   // boot straight into the cockpit, never the empty state.
