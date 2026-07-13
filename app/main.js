@@ -1248,7 +1248,23 @@ function createWindow() {
 // instance's empty "New chat", and closing one window left the others running as ghosts. Now a
 // second launch just focuses the existing window and exits: one app, one owner of the storage.
 // (window-all-closed already quits the single instance cleanly.)
-const gotSingleInstanceLock = app.requestSingleInstanceLock();
+//
+// EXCEPTION — test mode (2026-07-12 hang fix). Each Playwright launch already gets its OWN
+// throwaway --user-data-dir (tests/helpers/launch.js), so there is NO shared storage to protect
+// and the single-instance rationale does not apply. Worse, a stale leftover test electron holding
+// this lock made a fresh e2e launch block forever (it never got the lock, never opened a window,
+// and app.firstWindow() hung — the exact failure that cost ~7h). So a test instance NEVER contends
+// for the lock: every one is its own isolated island and can never wedge another.
+// The bypass is gated on TWO independent proofs that this really is a disposable test launch — not
+// PCC_TEST_MODE alone: an env var that leaked into a normal shell must never disable the lock on the
+// owner's REAL profile. We require the explicit --pcc-test-instance launch flag AND a throwaway
+// user-data dir; a normal launch has neither.
+function isDisposableTestInstance() {
+  if (!process.env.PCC_TEST_MODE) return false;
+  if (!process.argv.includes('--pcc-test-instance')) return false;
+  try { return app.getPath('userData').replace(/\\/g, '/').includes('/pcc-test-'); } catch (e) { return false; }
+}
+const gotSingleInstanceLock = isDisposableTestInstance() ? true : app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();
 } else {

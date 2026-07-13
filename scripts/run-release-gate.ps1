@@ -60,15 +60,36 @@ function Get-RemoteHead([string]$branch, [string]$localSha) {
   return $r
 }
 
-function Invoke-Suite([string[]]$npmArgs) {
+function Invoke-Suite([string[]]$npmArgs, [switch]$Guard) {
   # The required suites (fact source 5) ARE the app's npm scripts, so running them references app/.
   # This is a SOFT dependency by design: if app/ is absent the suite is 'unavailable' -> UNKNOWN
   # (never a crash, never a PASS), so the script still RUNS with app/ deleted (extractability holds).
   $cmd = "npm $($npmArgs -join ' ')"
-  if (-not (Test-Path -LiteralPath (Join-Path $repo 'app/package.json') -PathType Leaf)) {
+  $appDir = Join-Path $repo 'app'
+  if (-not (Test-Path -LiteralPath (Join-Path $appDir 'package.json') -PathType Leaf)) {
     return [ordered]@{ command = $cmd; exit = $null; status = 'unavailable' }
   }
-  Push-Location (Join-Path $repo 'app')
+  # The long Playwright suite is the exact run that once wedged for ~7h. When the forward-progress
+  # guard is present (scripts/run-guarded.ps1), route it THROUGH the guard so even a DIRECT gate run
+  # (not just one wrapped from outside) can never hang silently: the guard reaps stale test electrons
+  # first, aborts on no forward progress within its stall window, and writes a machine-readable
+  # heartbeat/verdict. -Quiet keeps the guard off stdout so the -Json receipt stays pure; the guard's
+  # exit code (0 pass / nonzero incl. HUNG=3, CAP=4) maps to the same passed/failed policy below.
+  # Fallback to a direct run when the guard script is absent (extractability + copies without it).
+  $guardScript = Join-Path $PSScriptRoot 'run-guarded.ps1'
+  if ($Guard -and (Test-Path -LiteralPath $guardScript -PathType Leaf)) {
+    try {
+      & pwsh -NoProfile -File $guardScript -Label 'gate-full-suite' -Quiet -WorkDir $appDir -Command "npm $($npmArgs -join ' ')" *>&1 | Out-Null
+      $code = $LASTEXITCODE
+    } catch { return [ordered]@{ command = $cmd; exit = $null; status = 'unavailable' } }
+    # Map the guard's own exit codes to the gate's honest policy, NOT "nonzero => failed":
+    #   0 = suite passed. 2 = guard setup error (couldn't start / no evidence dir) -> 'unavailable'
+    #   -> UNKNOWN, exactly like the direct-npm catch path, so infrastructure trouble never masquerades
+    #   as a real test FAIL. 1 = tests failed; 3 = HUNG; 4 = CAP -> all genuine 'failed'.
+    $status = switch ($code) { 0 { 'passed' } 2 { 'unavailable' } default { 'failed' } }
+    return [ordered]@{ command = $cmd; exit = $code; status = $status }
+  }
+  Push-Location $appDir
   try { & npm @npmArgs *>&1 | Out-Null; $code = $LASTEXITCODE }
   catch { Pop-Location; return [ordered]@{ command = $cmd; exit = $null; status = 'unavailable' } }
   Pop-Location
@@ -127,7 +148,7 @@ $ci = if ($null -ne $ciRaw -and ($ciRaw.status -is [string])) {
 
 $suites = [ordered]@{
   unit  = (Invoke-Suite @('run', 'test:unit'))
-  full  = (Invoke-Suite @('test'))
+  full  = (Invoke-Suite @('test') -Guard)   # the slow e2e suite: routed through the hang guard
   audit = (Invoke-Suite @('audit', '--audit-level=high'))
 }
 $detectors = @('bloat', 'drift', 'stale-docs' | ForEach-Object { Get-DetectorFact $_ })

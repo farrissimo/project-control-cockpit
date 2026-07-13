@@ -25,7 +25,12 @@ async function launchApp(extraEnv = {}) {
     ...extraEnv,
   };
   const app = await electron.launch({
-    args: [APP_DIR, '--user-data-dir=' + userDataDir],
+    // --pcc-test-instance is an unmistakable marker no real launch ever carries. Two jobs:
+    //   (1) main.js only skips the single-instance lock when it sees this flag (so an accidentally
+    //       inherited PCC_TEST_MODE on a normal launch can't disable the lock on the real profile);
+    //   (2) scripts/run-guarded.ps1 reaps stale test electrons by matching THIS flag in the command
+    //       line, never a loose 'pcc-test' substring that could hit an unrelated user process.
+    args: [APP_DIR, '--user-data-dir=' + userDataDir, '--pcc-test-instance'],
     env,
     cwd: APP_DIR,
   });

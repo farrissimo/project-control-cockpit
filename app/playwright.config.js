@@ -15,6 +15,11 @@ module.exports = defineConfig({
   fullyParallel: false,
   workers: 1,
   timeout: 60_000,
+  // In-tool backstop for the whole run (defense-in-depth under scripts/run-guarded.ps1's
+  // forward-progress guard). A wedged launch can never turn into a multi-hour zombie: Playwright
+  // self-terminates the entire run past this bound. Generous (the suite is Electron-heavy and slow
+  // on CI) but finite — the guard's 180s no-progress stall check is the real, faster hang-catcher.
+  globalTimeout: 2_700_000, // 45 min
   reporter: [['list']],
   use: { trace: 'off' },
 });
