@@ -34,6 +34,15 @@ const chatRecall = require('./chat-recall');
 // is always a registered project and the default active one.
 const HOME_DIR = path.join(__dirname, '..');
 let projectDir = HOME_DIR;               // active project root (switchable)
+// ENGINE_DIR: the REFERENCE ENGINE that "New Project" clones from (scripts/, schemas/, the app
+// template, CLAUDE.md, AGENTS.md). It is a SEPARATE role from HOME_DIR (the default home project):
+// in a dev checkout they are the same repo root, but a PACKAGED install has no repo beside the app,
+// so the engine ships as unpacked resources (electron-builder extraResources under resources/engine)
+// and ENGINE_DIR points there. Keeping this distinct from HOME_DIR is what lets scaffolding work
+// from an installed app. In dev this resolves to the repo root exactly as before (no behavior change).
+const ENGINE_DIR = (app.isPackaged)
+  ? path.join(process.resourcesPath, 'engine')
+  : path.join(__dirname, '..');
 const cockpitDir = () => path.join(projectDir, '.cockpit');
 // PROJECT.md path. In TEST MODE, when the active project is the HOME repo (the real
 // codebase), redirect to a throwaway shadow under userData — SEEDED once from the
@@ -989,7 +998,7 @@ ipcMain.handle('pcc:createFlowStart', () => {
     const dir = path.join(scratchRoot(), id);
     fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
     try {
-      const intakeSrc = path.join(HOME_DIR, 'scripts', 'new-project-intake.ps1');
+      const intakeSrc = path.join(ENGINE_DIR, 'scripts', 'new-project-intake.ps1');
       if (fs.existsSync(intakeSrc)) fs.copyFileSync(intakeSrc, path.join(dir, 'scripts', 'new-project-intake.ps1'));
     } catch (e) { /* the worker can still interview without the printed protocol */ }
     createFlow.active = true; createFlow.scratchDir = dir; createFlow.chatId = id; createFlow.started = false;
@@ -1056,7 +1065,7 @@ ipcMain.handle('pcc:createFlowSave', async (_e, name, location) => {
     fs.cpSync(createFlow.scratchDir, target, { recursive: true });
   } catch (e) { createFlow.saving = false; return { ok: false, error: 'Could not copy the new project into place: ' + e.message }; }
   // 2. scaffold the cockpit engine on top (deterministic; a blueprint.json from the intake is used if present)
-  const bootstrap = path.join(HOME_DIR, 'scripts', 'bootstrap-project.ps1');
+  const bootstrap = path.join(ENGINE_DIR, 'scripts', 'bootstrap-project.ps1');
   const args = ['-NoProfile', '-File', bootstrap, '-Target', target, '-Name', nm, '-Force', '-NoInbox'];
   const bp = path.join(target, 'blueprint.json');
   if (fs.existsSync(bp)) args.push('-Blueprint', bp);
@@ -1064,7 +1073,7 @@ ipcMain.handle('pcc:createFlowSave', async (_e, name, location) => {
   // seconds — never blocks the Electron main process / IPC while the owner watches "Saving…".
   const r = await new Promise((resolve) => {
     let so = '', se = '', child;
-    try { child = spawn('pwsh', args, { cwd: HOME_DIR }); }
+    try { child = spawn('pwsh', args, { cwd: ENGINE_DIR }); }
     catch (e) { return resolve({ status: -1, stderr: e.message }); }
     child.stdout.on('data', (d) => { so += d.toString(); });
     child.stderr.on('data', (d) => { se += d.toString(); });

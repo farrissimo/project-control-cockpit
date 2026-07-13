@@ -52,3 +52,6 @@ app/.pcc-mut-tmp/
 # created by an external/backup step, not by any code in this repo — ignored so it can
 # never dirty the tree or be committed. Delete it manually if unwanted.
 /ProjectControlCockpit.zip
+
+# Packaged installer output (electron-builder)
+/dist/

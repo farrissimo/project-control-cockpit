@@ -11,12 +11,83 @@
     "test:raw": "playwright test",
     "test:unit": "node tests/run-unit.js",
     "test:external-smoke": "playwright test -c playwright.external.config.js",
+    "dist": "electron-builder --win nsis",
     "postinstall": "node tools/install-git-hooks.js"
   },
   "license": "UNLICENSED",
   "private": true,
   "devDependencies": {
     "@playwright/test": "^1.61.1",
-    "electron": "^43.0.0"
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.pcc.cockpit",
+    "productName": "PCC",
+    "directories": {
+      "output": "../dist"
+    },
+    "files": [
+      "**/*",
+      "!tests/**",
+      "!tools/**",
+      "!playwright.config.js",
+      "!playwright.external.config.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../scripts",
+        "to": "engine/scripts"
+      },
+      {
+        "from": "../schemas",
+        "to": "engine/schemas"
+      },
+      {
+        "from": "../.github",
+        "to": "engine/.github"
+      },
+      {
+        "from": "../.githooks",
+        "to": "engine/.githooks"
+      },
+      {
+        "from": "../app",
+        "to": "engine/app",
+        "filter": ["**/*", "!node_modules", "!node_modules/**"]
+      },
+      {
+        "from": "../docs/BACKUP_POLICY.md",
+        "to": "engine/docs/BACKUP_POLICY.md"
+      },
+      {
+        "from": "../.cockpit/state/lifecycle-model.json",
+        "to": "engine/.cockpit/state/lifecycle-model.json"
+      },
+      {
+        "from": "../.cockpit/state/models.json",
+        "to": "engine/.cockpit/state/models.json"
+      },
+      {
+        "from": "../CLAUDE.md",
+        "to": "engine/CLAUDE.md"
+      },
+      {
+        "from": "../AGENTS.md",
+        "to": "engine/AGENTS.md"
+      },
+      {
+        "from": "../.gitignore",
+        "to": "engine/.gitignore"
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
