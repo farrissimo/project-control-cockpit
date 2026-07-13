@@ -73,6 +73,10 @@ function makeGateRepo(opts = {}) {
   // real gate + real schema; faked authorities
   fs.copyFileSync(path.join(REPO, 'scripts', 'run-release-gate.ps1'), path.join(dir, 'scripts', 'run-release-gate.ps1'));
   fs.copyFileSync(path.join(REPO, 'schemas', 'release-gate.schema.json'), path.join(dir, 'schemas', 'release-gate.schema.json'));
+  // The canonical hang guard travels WITH the gate (both live in scripts/), so the fixture copies it by
+  // default — the full suite then runs guarded (guard='active'), matching real deployment. `noGuard:true`
+  // omits it to exercise the fail-closed path: a required-but-missing guard => suite 'unavailable' => UNKNOWN.
+  if (!o.noGuard) fs.copyFileSync(path.join(REPO, 'scripts', 'run-guarded.ps1'), path.join(dir, 'scripts', 'run-guarded.ps1'));
   fs.writeFileSync(path.join(dir, 'scripts', 'ci-status.ps1'), fakeCiStatus(o.ci));
   fs.writeFileSync(path.join(dir, 'scripts', 'detect-repo-sync.ps1'), fakeRepoSync(o.backup));
   for (const d of ['bloat', 'drift', 'stale-docs']) {
@@ -129,6 +133,20 @@ test('a valid fresh run passes', () => {
     expect(record.verdict.overall).toBe('PASS');
     expect(code).toBe(0);
     expect(record.commit).toBe(sha);
+    expect(record.suites.full.guard).toBe('active'); // the full suite ran THROUGH the hang guard
+  } finally { cleanup(dir); }
+});
+
+test('a missing hang guard downgrades the gate to UNKNOWN (fail closed, never a false green)', () => {
+  // The guard is the canonical MANDATORY path. On a degraded copy without scripts/run-guarded.ps1, the
+  // full suite cannot be bounded, so the gate must NOT report a clean green even if the raw suite exits
+  // 0 — it records guard='absent', marks the suite 'unavailable', and the overall verdict is UNKNOWN.
+  const { dir, env } = makeGateRepo({ noGuard: true, suites: { unit: 0, full: 0, audit: 0 } });
+  try {
+    const { record } = runGate(dir, env);
+    expect(record.suites.full.guard).toBe('absent');
+    expect(record.suites.full.status).toBe('unavailable');
+    expect(record.verdict.overall).toBe('UNKNOWN'); // never PASS when the mandatory guard is missing
   } finally { cleanup(dir); }
 });
 

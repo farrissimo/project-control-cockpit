@@ -55,7 +55,10 @@ jobs:
       - name: Run the node:test unit suite (data-integrity primitives)
         run: npm run test:unit
 
-      - name: Run the full test suite (Electron E2E + IPC + PowerShell scripts)
+      # `npm test` is the CANONICAL guarded entrypoint (tools/guarded-test.js -> scripts/run-guarded.ps1):
+      # the long Electron suite runs THROUGH the forward-progress guard, so a wedged launch is aborted
+      # with a machine-readable verdict instead of burning the whole job timeout on a dead process.
+      - name: Run the full test suite (Electron E2E + IPC + PowerShell scripts), guarded
         run: npm test
 
       - name: Dependency vulnerability audit (fail only on high/critical)

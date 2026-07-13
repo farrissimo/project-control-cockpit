@@ -63,14 +63,19 @@ or at a real milestone); research the web for existing solutions before building
   install failure, git/remote unavailable, CI evidence malformed/mismatched/unreachable:
   2 RECOVERED / 4 CONTAINED / 0 EXPOSED / 0 INVALID; docs/FAILURE_INJECTION.md);
   **T3** — the backup push-failure path is tested (sync.spec.js); and the **long-run hang guard**
-  (scripts/run-guarded.ps1 + docs/HARDENING_LONG_RUN_GUARD.md) — every long verification can be
-  routed through a deterministic guard that reaps stale test electrons, proves FORWARD PROGRESS
-  (output growth, plus process-tree CPU when output is silent) via a machine-readable heartbeat,
-  and ABORTS a hang at its stall window instead of waiting; it fixes the underlying wedge too (a
-  disposable test launch skips the single-instance lock, gated on the --pcc-test-instance flag +
-  a throwaway userData) and the release gate now runs the full suite through it (a guard
-  setup-error is UNKNOWN, never a false FAIL). Closes the hole where an operator could report
-  "still running" over a dead process (the ~7h incident). Also **repaired the recurring soak-lite
+  (scripts/run-guarded.ps1 + docs/HARDENING_LONG_RUN_GUARD.md), now AUDITED + CLOSED (2026-07-13):
+  the guard is the CANONICAL path (npm test / test:e2e / test:scripts route through
+  app/tools/guarded-test.js; mutation + failure proofs self-guard; pre-commit, CI, and the release
+  gate all guarded; recursion-safe via a PCC_GUARDED sentinel), and it distinguishes EVIDENCE
+  progress (output/case-count growth resets the stall clock) from mere ACTIVITY (CPU buys only a
+  small bounded grace, so a CPU-burning loop aborts at the stall bound, never the hard cap), with a
+  machine-readable heartbeat/verdict (schema v2) that reports the two separately. The single-instance-
+  lock root cause claimed for the ~7h incident was REPRODUCED and DISPROVEN (app/tests/e2e/singleton.spec.js:
+  Electron keys the lock per --user-data-dir and every test launch gets a fresh random profile, so
+  test electrons never collide; a forced collision exits cleanly and is bounded) — so the main.js lock
+  BYPASS was REMOVED (--pcc-test-instance is now only the stale-process reap marker), and the incident
+  record was corrected to separate proven/observed/unproven. Closes the hole where an operator could
+  report "still running" over a dead process. Also **repaired the recurring soak-lite
   false-failure**: the coalescing seam was extracted to app/single-flight.js (unit-proven)
   and the E2E now waits on semantic completion (status cleared + signal cards present),
   not a fixed sleep or character count — so the release gate no longer false-FAILs on it.

@@ -41,6 +41,37 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 if (-not $ManifestPath) { $ManifestPath = Join-Path $PSScriptRoot 'failure-injection-manifest.json' }
 if (-not $ReceiptPath)  { $ReceiptPath  = Join-Path $repoRoot '.cockpit/evidence/failure-injection.json' }
 
+# CANONICAL BOUNDED ENTRYPOINT. Unless already inside the guard, re-invoke THIS script through
+# scripts/run-guarded.ps1 so `pwsh scripts/run-failure-injection.ps1` can never hang unbounded. The
+# guard sets PCC_GUARDED=1 for its child, so the re-exec'd inner run falls through and does the work.
+# Per-case emission (below) makes each completed scenario an EVIDENCE tick for the guard's stall clock.
+if ($env:PCC_GUARDED -ne '1') {
+  $guard = Join-Path $PSScriptRoot 'run-guarded.ps1'
+  if (Test-Path -LiteralPath $guard -PathType Leaf) {
+    # Forward the SAME bound params via a base64 -EncodedCommand (see run-mutation-proof.ps1 for the
+    # full rationale): the encoded token carries no shell metacharacters, so param values with spaces,
+    # quotes, or & | > ^ % can never break quoting or inject a command.
+    $pairs = foreach ($kv in $PSBoundParameters.GetEnumerator()) {
+      $k = $kv.Key; $v = $kv.Value
+      if ($v -is [System.Management.Automation.SwitchParameter]) { "$k = `$$([bool]$v.IsPresent)" }
+      elseif ($v -is [int]) { "$k = $v" }
+      else { "$k = '$([string]$v -replace "'", "''")'" }
+    }
+    $innerPs = "`$p = @{ $($pairs -join '; ') }; & '$($PSCommandPath -replace "'", "''")' @p"
+    $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($innerPs))
+    # In -Json mode the guard runs -Quiet (its progress goes to the child log, keeping our stdout pure)
+    # and we re-emit the receipt the inner run wrote — clean JSON, now bounded. Human mode streams live.
+    $guardArgs = @('-NoProfile', '-File', $guard, '-Label', 'failure-injection', '-StallSec', '300', '-MaxSec', '1800')
+    if ($Json) { $guardArgs += '-Quiet' }
+    $guardArgs += @('-Command', "pwsh -NoProfile -EncodedCommand $enc")
+    & pwsh @guardArgs
+    $code = $LASTEXITCODE
+    if ($Json -and (Test-Path -LiteralPath $ReceiptPath)) { Get-Content -Raw -LiteralPath $ReceiptPath }
+    exit $code
+  }
+  [Console]::Error.WriteLine('[failure-injection] WARNING: scripts/run-guarded.ps1 not found — running UNGUARDED.')
+}
+
 # Run a child process with a hard wall-clock timeout. Returns @{ exit; out; timedOut }.
 function Invoke-WithTimeout([string[]]$Cmd, [string]$WorkDir, [int]$Sec) {
   $outF = [System.IO.Path]::GetTempFileName()
@@ -86,7 +117,13 @@ $headSha = ''
 try { Push-Location $repoRoot; $headSha = "$(& git rev-parse HEAD 2>$null)".Trim() } catch {} finally { Pop-Location }
 
 $results = @()
+$caseIdx = 0
+$caseTotal = @($manifest.cases).Count
 foreach ($c in $manifest.cases) {
+  # Case-boundary progress -> stderr (keeps -Json stdout pure) so each completed scenario is an
+  # explicit EVIDENCE tick the guard reads as forward progress, not a grep guess over prose.
+  $caseIdx++
+  [Console]::Error.WriteLine("[failure-injection] case $caseIdx/$caseTotal start: $($c.id)")
   $r = [ordered]@{
     id = $c.id; priority = $c.priority; boundary = $c.boundary; expected = $c.expected;
     classification = 'INVALID'; reason = ''; injectedFault = $c.injectedFault;

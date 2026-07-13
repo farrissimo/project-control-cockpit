@@ -22,18 +22,16 @@ if [ "$PCC_RUN_TESTS" != "1" ]; then
 fi
 
 # --- opt-in path: PCC_RUN_TESTS=1 explicitly asked for the full run ---
-# Clear any stray Electron from a prior run — leftover processes are what trip
-# Playwright's intermittent "did not expect test.beforeAll()" collection flake.
-taskkill //F //IM electron.exe >/dev/null 2>&1 || true
-
-echo "[pcc] PCC_RUN_TESTS=1 — running full test suite (npm test)…"
+# `npm test` is the CANONICAL guarded entrypoint (app/tools/guarded-test.js -> scripts/run-guarded.ps1):
+# it reaps stale test Electrons itself before the run and aborts a hang with a machine-readable verdict,
+# so no manual taskkill or unbounded wait is needed here.
+echo "[pcc] PCC_RUN_TESTS=1 — running full test suite (npm test, guarded)…"
 npm test --prefix app
 if [ $? -ne 0 ]; then
   # A real failure fails twice; the known collection flake passes on retry. So we
-  # retry ONCE (after clearing strays) rather than block a good commit on a flake.
+  # retry ONCE rather than block a good commit on a flake (the guard already reaped strays).
   echo ""
-  echo "[pcc] Test run failed — clearing stray Electron and retrying once (guards a known Playwright collection flake)…"
-  taskkill //F //IM electron.exe >/dev/null 2>&1 || true
+  echo "[pcc] Test run failed — retrying once (guards a known Playwright collection flake)…"
   npm test --prefix app
   if [ $? -ne 0 ]; then
     echo ""

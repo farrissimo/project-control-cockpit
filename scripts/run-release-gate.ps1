@@ -81,19 +81,33 @@ function Invoke-Suite([string[]]$npmArgs, [switch]$Guard) {
     try {
       & pwsh -NoProfile -File $guardScript -Label 'gate-full-suite' -Quiet -WorkDir $appDir -Command "npm $($npmArgs -join ' ')" *>&1 | Out-Null
       $code = $LASTEXITCODE
-    } catch { return [ordered]@{ command = $cmd; exit = $null; status = 'unavailable' } }
+    } catch { return [ordered]@{ command = $cmd; exit = $null; status = 'unavailable'; guard = 'active' } }
     # Map the guard's own exit codes to the gate's honest policy, NOT "nonzero => failed":
     #   0 = suite passed. 2 = guard setup error (couldn't start / no evidence dir) -> 'unavailable'
     #   -> UNKNOWN, exactly like the direct-npm catch path, so infrastructure trouble never masquerades
     #   as a real test FAIL. 1 = tests failed; 3 = HUNG; 4 = CAP -> all genuine 'failed'.
     $status = switch ($code) { 0 { 'passed' } 2 { 'unavailable' } default { 'failed' } }
-    return [ordered]@{ command = $cmd; exit = $code; status = $status }
+    return [ordered]@{ command = $cmd; exit = $code; status = $status; guard = 'active' }
+  }
+  # Direct run. For the unit/audit suites (no -Guard) this is correct and fast (guard = 'n/a'). For the
+  # FULL suite (-Guard) reaching here means scripts/run-guarded.ps1 is MISSING — a degraded copy where
+  # the canonical MANDATORY hang guard is unavailable. A release gate must FAIL CLOSED: it may not
+  # certify a clean green when it could not have caught a hang. So we still run the suite
+  # (extractability), disclose loudly on stderr AND durably in the receipt (guard = 'absent'), and force
+  # the suite result to 'unavailable' -> UNKNOWN so the overall verdict can never be a green PASS when
+  # the guard was missing. (A hang, had it occurred, would have gone undetected — that is exactly the
+  # degraded assurance UNKNOWN exists to surface.)
+  $guardMark = if (-not $Guard) { 'n/a' } elseif (Test-Path -LiteralPath $guardScript -PathType Leaf) { 'active' } else { 'absent' }
+  if ($guardMark -eq 'absent') {
+    [Console]::Error.WriteLine("[release-gate] WARNING: scripts/run-guarded.ps1 not found — the full suite ran UNGUARDED (no hang protection). Marking suite 'unavailable' so the gate is UNKNOWN, never a false green.")
   }
   Push-Location $appDir
   try { & npm @npmArgs *>&1 | Out-Null; $code = $LASTEXITCODE }
-  catch { Pop-Location; return [ordered]@{ command = $cmd; exit = $null; status = 'unavailable' } }
+  catch { Pop-Location; return [ordered]@{ command = $cmd; exit = $null; status = 'unavailable'; guard = $guardMark } }
   Pop-Location
-  [ordered]@{ command = $cmd; exit = $code; status = $(if ($code -eq 0) { 'passed' } else { 'failed' }) }
+  # guard='absent' => 'unavailable' (fail closed). Otherwise (unit/audit, guard='n/a') pass/fail on exit.
+  $status = if ($guardMark -eq 'absent') { 'unavailable' } elseif ($code -eq 0) { 'passed' } else { 'failed' }
+  [ordered]@{ command = $cmd; exit = $code; status = $status; guard = $guardMark }
 }
 
 function Get-DetectorFact([string]$detector) {
@@ -148,7 +162,7 @@ $ci = if ($null -ne $ciRaw -and ($ciRaw.status -is [string])) {
 
 $suites = [ordered]@{
   unit  = (Invoke-Suite @('run', 'test:unit'))
-  full  = (Invoke-Suite @('test') -Guard)   # the slow e2e suite: routed through the hang guard
+  full  = (Invoke-Suite @('run', 'test:raw') -Guard)   # slow e2e suite via the RAW runner, wrapped in the guard here
   audit = (Invoke-Suite @('audit', '--audit-level=high'))
 }
 $detectors = @('bloat', 'drift', 'stale-docs' | ForEach-Object { Get-DetectorFact $_ })

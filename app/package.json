@@ -5,9 +5,10 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "playwright test",
-    "test:e2e": "playwright test tests/e2e",
-    "test:scripts": "playwright test tests/scripts",
+    "test": "node tools/guarded-test.js",
+    "test:e2e": "node tools/guarded-test.js tests/e2e",
+    "test:scripts": "node tools/guarded-test.js tests/scripts",
+    "test:raw": "playwright test",
     "test:unit": "node tests/run-unit.js",
     "test:external-smoke": "playwright test -c playwright.external.config.js",
     "postinstall": "node tools/install-git-hooks.js"

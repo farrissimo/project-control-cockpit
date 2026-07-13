@@ -1249,22 +1249,22 @@ function createWindow() {
 // second launch just focuses the existing window and exits: one app, one owner of the storage.
 // (window-all-closed already quits the single instance cleanly.)
 //
-// EXCEPTION — test mode (2026-07-12 hang fix). Each Playwright launch already gets its OWN
-// throwaway --user-data-dir (tests/helpers/launch.js), so there is NO shared storage to protect
-// and the single-instance rationale does not apply. Worse, a stale leftover test electron holding
-// this lock made a fresh e2e launch block forever (it never got the lock, never opened a window,
-// and app.firstWindow() hung — the exact failure that cost ~7h). So a test instance NEVER contends
-// for the lock: every one is its own isolated island and can never wedge another.
-// The bypass is gated on TWO independent proofs that this really is a disposable test launch — not
-// PCC_TEST_MODE alone: an env var that leaked into a normal shell must never disable the lock on the
-// owner's REAL profile. We require the explicit --pcc-test-instance launch flag AND a throwaway
-// user-data dir; a normal launch has neither.
-function isDisposableTestInstance() {
-  if (!process.env.PCC_TEST_MODE) return false;
-  if (!process.argv.includes('--pcc-test-instance')) return false;
-  try { return app.getPath('userData').replace(/\\/g, '/').includes('/pcc-test-'); } catch (e) { return false; }
-}
-const gotSingleInstanceLock = isDisposableTestInstance() ? true : app.requestSingleInstanceLock();
+// NO TEST-MODE BYPASS. A previous version skipped the lock for a disposable test launch, on the
+// theory that a stale test Electron holding this lock had wedged a fresh e2e launch for ~7h. That
+// theory was REPRODUCED against and DISPROVEN (app/tests/e2e/singleton.spec.js, real Electron):
+//   * Electron keys the lock through --user-data-dir, and tests/helpers/launch.js gives EVERY launch
+//     a fresh random `pcc-test-*` profile, so two test Electrons never share a lock — the stated
+//     collision cannot happen for the actual test launches (distinct profiles → both open).
+//   * Even a FORCED same-profile collision does not hang: the losing instance calls app.quit() and
+//     exits cleanly (exit 0), and Playwright's launch/firstWindow rejects promptly — bounded, never
+//     a multi-hour wedge.
+// The bypass therefore guarded a mechanism that cannot occur here; it was removed rather than kept
+// merely because it had shipped. Test instances take the same lock path as the real app (each on its
+// own throwaway profile, so each simply gets its own lock). The `--pcc-test-instance` flag remains,
+// but ONLY as a safe, unmistakable marker for scripts/run-guarded.ps1 to identify and reap stale test
+// processes — it no longer changes any product (locking) behaviour. The real hang mechanism is still
+// UNPROVEN; the enforced defence is the forward-progress guard, not this lock.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();
 } else {

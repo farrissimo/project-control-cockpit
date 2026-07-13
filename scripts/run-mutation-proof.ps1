@@ -56,6 +56,42 @@ if (-not $ReceiptPath)  { $ReceiptPath  = Join-Path $repoRoot '.cockpit/evidence
 
 $AppDir = (Resolve-Path $AppDir).Path
 
+# CANONICAL BOUNDED ENTRYPOINT. Unless already inside the guard, re-invoke THIS script through
+# scripts/run-guarded.ps1 so the canonical command `pwsh scripts/run-mutation-proof.ps1` can never
+# hang unbounded. The guard sets PCC_GUARDED=1 for its child, so the re-exec'd inner run falls through
+# and does the real work. Per-case emission (below) makes each completed mutation an EVIDENCE tick, so
+# a healthy run resets the guard's stall clock at every case; a wedge is aborted at the stall bound.
+if ($env:PCC_GUARDED -ne '1') {
+  $guard = Join-Path $PSScriptRoot 'run-guarded.ps1'
+  if (Test-Path -LiteralPath $guard -PathType Leaf) {
+    # Re-invoke THIS script through the guard, forwarding the SAME bound params. We build a PowerShell
+    # scriptblock that splats a rebuilt hashtable and hand it to pwsh as -EncodedCommand (base64
+    # UTF-16LE). The encoded token is only [A-Za-z0-9+/=] — no cmd.exe/PowerShell metacharacters — so
+    # forwarding is immune to quoting or injection no matter what a param value contains (spaces,
+    # quotes, & | > ^ %, ...). Switch/int/string values are emitted as PowerShell literals, not shell
+    # tokens. The inner run sees PCC_GUARDED=1 (set by the guard) and falls through to do the real work.
+    $pairs = foreach ($kv in $PSBoundParameters.GetEnumerator()) {
+      $k = $kv.Key; $v = $kv.Value
+      if ($v -is [System.Management.Automation.SwitchParameter]) { "$k = `$$([bool]$v.IsPresent)" }
+      elseif ($v -is [int]) { "$k = $v" }
+      else { "$k = '$([string]$v -replace "'", "''")'" }
+    }
+    $innerPs = "`$p = @{ $($pairs -join '; ') }; & '$($PSCommandPath -replace "'", "''")' @p"
+    $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($innerPs))
+    # In -Json mode the guard runs -Quiet (its progress goes to the child log, keeping our stdout pure)
+    # and we re-emit the receipt the inner run wrote — so a machine caller still gets clean JSON, now
+    # bounded. In human mode the guard streams live so the operator sees real motion.
+    $guardArgs = @('-NoProfile', '-File', $guard, '-Label', 'mutation-proof', '-StallSec', '300', '-MaxSec', '1800')
+    if ($Json) { $guardArgs += '-Quiet' }
+    $guardArgs += @('-Command', "pwsh -NoProfile -EncodedCommand $enc")
+    & pwsh @guardArgs
+    $code = $LASTEXITCODE
+    if ($Json -and (Test-Path -LiteralPath $ReceiptPath)) { Get-Content -Raw -LiteralPath $ReceiptPath }
+    exit $code
+  }
+  [Console]::Error.WriteLine('[mutation-proof] WARNING: scripts/run-guarded.ps1 not found — running UNGUARDED.')
+}
+
 function GitOut([string[]]$argv, [string]$cwd) {
   try { Push-Location $cwd; $o = & git @argv 2>$null; return "$o".Trim() } catch { return '' } finally { Pop-Location }
 }
@@ -138,8 +174,14 @@ if ($LASTEXITCODE -ge 8) { throw "robocopy failed to mirror app source (code $LA
 $global:LASTEXITCODE = 0
 
 $results = @()
+$caseIdx = 0
+$caseTotal = @($manifest.mutations).Count
 try {
   foreach ($m in $manifest.mutations) {
+    # Case-boundary progress -> stderr (keeps -Json stdout pure) so each completed mutation is an
+    # explicit EVIDENCE tick the guard sees as forward progress, not a grep guess over prose.
+    $caseIdx++
+    [Console]::Error.WriteLine("[mutation-proof] case $caseIdx/$caseTotal start: $($m.id)")
     $rel = $m.file -replace '^app[\\/]', ''         # manifest paths are repo-relative (app/...)
     $tmpFile = Join-Path $tmpApp $rel
     $r = [ordered]@{

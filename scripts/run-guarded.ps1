@@ -16,12 +16,16 @@
      could wedge a fresh e2e launch (the exact 7h failure's mechanism). Safe by construction: it
      only matches command lines containing the test-only marker(s), never the owner's real app.
   2. RUNS the target command as a child, streaming its output to log files.
-  3. SAMPLES FORWARD PROGRESS every -SampleSec: the child is alive AND its combined output is
-     GROWING. Output growth (not "a process exists") is the progress signal — it generalises to any
-     long run (suite, gate, proofs), not just Playwright. Each sample updates a machine-readable
-     HEARTBEAT file, so anyone can read live whether progress is advancing.
-  4. DECLARES HUNG AND ABORTS (kills the whole process tree) if there is NO forward progress for
-     -StallSec. It never silently waits.
+  3. SAMPLES EVIDENCE PROGRESS every -SampleSec. EVIDENCE = the child's combined output GREW (a
+     reporter line, a completed test/case — "something advanced"). Output growth, NOT "a process
+     exists" and NOT "CPU is busy", is the progress signal, and it generalises to any long run (suite,
+     gate, proofs), not just Playwright. CPU is sampled too but only as ACTIVITY: it proves the tree
+     is doing something, not that it is advancing (a busy infinite loop burns CPU forever), so it buys
+     only a small, explicitly-bounded silent-work grace (-CpuGraceSec) — never resets the clock. Each
+     sample updates a machine-readable HEARTBEAT that distinguishes evidence progress from activity.
+  4. DECLARES HUNG AND ABORTS (kills the whole process tree) if there is NO evidence progress for
+     -StallSec (+ up to -CpuGraceSec more only while the tree is actively burning CPU). It never
+     silently waits, and a CPU-burning loop is aborted at that bound, never postponed to -MaxSec.
   5. Enforces a HARD OVERALL CAP (-MaxSec) too — the proven CI watchdog pattern (inactivity timeout
      + hard cap, e.g. Travis CI's "no output in 10 min / 50-min job cap"; Playwright's own
      globalTimeout is the in-tool version and stays as an inner backstop).
@@ -47,7 +51,14 @@
 param(
   [string]$Label = 'run',
   [string]$WorkDir,
-  [int]$StallSec = 180,     # PRIMARY hang-catcher: abort if NO forward progress for this many seconds
+  [int]$StallSec = 180,     # PRIMARY hang-catcher: abort if NO EVIDENCE progress (output/case count grew)
+                            #   for this many seconds AND the tree is not burning CPU. Evidence — not
+                            #   "a process exists" and not "CPU is busy" — is what resets this clock.
+  [int]$CpuGraceSec = 120,  # SMALL, explicitly-bounded silent-work grace: while the process tree is
+                            #   actively burning CPU, allow this much EXTRA silence beyond -StallSec
+                            #   before declaring HUNG. Bounded on purpose — CPU is activity, not
+                            #   progress, so a CPU-burning infinite loop is still aborted at
+                            #   StallSec+CpuGraceSec, NEVER postponed to the -MaxSec hard cap.
   [int]$MaxSec   = 3600,    # last-resort backstop: hard wall-clock cap (generous — a progressing run is
                             #   caught by the stall check, not this, so this only stops a run that makes
                             #   endless output but never actually finishes)
@@ -180,6 +191,10 @@ if (-not $NoKillStale -and $KillStalePattern.Count -gt 0 -and $KillStaleName.Cou
 }
 
 # ---- 2. launch the child ------------------------------------------------------------------------
+# Mark the child (and its whole subtree) as ALREADY guarded. The canonical entrypoints
+# (app: npm test via tools/guarded-test.js; scripts: the proof scripts' self-guard re-exec) check
+# this sentinel and run RAW when it is set, so a guarded command never wraps itself in a second guard.
+$env:PCC_GUARDED = '1'
 $startedAt = Now
 $state = 'running'          # running | passed | failed | hung | cap | setup-error
 $proc = $null
@@ -208,26 +223,43 @@ if (-not $Quiet -and -not $Json) {
 }
 
 # ---- 3. monitor forward progress ----------------------------------------------------------------
-$lastProgressAt = $startedAt
+# ACTIVITY vs EVIDENCE PROGRESS — the distinction the guard turns on.
+#   EVIDENCE progress = the child's combined output GREW (a Playwright reporter line, a completed
+#     case, any real "something advanced" byte). This — and ONLY this — resets the stall clock. It is
+#     never "a process exists". For the proofs, each case emits a boundary line, so a completed case
+#     is evidence. Output growth generalises to every long run.
+#   ACTIVITY = the process tree is burning CPU. CPU proves the tree is DOING something, not that it is
+#     ADVANCING (a busy infinite loop burns CPU forever). So CPU is recorded as diagnostics and buys
+#     only a SMALL, explicitly-bounded silent-work grace (-CpuGraceSec): while the tree is actively
+#     burning CPU, silence is tolerated up to StallSec+CpuGraceSec, no further. A CPU-burning infinite
+#     loop is thus aborted at that bound, NOT postponed to the -MaxSec hard cap; a brief legitimate
+#     silent computation (well under the bound) is not false-aborted.
+$lastEvidenceAt = $startedAt   # last time OUTPUT grew — the real forward-progress signal
 $lastBytes = 0
 $lastCpuMs = 0.0
+$cpuActive = $false            # was the tree burning CPU during the most recent SILENT interval?
 $samples = 0
 $outOffset = 0L
 $errOffset = 0L
-# "Real work this interval" threshold for the CPU signal: ~5% of one core over the sample window
-# (min 50ms). A hung tree stays well below it; any actual computation clears it easily.
+# "Real work this interval" threshold for the CPU activity signal: ~5% of one core over the sample
+# window (min 50ms). A hung tree stays well below it; any actual computation clears it easily.
 $cpuStepMs = [math]::Max(50, $SampleSec * 50)
 
-function Save-Heartbeat([string]$st, [double]$elapsed, [double]$sinceProgress, [long]$bytes, [double]$cpuMs) {
+function Save-Heartbeat([string]$st, [double]$elapsed, [double]$sinceEvidence, [long]$bytes, [double]$cpuMs, [bool]$cpuAct, [double]$effStall) {
   Write-JsonAtomic $heartbeat ([ordered]@{
-    schema = 'run-guarded-heartbeat/v1'; label = $Label; state = $st; pid = $proc.Id
+    schema = 'run-guarded-heartbeat/v2'; label = $Label; state = $st; pid = $proc.Id
     command = $Command; started_at = (Iso $startedAt); updated_at = (Iso (Now))
-    last_progress_at = (Iso $lastProgressAt); since_progress_sec = [math]::Round($sinceProgress, 1)
-    elapsed_sec = [math]::Round($elapsed, 1); output_bytes = $bytes; tree_cpu_ms = [math]::Round($cpuMs, 0)
-    samples = $samples; stall_limit_sec = $StallSec; cap_limit_sec = $MaxSec
+    # EVIDENCE progress (resets the stall clock):
+    last_evidence_at = (Iso $lastEvidenceAt); since_evidence_sec = [math]::Round($sinceEvidence, 1)
+    output_bytes = $bytes
+    # ACTIVITY (diagnostic only; buys the bounded grace, never counts as progress):
+    tree_cpu_ms = [math]::Round($cpuMs, 0); cpu_active = $cpuAct
+    elapsed_sec = [math]::Round($elapsed, 1); samples = $samples
+    stall_limit_sec = $StallSec; cpu_grace_sec = $CpuGraceSec
+    effective_stall_sec = [math]::Round($effStall, 1); cap_limit_sec = $MaxSec
   })
 }
-Save-Heartbeat 'running' 0 0 0 0
+Save-Heartbeat 'running' 0 0 0 0 $false $StallSec
 
 while (-not $proc.HasExited) {
   $exited = $proc.WaitForExit($SampleSec * 1000)
@@ -242,27 +274,32 @@ while (-not $proc.HasExited) {
     $e = Read-Since $errLog $errOffset; $errOffset = $e.offset; if ($e.text) { Write-Host -NoNewline $e.text }
   }
 
-  # Progress = output grew (primary, cheap) OR — only when output is SILENT this interval — the
-  # process tree is still burning CPU (secondary, proves a busy-but-quiet run is not actually hung).
-  # We pay the process-table scan ONLY during silence, so a normally-streaming run stays cheap.
+  # EVIDENCE: output grew -> reset the stall clock. This is the only thing that counts as progress.
+  # ACTIVITY: only when output was SILENT this interval, sample tree CPU (paid only during silence, so
+  # a streaming run stays cheap). CPU growth does NOT reset the clock; it only flags $cpuActive, which
+  # extends the tolerated silence by the bounded grace below.
   if ($bytes -gt $lastBytes) {
-    $lastProgressAt = $now; $lastBytes = $bytes
+    $lastEvidenceAt = $now; $lastBytes = $bytes; $cpuActive = $false
   } else {
+    $cpuActive = $false
     $cpu = Get-TreeCpuMs $proc.Id
     if ($cpu -ge 0) {
-      if ($cpu -gt ($lastCpuMs + $cpuStepMs)) { $lastProgressAt = $now }
+      if ($cpu -gt ($lastCpuMs + $cpuStepMs)) { $cpuActive = $true }
       $lastCpuMs = [math]::Max($lastCpuMs, $cpu)
     }
   }
-  $sinceProgress = ($now - $lastProgressAt).TotalSeconds
-  Save-Heartbeat 'running' $elapsed $sinceProgress $bytes $lastCpuMs
+  $sinceEvidence = ($now - $lastEvidenceAt).TotalSeconds
+  # Bounded grace: extra silence is tolerated ONLY while the tree is actively burning CPU, and only up
+  # to +CpuGraceSec. A CPU-burning loop stays $cpuActive forever, so it is still aborted at this bound.
+  $effectiveStall = if ($cpuActive) { $StallSec + $CpuGraceSec } else { $StallSec }
+  Save-Heartbeat 'running' $elapsed $sinceEvidence $bytes $lastCpuMs $cpuActive $effectiveStall
 
   if (-not $Quiet -and -not $Json) {
-    Write-Host ("[guard $safeLabel] t={0}s +{1}KB last-progress {2}s ago" -f [int]$elapsed, [int]($bytes/1KB), [int]$sinceProgress)
+    Write-Host ("[guard $safeLabel] t={0}s +{1}KB last-evidence {2}s ago{3}" -f [int]$elapsed, [int]($bytes/1KB), [int]$sinceEvidence, $(if ($cpuActive) { ' (cpu busy, grace)' } else { '' }))
   }
 
   if ($exited) { break }
-  if ($sinceProgress -ge $StallSec) { $state = 'hung'; break }
+  if ($sinceEvidence -ge $effectiveStall) { $state = 'hung'; break }
   if ($elapsed -ge $MaxSec) { $state = 'cap'; break }
 }
 
@@ -283,24 +320,26 @@ if ($state -eq 'hung' -or $state -eq 'cap') {
 }
 
 $elapsedTotal = ($endedAt - $startedAt).TotalSeconds
+$sinceEvidenceEnd = ($endedAt - $lastEvidenceAt).TotalSeconds
 $reason = switch ($state) {
   'passed' { 'child exited 0' }
   'failed' { "child exited $exitCode" }
-  'hung'   { "no forward progress for >= $StallSec s (aborted)" }
+  'hung'   { "no EVIDENCE progress for >= $([int]$sinceEvidenceEnd) s (limit $StallSec s + up to $CpuGraceSec s CPU grace; aborted)" }
   'cap'    { "exceeded hard cap of $MaxSec s (aborted)" }
   default  { $state }
 }
 
 $verdict = [ordered]@{
-  schema = 'run-guarded/v1'; label = $Label; state = $state; command = $Command
+  schema = 'run-guarded/v2'; label = $Label; state = $state; command = $Command
   work_dir = $WorkDir; started_at = (Iso $startedAt); ended_at = (Iso $endedAt)
   elapsed_sec = [math]::Round($elapsedTotal, 1); exit_code = $exitCode; output_bytes = (Get-LogBytes)
-  samples = $samples; stall_limit_sec = $StallSec; cap_limit_sec = $MaxSec
+  since_evidence_sec = [math]::Round($sinceEvidenceEnd, 1); tree_cpu_ms = [math]::Round($lastCpuMs, 0)
+  samples = $samples; stall_limit_sec = $StallSec; cpu_grace_sec = $CpuGraceSec; cap_limit_sec = $MaxSec
   reason = $reason; stale_reaped = @($killed)
   out_log = $outLog; err_log = $errLog; heartbeat = $heartbeat
 }
 Write-JsonAtomic $verdictPath $verdict
-Save-Heartbeat $state $elapsedTotal (($endedAt - $lastProgressAt).TotalSeconds) (Get-LogBytes) $lastCpuMs
+Save-Heartbeat $state $elapsedTotal $sinceEvidenceEnd (Get-LogBytes) $lastCpuMs $false $StallSec
 
 # ---- 5. report ----------------------------------------------------------------------------------
 if ($Json) {
