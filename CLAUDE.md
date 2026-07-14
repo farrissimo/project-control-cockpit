@@ -26,3 +26,11 @@ start of every session, so these never need to be repeated.
 
 ## Current project context
 At the start of a session, read `PROJECT.md` in the project root for the current project brief — what this is, where we are, what's next. Keep it updated as things change.
+
+## Decisions
+Record significant choices (architecture, scope, workflow, verification, owner expectations) as MADR ADRs in `docs/adr/`, per `docs/DECISION_AND_CHANGE_STANDARD.md` — enforced by `scripts/check-adr.ps1`. Check `docs/adr/` before deciding; don't re-litigate what's already decided.
+
+## Operational guide
+Build/run/test commands, the decision (ADR) policy, "done" standard, and where the architecture lives are in `AGENTS.md` — the tool-agnostic operating guide, read by Codex and other agents too. It is imported here so it loads with this file:
+
+@AGENTS.md
