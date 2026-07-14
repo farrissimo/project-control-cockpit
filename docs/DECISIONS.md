@@ -1,5 +1,11 @@
 # Decisions
 
+> **⚠ FORMAT CHANGED (2026-07-14 — DECISION-115 / ADR-0000).** New decisions are now
+> recorded as **MADR ADRs**: one file per decision in **`docs/adr/NNNN-*.md`**, enforced by
+> `scripts/check-adr.ps1` (CI + pre-commit hard gate; reported in `doctor.ps1`). This file
+> (DECISION-001…117) is the **frozen archive** — kept for history, not converted. The locked
+> format + rollout discipline: `docs/DECISION_AND_CHANGE_STANDARD.md`.
+
 ## Purpose
 
 This file records explicit owner/project decisions that must be preserved across tasks, chats, handoffs, and worker cycles.
@@ -2922,3 +2928,91 @@ Task breakdown (the formal set of tasks; build order TBD, but AFTER the earlier-
 
 Supersedes: the "graduate the chat / forced cutoff" design floated earlier this session.
 Related: DECISION-112 (authority), DECISION-113 (parity), backup tiers (ab17bc2/21b5cd3), scripts/bootstrap-project.ps1, app/main.js + app/renderer/renderer.js (current New Project flow), IDEA-016 / IDEA-017.
+
+---
+
+## DECISION-115: Switch to a Mandatory, Machine-Enforced ADR Decision Format
+
+Date: 2026-07-14
+Status: Active
+
+Owner Decision:
+
+The project's decision record moves from a format that is *followed by discipline* to one that is *mandatory and machine-enforced* — an ADR (Architecture Decision Record, Nygard format) standard. PCC is the parent project, so the standard and its enforcement are built HERE first, then propagated to every project via the scaffolder. The goal is to rule out luck: the current DECISIONS.md format worked in PCC, but nothing prevents a malformed or missing decision, and other projects diverged (CCB used a different JSON register, DHv4 had none). That is the "guessing" this decision ends.
+
+Reason:
+
+Forensic review (ProjectForensics, 2026-07-14) found the current decision format is consistent within PCC (115/115 on most fields) but held together by care, not enforcement — a few entries are missing fields, which a validator would have rejected. Across projects there was no single standard at all. Complete standardization with no guessing requires: (1) one locked format, (2) a validator that REJECTS a decision that doesn't fit, (3) the scaffolder planting the identical format in every new project. Peer research (arXiv:2605.29442 constraint-violation is the #1 real-world AI failure) reinforces that written, enforced constraints are what hold.
+
+Implications:
+
+- The locked format keeps the proven PCC fields (Title / Date / Status / Owner Decision / Reason / Implications / Supersedes / Related) and folds in ADR's best habits: an explicit "Consequences / trade-offs" box (what we GAVE UP, not just what we chose) and the ADR status vocabulary (Proposed / Accepted / Deprecated / Superseded-by).
+- ENFORCEMENT is the point, not the styling: a validator (runnable in doctor/CI/pre-commit) must fail if a decision entry is missing a required field or has an invalid status. "Followed by discipline" becomes "cannot be gotten wrong."
+- The scaffolder (bootstrap-project.ps1) seeds the identical decision file + validator into every new project, so parity is automatic (DECISION-113).
+- One-file-per-decision is under consideration as a findability upgrade (a new chat pulls just the relevant record, not a 300KB log) but is NOT required by this decision; the enforced format + validator is.
+- This is the last decision recorded under the old free-discipline convention; the "Decision Format" section at the top of this file will be replaced by the enforced ADR standard ("Decision Standard v1") once built.
+- First real brick of the standardized project template ("project DNA") the forensic work was the admission test for.
+
+Supersedes: the informal "Decision Format" convention at the top of this file (followed-by-discipline, unenforced).
+Related: ProjectForensics PROJECT_DNA.md Lane 4 (External Candidate #1, now APPROVED), DECISION-113 (parity → scaffolder propagation), DECISION-006 (worker claims are evidence, not truth), scripts/bootstrap-project.ps1, adr.github.io (Nygard format).
+
+---
+
+## DECISION-116: Update-Propagation Strategy — Three Tracks (app-update and template-sync deferred)
+
+Date: 2026-07-14
+Status: Active
+
+Owner Decision:
+
+There are THREE distinct "update" tracks in the PCC system, and they must not be conflated. The owner delegated the design with one bar: it must be **scalable and not cause headaches down the road.** Disposition:
+
+1. **App software** (the Electron app binary). The installed copy (from the installer) and the dev copy the owner actually runs can drift. Keeping them in sync = app auto-update. **DEFERRED** to the packaging/auto-update phase. The owner does not plan to use the standalone installer for now; possibly revisits ~6 months out (≈2026-Q1). Still a decent amount of work; not started.
+2. **Shared features** (chat, UI, buttons). **Already solved** by the single home-app model (DECISION-113): every project runs through the one app, so feature updates reach all projects automatically. No per-project work.
+3. **Per-project standard files** (ADR/MADR, AGENTS.md, scripts, docs — the scaffolded content that does NOT live in the shared app). Approved as a **REQUIREMENT**: the template must be able to push standard-updates into already-created projects (a Copier/Projen-class capability — External Candidate #3). The **BUILD is DEFERRED** until (a) the standards are locked (DECISION-115 etc.) and (b) there are projects built from them to propagate to — so the change can be measured (the measurement mandate). Tool chosen via fresh 2026 research at build time.
+
+Reason:
+
+Naming the three tracks prevents the real confusion of mixing "update the app" with "sync the template." Building template-propagation now would solve a pain not yet felt (no locked standard, no child projects yet) and could not be measured. Scalability + no-headaches-later is the acceptance bar for whatever gets built.
+
+Implications:
+
+- Track 3's build waits on Track's prerequisites (standards locked + a real project to propagate to); revisit right after the standards ship.
+- Track 1 (app auto-update + installed-vs-dev-copy drift) is a packaging-phase concern, tracked in the packaging notes, not in the template-standardization work.
+- Whatever fills Track 3 must be evaluated latest-as-of-build against a Windows + Node/Electron + PowerShell stack; adopt the capability, pick the tool with eyes open.
+
+Supersedes: none.
+Related: DECISION-113 (single home app = Track 2 parity), DECISION-115 (the standards being locked that Track 3 propagates), ProjectForensics PROJECT_DNA.md Lane 4 #3 (Copier/Projen), packaging decisions (NSIS installer, auto-update later).
+
+---
+
+## DECISION-117: Change-Rollout Discipline (lean) + External-Candidate slate closed
+
+Date: 2026-07-14
+Status: Active
+
+Owner Decision:
+
+The owner delegated the coder-level call with one instruction: **find the balance between lean and solving the problem — without introducing too much governance.** He set two hard requirements for every standardization change: (1) prove that what we already have still works (don't break it), and (2) make sure every actor knows how to engage with the change. The lean solution: **do NOT build a new governance system — fold both requirements into the ADR format we already adopted (DECISION-115) as two required fields, plus one habit, all reusing existing machinery.** Documented as docs/DECISION_AND_CHANGE_STANDARD.md.
+
+This also closes the review of all six External Candidates (ProjectForensics PROJECT_DNA.md Lane 4). Final slate:
+- #1 ADR → **MADR 4.0**, enforced (DECISION-115).
+- #2 AGENTS.md split → adopt as a layout convention (concrete commands; architecture stays in docs/; CLAUDE.md imports it).
+- #3 Copier/Projen → capability approved, build deferred (DECISION-116, Track 3).
+- #4 AST hallucination check → approved via proven tools (ESLint `no-undef` + TypeScript check-JS), not a custom parser.
+- #5 Definition of Done → reframed + delivered as docs/TRUST_CALIBRATION.md (owner trust-calibration guide), not a redundant checklist.
+- #6 Spec-Driven Development → adopt the **lean essence only** (one short versioned spec-shape per feature: Objective / Behavior / Acceptance-when; single source of "what"), NOT a heavy pipeline; research the current July-2026 lean format before locking (fast-moving, like AGENTS.md).
+
+Reason:
+
+The owner is not a coder and delegated the judgment; the record must be honest that these are Claude's calls made to his stated balance. His #1 enemy is over-governance (it caused the CCB chaos), and his proven lesson is that the governance win is the MINIMUM structure. So the rollout discipline had to be near-zero new machinery. Making "prove it still works" and "everyone can engage" two lines in a record we were already writing satisfies both his caution and his leanness bar.
+
+Implications:
+
+- Every future change follows docs/DECISION_AND_CHANGE_STANDARD.md: restore-point + green baseline BEFORE; build; Confirm (right trust level + suite stays green); Engage (wire into owner/worker/verifier/future-chats/scaffolder); baseline kept for the Lens-16 before/after.
+- The ADR validator (DECISION-115) also enforces the two new required fields (Confirmation, Engagement) — no unenforced discipline.
+- Build order is one-at-a-time (small batches), each measured (any change must show a measurable improvement or be reverted — see the measurement mandate). Reuses backup policy, test suite, CI, TRUST_CALIBRATION.md, instruction files, scaffolder — no new pipeline.
+- #6's exact spec format and #3's tool choice are deferred to a fresh latest-2026 research pass at build time, so nothing stale gets locked in.
+
+Supersedes: none.
+Related: DECISION-115 (MADR format + validator this rides on), docs/DECISION_AND_CHANGE_STANDARD.md, docs/TRUST_CALIBRATION.md, ProjectForensics PROJECT_DNA.md Lane 4 (all six candidates) + Lens 16 (measurement), feedback: changes must measurably improve.

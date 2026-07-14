@@ -15,6 +15,15 @@
 #   PCC_RUN_TESTS=1 git commit ...
 # To restore the always-on net, revert this file from git history.
 
+# ADR format gate (fast, deterministic, NO app launch) — always on, independent of the
+# heavy test opt-in below. Blocks a commit that leaves a decision record malformed.
+if command -v pwsh >/dev/null 2>&1; then
+  if ! pwsh -NoProfile -File scripts/check-adr.ps1; then
+    echo "[pcc] ADR format check failed — commit blocked. Fix docs/adr/*.md (MADR standard) or bypass with: git commit --no-verify"
+    exit 1
+  fi
+fi
+
 if [ "$PCC_RUN_TESTS" != "1" ]; then
   echo "[pcc] pre-commit test auto-run is OFF — commit proceeds without launching the app."
   echo "      Run tests on demand:  npm test --prefix app   (or  PCC_RUN_TESTS=1 git commit …)"

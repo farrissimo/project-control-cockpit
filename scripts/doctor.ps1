@@ -137,6 +137,21 @@ if (-not $usesLegacyTrack) {
   }
 }
 
+# --- Check 3b: ADR format check (docs/adr/*.md against the locked MADR standard) ---
+# Reports whether every decision record is well-formed (front matter, title, and the
+# five required sections incl. Confirmation + Engagement). CI/pre-commit gate on this;
+# here it is informational, same as the schema check above.
+try {
+  $adrOut = & pwsh -NoProfile -File "scripts/check-adr.ps1" 2>&1
+  if ($LASTEXITCODE -eq 0) {
+    Add-Finding -Check "Format check (ADRs)" -Status "OK" -Detail "All docs/adr/*.md match the MADR decision standard."
+  } else {
+    Add-Finding -Check "Format check (ADRs)" -Status "ISSUE" -Detail (Strip-AnsiAndLastLine $adrOut)
+  }
+} catch {
+  Add-Finding -Check "Format check (ADRs)" -Status "ISSUE" -Detail "Could not run scripts/check-adr.ps1: $($_.Exception.Message)"
+}
+
 # --- Check 4: last known handoff-gate verdict (informational only - does not re-run the gate) ---
 $gatePath = ".cockpit/state/handoff-gate.json"
 $taskStatePath = ".cockpit/state/task-state.json"
