@@ -14,13 +14,18 @@ const { _electron: electron } = require('@playwright/test');
 const APP_DIR = path.join(__dirname, '..', '..');            // app/
 const FAKEBIN = path.join(__dirname, '..', 'fakebin');       // app/tests/fakebin
 
-async function launchApp(extraEnv = {}) {
+async function launchApp(extraEnv = {}, opts = {}) {
   const sep = process.platform === 'win32' ? ';' : ':';
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-test-'));
+  // Normal launches PREPEND fakebin so any claude/codex the app spawns resolves to the
+  // deterministic fakes. opts.rawPath REPLACES PATH entirely (no fakebin) — used only by the
+  // preflight real-detection test, which needs a genuinely tool-less PATH so the real `where`
+  // lookup reports "missing" through detectTools() itself, not the PCC_FAKE_MISSING_TOOLS seam.
+  const pathValue = opts.rawPath != null ? opts.rawPath : (FAKEBIN + sep + (process.env.PATH || ''));
   const env = {
     ...process.env,
-    PATH: FAKEBIN + sep + (process.env.PATH || ''),
-    Path: FAKEBIN + sep + (process.env.Path || ''),          // Windows env var casing
+    PATH: pathValue,
+    Path: pathValue,                                         // Windows env var casing
     PCC_TEST_MODE: '1',
     ...extraEnv,
   };
