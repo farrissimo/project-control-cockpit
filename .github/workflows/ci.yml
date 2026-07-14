@@ -42,6 +42,7 @@ jobs:
       # required sections incl. Confirmation + Engagement). Fast, deterministic, no deps —
       # a malformed ADR fails here before the expensive install + Electron suite run.
       - name: Validate ADR format (docs/adr/*.md)
+        working-directory: ${{ github.workspace }}   # repo-root script; job default is app/
         run: pwsh -NoProfile -File scripts/check-adr.ps1
 
       - name: Set up Node
@@ -51,6 +52,12 @@ jobs:
 
       - name: Install from lockfile (clean)
         run: npm ci
+
+      # Static hallucination check: `no-undef` catches references to things that don't
+      # exist (undefined identifiers/calls) — the class plain JS + no type-checking would
+      # let slip until runtime. Fast; fails before the Electron suite.
+      - name: Lint (no-undef hallucination check)
+        run: npm run lint
 
       # The node:test unit suite (tests/unit/*.test.js: atomic-store, chat-store,
       # chat-migrate, chat-bootstrap, chat-service — the data-integrity primitives)

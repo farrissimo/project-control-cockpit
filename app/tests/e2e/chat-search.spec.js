@@ -32,6 +32,8 @@ test('setup: create a chat with content and learn its id', async () => {
   await page.locator('#send').click();
   await expect(page.locator('.bubble.assistant.thinking')).toHaveCount(0, { timeout: 20000 });
   // Point the match fixture at the real active chat id so the result is clickable.
+  // activeChat() is a renderer global resolved in the browser page context, not this file.
+  // eslint-disable-next-line no-undef
   const activeId = await page.evaluate(() => activeChat().id);
   fs.writeFileSync(fixturePath, JSON.stringify({ stdout: MATCHES_JSON.replace('__CHAT_ID__', activeId), exitCode: 0 }), 'utf8');
 });

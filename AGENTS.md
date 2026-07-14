@@ -19,6 +19,7 @@ Node commands run from **`app/`**; PowerShell checks run from the **repo root** 
 | Run the app | `npm start` | `app/` |
 | Full test suite (guarded Electron E2E + IPC + scripts) | `npm test` | `app/` |
 | Data-integrity unit suite | `npm run test:unit` | `app/` |
+| Lint (no-undef hallucination check) | `npm run lint` | `app/` |
 | PowerShell script-contract tests | `npm run test:scripts` | `app/` |
 | Build the Windows installer | `npm run dist` | `app/` |
 | Health report (never gates) | `pwsh -NoProfile -File scripts/doctor.ps1` | root |

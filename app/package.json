@@ -11,6 +11,7 @@
     "test:raw": "playwright test",
     "test:unit": "node tests/run-unit.js",
     "test:external-smoke": "playwright test -c playwright.external.config.js",
+    "lint": "eslint .",
     "dist": "electron-builder --win nsis",
     "postinstall": "node tools/install-git-hooks.js"
   },
@@ -19,7 +20,10 @@
   "devDependencies": {
     "@playwright/test": "^1.61.1",
     "electron": "^43.0.0",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "eslint": "^10.7.0",
+    "globals": "^17.7.0",
+    "typescript": "^7.0.2"
   },
   "build": {
     "appId": "com.pcc.cockpit",
@@ -54,7 +58,11 @@
       {
         "from": "../app",
         "to": "engine/app",
-        "filter": ["**/*", "!node_modules", "!node_modules/**"]
+        "filter": [
+          "**/*",
+          "!node_modules",
+          "!node_modules/**"
+        ]
       },
       {
         "from": "../docs/BACKUP_POLICY.md",
