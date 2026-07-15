@@ -9,8 +9,10 @@
   Rules:
     pull_request           -> merge-base(<BaseRef>, HEAD)..HEAD   (the PR's own commits)
     push to DefaultBranch  -> <Before>..<Sha>  (the push's real range). FAIL CLOSED (exit 3) if that
-                              range is empty/unusable (zero Before, or zero non-merge commits) — never
-                              emit an empty range that would pass the audit vacuously.
+                              range is empty/unusable (zero Before, or an EMPTY range = zero TOTAL
+                              commits, e.g. Before == Sha) — never emit an empty range that would pass
+                              the audit vacuously. Emptiness is the TOTAL commit count, not the
+                              non-merge count, so a legitimate merge-only push still passes.
     push to other branch   -> <Before>..<Sha> when Before is real, else merge-base(<BaseRef>,HEAD)..HEAD
     anything else          -> merge-base(<BaseRef>, HEAD)..HEAD   (workflow_dispatch / re-measure)
 
