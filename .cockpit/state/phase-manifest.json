@@ -1,0 +1,37 @@
+{
+  "schema": "phase-manifest/v1",
+  "purpose": "Declares the CURRENT phase and its slices as DATA, so the owner milestone-update generator (scripts/new-milestone-update.ps1) can compute a REAL '% complete' = done slices / total, never an invented number. A slice counts as done ONLY if it carries non-empty 'evidence' (a PR number, commit SHA, or doc pointer) — flipping 'done' without a checkable artifact is a defect the generator refuses (reports UNKNOWN). Owner-legible on purpose: this is the phase map. Update it as slices land; keep 'evidence' pointing at something real.",
+  "phase": {
+    "id": "trust-signoff",
+    "name": "Operational Trust Qualification & Adoption",
+    "adr": "docs/adr/0009-trust-signoff-audit.md",
+    "tagline": "the final phase — prove PCC well enough that the owner signs off he trusts it"
+  },
+  "slice_note": "Slices = the 22 audit categories named explicitly in ADR-0009 (an audit category is 'done' when its per-practice grid is populated AND independently verified), plus the two sign-off gates. The category list is the current declared plan; some may consolidate (ADR-0009 point 1) — adjust here when they do, so the denominator always reflects the real plan.",
+  "slices": [
+    { "id": "state-data-integrity",            "title": "State & data integrity",                                   "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "verification-proof-of-done",       "title": "Verification & proof-of-done",                             "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "change-governance-decisions",      "title": "Change governance & decisions",                            "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "requirements-intent-acceptance",   "title": "Requirements / intent & acceptance correctness",           "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "honesty-anti-fake-green",          "title": "Honesty & anti-fake-green",                                "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "execution-authority-worker-safety","title": "Execution authority & worker safety",                      "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "bypass-evidence-tamper-detection", "title": "Bypass evidence & tamper-detection",                       "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "privacy-secrets-access-control",   "title": "Privacy, secrets & access control",                        "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "backup-recovery",                  "title": "Backup & recovery",                                        "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "recovery-rollback-damage-repair",  "title": "Recovery, rollback & damage-repair behavior",              "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "testing-assurance",                "title": "Testing & assurance",                                      "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "detection-signals",                "title": "Detection & signals",                                      "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "incident-response-diagnostics",    "title": "Incident response, diagnostics & supportability",          "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "project-lifecycle",                "title": "Project lifecycle",                                        "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "packaging-install-upgrade-runtime","title": "Packaging, install, upgrade & runtime-environment",        "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "external-dependency-availability",  "title": "External dependency/tool availability & failure behavior","workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "scaffolding-parity",               "title": "Multi-project scaffolding & parity",                       "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "retirement-migration-export",      "title": "Retirement, migration & data export/decommissioning",      "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "memory-knowledge",                 "title": "Memory & knowledge",                                       "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "communication-contracts",          "title": "Communication contracts",                                  "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "repo-supply-chain-security",       "title": "Repo & supply-chain security",                             "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "worker-operation-tooling",         "title": "Worker operation & tooling conventions",                   "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "owner-report-gate-a",              "title": "Owner-facing sign-off report (gate a)",                    "workstream": "sign-off-gate",  "done": false, "evidence": "" },
+    { "id": "live-end-to-end-build-gate-b",     "title": "Live end-to-end adversarial build + adoption (gate b)",    "workstream": "sign-off-gate",  "done": false, "evidence": "" }
+  ]
+}
