@@ -47,37 +47,61 @@ jobs:
         working-directory: ${{ github.workspace }}   # repo-root script; job default is app/
         run: pwsh -NoProfile -File scripts/check-adr.ps1
 
-      # Governor durability (ADR-0007): every NON-MERGE tagged-crucial (T0/T1) commit new on this
-      # branch MUST carry a valid, diff-bound `Verified-Receipt` trailer whose diff_id re-derives
-      # from the commit's actual content. Catches a local `--no-verify` skip and a malformed /
-      # mismatched / invalid-BYPASS trailer — it does NOT catch a correctly-bound fabricated PASS
-      # (accepted residue, ADR-0007). Server-side half of the gate; un-bypassable ONLY IF branch
-      # protection is active + required and work enters via PR. T2/T3/T4 commits need none. Fast, no deps.
+      # Governor durability (ADR-0007) + judge-from-trusted-main (ADR-0008): every NON-MERGE
+      # tagged-crucial (T0/T1) commit new on this branch MUST carry a valid, diff-bound
+      # `Verified-Receipt` trailer whose diff_id re-derives from the commit's actual content. Catches
+      # a local `--no-verify` skip and a malformed / mismatched / invalid-BYPASS trailer — it does NOT
+      # catch a correctly-bound fabricated PASS (accepted residue, ADR-0007). Server-side half of the
+      # gate; un-bypassable ONLY IF branch protection is active + required and work enters via PR.
+      # T2/T3/T4 commits need none.
       #
-      # The range comes from scripts/resolve-audit-range.ps1 (Governance Hardening T1): a `push` to the
-      # default branch audits the push's REAL range (github.event.before..github.sha) and FAILS CLOSED on
-      # an empty range — never the old `merge-base(origin/main,HEAD)..HEAD`, which collapses to HEAD..HEAD
-      # (empty, vacuous pass) on a direct push to main.
-      - name: Audit verification trailers (T0/T1 commits carry durable proof)
+      # SELF-MODIFYING-ENFORCEMENT DEFENSE (ADR-0008): the resolver + auditor + their libs + the
+      # classifier + the stakes manifest are run from a detached `origin/main` WORKTREE (the trusted
+      # copy), NOT the PR checkout — so a PR cannot weaken the judge in its own tree and have the
+      # weakened judge approve itself. A worktree shares the object store, so main's scripts can still
+      # inspect the PR's fetched commits. -Head is set to the PR's REAL head commit — on a
+      # `pull_request` event `github.sha` is the ephemeral merge commit, NOT the PR head, so we pass
+      # `github.event.pull_request.head.sha` there and `github.sha` for a push; this anchors the range
+      # to the PR's own commits (literal HEAD in the worktree would resolve to main). HONEST LIMIT:
+      # `ci.yml` itself still runs from the PR branch, so a PR that edits THIS file is closed only by
+      # owner-side required review (O2) + branch protection (O1) — see ADR-0008.
+      - name: Audit verification trailers (from trusted origin/main; ADR-0007 + ADR-0008)
         working-directory: ${{ github.workspace }}
         shell: bash
         run: |
           git fetch --no-tags origin main:refs/remotes/origin/main || git fetch --no-tags origin main
+          # The PR's REAL head commit: github.sha is the merge commit on a pull_request, so use the
+          # head.sha there; on a push there is no PR object, so github.sha IS the pushed commit.
+          HEAD_SHA="${{ github.sha }}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          fi
+          TRUSTED="${RUNNER_TEMP:-/tmp}/trusted-governor"
+          rm -rf "$TRUSTED"
+          git worktree add --detach "$TRUSTED" origin/main
           set +e
-          range=$(pwsh -NoProfile -File scripts/resolve-audit-range.ps1 \
+          range=$(pwsh -NoProfile -File "$TRUSTED/scripts/resolve-audit-range.ps1" \
             -EventName "${{ github.event_name }}" \
             -Before "${{ github.event.before }}" \
             -Sha "${{ github.sha }}" \
+            -Head "$HEAD_SHA" \
             -BaseRef "origin/main" \
             -DefaultBranch "main" \
             -RefName "${{ github.ref_name }}")
           rc=$?
           set -e
           if [ $rc -ne 0 ] || [ -z "$range" ]; then
-            echo "audit range resolution failed closed — refusing to audit vacuously"; exit 1
+            echo "audit range resolution failed closed — refusing to audit vacuously"
+            git worktree remove --force "$TRUSTED" || true
+            exit 1
           fi
-          echo "auditing $range"
-          pwsh -NoProfile -File scripts/audit-verification-trailers.ps1 -Range "$range"
+          echo "auditing $range with the governor from trusted origin/main"
+          set +e
+          pwsh -NoProfile -File "$TRUSTED/scripts/audit-verification-trailers.ps1" -Range "$range"
+          audit_rc=$?
+          set -e
+          git worktree remove --force "$TRUSTED" || true
+          exit $audit_rc
 
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 (v4.4.0)

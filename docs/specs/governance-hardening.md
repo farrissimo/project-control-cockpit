@@ -6,9 +6,9 @@ Close real defects an independent third verification (GPT, remote repo read) fou
 overclaiming ("fake-green") wording that is precisely the disease PCC exists to kill. Source of the
 fix list: `docs/proposals/governance-hardening.md`.
 
-This spec covers **Sub-slice A**: the honesty wording (H1–H5), the direct-push empty-range bug (T1),
-and the fail-open-without-`pwsh` hook (T3). The deepest finding — self-modifying enforcement (T2) —
-is a separate trust-model decision (ADR-0008) shipped as Sub-slice B.
+**Sub-slice A** (shipped): the honesty wording (H1–H5), the direct-push empty-range bug (T1), and the
+fail-open-without-`pwsh` hook (T3). **Sub-slice B** (this section, T2 / ADR-0008): the deepest finding
+— self-modifying enforcement — closed by judging every PR from `main`'s trusted governor copy.
 
 ## Behavior
 
@@ -52,6 +52,25 @@ output as "nothing crucial staged". The fallback is coarse on purpose (it does n
 escalations like 26+ noise files); the CI audit, which HAS `pwsh`, is the real net. The block message
 states the cause and the escape (`git commit --no-verify`, which CI still audits).
 
+### T2 — CI must judge a PR from `main`'s trusted governor, not the PR's own copy (ADR-0008)
+CI checked out the PR branch and ran **that branch's** copy of the classifier / auditor / libs /
+manifest / resolver — so a PR could weaken the judge and have the weakened judge approve itself.
+The CI audit step now:
+- fetches `origin/main` and materialises it via `git worktree add --detach <trusted> origin/main` (a
+  worktree shares the object store, so `main`'s scripts can inspect the PR's fetched commits);
+- runs the **resolver from `<trusted>`**, passing `-Head <the PR's real head SHA>` so the range is
+  anchored to the PR's own commits by explicit SHA (on a `pull_request` event `github.sha` is the
+  ephemeral merge commit, so CI passes `github.event.pull_request.head.sha`; `github.sha` on a push).
+  Literal `HEAD` in the worktree would resolve to `main`;
+- runs the **auditor from `<trusted>`** over that range — its libs, the classifier it invokes, and the
+  manifest it reads all come from `main`. Only the commit objects being judged come from the PR.
+
+A governor *improvement* therefore takes effect only after it is itself merged (judged on the way in
+by the prior trusted copy). **Honest limit:** `ci.yml` itself still runs from the PR branch, so a PR
+that edits `ci.yml` is closed only by owner-side required review (O2) + branch protection (O1); the
+`.github/CODEOWNERS` file marks the governor files for that review. See ADR-0008 for the full trust
+model and residues.
+
 ### H1–H5 — wording must match behavior (anti-fake-green)
 - **H1** "un-bypassable" is qualified everywhere it appears: the server-side backstop is un-bypassable
   **only if** branch protection is active + required, work enters via PR (not direct push), and the PR
@@ -88,6 +107,11 @@ states the cause and the escape (`git commit --no-verify`, which CI still audits
 - AC-6: THE governor wording (scripts, hooks, specs, ADRs, manifest, PROJECT.md) SHALL contain no
   unqualified "un-bypassable" / "ungameable" / "catches a forged trailer" / bare "verified"-as-proof
   claim — each is qualified or renamed per H1–H5.
+- AC-B1: WHEN the resolver is given an explicit `-Head <sha>` THE emitted range SHALL end at that SHA
+  (never literal `HEAD`), so it is correct when run from a detached `origin/main` worktree.
+- AC-B2: WHEN a PR weakens the classifier in its own tree alongside an unverified T0 change, THE audit
+  run from the PR's own copy SHALL wrongly PASS, but THE audit run from a trusted `origin/main`
+  worktree SHALL FAIL — self-modifying enforcement is closed for the governor scripts.
 
 ## Tests
 - `app/tests/scripts/governance-hardening.spec.js` — drives the REAL `resolve-audit-range.ps1` and the
@@ -100,4 +124,7 @@ states the cause and the escape (`git commit --no-verify`, which CI still audits
   - AC-4b: `pwsh` scrubbed from PATH + a staged deletion of a noise path → hook blocks (exit 1).
   - AC-4c: `pwsh` scrubbed from PATH + a failing `git` query (run in a non-git dir) → hook blocks (exit 1).
   - AC-5: `pwsh` scrubbed from PATH + only a `backlog/` add staged → hook allows (exit 0).
+  - AC-B1: resolver with `-Head <sha>` → range ends at that SHA, never literal `HEAD`.
+  - AC-B2: a self-weakening "PR" (weakened classifier + unverified T0, no trailer) → audit from the
+    PR's own copy PASSES (the hole), audit from a trusted `main` worktree FAILS (the fix).
 - AC-6 is verified by review + the resolver/hook tests; the wording changes carry no runtime surface.

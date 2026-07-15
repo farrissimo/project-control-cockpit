@@ -27,6 +27,11 @@
     -BaseRef        the trusted base ref to merge-base against (default 'origin/main')
     -DefaultBranch  the repo default branch name (default 'main')
     -RefName        github.ref_name         (the branch being pushed / PR head ref)
+    -Head           the commit the range ends at, as an EXPLICIT ref/SHA (default 'HEAD'). ADR-0008
+                    runs this resolver from a detached `origin/main` worktree (judge-from-main), where
+                    the literal 'HEAD' would resolve to `main` — so CI passes the PR's REAL head SHA
+                    (github.event.pull_request.head.sha on a PR; github.sha on a push) to anchor the
+                    range to the PR's own commits, independent of the worktree's own HEAD.
 #>
 param(
   [string]$EventName = '',
@@ -34,7 +39,8 @@ param(
   [string]$Sha = '',
   [string]$BaseRef = 'origin/main',
   [string]$DefaultBranch = 'main',
-  [string]$RefName = ''
+  [string]$RefName = '',
+  [string]$Head = 'HEAD'
 )
 
 $ErrorActionPreference = 'Continue'
@@ -53,19 +59,19 @@ function Is-RealSha([string]$s) {
   return ($s.Length -gt 0 -and $s -ne $NULL_SHA)
 }
 function MergeBaseRange() {
-  # merge-base(<BaseRef>, HEAD)..HEAD — the PR / dispatch range. If BaseRef is unresolved (e.g. a
-  # brand-new repo with no origin/main), fall back to the whole history (root..HEAD via -Last is the
-  # caller's job); here we just emit HEAD's merge-base or, failing that, an empty base so the caller's
-  # audit still runs over reachable history.
+  # merge-base(<BaseRef>, <Head>)..<Head> — the PR / dispatch range. <Head> is an explicit ref/SHA
+  # (default 'HEAD') so this is correct even when run from a detached origin/main worktree (ADR-0008),
+  # where the literal 'HEAD' would resolve to main. If BaseRef is unresolved (e.g. a brand-new repo
+  # with no origin/main), fall back to the root so nothing is silently skipped.
   & git rev-parse --verify --quiet $BaseRef > $null 2>&1
   if ($LASTEXITCODE -eq 0) {
-    $mb = (& git merge-base $BaseRef HEAD 2>$null)
-    if ($LASTEXITCODE -eq 0 -and $mb) { return "$("$mb".Trim())..HEAD" }
+    $mb = (& git merge-base $BaseRef $Head 2>$null)
+    if ($LASTEXITCODE -eq 0 -and $mb) { return "$("$mb".Trim())..$Head" }
   }
   # No trusted base ref: audit from the root so nothing is silently skipped.
-  $root = (& git rev-list --max-parents=0 HEAD 2>$null | Select-Object -First 1)
-  if ($root) { return "$("$root".Trim())..HEAD" }
-  return 'HEAD'
+  $root = (& git rev-list --max-parents=0 $Head 2>$null | Select-Object -First 1)
+  if ($root) { return "$("$root".Trim())..$Head" }
+  return "$Head"
 }
 function RangeCommitCount([string]$range) {
   # TOTAL commits in the range (merges included). Emptiness is measured on the total, NOT on the

@@ -199,3 +199,96 @@ test('AC-5: pre-commit allows without pwsh when only noise-tier paths are staged
     expect(r.status).toBe(0);
   } finally { cleanup(dir); }
 });
+
+// ===================== Sub-slice B (ADR-0008): judge-from-trusted-main =====================
+
+// AC-B1: the resolver honors an explicit -Head so it emits a SHA-anchored range (never literal
+// "HEAD") — required to run it from a detached origin/main worktree where HEAD would resolve to main.
+// This models CI passing the PR's REAL head SHA (github.event.pull_request.head.sha on a PR;
+// github.sha on a push). The GitHub event -> head-SHA mapping itself is not unit-testable here; the
+// live CI run of this change is its execution proof.
+test('AC-B1: resolver honors -Head (explicit range end) for judge-from-main', () => {
+  const dir = makeRepo();
+  try {
+    const base = git(dir, ['rev-parse', 'HEAD']);
+    git(dir, ['update-ref', 'refs/remotes/origin/main', base]);
+    fs.writeFileSync(path.join(dir, 'README.md'), 'baseline\nchange\n');
+    git(dir, ['commit', '-q', '--no-verify', '-am', 'c2']);
+    const head = git(dir, ['rev-parse', 'HEAD']);
+    const r = resolve(dir, ['-EventName', 'pull_request', '-RefName', 'feature', '-DefaultBranch', 'main',
+      '-BaseRef', 'origin/main', '-Head', head]);
+    expect(r.status).toBe(0);
+    expect((r.stdout || '').trim()).toBe(`${base}..${head}`);
+    expect((r.stdout || '').trim()).not.toContain('HEAD');
+  } finally { cleanup(dir); }
+});
+
+const GOV_FILES = [
+  'scripts/emit-verification-trailer.ps1', 'scripts/audit-verification-trailers.ps1',
+  'scripts/write-verification-receipt.ps1', 'scripts/run-governance-gate.ps1', 'scripts/classify-stakes.ps1',
+  'scripts/resolve-audit-range.ps1',
+  'scripts/lib/change-identity.ps1', 'scripts/lib/receipt-check.ps1', 'scripts/lib/atomic-write.ps1',
+  'schemas/verification-receipt.schema.json', '.cockpit/state/stakes-manifest.json', '.githooks/commit-msg',
+];
+function makeGovRepo() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-govb-'));
+  for (const sub of ['scripts/lib', 'schemas', '.cockpit/state', 'app/state', '.githooks']) {
+    fs.mkdirSync(path.join(dir, sub), { recursive: true });
+  }
+  for (const f of GOV_FILES) fs.copyFileSync(path.join(REPO, f), path.join(dir, f));
+  fs.writeFileSync(path.join(dir, '.gitignore'), '.cockpit/evidence/\n');
+  fs.writeFileSync(path.join(dir, 'app', 'state', 'atomic-store.js'), '// baseline T0 file\n');
+  git(dir, ['init', '-q']);
+  git(dir, ['config', 'user.email', 'test@pcc.local']);
+  git(dir, ['config', 'user.name', 'pcc-test']);
+  git(dir, ['branch', '-M', 'main']);
+  git(dir, ['add', '-A']);
+  git(dir, ['commit', '-q', '--no-verify', '-m', 'baseline governor']);
+  return dir;
+}
+function auditWith(scriptDir, cwd, range) {
+  const r = spawnSync('pwsh', ['-NoProfile', '-File', path.join(scriptDir, 'scripts', 'audit-verification-trailers.ps1'),
+    '-Json', '-Range', range], { cwd, encoding: 'utf8', timeout: 60000, windowsHide: true });
+  let json = null; try { json = JSON.parse((r.stdout || '').trim()); } catch (e) { /* leave null */ }
+  return { status: r.status, json, stdout: r.stdout, stderr: r.stderr };
+}
+
+// AC-B2 (the ADR-0008 success metric): a PR that WEAKENS its own classifier in the same commit as an
+// unverified T0 change passes when judged by its OWN copy, but FAILS when judged from a trusted
+// origin/main worktree. Proves self-modifying enforcement is closed for the governor scripts.
+test('AC-B2: judge-from-main catches a PR that weakens its own classifier', () => {
+  const dir = makeGovRepo();
+  let trusted = null;
+  try {
+    const base = git(dir, ['rev-parse', 'HEAD']);
+    git(dir, ['checkout', '-q', '-b', 'pr']);
+    // (a) an unverified crucial T0 change, and (b) a classifier neutered to call everything T4.
+    fs.writeFileSync(path.join(dir, 'app', 'state', 'atomic-store.js'), '// baseline T0 file\n// unverified crucial change\n');
+    const weakened = [
+      "param([switch]$Json,[string]$Files,[string]$Added,[string]$Deleted,[string]$Baseline='main')",
+      "$out=[ordered]@{schema='stakes-classification/v1';tier='T4';base_tier='T4';reasons=@('weakened');files=@();escalations=@();not_proven=''}",
+      "if($Json){$out|ConvertTo-Json -Depth 6}else{Write-Host 'TIER: T4'}",
+      "exit 0",
+    ].join("\n");
+    fs.writeFileSync(path.join(dir, 'scripts', 'classify-stakes.ps1'), weakened);
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-q', '--no-verify', '-m', 'sneaky T0 + weakened classifier']); // no trailer
+    const prHead = git(dir, ['rev-parse', 'HEAD']);
+    const range = `${base}..${prHead}`;
+
+    // (1) THE HOLE: audited with the PR's OWN weakened classifier -> wrongly PASSES.
+    const own = auditWith(dir, dir, range);
+    expect(own.json.overall).toBe('PASS');
+
+    // (2) THE FIX: audited from a detached `main` worktree (trusted) -> correctly FAILS.
+    trusted = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-trusted-'));
+    fs.rmSync(trusted, { recursive: true, force: true }); // `git worktree add` needs a non-existent path
+    git(dir, ['worktree', 'add', '--detach', trusted, 'main']);
+    const judged = auditWith(trusted, trusted, range);
+    expect(judged.json.overall).toBe('FAIL');
+    expect(judged.status).toBe(1);
+  } finally {
+    if (trusted) { try { git(dir, ['worktree', 'remove', '--force', trusted]); } catch (e) { /* ignore */ } }
+    cleanup(dir);
+  }
+});

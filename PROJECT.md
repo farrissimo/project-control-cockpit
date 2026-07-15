@@ -214,29 +214,41 @@ receipt is git-ignored/transient — even the Gate's own verified commit read as
 **trailer slice makes the proof durable + CI-enforced**, so the metric moves forward from here for
 T0/T1 commits made after it lands. Re-measure with `scripts/audit-verification-trailers.ps1`.
 
-**NEXT — Governance Hardening slice (APPROVED 2026-07-15, NOT yet built): `docs/proposals/governance-hardening.md`.**
-An independent third verification by GPT (remote repo read access, adversarial, non-led) against HEAD
+**Governor slice 5 — Governance Hardening (SHIPPED 2026-07-15): `docs/proposals/governance-hardening.md`.**
+An independent third verification by GPT (remote repo read, adversarial, non-led) against HEAD
 `fc5964b` found real defects the local suite AND `codex exec` both missed, plus overclaiming
-("fake-green") wording. Owner approved fixing them. Read the proposal for the full ranked list; the
-teeth: **(T1)** the CI trailer-audit range collapses to `HEAD..HEAD` (empty, vacuous pass) on a
-`push` to `main` — fail closed / use the push event range; **(T2, deepest)** self-modifying
-enforcement — a PR supplies the classifier/auditor/manifest/CI that judge it, so run the audit from
-`origin/main`'s trusted copy, not the PR checkout (likely needs **ADR-0008** or an 0007 amendment) +
-owner-side CODEOWNERS/required-review on governor files; **(T3)** hooks fail open when `pwsh` is
-missing — fail closed. Plus non-negotiable honesty fixes (H1–H5): qualify "un-bypassable", "catches a
-forged trailer" (it does NOT catch a correctly-bound fabricated PASS), rename "verified" →
-**"attestation"** (the audit proves a valid diff-bound CLAIM of verification, not that it happened),
-and align the manifest's `weakened_tests` prose with deletion-only behavior. Honest boundary to adopt:
-governance holds for a COOPERATIVE worker; an ADVERSARIAL worker with write access is NOT fully
-contained (forged PASS, self-modification, the push range bug, unverified branch protection). Accepted
-residues (do NOT machine-fix): forged PASS, path-granularity gaming, unauthenticated bypass authz,
-merge-only changes — see the proposal.
-- Owner-side (only the owner can): **O1** confirm branch protection on `main` is ON + required (the
-  whole "un-bypassable" claim rests on it); **O2** add required review on the governor files.
+("fake-green") wording — the disease PCC exists to kill, in PCC's own safety net. Fixed in three
+governed PRs (each codex-verified + GPT-reviewed + CI-green + dogfooded):
+- **Sub-slice A** (PR #11): honesty fixes H1–H5 (qualify "un-bypassable"/"ungameable"; narrow
+  "catches a forged trailer" — it does NOT catch a correctly-bound fabricated PASS; rename the audit
+  measure "verified" → **"attestation"** = a valid diff-bound CLAIM of verification, not proof it
+  happened; align the manifest `weakened_tests` prose to deletion-only). **T1:** new
+  `scripts/resolve-audit-range.ps1` replaces the CI audit's `merge-base(origin/main,HEAD)..HEAD` range
+  (which collapsed to `HEAD..HEAD` = empty vacuous pass on a direct push to `main`) — it uses the
+  push's real `before..sha` and **fails closed** on a truly-empty range (emptiness = total commit
+  count, so a merge-only push still passes). **T3:** `.githooks/pre-commit` **fails closed** when
+  `pwsh` is missing (blocks any staged deletion/rename or non-noise path).
+- **Sub-slice A.1** (PR #12): closed a residual GPT-found fail-open — the no-`pwsh` hook discarded git
+  errors, so a failed `git diff` read as "noise only" and allowed the commit; now fails closed if
+  either git query errors.
+- **Sub-slice B (ADR-0008)** (this slice): **judge-from-trusted-main.** CI now runs the resolver +
+  auditor + libs + classifier + manifest from a detached `origin/main` worktree, NOT the PR checkout,
+  so a PR can't weaken the judge in its own tree and have the weakened judge approve itself. Adversarial
+  test AC-B2 proves a self-weakening PR PASSES under its own copy but FAILS under trusted `main`.
+  `.github/CODEOWNERS` marks the governor files for owner review (the O2 code side).
+Honest boundary (adopted): governance holds for a COOPERATIVE worker; an ADVERSARIAL worker with write
+access is NOT fully contained. Accepted residues (do NOT machine-fix): forged PASS; path-granularity
+gaming; unauthenticated bypass authz; merge-only changes; and — per ADR-0008 — `ci.yml` self-edit +
+admin bypass + a pre-compromised `main` (all owner-side, not code). Spec `docs/specs/governance-hardening.md`.
+- **Owner-side (only the owner can — the "last inch"):** **O1** confirm branch protection on `main` is
+  ON + required (the whole "un-bypassable" claim rests on it); **O2** enable required review on the
+  governor files (`.github/CODEOWNERS` is in place) — GPT's caveat: GitHub won't let an author approve
+  their own PR, so a single-account repo needs a second trusted reviewer identity or O2 blocks all
+  governor PRs. Neither is done yet.
 - After hardening: re-measure with `scripts/audit-verification-trailers.ps1` (frame as *attestation*
-  coverage, not "verified"). Then optional ADR-0006 remainders: continuously-verified
-  branch-protection detection, runtime-integrity mode, Known Residual Risks billboard (the forged-PASS
-  residue belongs on it). None started; owner schedules.
+  coverage, not "verified"). Optional ADR-0006 remainders: continuously-verified branch-protection
+  detection, runtime-integrity mode, Known Residual Risks billboard (forged-PASS + the ADR-0008
+  owner-side residues belong on it). None started; owner schedules.
 
 ## Pending / next (owner schedules)
 - **Packaging** is the last explicitly-deferred hardening slice not started

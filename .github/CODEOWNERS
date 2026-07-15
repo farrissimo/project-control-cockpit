@@ -1,0 +1,31 @@
+# PCC governor — required-review ownership (ADR-0008 O2, the "last inch").
+#
+# These are the trust-root files: the classifier, the commit gate, the receipt writer, the trailer
+# emitter/auditor, the CI audit-range resolver, the shared libs, the stakes manifest, the bypass
+# ledger, CI, and the git hooks. A change to any of them should require the owner's explicit review,
+# because they decide whether every OTHER change is judged honestly (self-modifying-enforcement — see
+# ADR-0008). Judging PRs from trusted origin/main (ADR-0008 code side) shrinks the trusted surface to
+# `.github/workflows/ci.yml` + branch-protection settings; THIS file + that required-review toggle are
+# the owner-side half that code cannot provide.
+#
+# TO ACTIVATE (owner, one-time): GitHub -> Settings -> Branches -> the `main` rule -> check
+# "Require review from Code Owners". CAVEAT (GPT, 2026-07-15): GitHub will not let you approve your
+# OWN pull request, so with a single account this either blocks all governor PRs or needs a second
+# trusted reviewer identity. Decide per ADR-0008's honest limits; until then this file documents
+# intent and is inert.
+#
+# Replace @farrissimo below if the owner's GitHub handle differs.
+
+/.github/workflows/                         @farrissimo
+/.github/CODEOWNERS                         @farrissimo
+/.githooks/                                 @farrissimo
+/.cockpit/state/stakes-manifest.json        @farrissimo
+/.cockpit/state/governance-gate-exceptions.json @farrissimo
+/scripts/classify-stakes.ps1                @farrissimo
+/scripts/run-governance-gate.ps1            @farrissimo
+/scripts/write-verification-receipt.ps1     @farrissimo
+/scripts/emit-verification-trailer.ps1      @farrissimo
+/scripts/audit-verification-trailers.ps1    @farrissimo
+/scripts/resolve-audit-range.ps1            @farrissimo
+/scripts/lib/change-identity.ps1            @farrissimo
+/scripts/lib/receipt-check.ps1              @farrissimo
