@@ -24,12 +24,20 @@ assurance phase that moves trust into the system and ends at the owner's sign-of
 
 Run **one comprehensive standardization audit** with these locked rules:
 
-1. **Exhaustive top-level categories** (the net that catches the little things). Draft set (owner
-   confirms/adjusts): state & data integrity · verification & proof-of-done · change governance &
-   decisions · honesty & anti-fake-green · execution authority & worker safety · **bypass evidence &
-   tamper-detection** · backup & recovery · testing & assurance · detection & signals · project
-   lifecycle · multi-project scaffolding & parity · memory & knowledge · **communication contracts** ·
-   repo & supply-chain security · worker operation & tooling conventions.
+1. **Exhaustive top-level categories** (the net that catches the little things). An audit meant to
+   expose hidden winging **cannot rely on readers inferring where a whole domain belongs** — every
+   domain is named explicitly, even if some later consolidate. Draft set (owner confirms/adjusts;
+   exhaustiveness of the *list itself* is audited): state & data integrity · verification &
+   proof-of-done · change governance & decisions · **requirements / intent & acceptance correctness** ·
+   honesty & anti-fake-green · execution authority & worker safety · **bypass evidence &
+   tamper-detection** · **privacy, secrets & access control** · backup & recovery · **recovery,
+   rollback & damage-repair behavior** · testing & assurance · detection & signals · **incident
+   response, diagnostics & supportability** · project lifecycle · **packaging, install, upgrade &
+   runtime-environment compatibility** · **external dependency/tool availability & failure behavior** ·
+   multi-project scaffolding & parity · **retirement, migration & data export/decommissioning** ·
+   memory & knowledge · **communication contracts** · repo & supply-chain security · worker operation
+   & tooling conventions. (GPT secondary verification, 2026-07-15, named the domains that were implicit;
+   they are now explicit.)
 2. **Cover both** the winging-it *and* the already-standardized — a complete inventory, nothing
    assumed. Most of it is non-owner-facing (he never sees it), which is exactly why it must be proven.
 3. **Per-practice grid:** *what it is · current state (machinery-enforced / evidence-leaving +
@@ -39,14 +47,24 @@ Run **one comprehensive standardization audit** with these locked rules:
 5. **Bypass-evidence standard:** every escape hatch must leave a **deterministic, owner-visible** trail
    — PCC itself raises the flag in plain language. An LLM autopsy (Claude/Codex noticing) is a bonus,
    **never** the guarantee, because that re-trusts the very LLM that could be the culprit.
-6. **Owner sign-off model:** the owner signs off on **outcomes he can judge** — is it documented, is it
-   plain, does it reduce his babysitting. The **LLM + independent verifier own the technical
-   calibration** (he will not be asked to verify what he cannot see). Secondary verification fires by
-   the trigger below, not by reflex.
+6. **Owner sign-off model:** the owner signs off on **outcomes he can judge** — never on code or
+   technical calibration (the LLM + independent verifier own that; he will not be asked to verify what
+   he cannot see). But "outcomes he can judge" is more than "documented + plain + less babysitting":
+   for a real trust guarantee he must also **explicitly *accept* the residual risks** (active
+   acceptance, not mere disclosure), **confirm the intended product behavior and the *unacceptable*
+   failure modes**, and **judge whether bypass-visibility and recovery behavior are acceptable to
+   him**. Those are owner-judgeable and required — a report he merely reads is not a signature.
+   Secondary verification fires by the trigger below, not by reflex.
 7. **Output:** an owner-facing **HTML/PDF report** proving each item standardized and how it benefits
    PCC — his sign-off document.
-8. **Two sign-off gates.** (a) the proven report; (b) a **live end-to-end project build** that shows it
-   all working. The owner's true sign-off waits for (b).
+8. **Two sign-off gates.** (a) the proven report; (b) a **live end-to-end build** that shows it all
+   working — and for a claim as strong as "trust for *any* project," (b) is **not one happy-path
+   demo.** It must include a **clean spawned-project build** (parity proof: the whole assurance kit
+   travels) **plus representative adversarial / negative scenarios** — attempted bypass, a failed
+   verification, recovery from damage, stale/false evidence, and a parity failure — each shown to fail
+   safe and stay owner-visible. If only the happy path is ever demonstrated, the trust claim is
+   **narrowed honestly** to "trust demonstrated for the tested workflows and stated limits," not "any
+   project." The owner's true sign-off waits for (b) at that bar. (Strengthened per GPT, 2026-07-15.)
 
 ### Canonical principles yardstick (the constitution every practice is graded against)
 1. Reduce owner babysitting (#1; everything else justifies against it)
@@ -66,8 +84,10 @@ mistake would be **both hard to notice and costly** — ANY of: (1) the change t
 verification/governance machinery** (the system judging itself); (2) it changes **trust boundaries,
 evidence standards, release gating, rollback posture, or the security model**; (3) it is
 **high-consequence and low-observability if wrong**, especially hard to reverse. **Skip** for routine
-T1–T4 implementation and reversible design ADRs — Codex diff-review + CI already suffice. Reuses the
-stakes tiers (one classifier, second job). Fewer copy blocks, each meaningful, by design.
+T1–T4 implementation and reversible design ADRs — Codex diff-review + CI already suffice. It reuses the
+stakes tiers but is **deliberately more than the tier**: conditions (2) and (3) catch trust-changing
+decisions and documents that path tiers alone would miss (confirmed by GPT, 2026-07-15 — do not reduce
+it to the classifier). Fewer copy blocks, each meaningful, by design.
 
 ## Consequences
 

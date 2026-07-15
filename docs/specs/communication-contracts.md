@@ -1,4 +1,11 @@
-# Communication Contracts — one fixed template per channel   (status: active; ADR-0009 category 1)
+# Communication Contracts — one fixed template per channel   (status: Proposed / design; ADR-0009 category 1)
+
+> **Current state (honest):** this is a **Proposed design**, not an enforced contract. The templates,
+> the generator (structure→machinery), the enforcement checks, and scaffolder-parity propagation are
+> **not built yet**. The `SHALL` acceptance criteria below are the *target* once built; the grid's
+> "state" column is today's reality (most channels are still winging-it or prose-only). This doc moves
+> to `active` only when the machinery exists and is verified — labelling it "active" now would be the
+> exact fake-green this project kills (caught by GPT secondary verification, 2026-07-15).
 
 ## Objective
 Stop winging communication. Every channel — worker↔Codex, worker↔GPT, worker↔owner, app↔app — gets a
@@ -42,17 +49,20 @@ Fires **only when the secondary-verification trigger applies** (below) — not b
 shape: *repo + PR/commit (pushed first, so GPT can read GitHub) · what changed & why · numbered
 `confirm:` questions · required output.* GPT reads the remote repo only; inline anything not yet pushed.
 
-### 5. Agent↔agent — verdict contract  *(state: canonical)*
+### 5. Agent↔agent — verdict contract  *(state: documented in AGENTS.md; enforcement/parity unverified)*
 `VERDICT: PASS|FAIL|INSUFFICIENT|BLOCKED|OUT_OF_SCOPE` + `EVIDENCE` (what was actually checked) +
-`NOT PROVEN`. Already in AGENTS.md; keep as the single verdict shape across Codex and GPT.
+`NOT PROVEN`. Documented in AGENTS.md and used by convention; keep as the single verdict shape. **Gap:**
+it is not *enforced* (a verifier could deviate), and that it travels to spawned projects is unproven —
+the audit must confirm both before calling it canonical.
 
 ### 6. Chat start-off — "let's get started"  *(state: improved; measure)*
 A new chat resumes from repo truth (PROJECT.md → live git/CI checks) with zero re-briefing. Much
 improved lately; mine chat start-offs and **measure** how reliably it fires.
 
-### 7. App↔app — handoff packet  *(state: canonical)*
-`docs/HANDOFF_PACKET_SPEC.md` already fixes the cross-session/app handoff format. Keep; verify parity
-travels to spawned projects.
+### 7. App↔app — handoff packet  *(state: spec exists; enforcement/parity unverified)*
+`docs/HANDOFF_PACKET_SPEC.md` defines the cross-session/app handoff format. **Gap:** whether it is
+actually followed and whether it propagates to spawned projects via the scaffolder is unproven — the
+audit must confirm before calling it canonical.
 
 ## The secondary-verification trigger (settled by Claude + Codex; full text in ADR-0009)
 Bring in GPT (third, independent, different-model) **only when a mistake would be both hard to notice
@@ -79,8 +89,8 @@ the local suite both missed — all on T0 code, where same-model-class reviewers
 | Owner action → copy block | prose standing-rule | dated 20+× since 2026-06-01 | owner stops hunting/relaying | not enforced; frequency should fall |
 | Codex request | semi-canonical | worked all phase; shape stable | consistent reviews | not yet a template |
 | GPT secondary verification | winging-it | hand-crafted each time | breaks shared blind spot | needs template + the trigger (now defined) |
-| Agent verdict contract | canonical | AGENTS.md | one comparable shape | — |
-| App↔app handoff | canonical | HANDOFF_PACKET_SPEC.md | lossless handoff | verify parity travels |
+| Agent verdict contract | documented (not enforced) | AGENTS.md | one comparable shape | not enforced; parity to spawned projects unproven |
+| App↔app handoff | spec exists | HANDOFF_PACKET_SPEC.md | lossless handoff | adherence + parity unproven |
 
 ## Notes
 Multi-agent reality: the standard spans Claude Code + Codex + GPT, including GPT's remote-only
