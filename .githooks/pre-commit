@@ -24,6 +24,17 @@ if command -v pwsh >/dev/null 2>&1; then
   fi
 fi
 
+# Governance gate (ADR-0006 "Gate", fast, deterministic, NO app launch) — always on. Blocks a
+# commit ONLY when the STAGED change is tagged-crucial (T0/T1) and lacks a valid, diff-bound
+# verification receipt. T2/T3/T4 pass untouched (proportional). The gate prints how to proceed
+# (verify + write a receipt, a disclosed bypass, or --no-verify). CI + branch protection remain
+# the un-bypassable backstop no local escape can dodge.
+if command -v pwsh >/dev/null 2>&1; then
+  if ! pwsh -NoProfile -File scripts/run-governance-gate.ps1; then
+    exit 1
+  fi
+fi
+
 if [ "$PCC_RUN_TESTS" != "1" ]; then
   echo "[pcc] pre-commit test auto-run is OFF — commit proceeds without launching the app."
   echo "      Run tests on demand:  npm test --prefix app   (or  PCC_RUN_TESTS=1 git commit …)"

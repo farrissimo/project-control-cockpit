@@ -1,0 +1,12 @@
+{
+  "exceptions_id": "governance-gate-exceptions-v1",
+  "title": "Governor-gate disclosed bypasses (exact diff_id, fail-closed)",
+  "plain_language": {
+    "what_this_is": "The record of any DELIBERATE bypass of the commit gate. The gate blocks a T0/T1 change that has no valid, diff-bound verification receipt. If you must let one through anyway, you add an entry here (bound to the EXACT diff_id of that change) and the gate will allow it AND disclose it in its run receipt. A bypass is never invisible.",
+    "why_staged": "The gate reads this ledger from the STAGED INDEX, not the working tree. An entry only counts once it is staged (committed with the change), so every bypass lands in git history where it is auditable. An unstaged edit grants nothing.",
+    "why_fail_closed": "Matching is by EXACT diff_id (a SHA-256 of the staged change content, this ledger excluded). An entry only excuses the one precise change it names. Touch one more tracked line and the diff_id changes and the entry no longer applies - you cannot pre-authorize future work.",
+    "how_to_add": "Get the diff_id from `pwsh -NoProfile -File scripts/run-governance-gate.ps1 -Json` (the 'diff_id' field), then add an object to 'exceptions' with: diff_id, reason, authorized_by, tier, expires_at (optional ISO-8601), compensating_action, follow_up_open, then STAGE this file. This is a deliberate, reviewable owner decision."
+  },
+  "approved_by": "owner",
+  "exceptions": []
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "verification-receipt.schema.json",
+  "title": "PCC verification receipt — a verdict bound to an exact change (ADR-0006 §10.1)",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema", "generated_at", "repo", "base", "head", "diff_id",
+    "tree_dirty", "tier", "required_checks", "checks", "verifier", "verdict"
+  ],
+  "properties": {
+    "schema": { "const": "verification-receipt/v1" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "repo": { "type": "string", "minLength": 1 },
+    "base": { "type": "string", "minLength": 1 },
+    "head": { "type": "string", "minLength": 1 },
+    "diff_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "tree_dirty": { "type": "boolean" },
+    "tier": { "enum": ["T0", "T1", "T2", "T3", "T4", "UNKNOWN"] },
+    "required_checks": { "type": "array", "items": { "type": "string" } },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "result"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "result": { "enum": ["pass", "fail", "skip", "unknown"] },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "verifier": { "type": "string", "minLength": 1 },
+    "verdict": { "enum": ["PASS", "FAIL", "INSUFFICIENT", "BLOCKED", "OUT_OF_SCOPE"] },
+    "expires_at": { "type": ["string", "null"], "format": "date-time" },
+    "baseline": { "type": "string" },
+    "not_proven": { "type": "string" }
+  }
+}
