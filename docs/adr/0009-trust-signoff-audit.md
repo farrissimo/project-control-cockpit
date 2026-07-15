@@ -4,7 +4,7 @@ date: 2026-07-15
 deciders: owner (product lead), Claude (worker), Codex (independent verifier), GPT (secondary verifier — per the trigger below)
 ---
 
-# ADR-0009: The trust sign-off audit — standardize everything, prove it, owner signs off on outcomes
+# ADR-0009: Operational Trust Qualification & Adoption (the trust sign-off phase)
 
 ## Context and Problem
 
@@ -22,7 +22,10 @@ assurance phase that moves trust into the system and ends at the owner's sign-of
 
 ## Decision
 
-Run **one comprehensive standardization audit** with these locked rules:
+This is the **Operational Trust Qualification & Adoption** phase — the phase after which the owner may
+adopt PCC as his standard way of building products with LLMs. The **standardization audit is ONE
+workstream inside it**, not the whole phase: the phase also proves PCC works end-to-end on a real,
+adversarially-tested spawned project and can actually be *used*. Locked rules:
 
 1. **Exhaustive top-level categories** (the net that catches the little things). An audit meant to
    expose hidden winging **cannot rely on readers inferring where a whole domain belongs** — every
@@ -55,14 +58,18 @@ Run **one comprehensive standardization audit** with these locked rules:
    failure modes**, and **judge whether bypass-visibility and recovery behavior are acceptable to
    him**. Those are owner-judgeable and required — a report he merely reads is not a signature.
    Secondary verification fires by the trigger below, not by reflex.
-7. **Output:** an owner-facing **HTML/PDF report** proving each item standardized and how it benefits
-   PCC — his sign-off document.
+7. **Output:** an owner-facing **HTML/PDF report** that **discloses each item's true state**
+   (machinery-enforced / evidence-leaving / owner-visible-not-enforced / prose-only / accepted-residue /
+   untested / failed-or-deferred), its benefit, and the **exact tested boundaries** — it does **not**
+   convert "documented" into "proven" or claim everything is "standardized." His sign-off document.
 8. **Two sign-off gates.** (a) the proven report; (b) a **live end-to-end build** that shows it all
    working — and for a claim as strong as "trust for *any* project," (b) is **not one happy-path
    demo.** It must include a **clean spawned-project build** (parity proof: the whole assurance kit
    travels) **plus representative adversarial / negative scenarios** — attempted bypass, a failed
    verification, recovery from damage, stale/false evidence, and a parity failure — each shown to fail
-   safe and stay owner-visible. If only the happy path is ever demonstrated, the trust claim is
+   safe and stay owner-visible; **a meaningful real feature built through the governed loop** (not a
+   hello-world); and **package → install → launch → use the result OUTSIDE the source checkout** (real
+   adoption, not a dev-repo demo). If only the happy path is ever demonstrated, the trust claim is
    **narrowed honestly** to "trust demonstrated for the tested workflows and stated limits," not "any
    project." The owner's true sign-off waits for (b) at that bar. (Strengthened per GPT, 2026-07-15.)
 
@@ -91,8 +98,9 @@ it to the classifier). Fewer copy blocks, each meaningful, by design.
 
 ## Consequences
 
-- **Gain:** trust becomes a property of the system, not of luck; the standardized template travels to
-  every spawned project (parity); the owner gets a legible proof he can sign.
+- **Gain:** trust becomes a property of the system, not of luck; the standardized template is **intended
+  to travel** to every spawned project (parity) — a claim **proven only by gate (b)**, not asserted
+  here; the owner gets a legible proof he can sign.
 - **Cost:** the audit is real work and must itself stay **lean** — it cannot become the over-governance
   it's cataloguing. Categories that are already fine are recorded as fine, not re-engineered.
 - **Honest residue:** some practices stay prose or accepted (e.g., an LLM can't be made incorruptible;
@@ -103,9 +111,12 @@ it to the classifier). Fewer copy blocks, each meaningful, by design.
 
 The phase's own success = the owner's sign-off after **both** gates: the proven report **and** a live
 end-to-end build. Each category is independently verified (Codex; GPT where the trigger fires) and
-**documented durably** (truth lives in files). This ADR is the map; it is confirmed slice-by-slice as
-each category is populated, proven, and merged through the standard governed loop. If the audit starts
-adding friction without reducing babysitting, it violates its own yardstick and is cut back.
+**documented durably** (truth lives in files). This ADR is the map; each category is populated with
+**risk-based depth** — deeply verify / mechanize / test only where a failure would be **silent, costly,
+or create babysitting**; low-consequence practices get documentation + review, **not** the full governed
+loop (running the heavy verify-and-merge loop for every trivial standardization would itself be the
+over-governance this phase forbids). If the audit starts adding friction without reducing babysitting,
+it violates its own yardstick and is cut back.
 
 ## Engagement
 
@@ -115,8 +126,9 @@ adding friction without reducing babysitting, it violates its own yardstick and 
   possible, produces the report.
 - **Codex verifier:** owns technical calibration + diff review (per ADR-0005 / DECISION-105).
 - **GPT secondary verifier:** independent third check, fired by the trigger, delivered via copy block.
-- **Spawned projects:** inherit every standardized practice via the scaffolder (DECISION-113 parity,
-  ADR-0004) — the audit's output *is* the canonical template.
+- **Spawned projects:** are **intended to** inherit every standardized practice via the scaffolder
+  (DECISION-113 parity, ADR-0004) — the audit's output *becomes* the canonical template; that
+  inheritance is **proven by gate (b)'s spawned-project qualification, not assumed.**
 
 ## Supersedes / Related
 
