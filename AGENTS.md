@@ -56,7 +56,9 @@ reversible changes. Don't build a heavy spec→design→tasks pipeline.
 ## What "done" means here
 Nothing is done on a worker's word. See `docs/TRUST_CALIBRATION.md`: match the proof to the stakes —
 a real test / CI-green-on-the-exact-commit / a live check beats "two AIs agree." Risky/irreversible
-work needs the top of that ladder.
+work needs the top of that ladder. **A non-trivial change is not done until an independent verifier
+(`codex exec`, see the Verification protocol below) has reviewed it and returned a verdict — the
+sequence is build → CI → verify → done. Do NOT self-certify a batch and skip the verifier.**
 
 ## Where the architecture lives (pointers, not prose)
 - `PROJECT.md` — current brief (read first; durable state only, live facts checked directly)

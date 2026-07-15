@@ -32,7 +32,12 @@ What we gain — and what we GIVE UP (the honest trade-off).
 How we proved it works AND didn't break what we have:
 - proof at the right trust level (see TRUST_CALIBRATION.md) — for structural
   changes that's real tests + CI green on the exact commit + a live check;
-- the existing test suite stayed green after the change (no regression).
+- the existing test suite stayed green after the change (no regression);
+- **an independent verifier (Codex) reviewed the change and returned a verdict.**
+  A non-trivial change is NOT "done" on the worker's own checks alone —
+  self-certification is not confirmation. The sequence is: **build → CI → verify → done.**
+  (This requirement was added after the worker self-certified a batch of changes and
+  only ran the independent verifier when the owner forced it. The gap is now in the rule.)
 
 ## Engagement          [REQUIRED — Pillar 2]
 Where the change is wired so every actor knows how to use it:
@@ -54,7 +59,7 @@ Minimal decisions may leave optional MADR sections out, but **Confirmation and E
 
 1. **Restore point + green baseline.** Take a backup (`scripts/backup-protected-files.ps1`) and confirm the current system works (CI green on HEAD, app launches). Now the change is reversible and we have a documented "before."
 2. **Build the change** — one change at a time (small batches beat big ones).
-3. **Confirm** (fills the ADR's Confirmation field): the change passes at the right trust level, and the existing suite stays green.
+3. **Confirm** (fills the ADR's Confirmation field): the change passes at the right trust level, the existing suite stays green, **and an independent verifier (Codex) returns a verdict** — build → CI → verify → done. Don't self-certify.
 4. **Engage** (fills the ADR's Engagement field): wire it into every actor's spot above.
 5. **Baseline for later**: the "before" numbers are kept so the post-standardization before/after study (ProjectForensics Lens 16) can later prove the change was actually worth it — per the rule that every change must make a *measurable* improvement.
 
