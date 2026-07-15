@@ -40,7 +40,7 @@ test('bridge exposes exactly the expected channels', async () => {
     'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
     'listProjects', 'loadChatsBackup', 'metrics', 'newChat', 'persistChat', 'pickFolder', 'pull', 'recentDecisions', 'requestJob',
     'runProduct', 'saveChatsBackup', 'saveMemory', 'searchChats', 'secondOpinion', 'send', 'setActiveProject', 'setPhaseKind',
-    'summarizeChat', 'syncStatus', 'toolStatus', 'trustExtras', 'verify', 'verifyProduct', 'visionPromises',
+    'stakes', 'summarizeChat', 'syncStatus', 'toolStatus', 'trustExtras', 'verify', 'verifyProduct', 'visionPromises',
   ]);
 });
 
@@ -208,6 +208,18 @@ test('detections returns all five detector results in four-part format', async (
     expect(d[key]).toHaveProperty('signal');
     expect(d[key]).toHaveProperty('observed');
   }
+});
+
+// Governor "Surface" (ADR-0006): the stakes channel classifies the current change live and
+// must ALWAYS resolve with a readable verdict (the classifier exits 0) — surfacing never
+// blocks. It returns the classifier's shape verbatim; the app never overrides the tier.
+test('stakes returns a live change-stakes verdict and never blocks (governor Surface)', async () => {
+  const s = await call('stakes');
+  expect(typeof s.tier).toBe('string');       // T0..T4 or UNKNOWN — always a readable verdict
+  expect(Array.isArray(s.reasons)).toBe(true);
+  expect(Array.isArray(s.files)).toBe(true);
+  expect(Array.isArray(s.escalations)).toBe(true);
+  expect(s).toHaveProperty('not_proven');
 });
 
 test('trustExtras reports rulesLoaded + verification + head epoch', async () => {

@@ -1357,22 +1357,82 @@ function signalCard(d) {
   return card;
 }
 
+// Governor "Surface" (ADR-0006): the current change's stakes tier, shown live and never
+// blocking. Rendering only — the RULES live in the unit-tested view-model
+// (PCCStakes.stakesView). Tier color communicates WEIGHT (how much proof a change deserves),
+// not alarm. Escalations and touched files are shown so the tier is never a bare verdict.
+function stakesCard(view) {
+  const zone = view.zone || 'unknown';
+  const card = document.createElement('div');
+  card.className = 'signal-card ' + zone;
+  const badge = view.state === 'classified' ? view.tier
+    : view.state === 'empty' ? 'none'
+    : view.state === 'unknown' ? 'UNKNOWN' : 'error';
+  let html = '<div class="signal-head"><span class="signal-title">Change stakes (governor)</span>'
+    + '<span class="signal-badge ' + zone + '">' + escapeHtml(badge) + '</span></div>';
+  if (view.state === 'classified') {
+    html += '<div class="signal-row"><span class="k">Tier</span>' + escapeHtml(view.tier + ' — ' + view.tierName) + '</div>';
+    html += '<div class="signal-row"><span class="k">Recommended proof</span>' + escapeHtml(view.proof) + '</div>';
+    if (view.reasons.length) {
+      html += '<div class="signal-row"><span class="k">Why this tier</span></div><ul class="signal-items">'
+        + view.reasons.map((r) => '<li>' + escapeHtml(r) + '</li>').join('') + '</ul>';
+    }
+    if (view.escalations.length) {
+      html += '<div class="signal-row"><span class="k">Escalations</span></div><ul class="signal-items">'
+        + view.escalations.map((e) => '<li>' + escapeHtml(e.id + '  →  ≥ ' + e.min_tier) + '</li>').join('') + '</ul>';
+    }
+    const shown = view.files.slice(0, 20);
+    html += '<div class="signal-row"><span class="k">Files (' + view.fileCount + ')</span></div><ul class="signal-items">'
+      + shown.map((f) => '<li>' + escapeHtml((f.tier || '?') + '   ' + f.path) + '</li>').join('')
+      + (view.fileCount > shown.length ? '<li>… +' + (view.fileCount - shown.length) + ' more</li>' : '') + '</ul>';
+  } else {
+    html += '<div class="signal-row"><span class="k">' + (view.state === 'empty' ? 'Status' : 'Observed') + '</span>'
+      + escapeHtml(view.detail || view.headline) + '</div>';
+    if (view.state !== 'empty' && view.reasons && view.reasons.length) {
+      html += '<ul class="signal-items">' + view.reasons.map((r) => '<li>' + escapeHtml(r) + '</li>').join('') + '</ul>';
+    }
+    if (view.proof) html += '<div class="signal-row"><span class="k">Recommended proof</span>' + escapeHtml(view.proof) + '</div>';
+  }
+  html += '<div class="signal-row"><span class="k">What is NOT proven</span>' + escapeHtml(view.notProven || '—') + '</div>';
+  html += '<div class="signal-row"><span class="k">Does this block?</span>No — this is advisory. The commit gate is a later slice.</div>';
+  card.innerHTML = html;
+  return card;
+}
+
 async function loadSignals() {
   const list = document.getElementById('signals-list');
   const status = document.getElementById('signals-status');
   status.innerHTML = '<span class="spinner"></span>Checking…';
   list.innerHTML = '';
-  try {
-    const r = await window.pcc.detections();
-    const cards = Object.values(r || {});
+  // Kick BOTH the governor stakes verdict and the detectors off CONCURRENTLY, so a slow (or
+  // hung-to-its-timeout) classifier can never serialize in front of — and delay — the existing
+  // detector signals. The stakes surface is strictly additive and non-blocking.
+  const stakesP = window.pcc.stakes().then(
+    (r) => PCCStakes.stakesView(r),
+    () => PCCStakes.stakesView(null), // fail closed to UNKNOWN, never suppress the detectors
+  );
+  const detP = window.pcc.detections().then((r) => ({ det: r }), (e) => ({ err: e }));
+
+  // Render the detectors as soon as THEY resolve — as one batch, independent of stakes (so
+  // "first card visible" implies the whole detector set is present, no partial-render race).
+  const d = await detP;
+  if (d.err) {
+    const p = document.createElement('p');
+    p.className = 'muted';
+    p.textContent = 'Could not run signals: ' + d.err.message;
+    list.appendChild(p);
+  } else {
+    const cards = Object.values(d.det || {});
     cards.push(computeSycophancySignal()); // app-side: never-says-no nudge
     cards.push(computeChatSignal()); // app-side signal from this chat's own history
-    cards.forEach((d) => list.appendChild(signalCard(d)));
-    status.textContent = '';
-  } catch (e) {
-    list.innerHTML = '<p class="muted">Could not run signals: ' + escapeHtml(e.message) + '</p>';
-    status.textContent = '';
+    cards.forEach((c) => list.appendChild(signalCard(c)));
   }
+  status.textContent = '';
+
+  // The governor stakes card goes at the TOP once it resolves; because the detectors are
+  // already rendered above, it can never hold them up — it just fills in when ready.
+  const view = await stakesP;
+  list.insertBefore(stakesCard(view), list.firstChild);
 }
 
 document.getElementById('signals-refresh').addEventListener('click', () => { loadSignals(); loadTrust(); });

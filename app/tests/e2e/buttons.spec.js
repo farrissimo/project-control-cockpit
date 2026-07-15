@@ -95,6 +95,10 @@ test('signals: refresh renders detector cards', async () => {
   await expect(page.locator('.signal-card').first()).toBeVisible({ timeout: 30000 });
   // The app-side chat + sycophancy signals always exist, so >= 2 cards.
   expect(await page.locator('.signal-card').count()).toBeGreaterThanOrEqual(2);
+  // The governor "Change stakes" card surfaces live at the top (ADR-0006 Surface slice).
+  // .first(): a back-to-back nav+refresh in this test can render two batches; real usage
+  // has seconds between them. We only need the governor card to be present.
+  await expect(page.locator('.signal-card', { hasText: 'Change stakes (governor)' }).first()).toBeVisible();
 });
 
 // --- project view: handoff generation (real deterministic script) ---
