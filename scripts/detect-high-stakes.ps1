@@ -95,7 +95,17 @@ if (-not (Test-Path -LiteralPath $rulesPath -PathType Leaf)) {
   }
   $items = $items | Sort-Object -Unique
 
-  if ($globs.Count -eq 0 -and -not $flagDeletions) {
+  if ($baseErr) {
+    # Missing baseline ref => the branch cannot be compared against the intended base.
+    # Degrade to 'unknown' rather than reporting clear/notice off a HEAD-only comparison
+    # (parity with the drift/stale-docs F9 fix): a clear/notice badge from a degraded
+    # comparison is a false signal on freshly-scaffolded projects (on 'master', no 'main').
+    $r = New-Result 'unknown' @() `
+      "Baseline ref '$baseline' does not exist in this repo, so the branch cannot be compared against it." `
+      'The high-stakes signal has no baseline to measure the branch against, so it will not guess from a HEAD-only comparison. Common on a freshly-scaffolded project (on ''master'' with no ''main'').' `
+      'Whether the current work is high-stakes -- this check could not run against the intended baseline.' `
+      "Set compare_baseline in $rulesPath to a ref that exists, then re-run."
+  } elseif ($globs.Count -eq 0 -and -not $flagDeletions) {
     $r = New-Result 'unknown' @() `
       "$rulesPath has no high_stakes_globs and deletions are off." `
       'The boundary is empty, so nothing can be flagged honestly.' `

@@ -137,6 +137,51 @@ test('stale-docs degrades to UNKNOWN when the baseline ref is missing (F9)', () 
   }
 });
 
+// Metric-honesty fix (2026-07-14): a detector that did not actually check anything must
+// read 'unknown', never 'clear'. A green badge over an empty rule set is a false all-clear
+// (same bug class as F9). stale-docs with ZERO declared rules must degrade to 'unknown'.
+test('stale-docs degrades to UNKNOWN when no rules are defined (green-over-unchecked)', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-stale0-'));
+  try {
+    spawnSync('git', ['init'], { cwd: tmp, encoding: 'utf8' });
+    spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '--allow-empty', '-q', '-m', 'seed'], { cwd: tmp, encoding: 'utf8' });
+    fs.mkdirSync(path.join(tmp, 'scripts'));
+    fs.copyFileSync(path.join(REPO, 'scripts', 'detect-stale-docs.ps1'), path.join(tmp, 'scripts', 'detect-stale-docs.ps1'));
+    fs.mkdirSync(path.join(tmp, '.cockpit', 'state'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, '.cockpit', 'state', 'doc-freshness-map.json'), JSON.stringify({ rules: [] }));
+    const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/detect-stale-docs.ps1', '-Json'],
+      { cwd: tmp, encoding: 'utf8', timeout: 30000, windowsHide: true });
+    const obj = JSON.parse((r.stdout || '').trim());
+    expect(obj.signal, 'zero rules means nothing was checked -> unknown, not a false clear:\n' + r.stdout).toBe('unknown');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+// Metric-honesty fix (2026-07-14): high-stakes must degrade to 'unknown' when the baseline
+// ref is missing (parity with the drift/stale-docs F9 fix), instead of reporting clear/notice
+// off a degraded HEAD-only comparison.
+test('high-stakes degrades to UNKNOWN when the baseline ref is missing', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-hs-'));
+  try {
+    spawnSync('git', ['init'], { cwd: tmp, encoding: 'utf8' });
+    spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '--allow-empty', '-q', '-m', 'seed'], { cwd: tmp, encoding: 'utf8' });
+    fs.mkdirSync(path.join(tmp, 'scripts'));
+    fs.copyFileSync(path.join(REPO, 'scripts', 'detect-high-stakes.ps1'), path.join(tmp, 'scripts', 'detect-high-stakes.ps1'));
+    fs.mkdirSync(path.join(tmp, '.cockpit', 'state'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, '.cockpit', 'state', 'high-stakes-rules.json'), JSON.stringify({
+      compare_baseline: 'no-such-baseline-ref-xyz',
+      high_stakes_globs: ['docs/**'],
+    }));
+    const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/detect-high-stakes.ps1', '-Json'],
+      { cwd: tmp, encoding: 'utf8', timeout: 30000, windowsHide: true });
+    const obj = JSON.parse((r.stdout || '').trim());
+    expect(obj.signal, 'missing baseline must be unknown, not a degraded clear/notice:\n' + r.stdout).toBe('unknown');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 test('doctor.ps1 runs and produces output', () => {
   const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/doctor.ps1'],
     { cwd: REPO, encoding: 'utf8', timeout: 120000, windowsHide: true });

@@ -67,10 +67,14 @@ if (-not (Test-Path -LiteralPath $mapPath -PathType Leaf)) {
   $baseline = if ($map -and $map.compare_baseline) { $map.compare_baseline } else { 'main' }
 
   if ($rules.Count -eq 0) {
-    $r = New-Result 'clear' @() `
-      "$mapPath defines no rules yet." `
-      'Nothing is being checked, so nothing is flagged.' `
-      'Whether docs are actually current -- no rules are defined to check.' `
+    # No declared rules means NOTHING was checked -- that is 'unknown', never 'clear'.
+    # A green badge over an empty rule set is a false all-clear (same bug class as the
+    # F9 missing-baseline fix below): the card text said "nothing is being checked" while
+    # the badge still read clear/green. Match the badge to the honest text.
+    $r = New-Result 'unknown' @() `
+      "$mapPath defines no rules yet, so nothing was checked." `
+      'No doc-freshness rules are declared, so staleness cannot be judged here -- this is unknown, not a passing check.' `
+      'Whether any doc is stale -- there are no rules to check against.' `
       "Add rules to $mapPath as real misses show up."
   } else {
     # The baseline ref must exist (soak fix F9): a missing baseline previously
