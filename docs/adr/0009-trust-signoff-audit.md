@@ -1,0 +1,106 @@
+---
+status: Proposed
+date: 2026-07-15
+deciders: owner (product lead), Claude (worker), Codex (independent verifier), GPT (secondary verifier — per the trigger below)
+---
+
+# ADR-0009: The trust sign-off audit — standardize everything, prove it, owner signs off on outcomes
+
+## Context and Problem
+
+The owner will not adopt PCC for real LLM-built, non-coder-owned project work until he can **trust
+it** — including every project it spawns. Two concerns block that trust, and they are the same root:
+
+1. **Persuadable bypass.** A worker, told the right way, would likely go do a thing *and* route around
+   the checks-and-balances. Controls governed by prose (CLAUDE.md) bend to phrasing.
+2. **Un-standardized practice.** Much of what PCC relies on every day works but is "winged" — habit,
+   not canon. If it lives in an LLM's compliance or in our memory, it isn't trust; it's luck.
+
+**The root of both:** trust must live in the **system** — enforced machinery and canonical, documented
+standards — not in the LLM being incorruptible or in us remembering. This ADR defines the final
+assurance phase that moves trust into the system and ends at the owner's sign-off.
+
+## Decision
+
+Run **one comprehensive standardization audit** with these locked rules:
+
+1. **Exhaustive top-level categories** (the net that catches the little things). Draft set (owner
+   confirms/adjusts): state & data integrity · verification & proof-of-done · change governance &
+   decisions · honesty & anti-fake-green · execution authority & worker safety · **bypass evidence &
+   tamper-detection** · backup & recovery · testing & assurance · detection & signals · project
+   lifecycle · multi-project scaffolding & parity · memory & knowledge · **communication contracts** ·
+   repo & supply-chain security · worker operation & tooling conventions.
+2. **Cover both** the winging-it *and* the already-standardized — a complete inventory, nothing
+   assumed. Most of it is non-owner-facing (he never sees it), which is exactly why it must be proven.
+3. **Per-practice grid:** *what it is · current state (machinery-enforced / evidence-leaving +
+   owner-visible / prose-only) · proof it's standardized · benefit to PCC · gaps.*
+4. **Grade against the canonical principles yardstick** (below). Every practice must serve them; any
+   that strains one (especially adds governance without reducing babysitting) is flagged.
+5. **Bypass-evidence standard:** every escape hatch must leave a **deterministic, owner-visible** trail
+   — PCC itself raises the flag in plain language. An LLM autopsy (Claude/Codex noticing) is a bonus,
+   **never** the guarantee, because that re-trusts the very LLM that could be the culprit.
+6. **Owner sign-off model:** the owner signs off on **outcomes he can judge** — is it documented, is it
+   plain, does it reduce his babysitting. The **LLM + independent verifier own the technical
+   calibration** (he will not be asked to verify what he cannot see). Secondary verification fires by
+   the trigger below, not by reflex.
+7. **Output:** an owner-facing **HTML/PDF report** proving each item standardized and how it benefits
+   PCC — his sign-off document.
+8. **Two sign-off gates.** (a) the proven report; (b) a **live end-to-end project build** that shows it
+   all working. The owner's true sign-off waits for (b).
+
+### Canonical principles yardstick (the constitution every practice is graded against)
+1. Reduce owner babysitting (#1; everything else justifies against it)
+2. Lean — no bloat, *especially* no over-governance
+3. Local-first; spend the LLM only on real judgment
+4. Honesty / anti-fake-green — never claim proven when it isn't; fail visibly
+5. Verify, don't trust — proof matched to stakes; independent verification for "done"
+6. Truth lives in files, not the LLM's word
+7. Protect data first / reversibility — safety is what buys autonomy
+8. Prior-art first — reuse proven solutions, don't reinvent
+9. Plain language for the owner — visionary, not coder
+10. Parity by default — what PCC gets, spawned projects get
+
+### Secondary (GPT) verification trigger (settled by Claude + Codex)
+Bring in the third independent verifier (GPT — different model, remote repo, adversarial) only when a
+mistake would be **both hard to notice and costly** — ANY of: (1) the change touches **T0 trust-root /
+verification/governance machinery** (the system judging itself); (2) it changes **trust boundaries,
+evidence standards, release gating, rollback posture, or the security model**; (3) it is
+**high-consequence and low-observability if wrong**, especially hard to reverse. **Skip** for routine
+T1–T4 implementation and reversible design ADRs — Codex diff-review + CI already suffice. Reuses the
+stakes tiers (one classifier, second job). Fewer copy blocks, each meaningful, by design.
+
+## Consequences
+
+- **Gain:** trust becomes a property of the system, not of luck; the standardized template travels to
+  every spawned project (parity); the owner gets a legible proof he can sign.
+- **Cost:** the audit is real work and must itself stay **lean** — it cannot become the over-governance
+  it's cataloguing. Categories that are already fine are recorded as fine, not re-engineered.
+- **Honest residue:** some practices stay prose or accepted (e.g., an LLM can't be made incorruptible;
+  a fabricated PASS is irreducible). The report **discloses** these plainly rather than pretending
+  they're closed — that disclosure is itself the standard.
+
+## Confirmation
+
+The phase's own success = the owner's sign-off after **both** gates: the proven report **and** a live
+end-to-end build. Each category is independently verified (Codex; GPT where the trigger fires) and
+**documented durably** (truth lives in files). This ADR is the map; it is confirmed slice-by-slice as
+each category is populated, proven, and merged through the standard governed loop. If the audit starts
+adding friction without reducing babysitting, it violates its own yardstick and is cut back.
+
+## Engagement
+
+- **Owner:** sets intent, signs off on outcomes he can judge, runs GPT secondary verification where the
+  trigger fires (this ADR itself qualifies — it changes evidence/verification standards).
+- **Claude worker:** mines the record, drafts standards + templates, converts prose → machinery where
+  possible, produces the report.
+- **Codex verifier:** owns technical calibration + diff review (per ADR-0005 / DECISION-105).
+- **GPT secondary verifier:** independent third check, fired by the trigger, delivered via copy block.
+- **Spawned projects:** inherit every standardized practice via the scaffolder (DECISION-113 parity,
+  ADR-0004) — the audit's output *is* the canonical template.
+
+## Supersedes / Related
+
+Completes the Governance Standardization arc (ADR-0006/0007/0008 standardized the verification gate;
+this generalizes the principle to every practice). Related: `docs/specs/communication-contracts.md`
+(the first category), `docs/proposals/governance-standardization.md`, the lessons distillation, and
+CLAUDE.md / AGENTS.md / `docs/ENGINEERING_ASSURANCE_PLAN.md` (the canon the yardstick consolidates).
