@@ -94,6 +94,9 @@ Copy-File 'CLAUDE.md'
 Copy-File 'AGENTS.md'
 Copy-File '.gitignore'
 Copy-File 'docs/BACKUP_POLICY.md'   # the mandatory backup policy CLAUDE.md + the copied backup script reference
+Copy-File 'docs/DECISION_AND_CHANGE_STANDARD.md'  # the locked decision + change-rollout standard (ADR format + Confirmation/Engagement)
+Copy-File 'docs/TRUST_CALIBRATION.md'             # owner-facing "how much to trust a done" guide
+Copy-File 'docs/specs/README.md'                  # the lean feature-spec standard + template
 
 # --- 4. generic declared state (lifecycle model + thresholds copied; state fresh) ---
 Copy-File '.cockpit/state/lifecycle-model.json'
@@ -306,11 +309,10 @@ Standing rules are in CLAUDE.md.
 Set-Content -LiteralPath (Join-Path $Target 'docs/DECISIONS.md') -Encoding utf8 -Value (@"
 # Decisions log
 
-## DECISION-0: Short Decision Title
-Date: (template)
-Status: Active / Superseded / Reversed
-
-(Template header - real decisions start at DECISION-001 below.)
+> New decisions are recorded as MADR ADRs in ``docs/adr/`` (enforced by
+> ``scripts/check-adr.ps1``, gated in CI + pre-commit). See
+> ``docs/DECISION_AND_CHANGE_STANDARD.md``. This file is a legacy archive kept only for
+> the bootstrap record below.
 
 ## DECISION-001: $Name defined and bootstrapped with the PCC cockpit
 Date: $stamp
@@ -318,6 +320,47 @@ Status: Active
 
 $decisionBody
 "@)
+
+# The decision standard travels as an enforced format: seed the ADR directory with a
+# well-formed starter (docs/adr/0000) so check-adr.ps1 validates a real record from day
+# one and the format is exemplified for the owner's first real decision.
+Ensure-Dir (Join-Path $Target 'docs/adr')
+Set-Content -LiteralPath (Join-Path $Target 'docs/adr/0000-record-decisions-as-adrs.md') -Encoding utf8 -Value (@"
+---
+status: Accepted
+date: $(Get-Date -Format 'yyyy-MM-dd')
+deciders: owner
+---
+
+# ADR-0000: Record decisions as MADR ADRs, enforced by a validator
+
+## Context and Problem
+This project inherits PCC's decision standard: significant decisions must be recorded in one
+machine-checkable format so they cannot be recorded wrong, and a new session can find just the
+record it needs instead of relying on discipline.
+
+## Decision
+Record significant decisions (architecture, scope, workflow, verification, owner expectations)
+as MADR ADRs, one file per decision at ``docs/adr/NNNN-kebab-title.md``, with YAML front matter
+(status, date) and the sections below. New decisions go here, not the legacy docs/DECISIONS.md.
+
+## Consequences
+One enforced, findable decision format from day one; a small amount of ceremony per decision.
+
+## Confirmation
+``scripts/check-adr.ps1`` validates every ``docs/adr/*.md`` (front matter + the five required
+sections, incl. Confirmation and Engagement) and is gated in ``.github/workflows/ci.yml`` and
+``.githooks/pre-commit`` — both inherited from the cockpit engine.
+
+## Engagement
+- Worker/verifier: the ADR policy is in AGENTS.md ("check docs/adr/ before deciding").
+- Standard + template: ``docs/DECISION_AND_CHANGE_STANDARD.md``.
+- Future chats: ``docs/adr/`` is the decision store.
+
+## Supersedes / Related
+Related: docs/DECISION_AND_CHANGE_STANDARD.md, docs/specs/README.md, docs/TRUST_CALIBRATION.md.
+"@)
+Write-Output "  + docs/adr/0000-record-decisions-as-adrs.md (starter)"
 
 # --- 6. git init ---
 if (-not $NoGit) {
