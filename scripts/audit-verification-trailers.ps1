@@ -2,7 +2,11 @@
   audit-verification-trailers.ps1 (ADR-0007) — the durable, server-side check (and the phase's
   re-measurement tool). For each NON-MERGE commit in a range, if the commit is tagged-crucial
   (T0/T1) it MUST carry a `Verified-Receipt:` trailer whose diff_id RE-DERIVES from the commit's
-  actual content. A local `--no-verify` skip or a forged/tampered trailer is caught here.
+  actual content. A local `--no-verify` skip, or a malformed / mismatched / invalid-BYPASS trailer,
+  is caught here. It does NOT catch a correctly-bound *fabricated PASS* (a hand-written PASS trailer
+  whose diff_id re-derives) — that is irreducible worker-attestation, accepted as documented residue
+  (ADR-0007). Hence the measure below is *attestation* coverage: a valid, diff-bound CLAIM of
+  verification, not proof that verification truthfully happened.
 
   Re-derivation (the honest part): diff_id is recomputed as base -> commit-tree, ledger excluded,
   where `base` comes from the COMMIT'S OWN TRAILER — never a base recomputed from today's main
@@ -10,9 +14,10 @@
   (scripts/lib/change-identity.ps1 Get-CommitDiffId), so a trailer written at commit time re-derives
   here byte-for-byte.
 
-  A trailer with verdict=PASS is a verified commit; verdict=BYPASS is a disclosed exception carried
-  into history (still bound to the exact diff). Either satisfies the audit; a T0/T1 commit with no
-  trailer, a non-{PASS,BYPASS} verdict, or a diff_id that does not match its content FAILS.
+  A trailer with verdict=PASS is an ATTESTED commit (a valid, diff-bound claim of verification);
+  verdict=BYPASS is a disclosed exception carried into history (still bound to the exact diff). Either
+  satisfies the audit; a T0/T1 commit with no trailer, a non-{PASS,BYPASS} verdict, or a diff_id that
+  does not match its content FAILS.
 
   Params:
     -Range <a>..<b>  audit commits in this git range (e.g. 'origin/main..HEAD' in CI).
@@ -55,7 +60,7 @@ if ($Range) { $commits = @(& git rev-list --no-merges $Range 2>$null | Where-Obj
 else { $commits = @(& git rev-list --no-merges -n $Last HEAD 2>$null | Where-Object { $_ }) }
 
 $results = @()
-$fails = 0; $verified = 0; $bypassed = 0; $notRequired = 0; $crucial = 0
+$fails = 0; $attested = 0; $bypassed = 0; $notRequired = 0; $crucial = 0
 $trailerRe = '^Verified-Receipt:\s*base=(?<base>\S+)\s+diff_id=(?<diff>\S+)\s+verdict=(?<verdict>\S+)\s+verifier=(?<verifier>.*)$'
 
 foreach ($c in $commits) {
@@ -110,8 +115,8 @@ foreach ($c in $commits) {
     $results += [ordered]@{ commit = $short; tier = $tier; status = 'bypass'; detail = "disclosed bypass, authorized_by '$($bp.authorized_by)'"; subject = $subject }
     continue
   }
-  $verified++
-  $results += [ordered]@{ commit = $short; tier = $tier; status = 'verified'; detail = 'trailer valid (PASS)'; subject = $subject }
+  $attested++
+  $results += [ordered]@{ commit = $short; tier = $tier; status = 'attested'; detail = 'trailer valid (PASS attestation — bound claim, not proof it happened)'; subject = $subject }
 }
 
 $overall = if ($fails -gt 0) { 'FAIL' } else { 'PASS' }
@@ -120,19 +125,19 @@ $report = [ordered]@{
   range        = if ($Range) { $Range } else { "last $Last (no-merge)" }
   audited      = $commits.Count
   crucial      = $crucial
-  verified     = $verified
+  attested     = $attested
   bypassed     = $bypassed
   not_required = $notRequired
   failed       = $fails
   overall      = $overall
   commits      = @($results)
-  measure      = "of $crucial crucial (T0/T1) commit(s): $verified verified + $bypassed disclosed-bypass carry a valid durable trailer; $fails missing/invalid"
+  measure      = "of $crucial crucial (T0/T1) commit(s): $attested attested + $bypassed disclosed-bypass carry a valid durable trailer; $fails missing/invalid. ATTESTED = a valid diff-bound CLAIM of verification, NOT proof it happened (ADR-0007)."
 }
 
 if ($Json) { $report | ConvertTo-Json -Depth 8 }
 else {
   foreach ($r in $results) {
-    $mark = switch ($r.status) { 'verified' { 'OK  ' } 'bypass' { 'BYP ' } 'not_required' { '--  ' } default { 'FAIL' } }
+    $mark = switch ($r.status) { 'attested' { 'ATT ' } 'bypass' { 'BYP ' } 'not_required' { '--  ' } default { 'FAIL' } }
     Write-Host ("[{0}] {1} {2,-4} {3}" -f $mark, $r.commit, $r.tier, $r.subject)
     if ($r.status -eq 'FAIL') { Write-Host "       -> $($r.detail)" }
   }

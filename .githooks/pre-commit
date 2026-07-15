@@ -15,24 +15,64 @@
 #   PCC_RUN_TESTS=1 git commit ...
 # To restore the always-on net, revert this file from git history.
 
-# ADR format gate (fast, deterministic, NO app launch) — always on, independent of the
-# heavy test opt-in below. Blocks a commit that leaves a decision record malformed.
-if command -v pwsh >/dev/null 2>&1; then
-  if ! pwsh -NoProfile -File scripts/check-adr.ps1; then
-    echo "[pcc] ADR format check failed — commit blocked. Fix docs/adr/*.md (MADR standard) or bypass with: git commit --no-verify"
+# Fail CLOSED when PowerShell is missing (Governance Hardening T3). The ADR check + governance gate
+# below are pwsh scripts; if pwsh is absent they cannot run. Silently skipping would make a
+# supposedly always-on gate vanish (a cross-platform / stripped-environment fail-open). We cannot
+# run the classifier without pwsh, so we approximate "is this crucial?" from git facts we CAN read in
+# sh, and BLOCK unless the change is clearly noise:
+#   * ANY staged deletion/rename  -> BLOCK (the classifier escalates delete_or_rename to >= T1, and
+#     archive/** deletions to T2 destructive_history_edit — undetectable by path alone).
+#   * ANY staged path outside the conservative noise allowlist -> BLOCK.
+# The allowlist is deliberately narrow (backlog/, docs/proposals/, docs/brainstorms/) — pure T4 paths
+# with no path-based escalation. archive/ is EXCLUDED: it is T4 for edits but its deletions/rewrites
+# escalate, so it is not safe to wave through blind. Default-block resists manifest drift: a new
+# crucial path is blocked by default. This fallback is coarse on purpose (it does not catch exotic
+# escalations like 26+ noise files); the server-side CI audit — which HAS pwsh — is the real net.
+# Windows-first, so pwsh is normally present and this branch does not run.
+if ! command -v pwsh >/dev/null 2>&1; then
+  DELETED=$(git diff --cached --name-only --diff-filter=DR 2>/dev/null)
+  STAGED=$(git diff --cached --name-only 2>/dev/null)
+  NONNOISE=""
+  for f in $STAGED; do
+    case "$f" in
+      backlog/*|docs/proposals/*|docs/brainstorms/*) : ;;  # pure-noise, no escalation — allowed
+      *) NONNOISE="$NONNOISE $f" ;;
+    esac
+  done
+  if [ -n "$(echo "$DELETED" | tr -d ' \n\r')" ]; then
+    echo "[pcc] pwsh (PowerShell) not found — the governance gate cannot classify this change."
+    echo "      Failing CLOSED: staged deletion/rename present (escalates to >= T1):"
+    echo "$DELETED" | sed 's/^/        - /'
+    echo "      Install PowerShell 7+ (pwsh) so the gate can run, or bypass deliberately with:"
+    echo "        git commit --no-verify    (CI + branch protection still audit the PR)"
     exit 1
   fi
+  if [ -n "$(echo "$NONNOISE" | tr -d ' ')" ]; then
+    echo "[pcc] pwsh (PowerShell) not found — the governance gate cannot classify this change."
+    echo "      Failing CLOSED: a crucial/unclassifiable staged path is present:$NONNOISE"
+    echo "      Install PowerShell 7+ (pwsh) so the gate can run, or bypass deliberately with:"
+    echo "        git commit --no-verify    (CI + branch protection still audit the PR)"
+    exit 1
+  fi
+  echo "[pcc] pwsh not found — only noise-tier paths staged; allowing commit without the gate."
+  exit 0
+fi
+
+# ADR format gate (fast, deterministic, NO app launch) — always on, independent of the
+# heavy test opt-in below. Blocks a commit that leaves a decision record malformed.
+if ! pwsh -NoProfile -File scripts/check-adr.ps1; then
+  echo "[pcc] ADR format check failed — commit blocked. Fix docs/adr/*.md (MADR standard) or bypass with: git commit --no-verify"
+  exit 1
 fi
 
 # Governance gate (ADR-0006 "Gate", fast, deterministic, NO app launch) — always on. Blocks a
 # commit ONLY when the STAGED change is tagged-crucial (T0/T1) and lacks a valid, diff-bound
 # verification receipt. T2/T3/T4 pass untouched (proportional). The gate prints how to proceed
-# (verify + write a receipt, a disclosed bypass, or --no-verify). CI + branch protection remain
-# the un-bypassable backstop no local escape can dodge.
-if command -v pwsh >/dev/null 2>&1; then
-  if ! pwsh -NoProfile -File scripts/run-governance-gate.ps1; then
-    exit 1
-  fi
+# (verify + write a receipt, a disclosed bypass, or --no-verify). CI + branch protection are the
+# server-side backstop no local escape can dodge — un-bypassable ONLY IF branch protection is
+# active + required and work enters via PR (not a direct push, and not a PR that weakens the audit).
+if ! pwsh -NoProfile -File scripts/run-governance-gate.ps1; then
+  exit 1
 fi
 
 if [ "$PCC_RUN_TESTS" != "1" ]; then

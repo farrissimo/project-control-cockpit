@@ -43,7 +43,11 @@ trailer** and auditing it in CI.
    commit in a range: a valid `Verified-Receipt` trailer must be present AND its `diff_id` must
    re-derive from the commit's actual diff. CI runs it on the PR range; a T0/T1 commit missing a
    valid trailer **fails CI**, and branch protection blocks the merge. This closes the local
-   fail-open (`--no-verify` / a forged local trailer) — the un-bypassable check is server-side.
+   fail-open (`--no-verify`, or a malformed / mismatched / invalid-BYPASS local trailer). It does
+   NOT catch a correctly-bound *fabricated PASS* (accepted residue — see Consequences). The
+   server-side check is un-bypassable ONLY IF branch protection is active + required, work enters via
+   PR, and the PR does not weaken the audit machinery (the last is the subject of the planned
+   ADR-0008 / Governance Hardening Sub-slice B — judge the PR from `origin/main`'s trusted copy).
 4. **The audit script is the re-measurement.** Run over history it deterministically counts
    T0/T1 commits carrying a valid durable trailer — so the phase metric becomes continuously,
    mechanically checkable rather than a one-off manual pass.

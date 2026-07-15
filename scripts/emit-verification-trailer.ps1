@@ -1,7 +1,8 @@
 <#
   emit-verification-trailer.ps1 (ADR-0007) — print the durable `Verified-Receipt:` trailer for the
-  EXACT staged change, or nothing. Called by .githooks/commit-msg, so the proof of verification is
-  recorded IN the commit (immutable, pushed with history, re-derivable by the CI audit).
+  EXACT staged change, or nothing. Called by .githooks/commit-msg, so the attestation of verification
+  (a valid diff-bound CLAIM, not proof it happened) is recorded IN the commit (immutable, pushed with
+  history, re-derivable by the CI audit).
 
   It reuses the SAME authorities the Gate uses (scripts/lib/change-identity.ps1 for identity/tier,
   scripts/lib/receipt-check.ps1 for receipt validity + disclosed bypass), so a trailer is emitted

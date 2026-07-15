@@ -117,7 +117,7 @@ test('AC-4/AC-7: audit passes a verified commit; the trailer re-derives at audit
     git(dir, ['commit', '-q', '-m', 'verified T0']);
     const a = audit(dir, 'main~1..HEAD');
     expect(a.json.overall).toBe('PASS');
-    expect(a.json.verified).toBe(1);
+    expect(a.json.attested).toBe(1);
     expect(a.status).toBe(0);
   } finally { cleanup(dir); }
 });
@@ -187,7 +187,7 @@ test('root commit: a verified first-ever T0 commit passes the audit', () => {
     const r = ps(dir, 'scripts/audit-verification-trailers.ps1', ['-Json', '-Last', '5']);
     const j = JSON.parse((r.stdout || '').trim());
     expect(j.overall).toBe('PASS');
-    expect(j.verified).toBe(1);
+    expect(j.attested).toBe(1);
   } finally { cleanup(dir); }
 });
 
@@ -242,8 +242,8 @@ test('AC-6: a T3 commit needs no trailer and a merge commit is skipped', () => {
     git(dir, ['merge', '--no-ff', '--no-verify', '-m', 'merge side', 'side']);
     const root = git(dir, ['rev-list', '--max-parents=0', 'HEAD']); // the baseline (audit base)
     const a = audit(dir, `${root}..HEAD`); // spans the T3, the merged T0, and the merge commit
-    expect(a.json.overall).toBe('PASS'); // T3 not_required, T0 verified, merge skipped
-    expect(a.json.verified).toBe(1);
+    expect(a.json.overall).toBe('PASS'); // T3 not_required, T0 attested, merge skipped
+    expect(a.json.attested).toBe(1);
     expect(a.json.not_required).toBeGreaterThanOrEqual(1);
   } finally { cleanup(dir); }
 });

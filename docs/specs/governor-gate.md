@@ -48,8 +48,11 @@ verifier's verdict + checks **bound to the current diff**. The gate never re-run
    landing it in git history where it is auditable; an unstaged/working-tree-only ledger grants
    nothing. To avoid a chicken-and-egg (staging the ledger would otherwise change the `diff_id` it
    names), the ledger is the single path excluded from `diff_id`. The gate discloses any applied
-   bypass in its run receipt. `git commit --no-verify` remains the escape hatch, but branch
-   protection (CI + PR) is the un-bypassable server-side backstop that no local bypass can escape.
+   bypass in its run receipt. `git commit --no-verify` remains the escape hatch, and branch
+   protection (CI + PR) is the server-side backstop — un-bypassable ONLY IF branch protection is
+   active + required, work enters via PR (not a direct push), and the PR does not weaken the audit
+   machinery. The system does not self-verify those preconditions (owner-confirmed; see O1/O2 in
+   docs/proposals/governance-hardening.md).
 7. Emit a machine-readable run receipt to `.cockpit/evidence/governance-gate.json` (git-ignored).
    Exit 0 = allow, 1 = block.
 
@@ -57,9 +60,10 @@ verifier's verdict + checks **bound to the current diff**. The gate never re-run
 - The local receipt is **worker-attested**: `write-verification-receipt.ps1` records the verdict
   it is handed. A dishonest worker could write a PASS receipt without truly verifying. This slice
   raises the floor — it makes the silent-skip default *impossible* (you cannot commit a T0/T1
-  change without producing a diff-bound receipt) — but the **un-bypassable** proof of "verified"
-  remains CI + GitHub branch protection, not the local gate. This is the ADR §6.1 bypass residue,
-  surfaced here rather than hidden.
+  change without producing a diff-bound receipt, short of `--no-verify`) — but the server-side
+  proof of an **attested** change (a valid diff-bound claim of verification, not proof it happened)
+  remains CI + GitHub branch protection, un-bypassable only under the O1/O2 preconditions above,
+  not the local gate. This is the ADR §6.1 bypass residue, surfaced here rather than hidden.
 - Binding is to the **staged index** (`git diff --cached <base>`), so it reflects exactly what will
   be committed — partial staging is honoured. Residual: the bypass ledger is excluded from `diff_id`
   (to allow a staged bypass to name its own change), so a ledger-only mutation is not itself covered
