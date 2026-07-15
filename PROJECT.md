@@ -165,16 +165,26 @@ Shipped this phase (all on `main`, CI-green, independently Codex-verified):
   path globs→tiers T0..T4 + escalation rules) + the deterministic classifier
   (`scripts/classify-stakes.ps1`, 13 tests). It CLASSIFIES a change's tier from WHICH files it
   touches (a git fact, ungameable by self-rating). It does NOT gate yet.
+- **Governor slice 2 — Surface** (`027b29f`, PR #6) — the classifier's verdict is now shown
+  LIVE in the app: a "Change stakes (governor)" card at the top of the Signals tab shows the
+  current change's tier (T0..T4), why, escalations, and touched files. Pure consumer
+  (`pcc:stakes` IPC → preload → `app/renderer/stakes-view.js`, a unit-tested view-model);
+  fails closed to UNKNOWN, and "no change in flight" is an honest empty state, not a fake T3.
+  It NEVER blocks (says so on the card). Does not touch the classifier/manifest, so it stayed
+  T1 (off the T0 `governor_self_edit` path). Spec: `docs/specs/governor-surface.md`. Codex
+  caught a real serialization bug in review (stakes awaited before detectors) — fixed to
+  fetch both concurrently.
 
 **Baseline (measured 2026-07-14):** ~100% of recent non-trivial commits carry NO checkable,
 diff-bound verification receipt — the number the gate must move toward ~0% for T0/T1 changes,
 without adding friction to T2/T3/T4 work. Re-measure after the gate ships; revert if it doesn't move.
 
-**NEXT slices** (each its own change: build → test → codex-verify → CI-gate → merge):
-- **Surface** — show the classifier's verdict live in the app while working (never blocks).
-  *Recommended next — lower-risk; lets the owner SEE the classifier before it has teeth.*
+**NEXT slice** (its own change: build → test → codex-verify → CI-gate → merge):
 - **Gate** — at commit, block ONLY a T0/T1 change missing its required proof (the teeth that
-  move the baseline). Needs the receipt contract (ADR-0006 §10.1).
+  move the baseline). Needs the receipt contract (ADR-0006 §10.1): a verification receipt bound
+  to exact repo/base/diff identity, invalidated by any later relevant change. This is the slice
+  that actually moves the ~100%→~0% skip-rate number; re-measure the baseline after it ships.
+  (Surface — showing the tier live — shipped as slice 2 above.)
 
 ## Pending / next (owner schedules)
 - **Packaging** is the last explicitly-deferred hardening slice not started
