@@ -46,10 +46,11 @@ deletion/rename is present (the classifier escalates `delete_or_rename` to ≥ T
 deletions to T2), or when **any** staged path falls outside a small, conservative **noise allowlist**
 (`backlog/**`, `docs/proposals/**`, `docs/brainstorms/**` — pure T4 paths with no path-based
 escalation; `archive/**` is deliberately excluded because its deletions/rewrites escalate).
-Default-block resists manifest drift — a newly-added crucial path is blocked by default. The fallback
-is coarse on purpose (it does not detect exotic escalations like 26+ noise files); the CI audit,
-which HAS `pwsh`, is the real net. The block message states the cause and the escape
-(`git commit --no-verify`, which CI still audits).
+Default-block resists manifest drift — a newly-added crucial path is blocked by default. If **either
+`git` query itself fails** (non-zero exit), the hook fails **closed** rather than read the empty
+output as "nothing crucial staged". The fallback is coarse on purpose (it does not detect exotic
+escalations like 26+ noise files); the CI audit, which HAS `pwsh`, is the real net. The block message
+states the cause and the escape (`git commit --no-verify`, which CI still audits).
 
 ### H1–H5 — wording must match behavior (anti-fake-green)
 - **H1** "un-bypassable" is qualified everywhere it appears: the server-side backstop is un-bypassable
@@ -79,6 +80,9 @@ which HAS `pwsh`, is the real net. The block message states the cause and the es
   non-zero (block) with a message naming the cause and the `--no-verify` escape.
 - AC-4b: WHEN `pwsh` is absent AND a staged deletion is present (even of a noise path) THE pre-commit
   hook SHALL exit non-zero (block) — deletions escalate to ≥ T1.
+- AC-4c: WHEN `pwsh` is absent AND a `git` query used to inspect the staged change fails (non-zero
+  exit) THE pre-commit hook SHALL exit non-zero (block) — empty output from a failed command SHALL
+  NOT be read as "noise only".
 - AC-5: WHEN `pwsh` is absent AND every staged path is a non-deleting noise-allowlist path THE
   pre-commit hook SHALL exit 0 (allow).
 - AC-6: THE governor wording (scripts, hooks, specs, ADRs, manifest, PROJECT.md) SHALL contain no
@@ -94,5 +98,6 @@ which HAS `pwsh`, is the real net. The block message states the cause and the es
   - AC-3b: a push-to-`main` whose range is a single merge commit → resolver emits the range (exit 0).
   - AC-4: `pwsh` scrubbed from PATH + a staged T0 path → hook blocks (exit 1).
   - AC-4b: `pwsh` scrubbed from PATH + a staged deletion of a noise path → hook blocks (exit 1).
+  - AC-4c: `pwsh` scrubbed from PATH + a failing `git` query (run in a non-git dir) → hook blocks (exit 1).
   - AC-5: `pwsh` scrubbed from PATH + only a `backlog/` add staged → hook allows (exit 0).
 - AC-6 is verified by review + the resolver/hook tests; the wording changes carry no runtime surface.

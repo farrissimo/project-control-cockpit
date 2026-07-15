@@ -30,8 +30,16 @@
 # escalations like 26+ noise files); the server-side CI audit — which HAS pwsh — is the real net.
 # Windows-first, so pwsh is normally present and this branch does not run.
 if ! command -v pwsh >/dev/null 2>&1; then
-  DELETED=$(git diff --cached --name-only --diff-filter=DR 2>/dev/null)
-  STAGED=$(git diff --cached --name-only 2>/dev/null)
+  # Fail CLOSED if EITHER git query errors: empty output from a failed command must NOT be mistaken
+  # for "nothing crucial staged" (that would be a fail-open). Capture output and exit status separately.
+  DELETED=$(git diff --cached --name-only --diff-filter=DR 2>/dev/null); st_del=$?
+  STAGED=$(git diff --cached --name-only 2>/dev/null); st_stg=$?
+  if [ "$st_del" -ne 0 ] || [ "$st_stg" -ne 0 ]; then
+    echo "[pcc] pwsh (PowerShell) not found AND a git query failed (exit $st_stg/$st_del) — cannot"
+    echo "      determine what is staged. Failing CLOSED (blocking) rather than assume it is safe."
+    echo "      Install PowerShell 7+ (pwsh), or bypass deliberately with: git commit --no-verify"
+    exit 1
+  fi
   NONNOISE=""
   for f in $STAGED; do
     case "$f" in

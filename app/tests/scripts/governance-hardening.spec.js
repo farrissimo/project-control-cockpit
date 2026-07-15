@@ -170,6 +170,24 @@ test('AC-4b: pre-commit fails closed without pwsh on a staged deletion, even of 
   } finally { cleanup(dir); }
 });
 
+// AC-4c: pwsh absent AND a git query fails -> hook fails closed (blocks), never treats empty output
+// as "noise only". Regression guard for the git-error fail-open an independent (GPT) review flagged.
+// Simulated by running the hook where `git diff --cached` errors (a non-git directory).
+test('AC-4c: pre-commit fails closed without pwsh when a git query errors', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-govh-nogit-'));
+  try {
+    fs.mkdirSync(path.join(dir, '.githooks'), { recursive: true });
+    fs.copyFileSync(path.join(REPO, '.githooks', 'pre-commit'), path.join(dir, '.githooks', 'pre-commit'));
+    // NOTE: no `git init` — `git diff --cached` here exits non-zero, so the hook must block.
+    const env = { ...process.env, PATH: gitBinPath() };
+    const probe = spawnSync('sh', ['-c', 'command -v pwsh'], { cwd: dir, env, encoding: 'utf8' });
+    expect((probe.stdout || '').trim().length > 0 && probe.status === 0).toBe(false);
+    const r = spawnSync('sh', ['.githooks/pre-commit'], { cwd: dir, env, encoding: 'utf8', timeout: 60000 });
+    expect(r.status).not.toBe(0);
+    expect((r.stdout || '') + (r.stderr || '')).toContain('git query failed');
+  } finally { cleanup(dir); }
+});
+
 // AC-5: pwsh absent + only a noise-tier ADD staged -> hook allows (exit 0).
 test('AC-5: pre-commit allows without pwsh when only noise-tier paths are staged', () => {
   const dir = makeHookRepo();
