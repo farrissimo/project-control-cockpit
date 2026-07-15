@@ -138,7 +138,7 @@ function MinTier([string]$id, [string]$fallback) { $r = Rule $id; if ($r -and $r
 $depGlobs = @('**/package.json', '**/package-lock.json')
 $schemaGlobs = @('schemas/**')
 $ciGlobs = @('.github/**', '.githooks/**', 'app/tools/guarded-test.js')
-$govGlobs = @('.cockpit/state/stakes-manifest.json', 'scripts/classify-stakes.ps1')
+$govGlobs = @('.cockpit/state/stakes-manifest.json', 'scripts/classify-stakes.ps1', 'scripts/run-governance-gate.ps1', 'scripts/write-verification-receipt.ps1', 'scripts/lib/change-identity.ps1', '.cockpit/state/governance-gate-exceptions.json')
 $testGlobs = @('**/tests/**', '**/*.spec.js', '**/*.test.js')
 $histGlobs = @('archive/**', 'docs/DECISIONS.md', '.cockpit/result/archive/**')
 

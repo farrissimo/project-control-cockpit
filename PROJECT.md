@@ -174,17 +174,36 @@ Shipped this phase (all on `main`, CI-green, independently Codex-verified):
   T1 (off the T0 `governor_self_edit` path). Spec: `docs/specs/governor-surface.md`. Codex
   caught a real serialization bug in review (stakes awaited before detectors) — fixed to
   fetch both concurrently.
+- **Governor slice 3 — Gate** (the teeth) — at the commit boundary, block ONLY a tagged-crucial
+  (T0/T1) staged change that lacks a valid, diff-bound **verification receipt**; T2/T3/T4 pass
+  untouched (proportional). Pieces (all thin consumers, no runtime LLM): the receipt contract
+  (`schemas/verification-receipt.schema.json`, written to git-ignored
+  `.cockpit/evidence/verification-receipt.json` by `scripts/write-verification-receipt.ps1`),
+  bound to exact repo/base/head/**diff_id** (the SHA-256 of the staged index tree) so any later
+  change invalidates it; the gate (`scripts/run-governance-gate.ps1`) which reuses the shipped
+  classifier for the tier and a shared identity helper (`scripts/lib/change-identity.ps1`) so the
+  writer + gate can't drift; a disclosed exact-diff_id bypass ledger
+  (`.cockpit/state/governance-gate-exceptions.json`); wired into `.githooks/pre-commit`
+  (deterministic, no app launch). Spec: `docs/specs/governor-gate.md`; tests:
+  `app/tests/scripts/governance-gate.spec.js` (11, all 8 ACs). Honest residue (surfaced, not
+  hidden): the local receipt is worker-attested — it makes the silent-skip default impossible but
+  the un-bypassable proof stays CI + branch protection. This slice is itself T0 (touches hooks +
+  schemas + the governor), so it was dogfooded: built → Codex-verified → a receipt written for its
+  own diff → committed through the gate it installs.
 
 **Baseline (measured 2026-07-14):** ~100% of recent non-trivial commits carry NO checkable,
 diff-bound verification receipt — the number the gate must move toward ~0% for T0/T1 changes,
 without adding friction to T2/T3/T4 work. Re-measure after the gate ships; revert if it doesn't move.
 
-**NEXT slice** (its own change: build → test → codex-verify → CI-gate → merge):
-- **Gate** — at commit, block ONLY a T0/T1 change missing its required proof (the teeth that
-  move the baseline). Needs the receipt contract (ADR-0006 §10.1): a verification receipt bound
-  to exact repo/base/diff identity, invalidated by any later relevant change. This is the slice
-  that actually moves the ~100%→~0% skip-rate number; re-measure the baseline after it ships.
-  (Surface — showing the tier live — shipped as slice 2 above.)
+**NEXT** (Gate built; verify → merge → then measure):
+- **Re-measure the baseline** now that the Gate exists: the success metric (owner's
+  measurable-change rule) is the ~100% skip rate for checkable, diff-bound verification receipts
+  moving toward ~0% for T0/T1 changes, WITHOUT adding friction to T2/T3/T4. If it doesn't move
+  the number, or it touches normal work, it reverts. (The Gate slice itself is the first data
+  point: it was T0 and shipped WITH a diff-bound receipt.)
+- Then the remaining governor pieces from ADR-0006 are optional/deferred: continuously-verified
+  branch-protection detection (needs authenticated GitHub read), the runtime-integrity mode, and
+  the Known Residual Risks billboard. None started; owner schedules.
 
 ## Pending / next (owner schedules)
 - **Packaging** is the last explicitly-deferred hardening slice not started
