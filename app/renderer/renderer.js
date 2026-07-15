@@ -1404,29 +1404,35 @@ async function loadSignals() {
   const status = document.getElementById('signals-status');
   status.innerHTML = '<span class="spinner"></span>Checking…';
   list.innerHTML = '';
-  // Fetch the governor stakes verdict AND the detectors, THEN render together, so the cards
-  // appear as one set (no partial-render flash, and "first card visible" implies all present).
-  // The stakes fetch is fail-soft: on error the view-model fails closed to UNKNOWN, and it
-  // must never suppress the detector signals below.
-  let stakesRaw = null;
-  try { stakesRaw = await window.pcc.stakes(); } catch (e) { stakesRaw = null; }
-  let det = null, detErr = null;
-  try { det = await window.pcc.detections(); } catch (e) { detErr = e; }
+  // Kick BOTH the governor stakes verdict and the detectors off CONCURRENTLY, so a slow (or
+  // hung-to-its-timeout) classifier can never serialize in front of — and delay — the existing
+  // detector signals. The stakes surface is strictly additive and non-blocking.
+  const stakesP = window.pcc.stakes().then(
+    (r) => PCCStakes.stakesView(r),
+    () => PCCStakes.stakesView(null), // fail closed to UNKNOWN, never suppress the detectors
+  );
+  const detP = window.pcc.detections().then((r) => ({ det: r }), (e) => ({ err: e }));
 
-  // Governor stakes card first (top of the tab), advisory and never blocking.
-  list.appendChild(stakesCard(PCCStakes.stakesView(stakesRaw)));
-  if (detErr) {
+  // Render the detectors as soon as THEY resolve — as one batch, independent of stakes (so
+  // "first card visible" implies the whole detector set is present, no partial-render race).
+  const d = await detP;
+  if (d.err) {
     const p = document.createElement('p');
     p.className = 'muted';
-    p.textContent = 'Could not run signals: ' + detErr.message;
+    p.textContent = 'Could not run signals: ' + d.err.message;
     list.appendChild(p);
   } else {
-    const cards = Object.values(det || {});
+    const cards = Object.values(d.det || {});
     cards.push(computeSycophancySignal()); // app-side: never-says-no nudge
     cards.push(computeChatSignal()); // app-side signal from this chat's own history
-    cards.forEach((d) => list.appendChild(signalCard(d)));
+    cards.forEach((c) => list.appendChild(signalCard(c)));
   }
   status.textContent = '';
+
+  // The governor stakes card goes at the TOP once it resolves; because the detectors are
+  // already rendered above, it can never hold them up — it just fills in when ready.
+  const view = await stakesP;
+  list.insertBefore(stakesCard(view), list.firstChild);
 }
 
 document.getElementById('signals-refresh').addEventListener('click', () => { loadSignals(); loadTrust(); });
