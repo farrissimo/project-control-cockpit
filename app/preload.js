@@ -67,6 +67,7 @@ contextBridge.exposeInMainWorld('pcc', {
   engineStatus: (dir) => ipcRenderer.invoke('pcc:engineStatus', dir),
   hardChecks: () => ipcRenderer.invoke('pcc:hardChecks'),
   detections: () => ipcRenderer.invoke('pcc:detections'),
+  stakes: () => ipcRenderer.invoke('pcc:stakes'),
   trustExtras: () => ipcRenderer.invoke('pcc:trustExtras'),
   handoff: () => ipcRenderer.invoke('pcc:handoff'),
   lifecycle: () => ipcRenderer.invoke('pcc:lifecycle'),

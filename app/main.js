@@ -482,6 +482,24 @@ const runDetections = singleFlight(async () => {
 });
 ipcMain.handle('pcc:detections', () => runDetections());
 
+// Governor "Surface" (ADR-0006): classify the CURRENT change's stakes tier live, so the
+// owner SEES which tier a change carries BEFORE any gate has teeth. Pure consumer — it runs
+// the shipped classifier (scripts/classify-stakes.ps1) in git mode (baseline..HEAD +
+// uncommitted) and returns its verdict verbatim; it never re-derives or overrides the tier.
+// Read-only and non-blocking. On any failure it returns UNKNOWN (fail closed), never a low
+// tier, so the surface can never paint a risky change as safe. execFile (no shell).
+ipcMain.handle('pcc:stakes', () => new Promise((resolve) => {
+  execFile('pwsh', ['-NoProfile', '-File', 'scripts/classify-stakes.ps1', '-Json'],
+    { cwd: projectDir, timeout: 30000, windowsHide: true, maxBuffer: 8 * 1024 * 1024 }, (err, stdout) => {
+      try { resolve(JSON.parse((stdout || '').trim())); }
+      catch (e) {
+        resolve({ schema: 'stakes-classification/v1', tier: 'UNKNOWN', base_tier: 'UNKNOWN',
+          reasons: ['classifier could not run: ' + (err ? err.message : 'no output')], files: [], escalations: [],
+          not_proven: 'The stakes of the current change — the classifier could not be run.' });
+      }
+    });
+}));
+
 // Trust-strip extras: the two honest facts the always-visible strip needs
 // beyond the detectors. "Rules loaded" is just whether CLAUDE.md exists (the
 // rules DO auto-load into every Claude session; this proves they are present,

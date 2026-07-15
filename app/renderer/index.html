@@ -174,6 +174,9 @@
   .signal-card.clear { border-left-color: var(--success); }
   .signal-card.notice { border-left-color: var(--warning); }
   .signal-card.unknown { border-left-color: var(--danger); }
+  /* Governor stakes zones: crucial (T0/T1) carries weight, info (T3/no-change) is neutral. */
+  .signal-card.crucial { border-left-color: var(--danger); }
+  .signal-card.info { border-left-color: #8ab4ff; }
   .signal-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
   .signal-title { font-size: 14px; font-weight: 600; }
   .signal-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
@@ -181,6 +184,8 @@
   .signal-badge.clear { background: var(--success-bg); color: var(--success-text); }
   .signal-badge.notice { background: var(--warning-bg); color: var(--warning-text); }
   .signal-badge.unknown { background: var(--danger-bg); color: var(--danger-text); }
+  .signal-badge.crucial { background: var(--danger-bg); color: var(--danger-text); }
+  .signal-badge.info { background: rgba(138,180,255,.14); color: #8ab4ff; }
   .signal-row { font-size: 13px; line-height: 1.5; margin: 6px 0; color: #cdd2d9; }
   .signal-row .k { color: #8ab4ff; font-weight: 500; display: block; font-size: 11px;
     text-transform: uppercase; letter-spacing: .04em; margin-bottom: 1px; }
@@ -696,6 +701,7 @@
 
   <script src="verification-parse.js"></script>
   <script src="overview-logic.js"></script>
+  <script src="stakes-view.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
