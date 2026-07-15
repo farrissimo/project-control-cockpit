@@ -235,6 +235,12 @@ function renderAssistant(text) {
   return html;
 }
 
+// A build session turning on is LIVE status, not conversation. It must never be persisted
+// into the transcript: a saved copy reloads on open and falsely claims build is active long
+// after the bounded session expired (metric-honesty fix, 2026-07-14). Kept as one constant so
+// the transient writer and the historical-cleanup filter below can never drift apart.
+const BUILD_ENABLED_NOTICE = 'Build session enabled for this chat — it can now run commands and write files. Send your next message.';
+
 // Create + show a bubble in the log (NO persistence).
 function addBubbleUI(cls, text) {
   const el = document.createElement('div');
@@ -794,7 +800,9 @@ async function resumeBuildForActiveChat() {
   if (!appr || !appr.ok) { await window.pcc.cancelJob(); loadTrust(); return; }
   await chatCmd('chatsUpdateMeta', { chatId: c.id, fields: { buildChat: true, buildName: name } });
   loadTrust();
-  await appendMessage('assistant', 'Build session enabled for this chat — it can now run commands and write files. Send your next message.', c.id);
+  // LIVE status, shown transiently and NEVER persisted: the authority chip is the source of
+  // truth. A saved banner would reload as a present-tense "build is on" claim after expiry.
+  addBubbleUI('assistant notice', BUILD_ENABLED_NOTICE);
 }
 {
   const authorityResumeBtn = document.getElementById('authority-resume');
@@ -945,7 +953,10 @@ function renderActiveChat() {
   log.innerHTML = '';
   const c = activeChat();
   if (!c || c.messages.length === 0) { showWelcome(); return; }
-  c.messages.forEach((m) => addBubble(m.cls, m.text, false));
+  // Skip any historically-persisted build-enabled banner (a live-status line mistakenly saved
+  // as a message): rendering it reads as a present-tense "build is on" claim even after the
+  // session expired. The authority chip is the honest live source of truth.
+  c.messages.forEach((m) => { if (m.text === BUILD_ENABLED_NOTICE) return; addBubble(m.cls, m.text, false); });
   scrollDown();
 }
 

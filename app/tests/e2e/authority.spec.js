@@ -101,3 +101,36 @@ test('a chat message during read_only cannot move authority into a build state',
     expect((await authority(page)).mode).toBe('read_only');
   });
 });
+
+// These are real page globals defined by renderer.js (a classic <script>), reached here
+// inside page.evaluate — declared so the no-undef tripwire knows they exist at runtime.
+/* global chats:writable, activeId:writable, renderActiveChat:readonly */
+
+// Metric-honesty fix (2026-07-14): a build-enabled status banner that was mistakenly
+// persisted into a transcript must NOT render as current status on reopen. It used to read
+// as a present-tense "build is on" claim even after the bounded session had expired; the
+// authority chip is the honest live source of truth.
+test('a persisted build-enabled status banner is not rendered as current status', async () => {
+  await withApp(async (page) => {
+    const result = await page.evaluate(() => {
+      const BANNER = 'Build session enabled for this chat — it can now run commands and write files. Send your next message.';
+      // Seed a chat whose transcript still contains the old, mistakenly-persisted banner.
+      chats = [{ id: 'banner-test', name: 'T', messages: [
+        { id: 'm1', cls: 'user', text: 'a genuine user question' },
+        { id: 'm2', cls: 'assistant', text: BANNER },
+        { id: 'm3', cls: 'assistant', text: 'a genuine assistant reply' },
+      ] }];
+      activeId = 'banner-test';
+      renderActiveChat();
+      const logText = document.getElementById('log').innerText;
+      return {
+        hasBanner: logText.includes(BANNER),
+        hasUser: logText.includes('a genuine user question'),
+        hasReal: logText.includes('a genuine assistant reply'),
+      };
+    });
+    expect(result.hasUser, 'normal user messages must still render').toBe(true);
+    expect(result.hasReal, 'normal assistant messages must still render').toBe(true);
+    expect(result.hasBanner, 'the stale build-status banner must NOT render on reopen').toBe(false);
+  });
+});
