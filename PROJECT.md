@@ -242,11 +242,20 @@ Honest boundary (adopted): governance holds for a COOPERATIVE worker; an ADVERSA
 access is NOT fully contained. Accepted residues (do NOT machine-fix): forged PASS; path-granularity
 gaming; unauthenticated bypass authz; merge-only changes; and — per ADR-0008 — `ci.yml` self-edit +
 admin bypass + a pre-compromised `main` (all owner-side, not code). Spec `docs/specs/governance-hardening.md`.
-- **Owner-side (only the owner can — the "last inch"):** **O1** confirm branch protection on `main` is
-  ON + required (the whole "un-bypassable" claim rests on it); **O2** enable required review on the
-  governor files (`.github/CODEOWNERS` is in place) — GPT's caveat: GitHub won't let an author approve
-  their own PR, so a single-account repo needs a second trusted reviewer identity or O2 blocks all
-  governor PRs. Neither is done yet.
+- **Owner-side (the "last inch"):** **O1 — DONE (confirmed 2026-07-15):** `main` is protected by the
+  GitHub ruleset `protect-main` (Active) — requires a PR + the `test` check, blocks force pushes +
+  deletions, and its **bypass list is empty** (no admin bypass; in the new Rulesets UI an empty bypass
+  list IS the equivalent of the legacy "do not allow bypassing"). So the "un-bypassable" precondition
+  is now real. **O2 — DELIBERATELY LEFT OFF (decision 2026-07-15; Claude + `codex exec` both advised
+  LEAVE_OFF, owner accepted):** required Code-Owner review would, in a single-account repo, block ALL
+  governor PRs (GitHub won't let an author approve their own PR) unless a second reviewer identity is
+  added; the only threat it closes (a hostile insider editing `ci.yml` to neuter the audit) is
+  effectively the owner/admin in a solo repo, which O2 can't constrain anyway. O1 + judge-from-main
+  (ADR-0008) + attributable git history already cover the realistic threats, so O2 is standing
+  friction for a theoretical gain (fails the measurably-improve test). `.github/CODEOWNERS` is in place
+  for a one-toggle enable. **Flip O2 ON if** another human gets write access, governor changes become
+  frequent/high-stakes, or dual-control evidence is ever required. This is an explicit left-disabled
+  decision, not an open to-do.
 - After hardening: re-measure with `scripts/audit-verification-trailers.ps1` (frame as *attestation*
   coverage, not "verified"). Optional ADR-0006 remainders: continuously-verified branch-protection
   detection, runtime-integrity mode, Known Residual Risks billboard (forged-PASS + the ADR-0008
