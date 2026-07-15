@@ -190,20 +190,36 @@ Shipped this phase (all on `main`, CI-green, independently Codex-verified):
   the un-bypassable proof stays CI + branch protection. This slice is itself T0 (touches hooks +
   schemas + the governor), so it was dogfooded: built → Codex-verified → a receipt written for its
   own diff → committed through the gate it installs.
+- **Governor slice 4 — durable, CI-audited trailer** (ADR-0007) — closes the gap the re-measure
+  exposed: the Gate's receipt is git-ignored/transient, so it left NO after-the-fact-checkable
+  trail (the baseline metric didn't move even for the Gate's own commit). Fix: a `commit-msg` hook
+  (`scripts/emit-verification-trailer.ps1`) records a **`Verified-Receipt: base=… diff_id=…
+  verdict=PASS|BYPASS verifier=…`** trailer IN the commit; `scripts/audit-verification-trailers.ps1`
+  re-derives each non-merge T0/T1 commit's diff_id (base→commit, ledger-excluded, `--no-renames`)
+  and FAILS any missing/mismatched — wired into CI (`ci.yml`, fetch-depth 0, over
+  `merge-base(origin/main,HEAD)..HEAD`) so a local `--no-verify` skip is caught server-side. Gate +
+  emitter share one validator (`scripts/lib/receipt-check.ps1`). The same audit script IS the
+  re-measurement tool. Spec: `docs/specs/verification-trailer.md`; tests:
+  `app/tests/scripts/verification-trailer.spec.js` (10). Codex (3 rounds) found + we fixed a
+  forgeable-BYPASS and a root-commit re-derivation bug; a **forged-PASS residue is owner-accepted**
+  (2026-07-15) as irreducible worker-attestation, not hardened (signing = over-governance). BYPASS
+  (durable proof) IS audited against the committed ledger; PASS (transient proof) can't be.
 
-**Baseline (measured 2026-07-14):** ~100% of recent non-trivial commits carry NO checkable,
-diff-bound verification receipt — the number the gate must move toward ~0% for T0/T1 changes,
-without adding friction to T2/T3/T4 work. Re-measure after the gate ships; revert if it doesn't move.
+**Baseline (measured 2026-07-14; re-measured 2026-07-15):** at baseline ~100% of recent non-trivial
+commits carried NO checkable, diff-bound verification receipt. The Gate alone did NOT move this (the
+receipt is git-ignored/transient — even the Gate's own verified commit read as 0 durably). The
+**trailer slice makes the proof durable + CI-enforced**, so the metric moves forward from here for
+T0/T1 commits made after it lands. Re-measure with `scripts/audit-verification-trailers.ps1`.
 
-**NEXT** (Gate built; verify → merge → then measure):
-- **Re-measure the baseline** now that the Gate exists: the success metric (owner's
-  measurable-change rule) is the ~100% skip rate for checkable, diff-bound verification receipts
-  moving toward ~0% for T0/T1 changes, WITHOUT adding friction to T2/T3/T4. If it doesn't move
-  the number, or it touches normal work, it reverts. (The Gate slice itself is the first data
-  point: it was T0 and shipped WITH a diff-bound receipt.)
+**NEXT** (trailer built + verified; finish the loop, then measure):
+- **Re-measure** with `scripts/audit-verification-trailers.ps1` once the trailer slice is on `main`:
+  from here, T0/T1 commits carry a durable, re-derivable `Verified-Receipt` trailer; the tool counts
+  verified/bypass/missing over any range. Historical commits (pre-trailer) legitimately show no
+  trailer — the number moves forward, not retroactively.
 - Then the remaining governor pieces from ADR-0006 are optional/deferred: continuously-verified
   branch-protection detection (needs authenticated GitHub read), the runtime-integrity mode, and
-  the Known Residual Risks billboard. None started; owner schedules.
+  the Known Residual Risks billboard (the forged-PASS residue above belongs on it). None started;
+  owner schedules.
 
 ## Pending / next (owner schedules)
 - **Packaging** is the last explicitly-deferred hardening slice not started
