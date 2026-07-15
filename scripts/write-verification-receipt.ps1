@@ -11,8 +11,11 @@
 
   HONEST SCOPE: the receipt is worker-attested. This script writes whatever verdict it is given.
   It raises the floor — a T0/T1 change can no longer be committed with NO diff-bound proof at all
-  — but the un-bypassable proof of "verified" remains CI + GitHub branch protection, not this
-  local artifact. See docs/specs/governor-gate.md "Honest residue."
+  — but the server-side proof of an *attested* change remains CI + GitHub branch protection, not
+  this local artifact. That backstop is un-bypassable ONLY IF branch protection is active + required
+  and work enters via PR (a direct push or a PR that weakens the audit escapes it). "Attested" means
+  a valid diff-bound CLAIM of verification, not proof it happened. See docs/specs/governor-gate.md
+  "Honest residue."
 
   Params:
     -Verifier <string>   (required) who produced the verdict, e.g. 'codex exec', 'owner', 'ci'.
@@ -79,7 +82,7 @@ $receipt = [ordered]@{
   verdict         = $Verdict
   expires_at      = $expiresAt
   baseline        = $Baseline
-  not_proven      = 'This binds a handed-in verdict to the exact diff. It does not itself prove the verification happened or was correct — the receipt is worker-attested; CI + branch protection are the un-bypassable proof.'
+  not_proven      = 'This binds a handed-in verdict to the exact diff (an attestation). It does not itself prove the verification happened or was correct — the receipt is worker-attested. CI + branch protection are the server-side backstop, un-bypassable only if branch protection is active + required and work enters via PR.'
 }
 
 $outPath = '.cockpit/evidence/verification-receipt.json'

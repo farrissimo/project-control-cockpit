@@ -155,7 +155,9 @@ Shipped this phase (all on `main`, CI-green, independently Codex-verified):
   detector "green-over-unchecked" cases (`90cd2e0`) and the lying authority banner
   (`d75eef3`). Most metrics were already honest/fail-closed.
 - **Branch protection ON** — `main` now requires the `test` CI check + a pull request (the
-  un-bypassable backstop). Direct pushes to `main` are rejected (verified live). `gh` CLI is
+  server-side backstop; un-bypassable only while branch protection stays active + required and work
+  enters via PR — the system does not self-verify this, so it is an owner-confirmed assumption, per
+  Governance Hardening O1). Direct pushes to `main` are rejected (verified live). `gh` CLI is
   authenticated on this machine; the worker opens+merges its own PRs through the CI gate
   (Option B — it cannot merge anything red).
 - **ADR-0006 (Accepted)** — the governor design: proportional, path-tagged gate; stakes as
@@ -187,7 +189,8 @@ Shipped this phase (all on `main`, CI-green, independently Codex-verified):
   (deterministic, no app launch). Spec: `docs/specs/governor-gate.md`; tests:
   `app/tests/scripts/governance-gate.spec.js` (11, all 8 ACs). Honest residue (surfaced, not
   hidden): the local receipt is worker-attested — it makes the silent-skip default impossible but
-  the un-bypassable proof stays CI + branch protection. This slice is itself T0 (touches hooks +
+  the server-side proof (un-bypassable only under the branch-protection preconditions in Governance
+  Hardening O1/O2) stays CI + branch protection. This slice is itself T0 (touches hooks +
   schemas + the governor), so it was dogfooded: built → Codex-verified → a receipt written for its
   own diff → committed through the gate it installs.
 - **Governor slice 4 — durable, CI-audited trailer** (ADR-0007) — closes the gap the re-measure

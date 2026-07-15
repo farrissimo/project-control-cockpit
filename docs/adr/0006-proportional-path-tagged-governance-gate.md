@@ -42,8 +42,10 @@ proportional to what a change touches:
    identity, carries per-check results + verifier identity + expiry, and is **invalidated
    by any subsequent relevant change** (yesterday's green can't be reused on today's diff).
 5. **Backstop already in place.** GitHub branch protection on `main` (enabled 2026-07-14,
-   requires the `test` check) is the un-bypassable server-side layer; the governor makes
-   the local/CI checks feeding it honest and proportional.
+   requires the `test` check) is the server-side layer — un-bypassable only if it stays active +
+   required and work enters via PR (owner-confirmed; the system does not self-verify it, see
+   Governance Hardening O1/O2); the governor makes the local/CI checks feeding it honest and
+   proportional.
 6. **Two modes.** *Change-governance* (classify the diff) **and** *runtime-integrity*
    (validate live `.cockpit` state + receipts), because canonical state can change outside
    a commit.

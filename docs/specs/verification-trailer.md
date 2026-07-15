@@ -1,11 +1,12 @@
-# Verification Trailer — durable, CI-audited proof of verification   (status: active)
+# Verification Trailer — durable, CI-audited attestation of verification   (status: active)
 
 ## Objective
 Make the Gate's verification proof **durable and after-the-fact-checkable** (ADR-0007). The Gate
 (ADR-0006) blocks a T0/T1 commit without a valid diff-bound receipt, but that receipt is
 git-ignored/transient — so history carries no checkable trace and the phase metric didn't move.
-Record the proof as a **git commit trailer** and **audit it in CI**, so a crucial commit provably
-carries its verification and a local skip is caught server-side.
+Record the proof as a **git commit trailer** and **audit it in CI**, so a crucial commit carries a
+durable, diff-bound **attestation** of verification (a valid CLAIM that verification happened, not
+proof that it did — see "Honest residue") and a local skip is caught server-side.
 
 ## Behavior
 1. **Emit** — `scripts/emit-verification-trailer.ps1` computes the change identity (shared
@@ -23,9 +24,14 @@ carries its verification and a local skip is caught server-side.
    `diff_id` **re-derives** from `git diff <base> <commit>` (ledger excluded) using the `base`
    **stored in the trailer** (never today's `main`). Reports per-commit PASS/FAIL + counts; exits
    non-zero if any T0/T1 commit lacks a valid trailer. T2/T3/T4 commits need none.
-4. **Enforce** — CI (`.github/workflows/ci.yml`) runs the audit over the PR range; a T0/T1 commit
-   missing/mismatched fails the `test` job, and branch protection blocks the merge. This is the
-   un-bypassable layer (`--no-verify` or a forged local trailer is caught in CI).
+4. **Enforce** — CI (`.github/workflows/ci.yml`) runs the audit over a range resolved by
+   `scripts/resolve-audit-range.ps1` (which fails closed rather than pass an empty range on a direct
+   push to the default branch — Governance Hardening T1); a T0/T1 commit that is missing a trailer,
+   or carries a malformed / mismatched / invalid-BYPASS one, fails the `test` job, and branch
+   protection blocks the merge. This catches a `--no-verify` skip and a tampered/mismatched trailer —
+   it does **not** catch a correctly-bound *fabricated PASS* (accepted residue below). It is the
+   server-side layer, un-bypassable ONLY IF branch protection is active + required, work enters via
+   PR, and the PR does not weaken the audit machinery.
 5. **Re-measure** — the same audit script run over history IS the durable-receipt measurement.
 
 ## Honest residue (not pretended solved)
@@ -53,7 +59,8 @@ rationale.
 - AC-4: THE audit SHALL PASS a T0/T1 commit whose trailer `diff_id` re-derives from
   `git diff <base> <commit>` (ledger excluded, base from the trailer).
 - AC-5: THE audit SHALL FAIL (non-zero) a T0/T1 commit with no trailer, or whose trailer `diff_id`
-  does not match the commit's actual diff (tampered code or forged trailer).
+  does not match the commit's actual diff (tampered code or a mismatched trailer). It does NOT catch
+  a correctly-bound fabricated PASS (accepted residue).
 - AC-6: THE audit SHALL require NO trailer for T2/T3/T4 commits, and SHALL skip merge commits.
 - AC-7: THE emitter and the Gate SHALL validate the receipt through one shared code path, and the
   emitter/audit SHALL compute `diff_id` through the shared identity helper, so a trailer written at
@@ -63,7 +70,7 @@ rationale.
 - `app/tests/scripts/verification-trailer.spec.js` — drives the real emitter, the commit-msg hook
   (via real `git commit`), and the audit in throwaway repos with the real manifest: AC-1 (trailer
   emitted for a verified T0 commit); AC-2 (no receipt → no trailer; T3 → no trailer); AC-3 (commit
-  injects once, idempotent on amend); AC-4 (audit passes a real verified commit); AC-5 (audit fails
+  injects once, idempotent on amend); AC-4 (audit passes a real attested commit); AC-5 (audit fails
   a T0 commit with no trailer, and one whose code was amended so diff_id no longer matches); AC-6
   (T3 commit needs none; merge commit skipped); AC-7 (a trailer written at commit time re-derives at
   audit time — the round trip).

@@ -18,7 +18,10 @@
   A used bypass is a durable, structured exception bound to the exact diff_id
   (.cockpit/state/governance-gate-exceptions.json) — never invisible; it is disclosed in the
   run receipt. `git commit --no-verify` remains an escape hatch, but GitHub branch protection
-  (CI + PR) is the un-bypassable server-side backstop no local bypass can escape.
+  (CI + PR) is the server-side backstop. That backstop is un-bypassable ONLY IF branch protection
+  is active + required, work enters via PR (not a direct push), and the PR does not weaken the audit
+  machinery — none of which this script self-verifies. Absent those, a determined local actor can
+  still escape.
 
   Exit: 0 = allow the commit, 1 = block. (A BLOCK is fail-closed; never allow on error.)
 
