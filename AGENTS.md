@@ -46,6 +46,13 @@ Before any choice about **architecture, scope, workflow, verification, or owner 
    actor) sections. `scripts/check-adr.ps1` must pass, or CI/pre-commit will block it.
 Don't make an architectural decision silently — record it, or you'll re-litigate it later.
 
+## Feature specs (before building non-trivial work)
+For a non-trivial feature or behavior change, write a one-screen spec first at
+`docs/specs/<feature>.md` using `docs/specs/README.md` — Objective / Behavior / Acceptance
+criteria in EARS form (`WHEN <trigger> THE SYSTEM SHALL <response>`). The rule: **every
+acceptance criterion needs a passing test** ("done" = all green). Skip the spec for trivial,
+reversible changes. Don't build a heavy spec→design→tasks pipeline.
+
 ## What "done" means here
 Nothing is done on a worker's word. See `docs/TRUST_CALIBRATION.md`: match the proof to the stakes —
 a real test / CI-green-on-the-exact-commit / a live check beats "two AIs agree." Risky/irreversible
