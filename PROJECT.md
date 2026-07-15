@@ -143,11 +143,27 @@ git-ignored) is a historical record, never re-read as live proof — run it agai
 current readiness. Accepted bloat is an exact-string, fail-closed, disclosed
 exception (.cockpit/state/release-gate-exceptions.json). Design: docs/HARDENING_RELEASE_GATE.md.
 
-## Current phase (2026-07-15): Governance Standardization
-Feature work is FROZEN on purpose. The mission: make PCC's safeguards fire predictably,
-proportionally, and self-enforcing — not prose an LLM can skip. Full assessment + plan:
-`docs/proposals/governance-standardization.md`. Importance classified by two independent
-blind passes (Claude + GPT), reconciled: `docs/proposals/stakes-classification-reconciled.md`.
+## Current phase (2026-07-15): Operational Trust Qualification & Adoption — the FINAL phase (ADR-0009)
+This is the project's culminating phase — the "final boss." Goal: prove PCC well enough that the owner
+**signs off he has the faith/trust to adopt it** as his standard way of building LLM projects (as a
+non-coder). Decision + rules: **`docs/adr/0009-trust-signoff-audit.md`**. The **standardization audit is
+ONE workstream** (exhaustive categories, canonical principles yardstick, risk-based depth, per-practice
+grid of machinery-enforced / evidence-leaving / prose-only + proof + benefit + gaps); the phase **also**
+proves PCC end-to-end on a real, **adversarially-tested spawned-project build** + real adoption
+(package → install → use outside the checkout). Two sign-off gates: a proven owner-facing report **and**
+that live build; the trust claim stays **bounded** (tested workflows + documented boundaries + accepted
+residues), never "any project." Owner signs off only on outcomes he can judge; Claude + Codex own
+technical calibration; GPT secondary verification fires on the defined trigger.
+
+**First category = Communication contracts** (`docs/specs/communication-contracts.md`, Proposed/design):
+fixed template per channel; the immediate payoff the owner asked for is the **owner milestone-update
+template** made real (structure→machinery generator). **Next chat: read ADR-0009 + the comms spec + the
+`project_trust_signoff_audit_phase` memory, then lead with the milestone-update template.**
+
+### Predecessor phase (COMPLETE): Governance Standardization
+Made PCC's safeguards fire predictably, proportionally, self-enforcing — not prose an LLM can skip.
+Full assessment: `docs/proposals/governance-standardization.md`. All slices shipped (below), incl.
+Governance Hardening (A/A.1/B, ADR-0006/0007/0008). This is now history; the details remain for reference.
 
 Shipped this phase (all on `main`, CI-green, independently Codex-verified):
 - **Metric-honesty audit** (`docs/proposals/metric-honesty-audit.md`) — every visible app
