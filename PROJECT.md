@@ -1,7 +1,7 @@
 # PROJECT.md — current project brief
 
 Read this first. Always-current summary so a new session starts fully oriented,
-with no re-briefing from the owner. (Last refreshed 2026-07-12.) This file records
+with no re-briefing from the owner. (Last refreshed 2026-07-15.) This file records
 DURABLE state only. The exact current commit SHA, whether local == origin/main,
 whether the working tree is clean, and the CI verdict are LIVE facts — check them
 directly every session; never trust a SHA or CI result written in this file as
@@ -142,6 +142,39 @@ UNKNOWN, never PASS. Fresh-run only: the receipt (`.cockpit/evidence/release-gat
 git-ignored) is a historical record, never re-read as live proof — run it again for
 current readiness. Accepted bloat is an exact-string, fail-closed, disclosed
 exception (.cockpit/state/release-gate-exceptions.json). Design: docs/HARDENING_RELEASE_GATE.md.
+
+## Current phase (2026-07-15): Governance Standardization
+Feature work is FROZEN on purpose. The mission: make PCC's safeguards fire predictably,
+proportionally, and self-enforcing — not prose an LLM can skip. Full assessment + plan:
+`docs/proposals/governance-standardization.md`. Importance classified by two independent
+blind passes (Claude + GPT), reconciled: `docs/proposals/stakes-classification-reconciled.md`.
+
+Shipped this phase (all on `main`, CI-green, independently Codex-verified):
+- **Metric-honesty audit** (`docs/proposals/metric-honesty-audit.md`) — every visible app
+  metric classified backed / declared / fakeable. All 3 false-green soft-spots FIXED: the
+  detector "green-over-unchecked" cases (`90cd2e0`) and the lying authority banner
+  (`d75eef3`). Most metrics were already honest/fail-closed.
+- **Branch protection ON** — `main` now requires the `test` CI check + a pull request (the
+  un-bypassable backstop). Direct pushes to `main` are rejected (verified live). `gh` CLI is
+  authenticated on this machine; the worker opens+merges its own PRs through the CI gate
+  (Option B — it cannot merge anything red).
+- **ADR-0006 (Accepted)** — the governor design: proportional, path-tagged gate; stakes as
+  data; surface-everywhere + gate-the-risky; receipt-as-contract; dual change/runtime modes;
+  anti-CCB leanness rule + a measurable kill-switch.
+- **Governor slice 1** (`0c38168`) — the stakes manifest (`.cockpit/state/stakes-manifest.json`,
+  path globs→tiers T0..T4 + escalation rules) + the deterministic classifier
+  (`scripts/classify-stakes.ps1`, 13 tests). It CLASSIFIES a change's tier from WHICH files it
+  touches (a git fact, ungameable by self-rating). It does NOT gate yet.
+
+**Baseline (measured 2026-07-14):** ~100% of recent non-trivial commits carry NO checkable,
+diff-bound verification receipt — the number the gate must move toward ~0% for T0/T1 changes,
+without adding friction to T2/T3/T4 work. Re-measure after the gate ships; revert if it doesn't move.
+
+**NEXT slices** (each its own change: build → test → codex-verify → CI-gate → merge):
+- **Surface** — show the classifier's verdict live in the app while working (never blocks).
+  *Recommended next — lower-risk; lets the owner SEE the classifier before it has teeth.*
+- **Gate** — at commit, block ONLY a T0/T1 change missing its required proof (the teeth that
+  move the baseline). Needs the receipt contract (ADR-0006 §10.1).
 
 ## Pending / next (owner schedules)
 - **Packaging** is the last explicitly-deferred hardening slice not started
