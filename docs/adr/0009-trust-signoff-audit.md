@@ -69,9 +69,12 @@ adversarially-tested spawned project and can actually be *used*. Locked rules:
    verification, recovery from damage, stale/false evidence, and a parity failure — each shown to fail
    safe and stay owner-visible; **a meaningful real feature built through the governed loop** (not a
    hello-world); and **package → install → launch → use the result OUTSIDE the source checkout** (real
-   adoption, not a dev-repo demo). If only the happy path is ever demonstrated, the trust claim is
-   **narrowed honestly** to "trust demonstrated for the tested workflows and stated limits," not "any
-   project." The owner's true sign-off waits for (b) at that bar. (Strengthened per GPT, 2026-07-15.)
+   adoption, not a dev-repo demo). **The trust claim stays bounded even after full qualification** — no
+   finite scenario set can prove "any project," so the final claim is always "**approved for the tested
+   workflows, documented boundaries, and accepted residual risks,**" never "any project" (claiming
+   universal trust would be the fake-green this phase exists to kill). The adversarial qualification
+   *widens* the demonstrated boundary; it never removes it. The owner's true sign-off waits for (b) at
+   that bar. (Strengthened per GPT secondary verification, 2026-07-15.)
 
 ### Canonical principles yardstick (the constitution every practice is graded against)
 1. Reduce owner babysitting (#1; everything else justifies against it)
