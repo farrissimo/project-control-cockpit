@@ -1,0 +1,121 @@
+{
+  "schema": "stakes-manifest/v1",
+  "purpose": "Declares how important each part of the repo is, as DATA, so a change's required proof is decided by WHICH FILES it touches (a git fact) — not by an LLM's self-rating. Seeded from two independent, blind importance passes, reconciled (docs/proposals/stakes-classification-reconciled.md) under ADR-0006. Owner-legible on purpose: if you can't read this and understand it, it's too complex. Tiers run T0 (most critical) to T4 (noise). A path's tier is the HIGHEST tier whose globs it matches; unmatched paths get default_tier. Escalation rules below can raise a change's tier regardless of path.",
+  "default_tier": "T3",
+  "tiers": {
+    "T0": {
+      "name": "constitutional / trust root",
+      "why": "Decides what is true, what an LLM may do, whether work is accepted as proven, whether durable data survives, or whether the safeguards themselves run. A silent defect here is the worst case. Full proof required.",
+      "globs": [
+        ".cockpit/state/project-state.json",
+        ".cockpit/state/task-state.json",
+        ".cockpit/state/project-id.json",
+        ".cockpit/result/verification-result.json",
+        "app/state/atomic-store.js",
+        "app/state/chat-store.js",
+        "app/state/chat-service.js",
+        "app/state/chat-bootstrap.js",
+        "app/state/chat-migrate.js",
+        "app/ci-status.js",
+        "app/renderer/verification-parse.js",
+        "app/authority-logic.js",
+        "app/authority-store.js",
+        "app/tools/guarded-test.js",
+        "scripts/lib/atomic-write.ps1",
+        "scripts/lib/state-journal.ps1",
+        "scripts/advance-cockpit-state.ps1",
+        "scripts/finalize-worker-handback.ps1",
+        "scripts/lifecycle-advance.ps1",
+        "scripts/ci-status.ps1",
+        "scripts/verify-evidence.ps1",
+        "scripts/run-release-gate.ps1",
+        "scripts/run-guarded.ps1",
+        "scripts/check-adr.ps1",
+        "scripts/check-schemas.ps1",
+        "scripts/backup-protected-files.ps1",
+        "scripts/classify-stakes.ps1",
+        ".cockpit/state/stakes-manifest.json",
+        ".cockpit/state/high-stakes-rules.json",
+        ".cockpit/state/app-build-scope.json",
+        "schemas/project-state.schema.json",
+        "schemas/task-state.schema.json",
+        "schemas/verification-result.schema.json",
+        "schemas/release-gate.schema.json",
+        ".github/workflows/**",
+        ".githooks/**",
+        "app/package-lock.json",
+        "docs/DECISION_AND_CHANGE_STANDARD.md",
+        "docs/ENGINEERING_ASSURANCE_PLAN.md"
+      ]
+    },
+    "T1": {
+      "name": "integrity-critical runtime",
+      "why": "Operates important behavior — the app hub, canonical writers, propagation to new projects, the remaining schemas — but is usually downstream of the T0 trust roots. Strong proof required.",
+      "globs": [
+        "app/main.js",
+        "app/preload.js",
+        "app/state/mutex.js",
+        "scripts/bootstrap-project.ps1",
+        "scripts/validate-cockpit-state.ps1",
+        "scripts/log-event.ps1",
+        "scripts/run-mutation-proof.ps1",
+        "scripts/run-failure-injection.ps1",
+        "app/package.json",
+        "app/tests/helpers/**",
+        "schemas/**"
+      ]
+    },
+    "T2": {
+      "name": "control-surface & binding policy",
+      "why": "Shapes behavior and owner decisions — the trust displays, detectors, health report, agent instructions, and binding architecture/policy docs — but is not the final durable or execution authority. Moderate proof.",
+      "globs": [
+        "app/renderer/renderer.js",
+        "app/renderer/overview-logic.js",
+        "scripts/detect-*.ps1",
+        "scripts/doctor.ps1",
+        "scripts/lifecycle-status.ps1",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "docs/STATE_MODEL.md",
+        "docs/ARCHITECTURE.md",
+        "docs/REPO_GOVERNANCE.md",
+        "docs/TRUST_CALIBRATION.md",
+        "docs/EXECUTION_AUTHORITY_MODEL.md",
+        "docs/HANDOFF_PACKET_SPEC.md",
+        "docs/BRR_POLICY.md",
+        "docs/BACKUP_POLICY.md",
+        "docs/adr/**",
+        "docs/specs/**"
+      ]
+    },
+    "T4": {
+      "name": "informational / low-consequence",
+      "why": "Preserves thought or polish but does not determine runtime behavior, canonical state, or acceptance. Near-frictionless by design. (Destructive edits to historical evidence still escalate — see rules.)",
+      "globs": [
+        "backlog/**",
+        "docs/proposals/**",
+        "docs/brainstorms/**",
+        "archive/**"
+      ]
+    }
+  },
+  "escalation_rules": {
+    "note": "These raise a change's tier regardless of the path tiers above. They exist because path alone does not fully determine risk (per the second-opinion review, ADR-0006 / stakes-classification-reconciled.md). Each names a minimum tier it forces.",
+    "rules": [
+      { "id": "delete_or_rename", "min_tier": "T1", "when": "the change deletes or renames any tracked file", "why": "removal is easy to miss and hard to undo" },
+      { "id": "dependency_or_lockfile", "min_tier": "T1", "when": "a dependency manifest or lockfile changes", "globs": ["**/package.json", "**/package-lock.json"], "why": "supply-chain / build surface" },
+      { "id": "governor_self_edit", "min_tier": "T0", "when": "the stakes manifest or the classifier itself changes", "globs": [".cockpit/state/stakes-manifest.json", "scripts/classify-stakes.ps1"], "why": "the governed entity must never quietly downgrade its own governor" },
+      { "id": "ci_or_hooks", "min_tier": "T0", "when": "CI, git hooks, or the canonical test entrypoint changes", "globs": [".github/**", ".githooks/**", "app/tools/guarded-test.js"], "why": "changes whether defects are caught at all" },
+      { "id": "schema_change", "min_tier": "T1", "when": "any schema changes", "globs": ["schemas/**"], "why": "silently broadens accepted inputs / evidence" },
+      { "id": "weakened_tests", "min_tier": "T1", "when": "a test file is deleted, or its assertions are materially reduced", "globs": ["**/tests/**", "**/*.spec.js", "**/*.test.js"], "why": "weakening the proof is as consequential as changing production code" },
+      { "id": "unknown_new_path", "min_tier": "T3", "when": "a new, unclassified file is added", "why": "an unknown new path uses the default tier, NEVER the noise tier" },
+      { "id": "large_cross_cutting", "min_tier": "T1", "when": "the change touches more than 25 files OR 3+ top-level areas (app/, scripts/, schemas/, .cockpit/, docs/)", "why": "broad blast radius" },
+      { "id": "destructive_history_edit", "min_tier": "T2", "when": "historical/archived evidence is deleted or rewritten rather than appended to", "globs": ["archive/**", "docs/DECISIONS.md", ".cockpit/result/archive/**"], "why": "changes the forensic record" }
+    ]
+  },
+  "notes": {
+    "mixed_diff": "A change spanning multiple tiers takes the HIGHEST tier among the files it touches (and any escalation).",
+    "extensibility": "Spawned projects add their own project-specific T0/T1 paths via a per-project extension manifest (ADR-0006); unknown project paths stay at default_tier, never trivial.",
+    "granularity": "This is FILE-level on purpose (the safe, ungameable-by-self-rating first cut). Finer, function-level tiering is deferred until a real miss proves it necessary (e.g. app/main.js is one big file mixing T1 glue with T0-adjacent authority/state code)."
+  }
+}
