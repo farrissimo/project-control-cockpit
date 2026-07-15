@@ -34,25 +34,13 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 . (Join-Path $PSScriptRoot 'lib/change-identity.ps1')
+. (Join-Path $PSScriptRoot 'lib/receipt-check.ps1')
 
 $rank = @{ 'T0' = 4; 'T1' = 3; 'T2' = 2; 'T3' = 1; 'T4' = 0; 'UNKNOWN' = 5 }
 $receiptPath = '.cockpit/evidence/verification-receipt.json'
 $receiptSchema = 'schemas/verification-receipt.schema.json'
 $exceptionsPath = '.cockpit/state/governance-gate-exceptions.json'
 $runReceiptPath = '.cockpit/evidence/governance-gate.json'
-
-# Expiry compared as UTC INSTANTS. ConvertFrom-Json turns an ISO string into a UTC-kind
-# [datetime]; stringifying then re-parsing it would silently reinterpret it as local time and
-# shift the instant. So compare the parsed value directly against UtcNow instead. A PRESENT but
-# unparseable expires_at is treated as EXPIRED (fail closed) — never accepted as "no expiry".
-function Test-TimestampExpired($val) {
-  if ($null -eq $val -or "$val".Trim() -eq '') { return $false }  # absent => no expiry
-  try {
-    if ($val -is [datetime]) { return ($val.ToUniversalTime() -lt [datetime]::UtcNow) }
-    $eo = [datetimeoffset]::Parse([string]$val, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal)
-    return ($eo.UtcDateTime -lt [datetime]::UtcNow)
-  } catch { return $true }  # present but garbage => fail closed (treat as expired)
-}
 
 $id = Get-ChangeIdentity -Baseline $Baseline
 
@@ -65,46 +53,9 @@ $reasons = @()
 $verdict = $null      # 'PASS' | 'BLOCK'
 $receiptState = 'not_required'
 
-function Read-Receipt {
-  if (-not (Test-Path -LiteralPath $receiptPath -PathType Leaf)) { return @{ ok = $false; reason = "no verification receipt at $receiptPath"; state = 'missing' } }
-  $schemaValid = $false
-  try { $schemaValid = Test-Json -Path $receiptPath -SchemaFile $receiptSchema -ErrorAction Stop } catch { $schemaValid = $false }
-  if (-not $schemaValid) { return @{ ok = $false; reason = 'receipt does not match verification-receipt.schema.json'; state = 'schema_invalid' } }
-  $r = $null
-  try { $r = Get-Content -Raw -LiteralPath $receiptPath | ConvertFrom-Json } catch { return @{ ok = $false; reason = 'receipt is unreadable JSON'; state = 'unreadable' } }
-
-  if ("$($r.diff_id)" -ne "$($id.diff_id)") { return @{ ok = $false; reason = "receipt diff_id does not match this change (stale — written for a different diff)"; state = 'stale_diff'; receipt = $r } }
-  if ("$($r.base)" -ne "$($id.base)") { return @{ ok = $false; reason = 'receipt base commit does not match this change'; state = 'stale_base'; receipt = $r } }
-  if ("$($r.head)" -ne "$($id.head)") { return @{ ok = $false; reason = 'receipt head commit does not match this change'; state = 'stale_head'; receipt = $r } }
-  if ("$($r.verdict)" -ne 'PASS') { return @{ ok = $false; reason = "receipt verdict is '$($r.verdict)', not PASS"; state = 'not_pass'; receipt = $r } }
-  if ([string]::IsNullOrWhiteSpace("$($r.verifier)")) { return @{ ok = $false; reason = 'receipt has no verifier identity'; state = 'no_verifier'; receipt = $r } }
-  if (Test-TimestampExpired $r.expires_at) { return @{ ok = $false; reason = "receipt expired at $($r.expires_at)"; state = 'expired'; receipt = $r } }
-  $rTierRank = if ($rank.ContainsKey("$($r.tier)")) { $rank["$($r.tier)"] } else { -1 }
-  $curRank = $rank[$tier]
-  if ($rTierRank -lt $curRank) { return @{ ok = $false; reason = "receipt covers tier $($r.tier), below this change's tier $tier"; state = 'lower_tier'; receipt = $r } }
-  return @{ ok = $true; reason = "valid receipt: verifier '$($r.verifier)' PASS, bound to this diff"; state = 'valid'; receipt = $r }
-}
-
-# --- exact-diff_id bypass (loud, disclosed; never a silent escape) ---
-# The ledger is read from the STAGED INDEX (`git show :<path>`), NOT the working tree — so a bypass
-# only counts once it is staged (i.e. committed with the change), landing it in git history where
-# it is auditable. An unstaged/untracked ledger edit returns the committed version (or nothing) and
-# grants no bypass. This closes the hole where a working-tree-only ledger could authorize invisibly.
+# --- exact-diff_id bypass (loud, disclosed; never a silent escape). Shared lookup: reads the ledger
+# from the STAGED INDEX only, so a bypass counts only once committed (auditable). ---
 $exceptionApplied = $null
-function Find-Exception {
-  $raw = & git show ":$exceptionsPath" 2>$null
-  if ($LASTEXITCODE -ne 0 -or -not $raw) { return $null }
-  $ex = $null
-  try { $ex = ($raw -join "`n") | ConvertFrom-Json } catch { return $null }
-  if (-not $ex -or -not $ex.exceptions) { return $null }
-  foreach ($e in @($ex.exceptions)) {
-    if ("$($e.diff_id)" -eq "$($id.diff_id)") {
-      if (Test-TimestampExpired $e.expires_at) { continue }
-      return $e
-    }
-  }
-  return $null
-}
 
 # --- decide ---
 if ($tier -eq 'NONE') {
@@ -117,7 +68,7 @@ if ($tier -eq 'NONE') {
   $verdict = 'PASS'; $receiptState = 'not_required'
   $reasons += "tier $tier — not gated at commit (proportional); normal proof is enforced by CI + PR"
 } else {
-  $rc = Read-Receipt
+  $rc = Test-ReceiptValid -Id $id -Tier $tier -ReceiptPath $receiptPath -SchemaPath $receiptSchema
   $receiptState = $rc.state
   if ($rc.ok) { $verdict = 'PASS'; $reasons += $rc.reason }
   else { $verdict = 'BLOCK'; $reasons += "T0/T1 change without valid proof: $($rc.reason)" }
@@ -125,7 +76,7 @@ if ($tier -eq 'NONE') {
 
 # a bypass can only turn a BLOCK into an allow, and only for THIS exact diff
 if ($verdict -eq 'BLOCK') {
-  $exceptionApplied = Find-Exception
+  $exceptionApplied = Get-StagedBypass -DiffId $id.diff_id -LedgerPath $exceptionsPath
   if ($exceptionApplied) {
     $verdict = 'PASS'
     $reasons += "BYPASS APPLIED (disclosed): $($exceptionApplied.reason) — authorized_by '$($exceptionApplied.authorized_by)'"

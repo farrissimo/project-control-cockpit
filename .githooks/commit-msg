@@ -1,0 +1,30 @@
+#!/bin/sh
+# PCC commit-msg (ADR-0007). Record the durable verification trailer IN the commit message so the
+# proof travels with history and the CI audit can re-derive it. Fast, deterministic, NO app launch.
+#
+# scripts/emit-verification-trailer.ps1 prints a `Verified-Receipt:` line for a crucial (T0/T1)
+# staged change that has a valid receipt (or a disclosed bypass), and nothing otherwise. It reuses
+# the SAME authorities as the pre-commit gate, so the trailer appears exactly when the gate allowed
+# the commit. Idempotent: if the message already carries a Verified-Receipt trailer (e.g. amend/
+# re-run), we don't add a second one.
+#
+# This NEVER blocks a commit — it only annotates. The gate (pre-commit) is what blocks.
+
+MSG_FILE="$1"
+[ -z "$MSG_FILE" ] && exit 0
+
+if grep -qi '^Verified-Receipt:' "$MSG_FILE" 2>/dev/null; then
+  exit 0
+fi
+
+if command -v pwsh >/dev/null 2>&1; then
+  TRAILER=$(pwsh -NoProfile -File scripts/emit-verification-trailer.ps1 2>/dev/null | tr -d '\r')
+  if [ -n "$TRAILER" ]; then
+    # Ensure a blank line separates the trailer block from the body, per git trailer convention.
+    if [ -n "$(tail -c1 "$MSG_FILE" 2>/dev/null)" ]; then
+      printf '\n' >> "$MSG_FILE"
+    fi
+    printf '\n%s\n' "$TRAILER" >> "$MSG_FILE"
+  fi
+fi
+exit 0

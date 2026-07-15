@@ -38,6 +38,35 @@ function Get-Sha256Hex([string]$text) {
   } finally { $sha.Dispose() }
 }
 
+# The ONE path excluded from diff_id: the bypass ledger (so a staged bypass can name its own diff).
+# Shared by the live (index) computation and the audit (commit-range) re-derivation so they agree.
+$PCC_LEDGER_EXCLUDE = ':(exclude).cockpit/state/governance-gate-exceptions.json'
+
+# The ONE diff_id formula — base + the change's diff text. Everything that computes a diff_id
+# (Get-ChangeIdentity at commit time, Get-CommitDiffId at audit time) funnels through here, so a
+# trailer written at commit time always re-derives at audit time.
+function Get-DiffIdFromText([string]$base, [string]$diffText) {
+  return Get-Sha256Hex ("BASE=$base`n---diff---`n$diffText")
+}
+
+# Re-derive a committed change's diff_id: base -> commit tree, ledger excluded. base MUST come from
+# the commit's own trailer (never recomputed from today's main). This is the audit-time twin of
+# Get-ChangeIdentity's index computation; base->commit-tree equals base->index at the moment the
+# index became that commit, so the two produce identical text (and identical diff_id).
+function Get-CommitDiffId([string]$base, [string]$commit) {
+  # --no-renames pins the diff so rename detection (diff.renames config, which varies by
+  # environment) can never change the text — the audit must re-derive the SAME bytes CI-side.
+  # A root/first commit stores base = the null-sha (40 zeros); at commit time its diff was
+  # `git diff --cached` (index vs the EMPTY tree). The literal null-sha is not a real tree, so
+  # diff against git's empty-tree object instead — proven byte-identical to the --cached form —
+  # while still HASHING with the original base string so it matches what the emitter stored.
+  $EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
+  $NULL_SHA = '0000000000000000000000000000000000000000'
+  $diffBase = if ($base -eq $NULL_SHA) { $EMPTY_TREE } else { $base }
+  $t = (& git diff --no-renames $diffBase $commit -- . $PCC_LEDGER_EXCLUDE 2>$null) -join "`n"
+  return Get-DiffIdFromText $base $t
+}
+
 function Get-ChangeIdentity {
   param([string]$Baseline = 'main')
 
@@ -81,10 +110,11 @@ function Get-ChangeIdentity {
   # STAGED to count (so it lands in git history — auditable, never invisible), yet staging it must
   # not itself change the diff_id it names. The ledger is the ONLY excluded path, and any real
   # ledger edit is still classified T0 (governor_self_edit) so the change still requires proof.
-  $exclude = ':(exclude).cockpit/state/governance-gate-exceptions.json'
-  $diffArgs = @('diff', '--cached')
+  # --no-renames pins the diff so rename detection (diff.renames config) can never change the text;
+  # the CI audit re-derives from `git diff --no-renames <base> <commit>` and must get the same bytes.
+  $diffArgs = @('diff', '--cached', '--no-renames')
   if ($base) { $diffArgs += $base }
-  $diffArgs += @('--', '.', $exclude)
+  $diffArgs += @('--', '.', $PCC_LEDGER_EXCLUDE)
   $diffText = (& git @diffArgs 2>$null) -join "`n"
 
   # Emit git's null-object-id (40 zeros — its own convention for "no commit") instead of an empty
@@ -94,7 +124,7 @@ function Get-ChangeIdentity {
   $NULL_SHA = '0000000000000000000000000000000000000000'
   $outBase = if ($base) { $base } else { $NULL_SHA }
   $outHead = if ($head) { $head } else { $NULL_SHA }
-  $diffId = Get-Sha256Hex ("BASE=$outBase`n---diff---`n$diffText")
+  $diffId = Get-DiffIdFromText $outBase $diffText
 
   # Anything present in the working tree but not staged into this commit (informational honesty).
   $porcelain = @(& git status --porcelain 2>$null | Where-Object { $_ -and $_.Length -ge 2 })

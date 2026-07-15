@@ -37,6 +37,8 @@ jobs:
       # bumps the SHA + comment together when a new release lands.
       - name: Check out the repo
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 (v4.3.1)
+        with:
+          fetch-depth: 0   # full history: the trailer audit re-derives each commit's diff vs its recorded base
 
       # Decision records must match the locked MADR standard (front matter + the five
       # required sections incl. Confirmation + Engagement). Fast, deterministic, no deps —
@@ -44,6 +46,19 @@ jobs:
       - name: Validate ADR format (docs/adr/*.md)
         working-directory: ${{ github.workspace }}   # repo-root script; job default is app/
         run: pwsh -NoProfile -File scripts/check-adr.ps1
+
+      # Governor durability (ADR-0007): every NON-MERGE tagged-crucial (T0/T1) commit new on this
+      # branch MUST carry a valid, diff-bound `Verified-Receipt` trailer whose diff_id re-derives
+      # from the commit's actual content. Catches a local `--no-verify` skip or a forged trailer —
+      # the un-bypassable, server-side half of the gate. T2/T3/T4 commits need none. Fast, no deps.
+      - name: Audit verification trailers (T0/T1 commits carry durable proof)
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main || git fetch --no-tags origin main
+          base=$(git merge-base origin/main HEAD)
+          echo "auditing $base..HEAD"
+          pwsh -NoProfile -File scripts/audit-verification-trailers.ps1 -Range "$base..HEAD"
 
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 (v4.4.0)

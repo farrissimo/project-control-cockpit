@@ -50,6 +50,7 @@ function makeRepo() {
   copy('scripts/write-verification-receipt.ps1');
   copy('scripts/classify-stakes.ps1');
   copy('scripts/lib/change-identity.ps1');
+  copy('scripts/lib/receipt-check.ps1');
   copy('scripts/lib/atomic-write.ps1');
   copy('schemas/verification-receipt.schema.json');
   copy('.cockpit/state/stakes-manifest.json');
@@ -233,6 +234,7 @@ test('empty-history repo: a first-commit T0 change can still be verified (receip
     copy('scripts/write-verification-receipt.ps1');
     copy('scripts/classify-stakes.ps1');
     copy('scripts/lib/change-identity.ps1');
+    copy('scripts/lib/receipt-check.ps1');
     copy('scripts/lib/atomic-write.ps1');
     copy('schemas/verification-receipt.schema.json');
     copy('.cockpit/state/stakes-manifest.json');
