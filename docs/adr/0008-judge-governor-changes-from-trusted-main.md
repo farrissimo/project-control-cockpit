@@ -31,13 +31,22 @@ gap as code can in a single-owner repo, and states plainly what only an owner-si
 1. In CI, after fetching `origin/main`, materialise `main`'s governor via
    `git worktree add --detach <trusted> origin/main` (a worktree shares the object store, so it can
    see the PR's fetched commits while its *files* are `main`'s).
-2. Run the range resolver and the trailer audit **from `<trusted>`**:
-   `<trusted>/scripts/{resolve-audit-range,audit-verification-trailers}.ps1`, whose dot-sourced libs,
-   the classifier they invoke, and the manifest they read all come from `<trusted>` (= `main`). The
-   resolver is passed the PR's **real head SHA** via `-Head` — on a `pull_request` event `github.sha`
-   is the ephemeral merge commit, so CI passes `github.event.pull_request.head.sha` (and `github.sha`
-   on a push) — so the range is anchored to the PR's own commits regardless of the worktree's HEAD.
-   Only the **commit objects being judged** come from the PR.
+2. Run the trailer audit **from `<trusted>`**: `<trusted>/scripts/audit-verification-trailers.ps1`,
+   whose dot-sourced libs, the classifier it invokes, and the manifest it reads all come from
+   `<trusted>` (= `main`). Only the **commit objects being judged** come from the PR.
+3. Compute the audit **range** in **trusted CI bash** from GitHub's event context, using EXPLICIT
+   SHAs, and pass it to the auditor's stable `-Range` interface. The range is *what to judge*, not
+   *how*; its inputs (`github.sha`, `github.event.before`, `github.event.pull_request.head.sha`,
+   `github.ref_name`) are set by GitHub, not by any repo file, so a PR cannot forge them. On a
+   `pull_request` event `github.sha` is the ephemeral merge commit, so the PR's **real head SHA** is
+   `github.event.pull_request.head.sha` (and `github.sha` on a push); the range is
+   `merge-base(origin/main, head)..head`, or the push's `before..sha` on a direct push to the default
+   branch (**fail closed** on an empty range). Computing the range in bash — rather than running a
+   resolver script from the worktree — is deliberate: a detached worktree's literal `HEAD` resolves
+   to `main` (an empty range / vacuous pass), and running the resolver from the PR checkout would let
+   a PR narrow its own audit range. The stable `-Range` interface also avoids a **bootstrap** where a
+   resolver-interface change could not judge its own introducing PR. `scripts/resolve-audit-range.ps1`
+   remains the unit-tested reference for the same range rules.
 3. A change that *improves* the governor therefore takes effect **only after it is itself merged** —
    judged on the way in by the prior, trusted copy. This is the correct, conservative direction: the
    governor can be strengthened, but a PR cannot install a weaker judge and be waved through by it.

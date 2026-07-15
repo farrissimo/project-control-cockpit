@@ -56,18 +56,24 @@ states the cause and the escape (`git commit --no-verify`, which CI still audits
 CI checked out the PR branch and ran **that branch's** copy of the classifier / auditor / libs /
 manifest / resolver — so a PR could weaken the judge and have the weakened judge approve itself.
 The CI audit step now:
-- fetches `origin/main` and materialises it via `git worktree add --detach <trusted> origin/main` (a
-  worktree shares the object store, so `main`'s scripts can inspect the PR's fetched commits);
-- runs the **resolver from `<trusted>`**, passing `-Head <the PR's real head SHA>` so the range is
-  anchored to the PR's own commits by explicit SHA (on a `pull_request` event `github.sha` is the
-  ephemeral merge commit, so CI passes `github.event.pull_request.head.sha`; `github.sha` on a push).
-  Literal `HEAD` in the worktree would resolve to `main`;
-- runs the **auditor from `<trusted>`** over that range — its libs, the classifier it invokes, and the
-  manifest it reads all come from `main`. Only the commit objects being judged come from the PR.
+- computes the audit **range** in trusted CI bash from GitHub's event context, using EXPLICIT SHAs
+  (`merge-base(origin/main, head)..head`, or `before..sha` on a direct push to the default branch —
+  fail closed on an empty range). The PR's real head SHA is `github.event.pull_request.head.sha` on a
+  `pull_request` (`github.sha` is the ephemeral merge commit there) and `github.sha` on a push. The
+  range inputs come from GitHub, not any repo file, so a PR cannot forge them;
+- materialises `main` via `git worktree add --detach <trusted> origin/main` (a worktree shares the
+  object store, so `main`'s scripts can inspect the PR's fetched commits);
+- runs the **auditor from `<trusted>`** over that explicit-SHA range (via its stable `-Range`
+  interface) — its libs, the classifier it invokes, and the manifest it reads all come from `main`.
+  Only the commit objects being judged come from the PR.
 
-A governor *improvement* therefore takes effect only after it is itself merged (judged on the way in
-by the prior trusted copy). **Honest limit:** `ci.yml` itself still runs from the PR branch, so a PR
-that edits `ci.yml` is closed only by owner-side required review (O2) + branch protection (O1); the
+Computing the range in bash (rather than running a resolver from the worktree) is deliberate: a
+detached worktree's literal `HEAD` resolves to `main` (an empty range / vacuous pass — caught on the
+first live CI run), and running the resolver from the PR checkout would let a PR narrow its own audit
+range. `scripts/resolve-audit-range.ps1` stays the unit-tested reference for the same range rules. A
+governor *improvement* takes effect only after it is itself merged (judged on the way in by the prior
+trusted copy). **Honest limit:** `ci.yml` itself still runs from the PR branch, so a PR that edits
+`ci.yml` is closed only by owner-side required review (O2) + branch protection (O1); the
 `.github/CODEOWNERS` file marks the governor files for that review. See ADR-0008 for the full trust
 model and residues.
 

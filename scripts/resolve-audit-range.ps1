@@ -6,6 +6,12 @@
   on a `push` event to the default branch (the pushed commit IS origin/main) — so the audit passed
   without inspecting the pushed commit. Masked today only by branch protection blocking direct pushes.
 
+  NOTE (ADR-0008): CI no longer INVOKES this script — the judge-from-trusted-main model computes the
+  audit range inline in trusted CI bash with explicit SHAs (a detached `origin/main` worktree's literal
+  HEAD would resolve to `main`; running a resolver from the PR checkout would let a PR narrow its own
+  range). This script REMAINS the unit-tested REFERENCE for the same range rules; CI's bash mirrors
+  them and is proven by the live push + pull_request runs. Keep the two in step.
+
   Rules:
     pull_request           -> merge-base(<BaseRef>, HEAD)..HEAD   (the PR's own commits)
     push to DefaultBranch  -> <Before>..<Sha>  (the push's real range). FAIL CLOSED (exit 3) if that

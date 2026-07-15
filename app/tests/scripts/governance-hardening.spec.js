@@ -202,11 +202,10 @@ test('AC-5: pre-commit allows without pwsh when only noise-tier paths are staged
 
 // ===================== Sub-slice B (ADR-0008): judge-from-trusted-main =====================
 
-// AC-B1: the resolver honors an explicit -Head so it emits a SHA-anchored range (never literal
-// "HEAD") — required to run it from a detached origin/main worktree where HEAD would resolve to main.
-// This models CI passing the PR's REAL head SHA (github.event.pull_request.head.sha on a PR;
-// github.sha on a push). The GitHub event -> head-SHA mapping itself is not unit-testable here; the
-// live CI run of this change is its execution proof.
+// AC-B1: the resolver (the unit-tested REFERENCE for the range rules) honors an explicit -Head so it
+// emits a SHA-anchored range (never literal "HEAD"). CI computes the equivalent range inline in
+// trusted bash with explicit SHAs (ADR-0008); this test keeps the reference range rule honest. The
+// live push + pull_request CI runs are the execution proof of the bash that mirrors it.
 test('AC-B1: resolver honors -Head (explicit range end) for judge-from-main', () => {
   const dir = makeRepo();
   try {
