@@ -211,15 +211,29 @@ receipt is git-ignored/transient — even the Gate's own verified commit read as
 **trailer slice makes the proof durable + CI-enforced**, so the metric moves forward from here for
 T0/T1 commits made after it lands. Re-measure with `scripts/audit-verification-trailers.ps1`.
 
-**NEXT** (trailer built + verified; finish the loop, then measure):
-- **Re-measure** with `scripts/audit-verification-trailers.ps1` once the trailer slice is on `main`:
-  from here, T0/T1 commits carry a durable, re-derivable `Verified-Receipt` trailer; the tool counts
-  verified/bypass/missing over any range. Historical commits (pre-trailer) legitimately show no
-  trailer — the number moves forward, not retroactively.
-- Then the remaining governor pieces from ADR-0006 are optional/deferred: continuously-verified
-  branch-protection detection (needs authenticated GitHub read), the runtime-integrity mode, and
-  the Known Residual Risks billboard (the forged-PASS residue above belongs on it). None started;
-  owner schedules.
+**NEXT — Governance Hardening slice (APPROVED 2026-07-15, NOT yet built): `docs/proposals/governance-hardening.md`.**
+An independent third verification by GPT (remote repo read access, adversarial, non-led) against HEAD
+`fc5964b` found real defects the local suite AND `codex exec` both missed, plus overclaiming
+("fake-green") wording. Owner approved fixing them. Read the proposal for the full ranked list; the
+teeth: **(T1)** the CI trailer-audit range collapses to `HEAD..HEAD` (empty, vacuous pass) on a
+`push` to `main` — fail closed / use the push event range; **(T2, deepest)** self-modifying
+enforcement — a PR supplies the classifier/auditor/manifest/CI that judge it, so run the audit from
+`origin/main`'s trusted copy, not the PR checkout (likely needs **ADR-0008** or an 0007 amendment) +
+owner-side CODEOWNERS/required-review on governor files; **(T3)** hooks fail open when `pwsh` is
+missing — fail closed. Plus non-negotiable honesty fixes (H1–H5): qualify "un-bypassable", "catches a
+forged trailer" (it does NOT catch a correctly-bound fabricated PASS), rename "verified" →
+**"attestation"** (the audit proves a valid diff-bound CLAIM of verification, not that it happened),
+and align the manifest's `weakened_tests` prose with deletion-only behavior. Honest boundary to adopt:
+governance holds for a COOPERATIVE worker; an ADVERSARIAL worker with write access is NOT fully
+contained (forged PASS, self-modification, the push range bug, unverified branch protection). Accepted
+residues (do NOT machine-fix): forged PASS, path-granularity gaming, unauthenticated bypass authz,
+merge-only changes — see the proposal.
+- Owner-side (only the owner can): **O1** confirm branch protection on `main` is ON + required (the
+  whole "un-bypassable" claim rests on it); **O2** add required review on the governor files.
+- After hardening: re-measure with `scripts/audit-verification-trailers.ps1` (frame as *attestation*
+  coverage, not "verified"). Then optional ADR-0006 remainders: continuously-verified
+  branch-protection detection, runtime-integrity mode, Known Residual Risks billboard (the forged-PASS
+  residue belongs on it). None started; owner schedules.
 
 ## Pending / next (owner schedules)
 - **Packaging** is the last explicitly-deferred hardening slice not started
