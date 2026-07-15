@@ -18,22 +18,17 @@ event **to `main`**, the pushed commit *is* `origin/main`, so the range collapse
 (empty) and the audit passes without inspecting the pushed commit. Masked today only by branch
 protection blocking direct pushes — a latent hole if that protection is off.
 
-`scripts/resolve-audit-range.ps1` computes the range from the CI event context (deterministic, git
-only, no LLM):
-- `pull_request` → `merge-base(<base-ref>, HEAD)..HEAD` (the PR's own commits; unchanged behavior).
-- `push` to the **default branch** → the push's real range `<before>..<sha>`. **Fail closed** (exit
-  non-zero) if that range is empty/unusable (a zero `before`, or an **empty range** — no commits at
-  all, e.g. `before == sha`) — never emit an empty range that would pass vacuously. Emptiness is
-  measured on the TOTAL commit count, not the non-merge count: a legitimate **merge-only** push (the
-  merge commit introduces no new non-merge commits) still passes, because the audit skips merge
-  commits and correctly finds nothing crucial to check.
-- `push` to a **non-default branch** → `<before>..<sha>` when `before` is real, else
-  `merge-base(<base-ref>, HEAD)..HEAD`. An empty range here is allowed (the PR audit is the gate).
-- `workflow_dispatch` / anything else → `merge-base(<base-ref>, HEAD)..HEAD` (re-measure context; not
-  a gate, so an empty range is allowed).
-
-CI calls the resolver, aborts the job if it fails closed, then runs the existing audit over the
-resolved range.
+The CI workflow computes the range inline from the GitHub event context (EXPLICIT SHAs; see the T2
+section below for why it is computed inline rather than in a script run from the worktree):
+- `pull_request` → `merge-base(origin/main, <head.sha>)..<head.sha>` (the PR's own commits; on a
+  `pull_request` `github.sha` is the ephemeral merge commit, so the PR's real head is
+  `github.event.pull_request.head.sha`).
+- `push` to the **default branch** → the push's real range `<before>..<sha>`. **Fail closed** (abort
+  the job) if `before` is zero/absent, or if `git rev-list <before>..<sha>` is empty — never audit an
+  empty range vacuously.
+- `push` to a **non-default branch** / `workflow_dispatch` → `merge-base(origin/main, <head>)..<head>`.
+  An empty range here is allowed (the PR audit is the gate) — but a 0-commit "AUDIT PASS" in that case
+  is not evidence any commit was examined (honest edge, noted in `ci.yml` + ADR-0008).
 
 ### T3 — the pre-commit hook must fail closed, not vanish, when `pwsh` is missing
 `.githooks/pre-commit` guards the ADR + governance gate with `command -v pwsh`. With no PowerShell the
@@ -54,9 +49,11 @@ states the cause and the escape (`git commit --no-verify`, which CI still audits
 
 ### T2 — CI must judge a PR from `main`'s trusted governor, not the PR's own copy (ADR-0008)
 CI checked out the PR branch and ran **that branch's** copy of the classifier / auditor / libs /
-manifest / resolver — so a PR could weaken the judge and have the weakened judge approve itself.
+manifest — so a PR could weaken the judge and have the weakened judge approve itself.
 The CI audit step now:
-- computes the audit **range** in trusted CI bash from GitHub's event context, using EXPLICIT SHAs
+- computes the audit **range** inline from GitHub's event context (the inputs are GitHub-set and
+  un-forgeable; the bash itself lives in `ci.yml`, PR-controlled until O1/O2 — not independently
+  "trusted CI"), using EXPLICIT SHAs
   (`merge-base(origin/main, head)..head`, or `before..sha` on a direct push to the default branch —
   fail closed on an empty range). The PR's real head SHA is `github.event.pull_request.head.sha` on a
   `pull_request` (`github.sha` is the ephemeral merge commit there) and `github.sha` on a push. The
@@ -67,11 +64,11 @@ The CI audit step now:
   interface) — its libs, the classifier it invokes, and the manifest it reads all come from `main`.
   Only the commit objects being judged come from the PR.
 
-Computing the range in bash (rather than running a resolver from the worktree) is deliberate: a
+Computing the range inline (rather than running a resolver script from the worktree) is deliberate: a
 detached worktree's literal `HEAD` resolves to `main` (an empty range / vacuous pass — caught on the
-first live CI run), and running the resolver from the PR checkout would let a PR narrow its own audit
-range. `scripts/resolve-audit-range.ps1` stays the unit-tested reference for the same range rules. A
-governor *improvement* takes effect only after it is itself merged (judged on the way in by the prior
+first live CI run), and running a resolver from the PR checkout would let a PR narrow its own audit
+range. The range's correctness is proven by the live push + pull_request CI runs, not a unit test.
+A governor *improvement* takes effect only after it is itself merged (judged on the way in by the prior
 trusted copy). **Honest limit:** `ci.yml` itself still runs from the PR branch, so a PR that edits
 `ci.yml` is closed only by owner-side required review (O2) + branch protection (O1); the
 `.github/CODEOWNERS` file marks the governor files for that review. See ADR-0008 for the full trust
@@ -92,15 +89,10 @@ model and residues.
   `--no-verify`, and path-tagging is explicitly not ungameable.
 
 ## Acceptance criteria
-- AC-1: WHEN the event is a `push` to the default branch AND the resolved `<before>..<sha>` range is
-  empty (no commits at all, e.g. `before == sha`) THE resolver SHALL exit non-zero (fail closed),
-  never emit an empty range.
-- AC-2: WHEN the event is a `push` to the default branch with a real multi-commit range THE resolver
-  SHALL emit `<before>..<sha>` so the pushed commits are audited (not `HEAD..HEAD`).
-- AC-3: WHEN the event is a `pull_request` THE resolver SHALL emit `merge-base(<base-ref>,HEAD)..HEAD`.
-- AC-3b: WHEN the event is a `push` to the default branch whose range contains commits but only a
-  merge commit (no new non-merge commits) THE resolver SHALL emit the range (exit 0), not fail closed
-  — the audit skips merges and correctly passes.
+- AC-1 (T1): WHEN the CI audit runs on a `push` to the default branch THE range SHALL be
+  `<before>..<sha>` and the job SHALL **fail closed** if that range is empty (never audit vacuously);
+  WHEN it runs on a `pull_request` THE range SHALL be `merge-base(origin/main, head.sha)..head.sha`
+  (the PR's real commits, not the ephemeral merge SHA). Proven by the live push + pull_request CI runs.
 - AC-4: WHEN `pwsh` is absent AND a crucial (non-noise) path is staged THE pre-commit hook SHALL exit
   non-zero (block) with a message naming the cause and the `--no-verify` escape.
 - AC-4b: WHEN `pwsh` is absent AND a staged deletion is present (even of a noise path) THE pre-commit
@@ -113,24 +105,19 @@ model and residues.
 - AC-6: THE governor wording (scripts, hooks, specs, ADRs, manifest, PROJECT.md) SHALL contain no
   unqualified "un-bypassable" / "ungameable" / "catches a forged trailer" / bare "verified"-as-proof
   claim — each is qualified or renamed per H1–H5.
-- AC-B1: WHEN the resolver is given an explicit `-Head <sha>` THE emitted range SHALL end at that SHA
-  (never literal `HEAD`), so it is correct when run from a detached `origin/main` worktree.
 - AC-B2: WHEN a PR weakens the classifier in its own tree alongside an unverified T0 change, THE audit
   run from the PR's own copy SHALL wrongly PASS, but THE audit run from a trusted `origin/main`
   worktree SHALL FAIL — self-modifying enforcement is closed for the governor scripts.
 
 ## Tests
-- `app/tests/scripts/governance-hardening.spec.js` — drives the REAL `resolve-audit-range.ps1` and the
-  REAL `.githooks/pre-commit` in throwaway git repos:
-  - AC-1: a push-to-`main` whose range is empty → resolver exits non-zero.
-  - AC-2: a push-to-`main` with commits → resolver emits `<before>..<sha>`.
-  - AC-3: a `pull_request` event → resolver emits the merge-base range.
-  - AC-3b: a push-to-`main` whose range is a single merge commit → resolver emits the range (exit 0).
+- AC-1 (T1) is verified by the **live CI runs** (push + pull_request) — the audit-range logic lives
+  inline in `.github/workflows/ci.yml`; there is no resolver script to unit-test (ADR-0008).
+- `app/tests/scripts/governance-hardening.spec.js` — drives the REAL `.githooks/pre-commit` and the
+  REAL judge-from-trusted-main audit in throwaway git repos:
   - AC-4: `pwsh` scrubbed from PATH + a staged T0 path → hook blocks (exit 1).
   - AC-4b: `pwsh` scrubbed from PATH + a staged deletion of a noise path → hook blocks (exit 1).
   - AC-4c: `pwsh` scrubbed from PATH + a failing `git` query (run in a non-git dir) → hook blocks (exit 1).
   - AC-5: `pwsh` scrubbed from PATH + only a `backlog/` add staged → hook allows (exit 0).
-  - AC-B1: resolver with `-Head <sha>` → range ends at that SHA, never literal `HEAD`.
   - AC-B2: a self-weakening "PR" (weakened classifier + unverified T0, no trailer) → audit from the
     PR's own copy PASSES (the hole), audit from a trusted `main` worktree FAILS (the fix).
-- AC-6 is verified by review + the resolver/hook tests; the wording changes carry no runtime surface.
+- AC-6 is verified by review + the hook + audit tests; the wording changes carry no runtime surface.

@@ -1,6 +1,8 @@
-// Governance Hardening (docs/specs/governance-hardening.md) — Sub-slice A.
-// Drives the REAL scripts/resolve-audit-range.ps1 (T1) and the REAL .githooks/pre-commit fail-closed
-// path (T3) in throwaway git repos. Production scripts/hooks carry zero test-awareness.
+// Governance Hardening (docs/specs/governance-hardening.md).
+// Drives the REAL .githooks/pre-commit fail-closed path (T3) and the REAL judge-from-trusted-main
+// audit (B / ADR-0008) in throwaway git repos. Production scripts/hooks carry zero test-awareness.
+// NOTE: the CI audit RANGE is computed inline in .github/workflows/ci.yml bash (ADR-0008) and proven
+// by the live push + pull_request CI runs — there is no resolver script to unit-test here.
 const { test, expect } = require('@playwright/test');
 const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
@@ -10,92 +12,7 @@ const path = require('path');
 const REPO = path.join(__dirname, '..', '..', '..');
 
 function git(dir, args) { return execFileSync('git', args, { cwd: dir, encoding: 'utf8' }).trim(); }
-function resolve(dir, args) {
-  return spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/resolve-audit-range.ps1', ...args],
-    { cwd: dir, encoding: 'utf8', timeout: 60000, windowsHide: true });
-}
 function cleanup(dir) { fs.rmSync(dir, { recursive: true, force: true }); }
-
-// A minimal repo with the resolver + its baseline commit.
-function makeRepo() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-govh-'));
-  fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
-  fs.copyFileSync(path.join(REPO, 'scripts', 'resolve-audit-range.ps1'), path.join(dir, 'scripts', 'resolve-audit-range.ps1'));
-  fs.writeFileSync(path.join(dir, 'README.md'), 'baseline\n');
-  git(dir, ['init', '-q']);
-  git(dir, ['config', 'user.email', 'test@pcc.local']);
-  git(dir, ['config', 'user.name', 'pcc-test']);
-  git(dir, ['branch', '-M', 'main']);
-  git(dir, ['add', '-A']);
-  git(dir, ['commit', '-q', '--no-verify', '-m', 'baseline']);
-  return dir;
-}
-
-// AC-1: a push to the default branch that resolves to an EMPTY range fails closed (never audits nothing).
-test('AC-1: resolver fails closed on an empty push-to-default range', () => {
-  const dir = makeRepo();
-  try {
-    const head = git(dir, ['rev-parse', 'HEAD']);
-    // before == sha == HEAD -> HEAD..HEAD is empty -> must fail closed
-    const r = resolve(dir, ['-EventName', 'push', '-RefName', 'main', '-DefaultBranch', 'main',
-      '-Before', head, '-Sha', head, '-BaseRef', 'origin/main']);
-    expect(r.status).not.toBe(0);
-    expect((r.stdout || '').trim()).toBe('');
-    expect(r.stderr || '').toContain('FAIL CLOSED');
-  } finally { cleanup(dir); }
-});
-
-// AC-2: a push to the default branch with real commits emits <before>..<sha> (not HEAD..HEAD).
-test('AC-2: resolver emits the push range on a real push to the default branch', () => {
-  const dir = makeRepo();
-  try {
-    const before = git(dir, ['rev-parse', 'HEAD']);
-    fs.writeFileSync(path.join(dir, 'README.md'), 'baseline\nmore\n');
-    git(dir, ['commit', '-q', '--no-verify', '-am', 'second']);
-    const sha = git(dir, ['rev-parse', 'HEAD']);
-    const r = resolve(dir, ['-EventName', 'push', '-RefName', 'main', '-DefaultBranch', 'main',
-      '-Before', before, '-Sha', sha, '-BaseRef', 'origin/main']);
-    expect(r.status).toBe(0);
-    expect((r.stdout || '').trim()).toBe(`${before}..${sha}`);
-  } finally { cleanup(dir); }
-});
-
-// AC-3: a pull_request event emits merge-base(<BaseRef>,HEAD)..HEAD.
-test('AC-3: resolver emits the merge-base range for a pull_request event', () => {
-  const dir = makeRepo();
-  try {
-    const base = git(dir, ['rev-parse', 'HEAD']);
-    git(dir, ['update-ref', 'refs/remotes/origin/main', base]); // trusted base ref
-    fs.writeFileSync(path.join(dir, 'README.md'), 'baseline\npr change\n');
-    git(dir, ['commit', '-q', '--no-verify', '-am', 'pr commit']);
-    const r = resolve(dir, ['-EventName', 'pull_request', '-RefName', 'feature', '-DefaultBranch', 'main',
-      '-BaseRef', 'origin/main']);
-    expect(r.status).toBe(0);
-    expect((r.stdout || '').trim()).toBe(`${base}..HEAD`);
-  } finally { cleanup(dir); }
-});
-
-// AC-3b: a push to the default branch that includes a MERGE commit must PASS (emit the range), not
-// fail closed. Regression guard against re-breaking the resolver to fail-close on merge pushes:
-// emptiness is measured on TOTAL commit count, not non-merge count, so the audit (which skips merges)
-// still runs over the range and correctly finds nothing crucial when a push carries only a merge.
-test('AC-3b: resolver emits the range for a merge push to the default branch', () => {
-  const dir = makeRepo();
-  try {
-    const before = git(dir, ['rev-parse', 'HEAD']);
-    git(dir, ['checkout', '-q', '-b', 'side']);
-    fs.writeFileSync(path.join(dir, 'side.txt'), 'side\n');
-    git(dir, ['add', 'side.txt']);
-    git(dir, ['commit', '-q', '--no-verify', '-m', 'side commit']);
-    git(dir, ['checkout', '-q', 'main']);
-    git(dir, ['merge', '--no-ff', '--no-verify', '-m', 'merge side', 'side']);
-    const sha = git(dir, ['rev-parse', 'HEAD']);
-    const r = resolve(dir, ['-EventName', 'push', '-RefName', 'main', '-DefaultBranch', 'main',
-      '-Before', before, '-Sha', sha, '-BaseRef', 'origin/main']);
-    expect(r.status).toBe(0);
-    expect((r.stdout || '').trim()).toBe(`${before}..${sha}`);
-  } finally { cleanup(dir); }
-});
 
 // --- T3: the pre-commit hook fails closed when pwsh is missing ---
 
@@ -202,30 +119,9 @@ test('AC-5: pre-commit allows without pwsh when only noise-tier paths are staged
 
 // ===================== Sub-slice B (ADR-0008): judge-from-trusted-main =====================
 
-// AC-B1: the resolver (the unit-tested REFERENCE for the range rules) honors an explicit -Head so it
-// emits a SHA-anchored range (never literal "HEAD"). CI computes the equivalent range inline in
-// trusted bash with explicit SHAs (ADR-0008); this test keeps the reference range rule honest. The
-// live push + pull_request CI runs are the execution proof of the bash that mirrors it.
-test('AC-B1: resolver honors -Head (explicit range end) for judge-from-main', () => {
-  const dir = makeRepo();
-  try {
-    const base = git(dir, ['rev-parse', 'HEAD']);
-    git(dir, ['update-ref', 'refs/remotes/origin/main', base]);
-    fs.writeFileSync(path.join(dir, 'README.md'), 'baseline\nchange\n');
-    git(dir, ['commit', '-q', '--no-verify', '-am', 'c2']);
-    const head = git(dir, ['rev-parse', 'HEAD']);
-    const r = resolve(dir, ['-EventName', 'pull_request', '-RefName', 'feature', '-DefaultBranch', 'main',
-      '-BaseRef', 'origin/main', '-Head', head]);
-    expect(r.status).toBe(0);
-    expect((r.stdout || '').trim()).toBe(`${base}..${head}`);
-    expect((r.stdout || '').trim()).not.toContain('HEAD');
-  } finally { cleanup(dir); }
-});
-
 const GOV_FILES = [
   'scripts/emit-verification-trailer.ps1', 'scripts/audit-verification-trailers.ps1',
   'scripts/write-verification-receipt.ps1', 'scripts/run-governance-gate.ps1', 'scripts/classify-stakes.ps1',
-  'scripts/resolve-audit-range.ps1',
   'scripts/lib/change-identity.ps1', 'scripts/lib/receipt-check.ps1', 'scripts/lib/atomic-write.ps1',
   'schemas/verification-receipt.schema.json', '.cockpit/state/stakes-manifest.json', '.githooks/commit-msg',
 ];

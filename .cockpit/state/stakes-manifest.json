@@ -38,7 +38,6 @@
         "scripts/write-verification-receipt.ps1",
         "scripts/emit-verification-trailer.ps1",
         "scripts/audit-verification-trailers.ps1",
-        "scripts/resolve-audit-range.ps1",
         "scripts/lib/change-identity.ps1",
         "scripts/lib/receipt-check.ps1",
         ".cockpit/state/stakes-manifest.json",
@@ -113,7 +112,7 @@
     "rules": [
       { "id": "delete_or_rename", "min_tier": "T1", "when": "the change deletes or renames any tracked file", "why": "removal is easy to miss and hard to undo" },
       { "id": "dependency_or_lockfile", "min_tier": "T1", "when": "a dependency manifest or lockfile changes", "globs": ["**/package.json", "**/package-lock.json"], "why": "supply-chain / build surface" },
-      { "id": "governor_self_edit", "min_tier": "T0", "when": "the stakes manifest, the classifier, the commit gate, the receipt writer, the trailer emitter/auditor, the CI audit-range resolver, the shared identity/receipt-check helpers, or the bypass ledger itself changes", "globs": [".cockpit/state/stakes-manifest.json", "scripts/classify-stakes.ps1", "scripts/run-governance-gate.ps1", "scripts/write-verification-receipt.ps1", "scripts/emit-verification-trailer.ps1", "scripts/audit-verification-trailers.ps1", "scripts/resolve-audit-range.ps1", "scripts/lib/change-identity.ps1", "scripts/lib/receipt-check.ps1", ".cockpit/state/governance-gate-exceptions.json"], "why": "the governed entity must never quietly downgrade its own governor" },
+      { "id": "governor_self_edit", "min_tier": "T0", "when": "the stakes manifest, the classifier, the commit gate, the receipt writer, the trailer emitter/auditor, the shared identity/receipt-check helpers, or the bypass ledger itself changes", "globs": [".cockpit/state/stakes-manifest.json", "scripts/classify-stakes.ps1", "scripts/run-governance-gate.ps1", "scripts/write-verification-receipt.ps1", "scripts/emit-verification-trailer.ps1", "scripts/audit-verification-trailers.ps1", "scripts/lib/change-identity.ps1", "scripts/lib/receipt-check.ps1", ".cockpit/state/governance-gate-exceptions.json"], "why": "the governed entity must never quietly downgrade its own governor" },
       { "id": "ci_or_hooks", "min_tier": "T0", "when": "CI, git hooks, or the canonical test entrypoint changes", "globs": [".github/**", ".githooks/**", "app/tools/guarded-test.js"], "why": "changes whether defects are caught at all" },
       { "id": "schema_change", "min_tier": "T1", "when": "any schema changes", "globs": ["schemas/**"], "why": "silently broadens accepted inputs / evidence" },
       { "id": "weakened_tests", "min_tier": "T1", "when": "a test file is deleted (assertion-level weakening of a KEPT test file is NOT auto-detected here — the classifier escalates on deletion only; see its not_proven)", "globs": ["**/tests/**", "**/*.spec.js", "**/*.test.js"], "why": "removing the proof is as consequential as changing production code" },

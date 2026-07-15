@@ -11,8 +11,7 @@ deciders: owner (product lead), Claude (worker), Codex (independent verifier), G
 The governor's server-side teeth (ADR-0007) are the CI trailer audit + branch protection. But **CI
 checks out the PR branch and runs THAT branch's copy** of the machinery that judges it: the classifier
 (`scripts/classify-stakes.ps1`), the auditor (`scripts/audit-verification-trailers.ps1`), the shared
-libs (`scripts/lib/*`), the stakes manifest (`.cockpit/state/stakes-manifest.json`), and the range
-resolver (`scripts/resolve-audit-range.ps1`, added in Governance Hardening A).
+libs (`scripts/lib/*`), and the stakes manifest (`.cockpit/state/stakes-manifest.json`).
 
 So a single PR can **weaken the judge and have the weakened judge approve itself**: e.g. re-tag the
 governor files to T4 in the manifest, or make the auditor's re-derivation always return PASS, in the
@@ -34,20 +33,24 @@ gap as code can in a single-owner repo, and states plainly what only an owner-si
 2. Run the trailer audit **from `<trusted>`**: `<trusted>/scripts/audit-verification-trailers.ps1`,
    whose dot-sourced libs, the classifier it invokes, and the manifest it reads all come from
    `<trusted>` (= `main`). Only the **commit objects being judged** come from the PR.
-3. Compute the audit **range** in **trusted CI bash** from GitHub's event context, using EXPLICIT
+3. Compute the audit **range** inline in the CI workflow from GitHub's event context, using EXPLICIT
    SHAs, and pass it to the auditor's stable `-Range` interface. The range is *what to judge*, not
-   *how*; its inputs (`github.sha`, `github.event.before`, `github.event.pull_request.head.sha`,
-   `github.ref_name`) are set by GitHub, not by any repo file, so a PR cannot forge them. On a
-   `pull_request` event `github.sha` is the ephemeral merge commit, so the PR's **real head SHA** is
+   *how*; its INPUTS (`github.sha`, `github.event.before`, `github.event.pull_request.head.sha`,
+   `github.ref_name`) are set by GitHub and un-forgeable by a PR — but the bash that reads them lives
+   in `ci.yml`, which is PR-controlled until O1/O2 are active, so the computation itself is trusted
+   only under those owner-side controls (it is not independently "trusted CI"). On a `pull_request`
+   event `github.sha` is the ephemeral merge commit, so the PR's **real head SHA** is
    `github.event.pull_request.head.sha` (and `github.sha` on a push); the range is
    `merge-base(origin/main, head)..head`, or the push's `before..sha` on a direct push to the default
-   branch (**fail closed** on an empty range). Computing the range in bash — rather than running a
+   branch (**fail closed** on an empty range). Computing the range inline — rather than running a
    resolver script from the worktree — is deliberate: a detached worktree's literal `HEAD` resolves
-   to `main` (an empty range / vacuous pass), and running the resolver from the PR checkout would let
-   a PR narrow its own audit range. The stable `-Range` interface also avoids a **bootstrap** where a
-   resolver-interface change could not judge its own introducing PR. `scripts/resolve-audit-range.ps1`
-   remains the unit-tested reference for the same range rules.
-3. A change that *improves* the governor therefore takes effect **only after it is itself merged** —
+   to `main` (an empty range / vacuous pass, caught on the first live CI run), and running a resolver
+   from the PR checkout would let a PR narrow its own audit range. The stable `-Range` interface also
+   avoids a **bootstrap** where a range-interface change could not judge its own introducing PR.
+   *Honest edge:* a `workflow_dispatch` or a feature-branch push whose head == `origin/main` can yield
+   an empty merge-base range and a 0-commit audit — not a merge route (so not a bypass), but such a
+   0-commit pass is not evidence any commit was examined.
+4. A change that *improves* the governor therefore takes effect **only after it is itself merged** —
    judged on the way in by the prior, trusted copy. This is the correct, conservative direction: the
    governor can be strengthened, but a PR cannot install a weaker judge and be waved through by it.
 
@@ -76,12 +79,12 @@ gap as code can in a single-owner repo, and states plainly what only an owner-si
 
 ## Consequences
 
-- **Gain:** the classifier / auditor / libs / manifest / resolver can no longer be weakened by the
-  same PR that benefits — the trusted surface shrinks from "the whole governor" to "`ci.yml` +
-  branch-protection settings," which the owner-side review gate covers.
-- **Cost:** one `git worktree` step in CI; the audit runs against `main`'s scripts (a bootstrap
-  assumption: `main` must already carry the auditor + resolver — true post-Hardening-A). A governor
-  *improvement* is enforced one merge late (by design).
+- **Gain:** the classifier / auditor / libs / manifest can no longer be weakened by the same PR that
+  benefits — the trusted surface shrinks from "the whole governor" to "`ci.yml` + branch-protection
+  settings," which the owner-side review gate covers.
+- **Cost:** one `git worktree` step in CI; the audit runs against `main`'s auditor (a bootstrap
+  assumption: `main` must already carry the auditor — true post-Hardening-A). A governor *improvement*
+  is enforced one merge late (by design).
 - **Residue (accepted, documented — carried forward, not re-solved):**
   - `ci.yml` self-edit + branch-rules/required-check config are the **final trusted surface**;
     closed only owner-side (O1/O2), never by code.

@@ -24,9 +24,10 @@ proof that it did — see "Honest residue") and a local skip is caught server-si
    `diff_id` **re-derives** from `git diff <base> <commit>` (ledger excluded) using the `base`
    **stored in the trailer** (never today's `main`). Reports per-commit PASS/FAIL + counts; exits
    non-zero if any T0/T1 commit lacks a valid trailer. T2/T3/T4 commits need none.
-4. **Enforce** — CI (`.github/workflows/ci.yml`) runs the audit over a range resolved by
-   `scripts/resolve-audit-range.ps1` (which fails closed rather than pass an empty range on a direct
-   push to the default branch — Governance Hardening T1); a T0/T1 commit that is missing a trailer,
+4. **Enforce** — CI (`.github/workflows/ci.yml`) runs the audit from a trusted `origin/main` worktree
+   (ADR-0008) over a range computed inline from the GitHub event context with explicit SHAs (fail
+   closed rather than pass an empty range on a direct push to the default branch — Governance
+   Hardening T1); a T0/T1 commit that is missing a trailer,
    or carries a malformed / mismatched / invalid-BYPASS one, fails the `test` job, and branch
    protection blocks the merge. This catches a `--no-verify` skip and a tampered/mismatched trailer —
    it does **not** catch a correctly-bound *fabricated PASS* (accepted residue below). It is the

@@ -222,20 +222,22 @@ governed PRs (each codex-verified + GPT-reviewed + CI-green + dogfooded):
 - **Sub-slice A** (PR #11): honesty fixes H1–H5 (qualify "un-bypassable"/"ungameable"; narrow
   "catches a forged trailer" — it does NOT catch a correctly-bound fabricated PASS; rename the audit
   measure "verified" → **"attestation"** = a valid diff-bound CLAIM of verification, not proof it
-  happened; align the manifest `weakened_tests` prose to deletion-only). **T1:** new
-  `scripts/resolve-audit-range.ps1` replaces the CI audit's `merge-base(origin/main,HEAD)..HEAD` range
-  (which collapsed to `HEAD..HEAD` = empty vacuous pass on a direct push to `main`) — it uses the
-  push's real `before..sha` and **fails closed** on a truly-empty range (emptiness = total commit
-  count, so a merge-only push still passes). **T3:** `.githooks/pre-commit` **fails closed** when
-  `pwsh` is missing (blocks any staged deletion/rename or non-noise path).
+  happened; align the manifest `weakened_tests` prose to deletion-only). **T1:** the CI audit's
+  `merge-base(origin/main,HEAD)..HEAD` range collapsed to `HEAD..HEAD` = empty vacuous pass on a
+  direct push to `main`; fixed to use the push's real `before..sha` and **fail closed** on a
+  truly-empty range. **T3:** `.githooks/pre-commit` **fails closed** when `pwsh` is missing (blocks
+  any staged deletion/rename or non-noise path).
 - **Sub-slice A.1** (PR #12): closed a residual GPT-found fail-open — the no-`pwsh` hook discarded git
   errors, so a failed `git diff` read as "noise only" and allowed the commit; now fails closed if
   either git query errors.
-- **Sub-slice B (ADR-0008)** (this slice): **judge-from-trusted-main.** CI now runs the resolver +
-  auditor + libs + classifier + manifest from a detached `origin/main` worktree, NOT the PR checkout,
-  so a PR can't weaken the judge in its own tree and have the weakened judge approve itself. Adversarial
-  test AC-B2 proves a self-weakening PR PASSES under its own copy but FAILS under trusted `main`.
-  `.github/CODEOWNERS` marks the governor files for owner review (the O2 code side).
+- **Sub-slice B (ADR-0008)** (this slice): **judge-from-trusted-main.** CI now runs the auditor +
+  libs + classifier + manifest from a detached `origin/main` worktree, NOT the PR checkout, so a PR
+  can't weaken the judge in its own tree and have the weakened judge approve itself. The audit range
+  is computed inline in `ci.yml` from GitHub event context with explicit SHAs (a resolver run from the
+  worktree hit an empty-range vacuous pass — caught on the first LIVE CI run — so the vestigial
+  `resolve-audit-range.ps1` was removed; the range's correctness is proven by the live push +
+  pull_request runs). Adversarial test AC-B2 proves a self-weakening PR PASSES under its own copy but
+  FAILS under trusted `main`. `.github/CODEOWNERS` marks the governor files for owner review (O2).
 Honest boundary (adopted): governance holds for a COOPERATIVE worker; an ADVERSARIAL worker with write
 access is NOT fully contained. Accepted residues (do NOT machine-fix): forged PASS; path-granularity
 gaming; unauthenticated bypass authz; merge-only changes; and — per ADR-0008 — `ci.yml` self-edit +

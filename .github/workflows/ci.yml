@@ -60,14 +60,19 @@ jobs:
       # checkout — so a PR cannot weaken the judge in its own tree and have the weakened judge approve
       # itself. A worktree shares the object store, so main's scripts inspect the PR's fetched commits.
       #
-      # The audit RANGE is computed here in trusted bash from GitHub's event context using EXPLICIT
-      # SHAs (never a script run from the worktree — a detached worktree's literal `HEAD` resolves to
-      # `main`, which silently produced an EMPTY range/vacuous pass; and running the resolver from the
-      # PR checkout would let a PR narrow its own audit range). The auditor's `-Range` interface is
-      # stable, so this also avoids a bootstrap where a resolver-interface change cannot judge its own
-      # introducing PR. `scripts/resolve-audit-range.ps1` remains the unit-tested reference for these
-      # same range rules (fail-closed on an empty push-to-default range); this bash mirrors them and is
-      # proven by the live push + pull_request CI runs.
+      # The audit RANGE is computed inline below from GitHub's event context using EXPLICIT SHAs
+      # (never a script run from the worktree — a detached worktree's literal `HEAD` resolves to
+      # `main`, which silently produced an EMPTY range/vacuous pass; and running a resolver from the
+      # PR checkout would let a PR narrow its own audit range). Its INPUTS (github.sha,
+      # github.event.before, pull_request.head.sha, ref_name) are GitHub-set and un-forgeable by a PR;
+      # the bash itself, however, lives in THIS file, which is PR-controlled until O1/O2 are active
+      # (so it is NOT itself "trusted" — see the honest limit below). The auditor's `-Range` interface
+      # is stable, avoiding a bootstrap where an interface change could not judge its own introducing PR.
+      #
+      # EDGE (honest): a `workflow_dispatch`, or a feature-branch push whose head == origin/main, can
+      # yield an empty merge-base range and a 0-commit audit. That is NOT a route for merging new code,
+      # so it is not a bypass — but a 0-commit "AUDIT PASS" there is not evidence any commit was
+      # examined. Direct pushes to `main` (before..sha) fail closed on an empty range.
       #
       # HONEST LIMIT: `ci.yml` itself still runs from the PR branch, so a PR that edits THIS file is
       # closed only by owner-side required review (O2) + branch protection (O1) — see ADR-0008.
