@@ -24,16 +24,22 @@ For each practice in the category, one row:
   prior-art-first, plain-language, parity).
 
 ## Rules of the audit itself (ADR-0009)
+- **Probe freely, standardize rarely (the governing rule — ADR-0009 amendment 2026-07-15).** Unbundle two
+  activities: **probing** (finding out whether it works) is cheap and always worth it — the knowledge is
+  the payoff, so **"tested, holds" is a first-class outcome and expected to be the most common one**.
+  **Building durable standardization/control** is expensive and clears a high bar: only when it *clearly*
+  improves the process or project (moves a measurable number / removes a real consequential risk).
+  Otherwise, note it and move on. Golden rule: *proactively test the known weak points of LLM-led
+  development, then build only the minimum durable control needed for failures that testing proves
+  credible and consequential.*
+- **Three verdicts per practice.** **Tested, holds → note + move on** · **tested, found a real +
+  consequential break → build the minimum control** · **can't tell yet → say so** (never paint it green).
+  The category list is a **checklist of where to look**, not a set of grids to fill for completeness.
 - **Risk-based depth.** Deeply verify / mechanize / test only where a failure would be **silent, costly,
-  or babysitting-creating**. Low-consequence practices get documentation + review, not the full loop —
-  running the heavy verify-and-merge loop for every trivial thing would itself be the over-governance
-  this phase forbids.
-- **Record fine as fine.** A practice that is already sound is recorded as sound, not re-engineered.
+  or babysitting-creating**. Low-consequence practices get a note, not the full loop.
+- **Record fine as fine.** A practice that is already sound is recorded as sound, briefly, not re-engineered.
 - **Disclose, don't paint green.** A gap or accepted residue is stated plainly. Calling a category
   "all standardized" when it isn't would be the exact fake-green this phase exists to kill.
-- **Fix real gaps proportionally.** Where the audit finds a genuine hole (e.g. a T0 file with no test),
-  close it in the same governed loop; where the fix would be over-governance, disclose + recommend and
-  let the owner decide.
 
 ## Categories (22 audit categories + 2 sign-off gates — tracked in `.cockpit/state/phase-manifest.json`)
 | Category | Grid | Status |
