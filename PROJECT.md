@@ -168,7 +168,7 @@ sign-off gates), so `scripts/new-milestone-update.ps1` computes a real `% comple
 (`README.md` = index + tracker). **Check the live % directly** (run the generator) — don't trust a number
 written here.
 
-**Audit categories done (as of 2026-07-16): 9 of 22** (the live meter reads 9/24 = 38% including the 2
+**Audit categories done (as of 2026-07-16): 12 of 22** (the live meter reads 12/24 = 50% including the 2
 sign-off gates). Each produced a real finding OR converted an assumption to proof, not box-ticking:
 - **Communication contracts** (PRs #16/#18/#19) — built the milestone-update + verification-request
   generators (structure→machinery); they travel to spawned projects. `docs/specs/communication-contracts.md`.
@@ -197,8 +197,22 @@ sign-off gates). Each produced a real finding OR converted an assumption to proo
   travels to every spawned project via bootstrap's `.gitignore` copy) → added a secrets block to `.gitignore`
   (`git check-ignore .env` flips not-ignored→ignored; `.env.example` kept). PCC itself holds no secrets
   (scrubs API keys, DECISION-003). `docs/audit/privacy-secrets-probe.md`.
+- **Requirements / intent & acceptance** — accepted-residue by DELIBERATE decision (ADR-0003): the
+  intent→spec→acceptance→test chain is prose-not-machinery on purpose; the enforced "done" gate binds to
+  execution-proof-of-diff, not to the owner's criteria, so a worker can build the wrong thing and pass every
+  automated gate. Named as a residual risk for owner active-acceptance (backstop is human + gate b). No build.
+  `docs/audit/requirements-intent-acceptance.md`.
+- **External dependency / tool availability** — tested-holds (strong): worker/Codex/gh/CI/git/npm all degrade
+  to honest UNKNOWN/error, proven never to fake a green. One disclosed residue: `codex-verify-watcher.ps1`
+  (retired advisor track, owner-run) has no timeout on its bare `codex exec` — silent stop, never a false PASS.
+  `docs/audit/external-dependency-availability.md`.
+- **Incident response & diagnostics** — **found a real break → built the minimum control.** Security-relevant
+  app failures were swallowed with zero trace (no-swallowed-failures violation) + no app-error log → built
+  `app/error-log.js` (never-throws, 6 tests) + rerouted the 3 worst `main.js` swallows to a durable trace +
+  `doctor.ps1` "App errors" WARN surface + git-ignored the log; app boots green (ipc 27).
+  `docs/audit/incident-response-diagnostics.md`.
 
-**Next (owner picks):** more audit categories (13 of 22 remain), or **sign-off gate (b)** — the live end-to-end
+**Next (owner picks):** more audit categories (10 of 22 remain), or **sign-off gate (b)** — the live end-to-end
 adversarial spawned-project build + adoption (the gate that actually earns the owner's sign-off). Open
 sub-items noted in the grids (e.g. comms channel 6 start-off measurement; the branch-protection check is
 now wired into the **release gate** — the **trust-strip** surface remains an open lighter follow-up).
