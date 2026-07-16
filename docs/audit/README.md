@@ -46,7 +46,8 @@ For each practice in the category, one row:
 |---|---|---|
 | Communication contracts | `docs/specs/communication-contracts.md` | ✅ done (category 1) |
 | State & data integrity | `docs/audit/state-data-integrity.md` | ✅ done |
-| _(21 remaining)_ | — | pending |
+| Verification & proof-of-done | `docs/audit/verification-proof-of-done.md` | ✅ done (built the branch-protection live check) |
+| _(20 remaining)_ | — | pending |
 
 The live `% complete` is computed from the phase manifest by `scripts/new-milestone-update.ps1` — never
 hand-counted here.
