@@ -155,33 +155,33 @@ that live build; the trust claim stays **bounded** (tested workflows + documente
 residues), never "any project." Owner signs off only on outcomes he can judge; Claude + Codex own
 technical calibration; GPT secondary verification fires on the defined trigger.
 
-**Category 1 = Communication contracts — COMPLETE** (`docs/specs/communication-contracts.md`, status
-`active — partially machinery-enforced`). Fixed format per channel; the owner's recurring asks moved out
-of prose into machinery.
+**OPERATING RULE (ADR-0009 amendment, PR #22): "probe freely, standardize rarely."** Owner + GPT flagged
+the risk of standardization for its own sake. Unbundle **probing** (finding out whether it works — cheap;
+"tested, holds" is a first-class outcome, expected to be the most common) from **durable control** (build
+ONLY when it clearly improves — moves a number / kills a real risk; else note + move on). The category list
+is a **checklist of where to look**, not grids to fill. **Owner directive: if the lighter path zips through
+categories finding nothing, STOP and assess.** Full principle: `docs/audit/README.md`.
 
-**Phase progress is tracked as DATA** in `.cockpit/state/phase-manifest.json` (the 22 audit categories +
-2 sign-off gates), so the milestone-update generator computes a real `% complete` (done ÷ total) and never
-invents it. A slice counts `done` only with an `evidence` pointer — the generator reports UNKNOWN for an
-evidence-less "done". **Current: 1/24 = 4%** (communication-contracts done).
+**Phase progress is tracked as DATA** in `.cockpit/state/phase-manifest.json` (22 audit categories + 2
+sign-off gates), so `scripts/new-milestone-update.ps1` computes a real `% complete` and never invents it
+(a slice counts `done` only with an `evidence` pointer). Per-category grids live in **`docs/audit/`**
+(`README.md` = index + tracker). **Check the live % directly** (run the generator) — don't trust a number
+written here.
 
-**What shipped for category 1 (all on `main`, CI-green, Codex-verified):**
-- **Channel 1 — milestone-update generator** `scripts/new-milestone-update.ps1` (PR #16): assembles the
-  fixed block set + computes the phase % from the manifest; fails closed to UNKNOWN on every bad-manifest
-  path (Codex caught 4 anti-fake-green defects). 16 tests. **Run:** `pwsh -NoProfile -File
-  scripts/new-milestone-update.ps1 -Milestone "<name>"`.
-- **Channels 3 & 4 — verification-request generator** `scripts/new-verification-request.ps1` (PR #18):
-  `-Channel codex` (independent-verifier request) and `-Channel gpt` (secondary block: computed remote
-  URL + push guard + required trigger reason). 9 tests. Dogfooded — it now generates its own Codex
-  requests.
-- **Parity + honest grid** (PR #19): the scaffolder seeds the comms contract docs + a generic starter
-  `phase-manifest.json`, so spawned projects inherit the machinery **and** a working manifest (proven live
-  in `scaffold-kit.spec.js`). The audit grid records the honest states; channel 5 (verdict contract)
-  travels via AGENTS.md, channel 7 handoff spec now travels, channel 2 is a met discipline measured by
-  falling frequency, **channel 6 (chat start-off) reliability measurement is deferred — disclosed, not
-  hidden**.
+**Audit categories done (as of 2026-07-15): 4 of 24.** Each produced a real finding, not box-ticking:
+- **Communication contracts** (PRs #16/#18/#19) — built the milestone-update + verification-request
+  generators (structure→machinery); they travel to spawned projects. `docs/specs/communication-contracts.md`.
+- **State & data integrity** (PR #21) — strong; closed 2 T0-files-without-tests (backup + schema-check) and
+  fixed a docstring that lied about being a gate. `docs/audit/state-data-integrity.md`.
+- **Verification & proof-of-done** (PR #23) — built `scripts/check-branch-protection.ps1`, converting the
+  owner-asserted branch-protection precondition (O1) into a **live-checked fact** (ran live → PASS).
+- **Execution authority & worker safety** (PR #24) — attacked persuadable-bypass; pinned the read-only
+  deny-list (the #1-concern mechanism that had **zero** tests) via `app/authority-tool-profile.js` + test.
 
-**Next (owner picks):** another audit category (21 remain), or sign-off gate (b) — the live end-to-end
-adversarial build + adoption. Channel 6's start-off measurement is the one open sub-item inside category 1.
+**Next (owner picks):** more audit categories (20 remain), or **sign-off gate (b)** — the live end-to-end
+adversarial spawned-project build + adoption (the gate that actually earns the owner's sign-off). Open
+sub-items noted in the grids (e.g. comms channel 6 start-off measurement; wiring the branch-protection
+check into the release gate / trust strip).
 
 ### Predecessor phase (COMPLETE): Governance Standardization
 Made PCC's safeguards fire predictably, proportionally, self-enforcing — not prose an LLM can skip.
