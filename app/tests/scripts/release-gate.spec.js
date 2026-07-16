@@ -35,6 +35,13 @@ function fakeDetector({ signal = 'clear', items = [], malformed = false }) {
 function fakeRepoSync(signal) {
   return `param([switch]$Json)\n@{ signal='${signal}'; observed='x'; might_mean='x'; not_proven='x'; what_to_do='x' } | ConvertTo-Json -Compress\n`;
 }
+// Fake branch-protection checker: emits the same contract as scripts/check-branch-protection.ps1
+// (schema/verdict/ruleset_name/reasons/not_proven) so the gate reads a deterministic linchpin verdict
+// instead of hitting the real GitHub API against the fixture's fake origin.
+function fakeBranchProtection(verdict) {
+  const reason = verdict === 'PASS' ? '' : `fake ${verdict}`;
+  return `param([string]$Repo,[string]$FixtureRuleset,[string]$FixtureRulesetsList,[switch]$Json)\n@{ schema='branch-protection-check/v1'; repo='fake'; verdict='${verdict}'; ruleset_name='protect-main'; reasons=@('${reason}' | Where-Object { $_ }); not_proven='' } | ConvertTo-Json -Compress\n`;
+}
 // A fake `npm` that exits with a code chosen by args (via env vars set per test).
 function fakeNpmCmd() {
   return [
@@ -59,6 +66,7 @@ function makeGateRepo(opts = {}) {
     suites: { unit: 0, full: 0, audit: 0 },
     remote: 'match',
     bloatExceptionItems: APPROVED_BLOAT,
+    branchProtection: 'PASS',
     dirty: false,
   }, opts);
 
@@ -79,6 +87,7 @@ function makeGateRepo(opts = {}) {
   if (!o.noGuard) fs.copyFileSync(path.join(REPO, 'scripts', 'run-guarded.ps1'), path.join(dir, 'scripts', 'run-guarded.ps1'));
   fs.writeFileSync(path.join(dir, 'scripts', 'ci-status.ps1'), fakeCiStatus(o.ci));
   fs.writeFileSync(path.join(dir, 'scripts', 'detect-repo-sync.ps1'), fakeRepoSync(o.backup));
+  fs.writeFileSync(path.join(dir, 'scripts', 'check-branch-protection.ps1'), fakeBranchProtection(o.branchProtection));
   for (const d of ['bloat', 'drift', 'stale-docs']) {
     fs.writeFileSync(path.join(dir, 'scripts', 'detect-' + d + '.ps1'), fakeDetector(o.detectors[d] || { signal: 'clear', items: [] }));
   }
@@ -218,6 +227,30 @@ test('skipped CI fails', () => {
     const { record } = runGate(dir, env);
     expect(record.verdict.overall).toBe('FAIL');
     expect(reasons(record)).toMatch(/ci/);
+  } finally { cleanup(dir); }
+});
+
+// Branch protection is the linchpin the whole server-side "un-bypassable" guarantee rests on. The gate
+// must FAIL closed when it is absent/weakened (bypass-evidence audit, ADR-0009): a commit is not safely
+// releasable if the backstop that makes every bypass catchable is off.
+test('branch protection FAIL fails the gate (linchpin off => not releasable)', () => {
+  const { dir, env } = makeGateRepo({ branchProtection: 'FAIL' });
+  try {
+    const { record, code } = runGate(dir, env);
+    expect(record.branch_protection.verdict).toBe('FAIL');
+    expect(record.verdict.overall).toBe('FAIL');
+    expect(reasons(record)).toMatch(/branch_protection/);
+    expect(code).toBe(1);
+  } finally { cleanup(dir); }
+});
+
+test('branch protection UNKNOWN becomes UNKNOWN (never a green PASS over an unconfirmed backstop)', () => {
+  const { dir, env } = makeGateRepo({ branchProtection: 'UNKNOWN' });
+  try {
+    const { record } = runGate(dir, env);
+    expect(record.branch_protection.verdict).toBe('UNKNOWN');
+    expect(record.verdict.overall).toBe('UNKNOWN');
+    expect(reasons(record)).toMatch(/branch_protection/);
   } finally { cleanup(dir); }
 });
 

@@ -1,7 +1,7 @@
 # PROJECT.md — current project brief
 
 Read this first. Always-current summary so a new session starts fully oriented,
-with no re-briefing from the owner. (Last refreshed 2026-07-15.) This file records
+with no re-briefing from the owner. (Last refreshed 2026-07-16.) This file records
 DURABLE state only. The exact current commit SHA, whether local == origin/main,
 whether the working tree is clean, and the CI verdict are LIVE facts — check them
 directly every session; never trust a SHA or CI result written in this file as
@@ -168,7 +168,8 @@ sign-off gates), so `scripts/new-milestone-update.ps1` computes a real `% comple
 (`README.md` = index + tracker). **Check the live % directly** (run the generator) — don't trust a number
 written here.
 
-**Audit categories done (as of 2026-07-15): 5 of 24.** Each produced a real finding, not box-ticking:
+**Audit categories done (as of 2026-07-16): 6 of 22** (the live meter reads 6/24 = 25% including the 2
+sign-off gates). Each produced a real finding, not box-ticking:
 - **Communication contracts** (PRs #16/#18/#19) — built the milestone-update + verification-request
   generators (structure→machinery); they travel to spawned projects. `docs/specs/communication-contracts.md`.
 - **State & data integrity** (PR #21) — strong; closed 2 T0-files-without-tests (backup + schema-check) and
@@ -181,11 +182,18 @@ written here.
   attack found the ONE gap: the phase-progress `% complete` meter (`scripts/new-milestone-update.ps1` —
   the number that gates the owner's sign-off) had **zero** tests on its fail-closed logic → built
   `app/tests/scripts/milestone-generator.spec.js` (12 tests, CI-run). `docs/audit/honesty-anti-fake-green.md`.
+- **Bypass evidence & tamper-detection** — the deterministic-trail half is strong/tested (ledgers
+  git-staged + auditable, CI trailer audit FAILs forged/missing/mismatched). Found the ONE gap on the
+  **owner-visible** half: the branch-protection **linchpin** was silently non-functional (`check-branch-protection.ps1`
+  used `Get-Command gh`, but `gh` is off PATH → always UNKNOWN) **and** unsurfaced → added a `Resolve-Gh`
+  fallback (now reaches the API instead of always-UNKNOWN; PASS on this authenticated machine, UNKNOWN
+  when unauthenticated — fail-closed) + wired it into the **release gate** as a required fail-closed check
+  (off → gate FAIL, unconfirmable → UNKNOWN). `docs/audit/bypass-evidence-tamper-detection.md`.
 
-**Next (owner picks):** more audit categories (19 remain), or **sign-off gate (b)** — the live end-to-end
+**Next (owner picks):** more audit categories (16 of 22 remain), or **sign-off gate (b)** — the live end-to-end
 adversarial spawned-project build + adoption (the gate that actually earns the owner's sign-off). Open
-sub-items noted in the grids (e.g. comms channel 6 start-off measurement; wiring the branch-protection
-check into the release gate / trust strip).
+sub-items noted in the grids (e.g. comms channel 6 start-off measurement; the branch-protection check is
+now wired into the **release gate** — the **trust-strip** surface remains an open lighter follow-up).
 
 ### Predecessor phase (COMPLETE): Governance Standardization
 Made PCC's safeguards fire predictably, proportionally, self-enforcing — not prose an LLM can skip.

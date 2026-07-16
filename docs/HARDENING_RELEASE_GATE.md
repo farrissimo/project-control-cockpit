@@ -33,6 +33,7 @@ bugs: the only way to get a verdict is to collect the facts fresh.
 | backup / sync | `scripts/detect-repo-sync.ps1` (existing PCC authority) | invoked; its `signal` is consumed |
 | actual remote branch head | git | `git ls-remote origin refs/heads/<branch>`, compared to the local SHA (not a cached tracking ref) |
 | exact-SHA CI | `scripts/ci-status.ps1` → GitHub check-runs | the named `test` check for the exact commit |
+| branch protection (linchpin) | `scripts/check-branch-protection.ps1` → GitHub rulesets API | the active `protect-main` ruleset with an empty bypass list, required `test` check + PR + no force-push/delete |
 | local execution | npm | `npm run test:unit` · `npm test` · `npm audit --audit-level=high` (exit codes) |
 | detectors | `detect-bloat.ps1` / `detect-drift.ps1` / `detect-stale-docs.ps1` | invoked; `signal` consumed |
 | evidence structure | `Test-Json -SchemaFile` | the generated record is validated against the schema |
@@ -55,6 +56,7 @@ Each required fact resolves to **ok / FAIL / UNKNOWN**, then:
 | backup / sync signal | `clear` | `notice` (unbacked/unpushed) | `unknown` / unreadable |
 | remote head | `match` | `mismatch` | unavailable / indefinite |
 | CI (exact SHA) | `passed` and bound to this SHA | `failed` / `cancelled` / `skipped` | `pending` / `missing` / `unreachable` / `ambiguous` |
+| branch protection | `PASS` (active ruleset, empty bypass) | `FAIL` (absent / weakened / bypassable) | gh/API/auth unavailable — cannot tell |
 | unit / full / audit | exit 0 | non-zero exit | did not run |
 | detector | `clear`, or the exact bloat exception | uncovered `notice` | `unknown` / malformed output |
 | evidence structure | validates against schema | fails schema validation | — |

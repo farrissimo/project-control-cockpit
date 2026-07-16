@@ -160,6 +160,17 @@ $ci = if ($null -ne $ciRaw -and ($ciRaw.status -is [string])) {
   [ordered]@{ status = "$($ciRaw.status)"; sha = "$($ciRaw.sha)"; detail = "$($ciRaw.detail)" }
 } else { [ordered]@{ status = 'unreachable'; sha = $null; detail = 'ci-status produced no result' } }
 
+# Branch protection: the linchpin the whole server-side "un-bypassable" guarantee rests on. If it is
+# off/weakened, the CI-audited-trailer + required-checks backstop does NOT hold, so a commit is not
+# safely releasable. Fail-closed: FAIL if protection is absent/weakened, UNKNOWN if we cannot tell
+# (gh/API/auth unavailable) — never a green PASS over an unconfirmed backstop.
+$bpRaw = Invoke-JsonScript 'check-branch-protection.ps1' @('-Json')
+$branchProtection = if ($null -ne $bpRaw -and ($bpRaw.verdict -is [string])) {
+  [ordered]@{ verdict = "$($bpRaw.verdict)"; ruleset_name = "$($bpRaw.ruleset_name)"; reasons = @($bpRaw.reasons); source = 'check-branch-protection.ps1' }
+} else {
+  [ordered]@{ verdict = 'UNKNOWN'; ruleset_name = ''; reasons = @('check-branch-protection.ps1 produced no result'); source = 'check-branch-protection.ps1' }
+}
+
 $suites = [ordered]@{
   unit  = (Invoke-Suite @('run', 'test:unit'))
   full  = (Invoke-Suite @('run', 'test:raw') -Guard)   # slow e2e suite via the RAW runner, wrapped in the guard here
@@ -193,6 +204,13 @@ switch ("$($remoteHead.state)") {
   'match'    { [void]$rs.Add((New-Chk 'remote_head' 'ok' '')) }
   'mismatch' { [void]$rs.Add((New-Chk 'remote_head' 'fail' "remote branch head ($($remoteHead.remote_sha)) != local commit ($shaStart)")) }
   default    { [void]$rs.Add((New-Chk 'remote_head' 'unknown' "remote head not definitive: $($remoteHead.detail)")) }
+}
+
+# Branch protection: PASS => ok ; FAIL (absent/weakened/bypassable) => FAIL ; UNKNOWN => UNKNOWN.
+switch ("$($branchProtection.verdict)") {
+  'PASS' { [void]$rs.Add((New-Chk 'branch_protection' 'ok' '')) }
+  'FAIL' { [void]$rs.Add((New-Chk 'branch_protection' 'fail' ("branch protection absent/weakened — server-side un-bypassable guarantee does NOT hold: " + (@($branchProtection.reasons) -join '; ')))) }
+  default { [void]$rs.Add((New-Chk 'branch_protection' 'unknown' ("branch protection could not be confirmed: " + (@($branchProtection.reasons) -join '; ')))) }
 }
 
 # CI: passed (bound to this exact sha) => ok ; failed/cancelled/skipped => FAIL ; else UNKNOWN.
@@ -253,6 +271,7 @@ $record = [ordered]@{
   backup_sync      = [ordered]@{ signal = $backupSignal; source = 'detect-repo-sync.ps1' }
   remote_head      = $remoteHead
   ci               = $ci
+  branch_protection = $branchProtection
   suites           = $suites
   detectors        = @($detectors)
   exceptions_applied = @($ex)

@@ -45,10 +45,11 @@ ruleset individually (one ruleset must satisfy the whole contract — PCC's case
 multiple rulesets could read as a false FAIL — fail-safe (a false alarm, never a false green). Union
 evaluation deferred until a project needs it.
 
-*Recommendation (not auto-built — owner decides the enforcement surface):* wire this into the release gate
-and/or surface it on the app trust strip, so the "un-bypassable" chip reflects a live check rather than an
-assumption. Building the detector was the minimum durable control; choosing where to enforce it is a
-separate, cheap follow-up.
+*Recommendation — release-gate wiring now DONE (bypass-evidence category, `docs/audit/bypass-evidence-tamper-detection.md`):*
+the check is wired into the release gate as a required, fail-closed input (off/weakened → gate FAIL,
+unconfirmable → UNKNOWN); a `Resolve-Gh` fix also made the checker actually functional (it was returning
+UNKNOWN because `gh` was off PATH). The remaining, still-open follow-up is surfacing it on the app **trust
+strip** so the "un-bypassable" chip reflects the live check.
 
 ## Trivial honesty drift → FIXED
 `PROJECT.md` said `governance-gate.spec.js` had **(11)** tests; it has **13**. Stale count corrected
