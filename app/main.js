@@ -14,6 +14,7 @@ const crypto = require('crypto');
 const { spawn, spawnSync, exec, execFile } = require('child_process');
 const { parseVerification, matchesCurrentCommit } = require('./renderer/verification-parse');
 const { createAuthorityStore } = require('./authority-store');
+const { toolFlagsFor } = require('./authority-tool-profile'); // pure read-only/build spawn profile (deny-list pinned by test)
 const atomicStore = require('./state/atomic-store'); // durable write: atomic rename + retained .prev
 const { createMutex, runExclusiveBound } = require('./state/mutex'); // serialize the two lifecycle-state.json writers
 // lifecycle-state.json has two in-process writers (pcc:setPhaseKind's direct write and
@@ -699,9 +700,10 @@ const AUTHORITY_LABELS = {
   completed_needs_review: 'Work complete — review result',
   blocked: 'Blocked — work stopped',
 };
-// The state machine + its two-deadline timeout model live in the pure, unit-tested
-// authority-logic module (injectable clock). main owns IPC, chatId minting, and the
-// tool-flag selection below; every transition delegates here so no logic drifts.
+// The live per-chat authority is the durable, unit-tested authority-STORE module
+// (createAuthorityStore, below; injectable clock). main owns IPC, chatId minting, and the
+// tool-flag selection (authority-tool-profile). NOTE: app/authority-logic.js is the earlier
+// volatile single-slot version, kept for reference but NO LONGER WIRED — the store superseded it.
 // Durable, per-chat authority store, persisted at app level (userData) — independent of the
 // active project, because chat ids are app/renderer-owned so authority lives with the app too.
 // Keyed by STABLE chat.id (not the worker session id), so build authority survives an app
@@ -780,20 +782,14 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     const isBuild = (opts && opts.forceBuild) || authority.authorizeSend(chatId, Date.now());
     // --tools makes a built-in tool AVAILABLE; it does NOT grant permission to RUN it. In
     // headless `claude -p` there is no prompt to approve a tool, so anything not explicitly
-    // permitted is denied at runtime. Previously only the machine's global settings.json
-    // allow-list (Bash/PowerShell/Read/Edit/Write/Glob/Grep) had run-permission — so web
-    // tools were listed but silently blocked ("no web access"). We now grant run-permission
-    // for exactly this profile's tools via --allowedTools, so the spawn is self-sufficient
-    // and no longer depends on global settings. --disallowedTools stays as the deny backstop
-    // (deny beats allow), so read-only still cannot run Bash/Write. Proven by the A/B/C
-    // headless repros (web denied -> web works -> Bash still denied).
-    const toolFlags = isBuild
-      ? ['--tools', 'Bash PowerShell Read Write Edit Glob Grep WebSearch WebFetch', '--strict-mcp-config',
-         '--allowedTools', 'Bash PowerShell Read Write Edit Glob Grep WebSearch WebFetch',
-         '--disallowedTools', 'AskUserQuestion Agent Monitor Skill ToolSearch Task']
-      : ['--tools', 'WebSearch WebFetch Read Glob Grep', '--strict-mcp-config',
-         '--allowedTools', 'WebSearch WebFetch Read Glob Grep',
-         '--disallowedTools', 'AskUserQuestion Bash BashOutput KillBash PowerShell Edit Write NotebookEdit Agent Monitor Skill ToolSearch Task'];
+    // permitted is denied at runtime. We grant run-permission for exactly this profile's tools
+    // via --allowedTools, so the spawn is self-sufficient and no longer depends on global
+    // settings. --disallowedTools stays as the deny backstop (deny beats allow), so read-only
+    // still cannot run Bash/Write. The exact profiles live in the pure, unit-tested
+    // authority-tool-profile module (app/tests/unit/authority-tool-profile.spec.js pins the
+    // deny-list so a read-only-runs-Bash regression fails a test); CLI honoring of deny-over-allow
+    // is proven by the A/B/C headless repros (web denied -> web works -> Bash still denied).
+    const toolFlags = toolFlagsFor(isBuild);
     const args = ['-p', '--model', chosen, ...toolFlags, '--append-system-prompt', CHANNEL_PROMPT];
     if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
     // Worker (Claude) session identity is SEPARATE from authority identity: the renderer
