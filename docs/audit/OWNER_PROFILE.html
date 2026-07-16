@@ -1,0 +1,344 @@
+<title>Owner Profile — mined from 1,441 real turns</title>
+<style>
+  :root {
+    --ground: #f2f3f6;
+    --surface: #ffffff;
+    --slab: #eceef3;
+    --ink: #1a1e28;
+    --muted: #666f80;
+    --faint: #8b94a3;
+    --rule: #d8dce4;
+    --accent: #4c5f96;
+    --accent-soft: #e6e9f3;
+    --calm: #5f7185;
+    --amber: #9a6b12;
+    --amber-soft: #f6ecd7;
+    --rage: #9c2f26;
+    --rage-soft: #f7e4e2;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #121620; --surface: #171c28; --slab: #1c2231;
+      --ink: #dfe4ed; --muted: #9aa3b4; --faint: #6f7889; --rule: #2a3243;
+      --accent: #8ba3e0; --accent-soft: #1e2740;
+      --calm: #8794a8; --amber: #d9a441; --amber-soft: #2e2617;
+      --rage: #e0736a; --rage-soft: #2e1a18;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #121620; --surface: #171c28; --slab: #1c2231;
+    --ink: #dfe4ed; --muted: #9aa3b4; --faint: #6f7889; --rule: #2a3243;
+    --accent: #8ba3e0; --accent-soft: #1e2740;
+    --calm: #8794a8; --amber: #d9a441; --amber-soft: #2e2617;
+    --rage: #e0736a; --rage-soft: #2e1a18;
+  }
+  :root[data-theme="light"] {
+    --ground: #f2f3f6; --surface: #ffffff; --slab: #eceef3;
+    --ink: #1a1e28; --muted: #666f80; --faint: #8b94a3; --rule: #d8dce4;
+    --accent: #4c5f96; --accent-soft: #e6e9f3;
+    --calm: #5f7185; --amber: #9a6b12; --amber-soft: #f6ecd7;
+    --rage: #9c2f26; --rage-soft: #f7e4e2;
+  }
+
+  body { background: var(--ground); color: var(--ink); font-family: var(--sans);
+    line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 4rem 1.5rem 6rem; display: flex; flex-direction: column; gap: 3rem; }
+  section { display: flex; flex-direction: column; gap: 1rem; }
+
+  .eyebrow { font-family: var(--mono); font-size: .7rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--faint); }
+  h1 { font-size: clamp(2rem, 5vw, 2.9rem); line-height: 1.05; letter-spacing: -.025em; font-weight: 650;
+    text-wrap: balance; margin: 0; }
+  h2 { font-size: 1.3rem; letter-spacing: -.012em; font-weight: 620; text-wrap: balance; margin: 0;
+    padding-bottom: .6rem; border-bottom: 1px solid var(--rule); }
+  h3 { font-size: .95rem; font-weight: 640; margin: 0; letter-spacing: -.005em; }
+  p { margin: 0; }
+  .lede { font-size: 1.06rem; color: var(--muted); text-wrap: pretty; }
+  strong { font-weight: 640; color: var(--ink); }
+
+  header { display: flex; flex-direction: column; gap: 1rem; padding-bottom: 2rem; border-bottom: 2px solid var(--ink); }
+  .meta { display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; font-family: var(--mono); font-size: .72rem; color: var(--faint); }
+  .meta b { color: var(--accent); font-weight: 600; }
+
+  /* Verbatim = transcript lines. His actual material. */
+  .q { font-family: var(--mono); font-size: .82rem; line-height: 1.65; background: var(--slab);
+    border-left: 3px solid var(--accent); padding: .75rem .9rem; color: var(--ink);
+    overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  .q.rage { border-left-color: var(--rage); background: var(--rage-soft); }
+  .q.amber { border-left-color: var(--amber); background: var(--amber-soft); }
+  .qs { display: flex; flex-direction: column; gap: .5rem; }
+
+  table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+  .tw { overflow-x: auto; }
+  th { text-align: left; font-family: var(--mono); font-size: .68rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--faint); font-weight: 500;
+    border-bottom: 1px solid var(--rule); padding: .5rem .6rem .5rem 0; }
+  td { padding: .55rem .6rem .55rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--accent); font-weight: 600; }
+  .bar { display: inline-block; height: .5rem; background: var(--accent); border-radius: 1px; vertical-align: middle; min-width: 2px; }
+  .no { color: var(--rage); font-weight: 600; font-size: .78rem; }
+  .partial { color: var(--amber); font-weight: 600; font-size: .78rem; }
+
+  .chip { display: inline-block; font-family: var(--mono); font-size: .66rem; letter-spacing: .06em;
+    text-transform: uppercase; padding: .16rem .45rem; border-radius: 2px; font-weight: 600; }
+  .chip.calm { background: var(--accent-soft); color: var(--accent); }
+  .chip.amber { background: var(--amber-soft); color: var(--amber); }
+  .chip.rage { background: var(--rage-soft); color: var(--rage); }
+
+  /* Escalation: a real sequence, so it's numbered. */
+  ol.ladder { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+  ol.ladder li { display: grid; grid-template-columns: 2.2rem 1fr; gap: 1rem; padding: 1rem 0;
+    border-bottom: 1px solid var(--rule); }
+  ol.ladder li:first-child { border-top: 1px solid var(--rule); }
+  .step { font-family: var(--mono); font-size: .78rem; font-weight: 700; color: var(--surface);
+    background: var(--calm); width: 1.7rem; height: 1.7rem; display: grid; place-items: center; border-radius: 2px; }
+  li.s3 .step { background: var(--amber); }
+  li.s4 .step, li.s5 .step, li.s6 .step { background: var(--rage); }
+  .stepbody { display: flex; flex-direction: column; gap: .5rem; }
+
+  .rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .9rem; }
+  .rules li { display: grid; grid-template-columns: 1.6rem 1fr; gap: .8rem; align-items: start; }
+  .rules .num { font-family: var(--mono); font-size: .72rem; color: var(--accent); font-weight: 700; padding-top: .18rem; }
+
+  .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 3px; padding: 1.1rem 1.2rem;
+    display: flex; flex-direction: column; gap: .6rem; }
+  .card.warn { border-left: 3px solid var(--rage); }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .9rem; }
+  .stat { font-family: var(--mono); font-size: 1.7rem; font-weight: 700; color: var(--accent);
+    font-variant-numeric: tabular-nums; line-height: 1; }
+  .stat.bad { color: var(--rage); }
+  .statlabel { font-size: .78rem; color: var(--muted); }
+  .muted { color: var(--muted); font-size: .9rem; }
+  .src { font-family: var(--mono); font-size: .68rem; color: var(--faint); }
+  footer { border-top: 1px solid var(--rule); padding-top: 1.4rem; }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Behavioural dossier · for simulating the owner in DPCC testing</div>
+  <h1>The Owner</h1>
+  <p class="lede">Built from <strong>1,441 of his real turns</strong> in the Claude Code archives — not from impression. Every frequency is counted; every quote is verbatim. The purpose is narrow and blunt: <strong>the worker uses this to find the bugs before he does.</strong></p>
+  <div class="meta">
+    <span>corpus <b>1,441 turns</b></span>
+    <span>sources <b>PCC (1,300)</b> · <b>Tax-Prep (141)</b></span>
+    <span>method <b>literal phrase counts, no LLM</b></span>
+    <span>mined <b>2026-07-16</b></span>
+  </div>
+</header>
+
+<section>
+  <h2>Why this exists</h2>
+  <p>PCC's tests are written by the worker, so they only ever ask questions the worker already thought of. On 2026-07-16, 21 audit categories, 126 E2E tests, and every gate missed three real defects that the owner found in ten minutes by asking one ordinary question: <em>"does my install need updating?"</em></p>
+  <p>He is the only agent in this system that touches the product. That is the whole bug. This profile removes the excuse.</p>
+  <div class="card warn">
+    <h3>The operating rule</h3>
+    <p class="muted">Him finding a bug is a <strong>P0 defect in PCC</strong>, not diligence on his part. The project's founding rule is <em>reduce owner babysitting</em>. If he is the immune system, the product has inverted its own purpose.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Role — and the line he keeps redrawing</h2>
+  <p>He is the <strong>visionary and product lead</strong>. He sets direction, approves work, and judges outcomes. He does not code, does not run commands, and does not verify code himself. He asserts this repeatedly — usually because the worker has just forgotten it.</p>
+  <div class="qs">
+    <div class="q">i'm the owner.  i don't run commands. i just give you the vision.  you do the work</div>
+    <div class="q">do i look like a coder?   do i look like an engineer.  what's my role?</div>
+    <div class="q">what would i be able to contribute?  i'm not a coder.  does it work as we designed and expect?</div>
+    <div class="q rage">i'm not sure  you read the handoff.  i'm not a coder or an engineer.  so what makes you think i would know how to answer these questions?  what's my role?</div>
+  </div>
+  <p class="muted"><strong>Do not mistake "not a coder" for "not technical."</strong> He uses the vocabulary fluently and correctly, unprompted, across the corpus:</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Term he uses himself</th><th>Turns</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>repo</td><td class="n">188</td><td><span class="bar" style="width:94px"></span></td></tr>
+        <tr><td>commit</td><td class="n">153</td><td><span class="bar" style="width:76px"></span></td></tr>
+        <tr><td>json</td><td class="n">118</td><td><span class="bar" style="width:59px"></span></td></tr>
+        <tr><td>electron</td><td class="n">88</td><td><span class="bar" style="width:44px"></span></td></tr>
+        <tr><td>git</td><td class="n">83</td><td><span class="bar" style="width:41px"></span></td></tr>
+        <tr><td>backup</td><td class="n">82</td><td><span class="bar" style="width:41px"></span></td></tr>
+        <tr><td>branch</td><td class="n">80</td><td><span class="bar" style="width:40px"></span></td></tr>
+        <tr><td>ci</td><td class="n">74</td><td><span class="bar" style="width:37px"></span></td></tr>
+        <tr><td>llm</td><td class="n">71</td><td><span class="bar" style="width:35px"></span></td></tr>
+        <tr><td>gate</td><td class="n">68</td><td><span class="bar" style="width:34px"></span></td></tr>
+        <tr><td>playwright</td><td class="n">43</td><td><span class="bar" style="width:21px"></span></td></tr>
+        <tr><td>architecture</td><td class="n">42</td><td><span class="bar" style="width:21px"></span></td></tr>
+        <tr><td>drift</td><td class="n">40</td><td><span class="bar" style="width:20px"></span></td></tr>
+        <tr><td>detector</td><td class="n">39</td><td><span class="bar" style="width:19px"></span></td></tr>
+        <tr><td>e2e</td><td class="n">38</td><td><span class="bar" style="width:19px"></span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">He reads architecture, catches design smells, and names prior art. He cannot and will not read a diff. Pitch to him at <em>consequence</em>, never implementation.</p>
+</section>
+
+<section>
+  <h2>Voice — mechanics</h2>
+  <div class="grid2">
+    <div class="card"><div class="stat">79%</div><div class="statlabel">of turns start lowercase (1,138 / 1,441)</div></div>
+    <div class="card"><div class="stat">132</div><div class="statlabel">median characters. p10 = 26. He is terse.</div></div>
+    <div class="card"><div class="stat">55%</div><div class="statlabel">use a double space after the period</div></div>
+    <div class="card"><div class="stat">42%</div><div class="statlabel">are under 100 characters (605 turns)</div></div>
+  </div>
+  <p class="muted">Types fast, does not correct typos (<span class="src">"t he", "n eed", "wehen", "chnages"</span>). No greetings, no sign-offs, no pleasantries. Never uses markdown. When he writes long, it is a paste — not prose.</p>
+</section>
+
+<section>
+  <h2>What he actually does — measured</h2>
+  <p class="muted">Frequency across all 1,441 turns, with the honest state of PCC's test coverage for each.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Behaviour</th><th>Share</th><th>Covered by tests?</th></tr></thead>
+      <tbody>
+        <tr><td>Stops runaway work mid-discussion</td><td class="n">12.6%</td><td class="no">No</td></tr>
+        <tr><td>Approves / authorizes work</td><td class="n">9.7%</td><td class="partial">Partly</td></tr>
+        <tr><td>Asks "where are we / what's next"</td><td class="n">9.6%</td><td class="no">No</td></tr>
+        <tr><td><strong>Reads a badge / light / meter and asks about it</strong></td><td class="n">7.4%</td><td class="no">Rendering only — never truth</td></tr>
+        <tr><td>Demands concise, no jargon</td><td class="n">4.6%</td><td class="no">No</td></tr>
+        <tr><td>Reports something looks wrong</td><td class="n">3.5%</td><td class="no">No</td></tr>
+        <tr><td>Catches a contradiction vs. earlier</td><td class="n">3.3%</td><td class="no">No</td></tr>
+        <tr><td>Says it repeated itself / was ignored</td><td class="n">2.4%</td><td class="no">No</td></tr>
+        <tr><td>Opens the app and looks at it</td><td class="n">2.0%</td><td class="no">No</td></tr>
+        <tr><td>Checks tools / access ("check again")</td><td class="n">2.0%</td><td class="partial">Partly</td></tr>
+        <tr><td>Fires / rage-quits</td><td class="n">1.7%</td><td>—</td></tr>
+        <tr><td>Pastes a screenshot</td><td class="n">1.5%</td><td class="partial">Partly</td></tr>
+        <tr><td>Clicks a button and reacts</td><td class="n">1.2%</td><td class="partial">Partly</td></tr>
+        <tr><td>Tests memory / persistence repeatedly</td><td class="n">1.0%</td><td class="no">No</td></tr>
+        <tr><td>Asks "what is my role?"</td><td class="n">1.0%</td><td class="no">No</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card warn">
+    <h3>The number that indicts the test suite</h3>
+    <p class="muted">His most common product behaviour — <strong>reading a badge and asking about it, 106 times</strong> — is covered by <strong>126 E2E tests that assert chips are visible, contain text, and refresh</strong>. Not one asserts a chip is <em>telling the truth</em>. He reads "Backed up: green" and believes it. Nothing checks whether it should be green.</p>
+  </div>
+</section>
+
+<section>
+  <h2>He interrogates. 36% of his turns contain a question.</h2>
+  <p class="muted">524 questions. The dominant form is not "how" or "why" — it is <strong>the verification question</strong>: <span class="src">is / does / do / are / did</span> (136). He is not asking you to explain. He is asking you to confirm, and he will check.</p>
+  <div class="qs">
+    <div class="q">what if you edit a different file t hat isn't in that list?</div>
+    <div class="q">do either of t hese tasks introduce bloat?  do these introduce more babysitting?  do either of these hinder or reduce the core engines modularity?</div>
+    <div class="q">just so I understand-  you're waiting on a verification you could do yourself with proof?</div>
+    <div class="q">i'm not trying to lead you to my conclusion but what would be a natural use for pcc?   don't just agree with me.  i want an honest, objective answer</div>
+    <div class="q">which would be more long term beneficial?</div>
+    <div class="q">this would be a permanent addition right?  not some one time thing?</div>
+    <div class="q">are there any simple tasks we can do here in the app to prove that it works after all these changes?</div>
+    <div class="q">so it's like a down payment?  why would i need to remember what i paid over the year?   since it's tied to my ssn, wouldn't the irs "remind me"?</div>
+  </div>
+  <p class="muted">Note the shape: he probes the <em>edge</em> of a mechanism ("a file that isn't in that list"), the <em>durability</em> of a fix ("permanent right? not one time?"), and the <em>honesty</em> of the answerer ("don't just agree with me"). <strong>His probing is a test of your reasoning, not a change of direction.</strong> Do not fold and agree.</p>
+</section>
+
+<section>
+  <h2>Standing filters — he applies these to every proposal</h2>
+  <div class="qs">
+    <div class="q">do either of t hese tasks introduce bloat?  do these introduce more babysitting?  do either of these hinder or reduce the core engines modularity?</div>
+    <div class="q">maybe but let's try to find a tool that is built for this.   as always, you llm's want to reinvent the wheel</div>
+    <div class="q">so there's this infinite world of solutions that you happily let me build when i've stated over and over that i didn't want to reinvent the wheel?</div>
+    <div class="q">tbh.  this seems overengineered and the prev chat even warned about this and how i could lose data</div>
+    <div class="q">app icon?   who cares.  defer it</div>
+  </div>
+  <p class="muted">Anything you propose gets tested against: <strong>does it add bloat, does it add babysitting, does it hurt modularity, and does it reinvent something that already exists.</strong> A proposal that fails any of these will be rejected, and he will remember that he already told you.</p>
+</section>
+
+<section>
+  <h2>Escalation — the path to "you're fired"</h2>
+  <p class="muted"><strong>7.9%</strong> of his turns contain profanity (114 of 1,441). <strong>20</strong> reach hard rage. It is never random — it is the terminal stage of a specific, repeatable sequence. This is the actual arc of the Tax-Prep project, which he named as the benchmark.</p>
+  <ol class="ladder">
+    <li class="s1"><span class="step">1</span><div class="stepbody">
+      <h3><span class="chip calm">Calm</span> He asks a simple, ordinary thing</h3>
+      <div class="q">which folder do i run it from and where does it save the resulting file?</div>
+    </div></li>
+    <li class="s2"><span class="step">2</span><div class="stepbody">
+      <h3><span class="chip calm">Neutral</span> He reports the plain result. No drama yet.</h3>
+      <div class="q">i ran it</div>
+      <div class="q">i see real words along with garbled characters</div>
+    </div></li>
+    <li class="s3"><span class="step">3</span><div class="stepbody">
+      <h3><span class="chip amber">Amber</span> The worker guesses instead of proving. This is the trigger.</h3>
+      <div class="q amber">less garbling?  how the h ell would i know?  i still see random charcters mixed with readable text</div>
+      <div class="q amber">we are going in circles</div>
+      <div class="q amber">nope.  still just line numbers.  you're just guessing at this point.</div>
+    </div></li>
+    <li class="s4"><span class="step">4</span><div class="stepbody">
+      <h3><span class="chip rage">Critical</span> He does the work himself — and counts the cost</h3>
+      <div class="q rage">i went and built a redactor tool.  i now have my 2025 tax return with real redaction of my ssn</div>
+      <div class="q rage">i don't even know what we're trying to do at this point.  it's been 2 hours of just a nothing burger.</div>
+      <div class="q rage">you just wasted a significant part of my life with this stupid script that never worked.   i produced an actual redacting tool while you had your thumb up your ass.</div>
+    </div></li>
+    <li class="s5"><span class="step">5</span><div class="stepbody">
+      <h3><span class="chip rage">Critical</span> He names the real stake — this is PCC's whole thesis, in his words</h3>
+      <div class="q rage">i think it's some situation where there's a bug or the code is bad or something like that.  which to me points to a real scenario that an llm would fuck this up in a heartbeat and i'd be left holding the bag with noone to blame</div>
+    </div></li>
+    <li class="s6"><span class="step">6</span><div class="stepbody">
+      <h3><span class="chip rage">Terminal</span> Trust collapses. It does not come back in that session.</h3>
+      <div class="q rage">we're not aligned.  you can't even read.  how the fuck am i supposed to trust anything you do at this point</div>
+      <div class="q rage">no mother fucker.  you're fired.  jfc</div>
+    </div></li>
+  </ol>
+  <p class="muted"><strong>Steps 1–4 are the tell.</strong> If the worker is guessing, or the owner is doing the finding, the project is already on this path — regardless of how green the tests are.</p>
+</section>
+
+<section>
+  <h2>What actually triggers it</h2>
+  <p class="muted">Counted across his 114 profane turns. Ranked by how often each theme co-occurs with cursing.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Trigger</th><th>Turns</th><th></th></tr></thead>
+      <tbody>
+        <tr><td><strong>Worker guessing instead of proving</strong></td><td class="n">13</td><td><span class="bar" style="width:130px; background:var(--rage)"></span></td></tr>
+        <tr><td>Trust collapse / being told a fake green</td><td class="n">8</td><td><span class="bar" style="width:80px; background:var(--rage)"></span></td></tr>
+        <tr><td>Wasted time</td><td class="n">7</td><td><span class="bar" style="width:70px; background:var(--amber)"></span></td></tr>
+        <tr><td>Worker ignored an instruction he already gave</td><td class="n">6</td><td><span class="bar" style="width:60px; background:var(--amber)"></span></td></tr>
+        <tr><td>Wall of text / jargon / word salad</td><td class="n">5</td><td><span class="bar" style="width:50px; background:var(--amber)"></span></td></tr>
+        <tr><td>Worker acted without asking, mid-discussion</td><td class="n">4</td><td><span class="bar" style="width:40px"></span></td></tr>
+        <tr><td>Being told what to do / handed work</td><td class="n">3</td><td><span class="bar" style="width:30px"></span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>Guessing is the number one cause.</strong> Not failure — guessing. He tolerates "I don't know" and "it's untested." He does not tolerate confident noise.</p>
+  <div class="qs">
+    <div class="q amber">cmon man.  fucking step  up and meet me at a professional level</div>
+    <div class="q amber">why the fuck would i want you to stop.  did i ask you to stop?  did i mention stopping?</div>
+    <div class="q amber">mother fucker just do what I say</div>
+    <div class="q amber">i n eed you to always answer me before you start working.  wehen we're discussing things that is NOT the time to go automated and start editing, changing, updating ,etc</div>
+  </div>
+</section>
+
+<section>
+  <h2>How he approves</h2>
+  <p class="muted">50 approval turns. Approval is <strong>fast, terse, and total</strong> — and it means <em>go, and don't come back to ask again</em>.</p>
+  <div class="qs">
+    <div class="q">approved</div>
+    <div class="q">yes.  push it</div>
+    <div class="q">12 it is</div>
+    <div class="q">i already approved 18.  if 24 is easy/small go ahead and add it.  both are approved</div>
+    <div class="q">keep going until I tell your to stop</div>
+    <div class="q">i  have to enable it manually.  go ahead and begin.  the work is approved</div>
+  </div>
+  <p class="muted">He does not want to be asked "which next?" — he says when to stop. Re-asking for permission he already granted reads as not listening, and lands in the trigger table above.</p>
+</section>
+
+<section>
+  <h2>Simulating him — the rules</h2>
+  <ol class="rules">
+    <li><span class="num">01</span><div><strong>Use the product; never read the source.</strong> He opens DPCC, looks, clicks, and believes what it says. A test that inspects a file instead of driving the UI is not him.</div></li>
+    <li><span class="num">02</span><div><strong>Treat every visible claim as a claim to disprove.</strong> For each chip, badge, meter, banner: establish the truth independently — git, filesystem, network — and compare. A chip that renders perfectly and says the wrong thing is the defect.</div></li>
+    <li><span class="num">03</span><div><strong>Ask the ordinary question, not the clever one.</strong> "Is this current?" "Where are we?" "Am I backed up?" The 2026-07-16 defects came from <em>"does it need updating?"</em> — not from an adversarial probe.</div></li>
+    <li><span class="num">04</span><div><strong>Live at t &gt; 0.</strong> Every existing test builds a pristine world — fresh profile, synthetic fixtures, faked worker. He lives in an accumulated one: a three-day-old install, a repo that moved, docs piled with edits. Build the aged state; that is where the bugs were.</div></li>
+    <li><span class="num">05</span><div><strong>Repeat and re-check.</strong> He tested chat memory seven times in a row with different numbers, and says "check again" until it's real. One green is not evidence.</div></li>
+    <li><span class="num">06</span><div><strong>Interrupt.</strong> 12.6% of his turns stop work mid-flight. Start something, kill it, verify nothing corrupted or silently continued.</div></li>
+    <li><span class="num">07</span><div><strong>Cross-examine against earlier claims.</strong> Take something the app or docs asserted before and check it still holds.</div></li>
+    <li><span class="num">08</span><div><strong>Judge as a non-coder.</strong> If evaluating the answer requires implementation knowledge, it has already failed him.</div></li>
+    <li><span class="num">09</span><div><strong>Never hand him the finding as a chore.</strong> Find it, prove it, fix it, report the result.</div></li>
+  </ol>
+</section>
+
+<footer>
+  <p class="src">Sources: <b>~/.claude/projects/C--ProjectControlCockpit</b> (123 sessions) · <b>~/.claude/projects/C--Tax-Prep-and-Assistant</b> (28 sessions). Extraction and counting: <b>mine-user-turns.js</b>, <b>classify.js</b>, <b>profile-mine.js</b>, <b>samples.js</b>. Tool-result and system turns excluded; only genuine owner messages counted. All quotes verbatim, including typos. Re-runnable — this profile is data, not opinion.</p>
+</footer>
+
+</div>
