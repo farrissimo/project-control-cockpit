@@ -9,7 +9,7 @@
   },
   "slice_note": "Slices = the 22 audit categories named explicitly in ADR-0009 (an audit category is 'done' when its per-practice grid is populated AND independently verified), plus the two sign-off gates. The category list is the current declared plan; some may consolidate (ADR-0009 point 1) — adjust here when they do, so the denominator always reflects the real plan.",
   "slices": [
-    { "id": "state-data-integrity",            "title": "State & data integrity",                                   "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "state-data-integrity",            "title": "State & data integrity",                                   "workstream": "audit-category", "done": true,  "evidence": "audit grid docs/audit/state-data-integrity.md (Codex-verified); 2 real T0 test-gaps CLOSED — backup.spec.js (7) + check-schemas.spec.js (4); failure-injection-in-CI disclosed as accepted residue" },
     { "id": "verification-proof-of-done",       "title": "Verification & proof-of-done",                             "workstream": "audit-category", "done": false, "evidence": "" },
     { "id": "change-governance-decisions",      "title": "Change governance & decisions",                            "workstream": "audit-category", "done": false, "evidence": "" },
     { "id": "requirements-intent-acceptance",   "title": "Requirements / intent & acceptance correctness",           "workstream": "audit-category", "done": false, "evidence": "" },
