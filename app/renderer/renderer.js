@@ -88,6 +88,20 @@ async function refreshCanonical() {
 // persistent banner and disable the composer so nothing is edited from a recovered
 // (previous-generation) view; mutations are also hard-blocked in chatCmd. 'current'
 // clears the banner and restores the composer (unless a turn is in flight).
+// The composer's enabled state is DERIVED from exactly two facts: are we showing a recovered
+// (read-only) view, and is a turn in flight. Deriving it in one place and MUTATING it from
+// another is what wedged it: a send set busy=true, appending the reply re-derived the state
+// (latching Send disabled), and the send's finally then cleared busy WITHOUT re-deriving — so
+// Send stayed dead with no error, until some unrelated store read happened to fire. Every
+// writer of those two facts must call this; nothing else may touch the composer's disabled
+// state. Enter hid it (form.requestSubmit() ignores a disabled submit button), so only someone
+// CLICKING Send ever hit it.
+function syncComposer() {
+  const inRecovery = servedGeneration === 'prev';
+  if (input) input.disabled = inRecovery;
+  if (sendBtn) sendBtn.disabled = inRecovery || busy;
+}
+
 function setRecoveryState(served) {
   servedGeneration = (served === 'prev') ? 'prev' : 'current';
   const inRecovery = servedGeneration === 'prev';
@@ -97,8 +111,7 @@ function setRecoveryState(served) {
       : '';
     recoveryBanner.classList.toggle('hidden', !inRecovery);
   }
-  if (input) input.disabled = inRecovery;
-  if (sendBtn) sendBtn.disabled = inRecovery || busy;
+  syncComposer();
 }
 
 // Run a command-shaped mutation through the canonical IPC, then resync from the
@@ -345,7 +358,7 @@ async function sendMessage(text, displayText) {
 async function runSend(item) {
   const chatId = item.chatId;
   if (!chats.find((c) => c.id === chatId)) { return; }
-  busy = true; input.focus();
+  busy = true; syncComposer(); input.focus();
   const thinking = addBubbleUI('assistant thinking', 'Claude is working…');
   try {
     // Two IDs, kept separate on purpose: the WORKER session id is the re-minted id
@@ -367,7 +380,7 @@ async function runSend(item) {
     thinking.remove();
     await appendMessage('assistant error', 'Something went wrong: ' + err.message, chatId);
   } finally {
-    busy = false; input.focus();
+    busy = false; syncComposer(); input.focus();
     if (sendQueue.length) {
       runSend(sendQueue.shift()); // steering: send the next queued message
     } else {
@@ -857,7 +870,7 @@ function makeSecondOpinionButton() {
       + 'Begin your reply with EXACTLY one of: AGREE / PARTIALLY AGREE / DISAGREE.\n'
       + 'Then give: your reasoning, any risk/downside or error Claude missed, and whether this warrants closer scrutiny.\n\n'
       + '=== QUESTION ===\n' + (question || '(not captured)') + "\n\n=== CLAUDE'S ANSWER ===\n" + answer;
-    busy = true; sendBtn.disabled = true;
+    busy = true; syncComposer();
     const thinking = addBubble('assistant thinking', 'Codex is reviewing…', false);
     try {
       const res = await window.pcc.secondOpinion(prompt);
@@ -867,7 +880,9 @@ function makeSecondOpinionButton() {
       thinking.remove();
       await appendMessage('assistant error', 'Second opinion failed: ' + e.message, chatId);
     } finally {
-      busy = false; sendBtn.disabled = false;
+      // syncComposer(), not `disabled = false`: a hard false would re-enable the composer even
+      // in a recovery view, where it must stay locked.
+      busy = false; syncComposer();
       if (sendQueue.length) runSend(sendQueue.shift()); // drain anything queued during the review
     }
   });
