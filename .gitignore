@@ -81,3 +81,9 @@ app/.pcc-mut-tmp/
 *.pem
 *.key
 secrets.json
+
+# Operation Understudy run artifacts (tools/understudy/driver.js): the owner transcript and the
+# sealed technical trace are OUTPUT of a qualification run, not source. Committing them would let
+# a stale run masquerade as current evidence. See tools/understudy/README.md
+/tools/understudy/owner.log
+/tools/understudy/trace.log

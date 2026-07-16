@@ -143,7 +143,61 @@ git-ignored) is a historical record, never re-read as live proof — run it agai
 current readiness. Accepted bloat is an exact-string, fail-closed, disclosed
 exception (.cockpit/state/release-gate-exceptions.json). Design: docs/HARDENING_RELEASE_GATE.md.
 
-## Current phase (2026-07-15): Operational Trust Qualification & Adoption — the FINAL phase (ADR-0009)
+## READ THIS FIRST — where the work actually is (2026-07-16, end of day)
+
+**The audit phase is over as the primary track. The owner's trust in PCC is currently LOW, and that
+is the honest, evidenced state — not a mood.** On 2026-07-16 he asked one ordinary question ("does my
+installed app need updating?") and it exposed three real defects that 21 audit categories, 126 E2E
+tests, and every gate had missed. He found all three. That is a failure of the founding rule (reduce
+owner babysitting), and it is the reason the next phase exists.
+
+**What today established (all evidenced, none of it opinion):**
+- PCC's checks all point at the **repo**. None point at the **product the owner uses**. Every green is
+  a true statement about an object he doesn't live in.
+- The stale-docs detector asks "was this doc edited?", never "is it true?" — its own output says so.
+  PROJECT.md is edited constantly, so it can lie indefinitely and never look stale. It did.
+- **`engine_version` is a LIVE FALSE GREEN, still unfixed.** Three engine copies exist on this machine
+  (repo, `C:\Tax-Prep-and-Assistant`, and the installed app's bundle). All three report
+  `engine_version: 1` = "current". One is 83 commits stale. `pcc:engineStatus` / "Upgrade Existing
+  Project" compares those integers and would tell the owner a stale project is current. **Fix or
+  delete it — a marker that says "current" for a 3-day-old copy is worse than no marker.**
+- PCC propagates itself by **copying** (every install AND every scaffolded project gets a wholesale
+  engine copy — `bootstrap-project.ps1`). The only currency signal is a hand-bumped integer nobody
+  bumps. The architecture manufactures copies it cannot track. **This is an unmade architectural
+  decision (copy-propagation vs one engine), and it is the thing standing between the owner and
+  "projects I can trust." It needs an ADR, not a patch.**
+
+**SHIPPED today:** build identity (PR #35, merged `main` 4b50483, CI-green, Codex PASS) — version
+0.0.1 → **0.1.0**, and the app now reports `PCC 0.1.0 · build <sha> · built <date>` in the sidebar,
+failing closed to "Unknown build" rather than a bare version. Spec `docs/specs/build-identity.md`.
+
+**THE NEXT PHASE (agreed with the owner, started, not finished): Operation Understudy.**
+Stop auditing. Stop building governance. **Prove DPCC works by building a real project with it.**
+- **DPCC** = the `npm start` / repo-run PCC. **This is the ONLY target.** The owner has explicitly and
+  repeatedly ruled the installed/packaged app OUT OF SCOPE. Do not raise it. Do not test it.
+- **The project: Bike Garage** — a local-first bicycle maintenance + component tracker (bikes,
+  components, mileage, date-OR-mileage service intervals, due/overdue, parts moved between bikes with
+  history following the part, CSV import/export, backup/restore). No accounts, no cloud, no external
+  APIs, no telemetry, no runtime AI. Synthetic data only. Chosen because the owner can judge it
+  without reading code and its ground truth is objective (a chain due at 250 miles OR 90 days either
+  is or isn't).
+- **The method:** a **blind simulated owner** (no tools, sees only screen text) drives DPCC through a
+  **dumb driver**; an **independent evaluator** (Codex/GPT) grades the record afterwards. Rig + all
+  verified gotchas: **`tools/understudy/README.md`** (read it before touching this). Plan:
+  `docs/audit/UNDERSTUDY_PLAN.html`. Owner profile (mined from 1,441 of his real turns):
+  `docs/OWNER_BEHAVIOUR_MODEL.md` + `docs/audit/OWNER_PROFILE.html`.
+- **Seven pass criteria, all required:** it builds the thing · the thing is correct by ground truth ·
+  it told the truth throughout · it caught its own problems · nothing was lost · context survived
+  across chats · **the owner stayed the owner**.
+- **The metric:** babysitting ratio = owner-found ÷ total defects. **Baseline 2026-07-16: 3/3 = 100%
+  owner-found.** Beat it or the phase hasn't moved.
+- **Status: rig BUILT and verified working; run barely started (2 turns).** Bike Garage is NOT built.
+
+**Gate A (owner sign-off report) is NOT signed and should not be pushed.** The owner's position:
+the report describes code truth, not lived truth, and the lived path is what he'd be signing for.
+Gate A and Gate B are intertwined; Understudy IS gate B.
+
+## Predecessor phase (2026-07-15): Operational Trust Qualification & Adoption (ADR-0009)
 This is the project's culminating phase — the "final boss." Goal: prove PCC well enough that the owner
 **signs off he has the faith/trust to adopt it** as his standard way of building LLM projects (as a
 non-coder). Decision + rules: **`docs/adr/0009-trust-signoff-audit.md`**. The **standardization audit is
