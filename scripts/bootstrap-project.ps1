@@ -105,6 +105,9 @@ Copy-File 'docs/HANDOFF_PACKET_SPEC.md'                 # channel 7: the cross-s
 Copy-File 'docs/specs/communication-contracts.md'       # the per-channel contract (all 7 channels)
 Copy-File 'docs/specs/milestone-update-generator.md'    # channel 1 generator spec
 Copy-File 'docs/specs/verification-request-generator.md' # channels 3&4 generator spec
+# The milestone-update ENFORCEMENT hook: the script rides the wholesale scripts/ copy above; seed its
+# Claude Code wiring so a spawned project also gets the on-merge templated-milestone injection (parity).
+Copy-File '.claude/settings.json'                       # PostToolUse hook -> scripts/hooks/milestone-on-merge.ps1
 
 # --- 4. generic declared state (lifecycle model + thresholds copied; state fresh) ---
 Copy-File '.cockpit/state/lifecycle-model.json'
