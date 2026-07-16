@@ -3,10 +3,12 @@
 # Test-Json does not exist in Windows PowerShell 5.1 - so this script must be
 # run under pwsh, same as the other schema/state checks it sits alongside.
 #
-# This is a reporting tool, not a gate: its own exit code reflects whether
-# every file matched its schema, purely so a caller (doctor.ps1) can decide
-# how to label the finding. Nothing in this repo treats that exit code as a
-# reason to halt or block a cycle - doctor.ps1 always exits 0 regardless.
+# Its exit code reflects whether every file matched its schema; each caller decides
+# how to treat it (like check-adr.ps1). doctor.ps1 = REPORT: it labels the finding and
+# always exits 0 regardless. The worker-handback path = HARD GATE: both
+# scripts/finalize-worker-handback.ps1 and scripts/verify-handback-guardrails.ps1 abort
+# the handback on a non-zero exit (a schema violation against the returned state). So a
+# caller CAN and does halt on it — it is not merely a report.
 
 param()
 
