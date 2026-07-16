@@ -59,6 +59,8 @@ const KIT = [
   'docs/specs/communication-contracts.md',              // the per-channel contract
   'docs/specs/milestone-update-generator.md',           // channel 1 spec
   'docs/specs/verification-request-generator.md',       // channels 3&4 spec
+  'scripts/hooks/milestone-on-merge.ps1',               // channel 1 enforcement hook (rides scripts/)
+  '.claude/settings.json',                              // ...and its Claude Code wiring
 ];
 
 for (const rel of KIT) {

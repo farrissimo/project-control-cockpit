@@ -55,3 +55,6 @@ app/.pcc-mut-tmp/
 
 # Packaged installer output (electron-builder)
 /dist/
+
+# Claude Code personal/local settings (machine-specific; never shared)
+.claude/settings.local.json
