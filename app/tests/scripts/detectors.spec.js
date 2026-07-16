@@ -114,6 +114,50 @@ test('bloat excludes engine files via exclude_globs, still flags product (F10)',
   }
 });
 
+// Metric-honesty parity (2026-07-16 audit): bloat was the ONE config-driven detector
+// missing the guard its siblings (drift/stale-docs/high-stakes) already have. A PRESENT
+// but MALFORMED bloat-thresholds.json must degrade to 'unknown' — it used to swallow the
+// parse error and report a false 'clear' ("within the limits you set") over zero files.
+test('bloat degrades to UNKNOWN on a malformed config (green-over-unchecked)', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-bloatbad-'));
+  try {
+    fs.mkdirSync(path.join(tmp, 'scripts'));
+    fs.copyFileSync(path.join(REPO, 'scripts', 'detect-bloat.ps1'), path.join(tmp, 'scripts', 'detect-bloat.ps1'));
+    fs.mkdirSync(path.join(tmp, '.cockpit', 'state'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, '.cockpit', 'state', 'bloat-thresholds.json'), '{ this is not valid json ');
+    spawnSync('git', ['init'], { cwd: tmp, encoding: 'utf8' });
+    spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '--allow-empty', '-q', '-m', 'x'], { cwd: tmp, encoding: 'utf8' });
+    const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/detect-bloat.ps1', '-Json'],
+      { cwd: tmp, encoding: 'utf8', timeout: 30000, windowsHide: true });
+    const obj = JSON.parse((r.stdout || '').trim());
+    expect(obj.signal, 'a malformed config checks nothing -> unknown, not a false clear:\n' + r.stdout).toBe('unknown');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+// Same class: a well-formed config that declares NO source_globs and NO dependency_manifests
+// scans zero files. Reporting 'clear' would paint green over an unchecked project (and note the
+// PowerShell @($null).Count === 1 trap that made the naive guard miss this). Must be 'unknown'.
+test('bloat degrades to UNKNOWN when nothing is declared to scan', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-bloatempty-'));
+  try {
+    fs.mkdirSync(path.join(tmp, 'scripts'));
+    fs.copyFileSync(path.join(REPO, 'scripts', 'detect-bloat.ps1'), path.join(tmp, 'scripts', 'detect-bloat.ps1'));
+    fs.mkdirSync(path.join(tmp, '.cockpit', 'state'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, '.cockpit', 'state', 'bloat-thresholds.json'),
+      JSON.stringify({ max_source_file_lines: 600, max_dependencies: 20 })); // no source_globs / manifests
+    spawnSync('git', ['init'], { cwd: tmp, encoding: 'utf8' });
+    spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '--allow-empty', '-q', '-m', 'x'], { cwd: tmp, encoding: 'utf8' });
+    const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/detect-bloat.ps1', '-Json'],
+      { cwd: tmp, encoding: 'utf8', timeout: 30000, windowsHide: true });
+    const obj = JSON.parse((r.stdout || '').trim());
+    expect(obj.signal, 'nothing declared to scan -> unknown, not a false clear:\n' + r.stdout).toBe('unknown');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 // Soak fix F9 (stale-docs half): like drift, stale-docs must degrade to 'unknown' when
 // the configured baseline ref is missing, not report a false 'clear'.
 test('stale-docs degrades to UNKNOWN when the baseline ref is missing (F9)', () => {

@@ -57,7 +57,10 @@ For each practice in the category, one row:
 | Requirements / intent & acceptance correctness | `docs/audit/requirements-intent-acceptance.md` | ✅ done (accepted-residue by ADR-0003; risk named for owner acceptance) |
 | External dependency / tool availability & failure | `docs/audit/external-dependency-availability.md` | ✅ done (tested-holds; retired-watcher residue disclosed) |
 | Incident response, diagnostics & supportability | `docs/audit/incident-response-diagnostics.md` | ✅ done (found + fixed: durable app-error log for swallowed failures) |
-| _(12 of 22 audit categories done; 10 remaining)_ | — | pending |
+| Testing & assurance | `docs/audit/testing-assurance.md` | ✅ done (tested-holds; zero dishonest tests, full-suite CI) |
+| Detection & signals | `docs/audit/detection-signals.md` | ✅ done (found + fixed: bloat false-green on malformed/empty config) |
+| Memory & knowledge | `docs/audit/memory-knowledge.md` | ✅ done (tested-holds; no-proactive-repeat-prevention is a DECISION-008 residue) |
+| _(15 of 22 audit categories done; 7 remaining)_ | — | pending |
 
 The live `% complete` is computed from the phase manifest by `scripts/new-milestone-update.ps1` — never
 hand-counted here.
