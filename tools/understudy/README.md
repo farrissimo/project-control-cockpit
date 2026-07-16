@@ -20,17 +20,30 @@ Plan: `docs/audit/UNDERSTUDY_PLAN.html` · Profile: `docs/audit/OWNER_PROFILE.ht
 - **`--disallowed-tools` IS A FAKE LOCK.** `claude -p --disallowed-tools "Read,Bash,Grep,..."`
   silently ignores it — the spawned process reads files anyway and still lists those tools.
   **Do not use it.**
-- **`--settings` with a `permissions.deny` list IS a real lock.** Verified by ordering the brain
-  to read `app/main.js`: it could not ("I HAVE NO TOOLS capable of reading that file").
-  Use `blind-settings.json`.
+- **`--settings` with a `permissions.deny` list IS a real lock** — the only one. Claude Code's
+  permission rules are enforced by the harness, not the model, and a bare tool name "removes the
+  tool from Claude's context entirely, so Claude never sees it" (docs: permissions). Confirmed
+  empirically against a **vanilla** Claude under `blind-settings.json` (no blindness persona, so
+  nothing told it to refuse): it reported the file-reading tools simply are not in its tool set.
+  Use `blind-settings.json`. NOTE the earlier "verified" for this rested only on the *persona's*
+  self-report ("I HAVE NO TOOLS…"), which is not evidence — a persona instructed to claim
+  blindness will claim blindness whether or not it is blind.
+- **A `.claude/agents/*.md` definition CANNOT make the brain blind — that path is a FAKE LOCK.**
+  An empty `tools:` frontmatter field means **inherits ALL tools** (docs: sub-agents, frontmatter
+  table), and `tools: []` makes the harness refuse to launch the subagent — so there is no
+  frontmatter route to zero tools. A brain spawned as a subagent has Read/Bash and is blind only
+  by persuasion; it can "just check the code" on any turn it gets frustrated and **void the run
+  silently**. This is why the persona lives at `tools/understudy/owner-brain-prompt.md` and NOT in
+  `.claude/agents/` — it is a prompt for `claude -p --settings`, never a registrable agent type.
+  (It was in `.claude/agents/` until 2026-07-16; removed once the fake lock was proven.)
 - **Microsoft's official `@playwright/mcp` approach works on DPCC over CDP** — no fork needed.
   The Electron forks (`playwright-mcp-electron` v0.1.5, `@hotnsoursoup/...` v0.0.30) are 6–12
   months stale; the official package ships ~daily. Attach over CDP instead.
 - `page.accessibility.snapshot()` is **removed** from modern Playwright. Use
   `page.locator('body').ariaSnapshot()`.
-- `.claude/agents/*.md` agent definitions **load at session start** — a newly-written agent type
-  is not available in the session that created it. `owner-brain.md` exists and will register in
-  a fresh session; until then spawn the brain via `claude -p --settings blind-settings.json`.
+- `.claude/agents/*.md` agent definitions load at session start — but this does not matter here,
+  because the agent route is a fake lock (above). **The brain is always spawned via
+  `claude -p --settings blind-settings.json`.** There is no other supported way to run it.
 
 ## Running it
 
@@ -43,7 +56,7 @@ node tools/understudy/driver.js '{"action":"type","target":"chat input","text":"
 
 Brain turn (blind, no tools):
 ```
-{ cat .claude/agents/owner-brain.md; echo; echo "=========="; cat turn.txt; } \
+{ cat tools/understudy/owner-brain-prompt.md; echo; echo "=========="; cat turn.txt; } \
   | claude -p --settings tools/understudy/blind-settings.json --permission-mode acceptEdits
 ```
 `turn.txt` = the owner's private intent + **the screen text only**. Never give it source, git,
