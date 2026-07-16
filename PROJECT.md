@@ -155,23 +155,33 @@ that live build; the trust claim stays **bounded** (tested workflows + documente
 residues), never "any project." Owner signs off only on outcomes he can judge; Claude + Codex own
 technical calibration; GPT secondary verification fires on the defined trigger.
 
-**First category = Communication contracts** (`docs/specs/communication-contracts.md`, Proposed/design):
-fixed template per channel; the immediate payoff the owner asked for is the **owner milestone-update
-template** made real (structure→machinery generator).
+**Category 1 = Communication contracts — COMPLETE** (`docs/specs/communication-contracts.md`, status
+`active — partially machinery-enforced`). Fixed format per channel; the owner's recurring asks moved out
+of prose into machinery.
 
 **Phase progress is tracked as DATA** in `.cockpit/state/phase-manifest.json` (the 22 audit categories +
-2 sign-off gates), so the milestone-update generator can compute a real `% complete` (done ÷ total) and
-never invent it. Update a slice to `done` only with an `evidence` pointer — the generator refuses to
-count an evidence-less "done" (reports UNKNOWN).
+2 sign-off gates), so the milestone-update generator computes a real `% complete` (done ÷ total) and never
+invents it. A slice counts `done` only with an `evidence` pointer — the generator reports UNKNOWN for an
+evidence-less "done". **Current: 1/24 = 4%** (communication-contracts done).
 
-**Shipped (channel 1 — the milestone-update generator):** `scripts/new-milestone-update.ps1` (PR #16,
-`f78d738`, CI-green, Codex 3-round PASS) assembles the fixed owner milestone-update block set and
-computes the phase % from the manifest, leaving only plain-English judgment slots for the LLM — "same
-format every time" now comes from code, not memory. Fails closed to `pct="UNKNOWN"` on every bad-manifest
-path (Codex caught 4 real anti-fake-green defects, all fixed). Spec: `docs/specs/milestone-update-generator.md`;
-tests: `app/tests/scripts/milestone-update.spec.js` (16). **Run it:** `pwsh -NoProfile -File
-scripts/new-milestone-update.ps1 -Milestone "<name>"`. Remaining comms channels (2–7) + scaffolder parity
-(AC-5) are later slices.
+**What shipped for category 1 (all on `main`, CI-green, Codex-verified):**
+- **Channel 1 — milestone-update generator** `scripts/new-milestone-update.ps1` (PR #16): assembles the
+  fixed block set + computes the phase % from the manifest; fails closed to UNKNOWN on every bad-manifest
+  path (Codex caught 4 anti-fake-green defects). 16 tests. **Run:** `pwsh -NoProfile -File
+  scripts/new-milestone-update.ps1 -Milestone "<name>"`.
+- **Channels 3 & 4 — verification-request generator** `scripts/new-verification-request.ps1` (PR #18):
+  `-Channel codex` (independent-verifier request) and `-Channel gpt` (secondary block: computed remote
+  URL + push guard + required trigger reason). 9 tests. Dogfooded — it now generates its own Codex
+  requests.
+- **Parity + honest grid** (PR #19): the scaffolder seeds the comms contract docs + a generic starter
+  `phase-manifest.json`, so spawned projects inherit the machinery **and** a working manifest (proven live
+  in `scaffold-kit.spec.js`). The audit grid records the honest states; channel 5 (verdict contract)
+  travels via AGENTS.md, channel 7 handoff spec now travels, channel 2 is a met discipline measured by
+  falling frequency, **channel 6 (chat start-off) reliability measurement is deferred — disclosed, not
+  hidden**.
+
+**Next (owner picks):** another audit category (21 remain), or sign-off gate (b) — the live end-to-end
+adversarial build + adoption. Channel 6's start-off measurement is the one open sub-item inside category 1.
 
 ### Predecessor phase (COMPLETE): Governance Standardization
 Made PCC's safeguards fire predictably, proportionally, self-enforcing — not prose an LLM can skip.
