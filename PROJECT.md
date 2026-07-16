@@ -248,11 +248,20 @@ not a probe). Each produced a real finding OR converted an assumption to proof, 
 - **Retirement, migration & export** — tested-holds, low consequence: data is 100% open formats, extractability
   real+tested, registry self-prunes (no lock-in). `docs/audit/retirement-migration-export.md`.
 
-**Next (owner decisions — all probe-able audit categories are done):**
+**Status (2026-07-16): Gate (a) report BUILT + published; UNDER OWNER REVIEW (not signed).** The owner-facing
+sign-off report is `docs/audit/OWNER_SIGNOFF_REPORT.html` (self-contained, print-to-PDF; published Artifact
+https://claude.ai/code/artifact/4bd953b7-a8d0-419f-bf98-ca91cdd39657). It compiles all 21 grids: per-area true
+state (fixed/tested-holds/accepted-residue), the 10 concrete fixes, the exact tested boundaries, **7 residual
+risks for the owner's active acceptance**, an intended-behavior/unacceptable-failure-modes confirm panel, and a
+signature block. Gate (a) is deliberately NOT marked done in the phase manifest — the owner's sign-off closes it,
+not the worker producing the document (marking it done pre-sign-off would be the exact fake-green this phase
+kills). The owner is reviewing now; secondary GPT verification is offered (trust-boundary doc) but the owner's call.
+
+**Next (owner decisions — all probe-able audit categories are done; awaiting owner sign-off on the Gate (a) report):**
 - **Packaging, install, upgrade & runtime** — the last audit category, NOT started; it's a real build (Windows
   installer + fresh-machine install), explicitly deferred and needing owner go. Overlaps sign-off gate (b).
-- **Sign-off gate (a)** — compile the 21 grids into the owner-facing HTML/PDF report (disclosed state + boundaries +
-  residues to accept).
+- **Sign-off gate (a)** — report BUILT + published (above), UNDER OWNER REVIEW. On owner sign-off: record it +
+  mark the slice done. On changes: revise the report. This is the payoff artifact; needs no new build.
 - **Sign-off gate (b)** — the live end-to-end adversarial spawned-project build + adoption (the gate that actually
   earns the owner's sign-off). Open sub-items noted in the grids (e.g. comms channel 6 start-off measurement; the
   branch-protection check is now wired into the **release gate** — the **trust-strip** surface remains an open
