@@ -121,6 +121,32 @@ loop (running the heavy verify-and-merge loop for every trivial standardization 
 over-governance this phase forbids). If the audit starts adding friction without reducing babysitting,
 it violates its own yardstick and is cut back.
 
+### Operating principle — probe freely, standardize rarely (amendment, 2026-07-15)
+
+Added after an owner + GPT discussion that named a real risk in this phase: **standardization for its own
+sake.** Golden rule (from that discussion): *proactively test the known weak points of LLM-led
+development, then build only the minimum durable control needed for failures that testing proves credible
+and consequential.* The refinement — now the governing rule for every remaining category — is to
+**unbundle two activities the audit was conflating**:
+
+1. **Probing (finding out whether it works).** Cheap, and the answer to "we don't always know when it
+   ain't broke" — you cannot assume it isn't; you look. The **knowledge is the payoff**: converting an
+   assumption ("the backup restore is safe") into proof retires an unknown. So **"tested, holds" is a
+   first-class success outcome**, expected to be the MOST COMMON one — not a shortfall or a sign of
+   missing work. Probe generously.
+2. **Durable standardization / control.** Expensive (machinery, process, maintenance — the thing that
+   becomes bloat). It clears a **high bar**: it earns its place only if it **clearly improves the process
+   or the project** — moves a measurable number or removes a real, consequential risk (the standing rule
+   that a change is a hypothesis which must move a number). Otherwise: **note it and move on.**
+
+Every weak point / practice therefore ends in exactly one verdict: **tested, holds → note + move on** ·
+**tested, found a real + consequential break → build the minimum control** · **can't tell yet → say so
+honestly** (never paint it green). The category list is a **checklist of where to look**, not a set of
+grids to fill for completeness; a category that is probed and holds is recorded as holding, briefly, not
+re-engineered. This does not invalidate the two completed categories — both cleared the bar (communication
+contracts solved a proven, repeatedly-stated pain; state & data integrity either fixed a real defect or
+converted an unknown to proof on the highest-stakes files).
+
 ## Engagement
 
 - **Owner:** sets intent, signs off on outcomes he can judge, runs GPT secondary verification where the
