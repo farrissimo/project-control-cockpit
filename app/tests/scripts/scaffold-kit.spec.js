@@ -52,6 +52,13 @@ const KIT = [
   'schemas/vision-promises.schema.json',// vision-promises schema
   'app/main.js',                        // the app (carries the proof taxonomy)
   'app/renderer/overview-logic.js',     // Owner Overview deterministic logic
+  // Communication contracts (ADR-0009 category 1) — the machinery AND the contract docs must travel.
+  'scripts/new-milestone-update.ps1',                   // channel 1 generator
+  'scripts/new-verification-request.ps1',               // channels 3&4 generator
+  'docs/HANDOFF_PACKET_SPEC.md',                        // channel 7 handoff format
+  'docs/specs/communication-contracts.md',              // the per-channel contract
+  'docs/specs/milestone-update-generator.md',           // channel 1 spec
+  'docs/specs/verification-request-generator.md',       // channels 3&4 spec
 ];
 
 for (const rel of KIT) {
@@ -177,6 +184,28 @@ test('every state config the app reads is born with a new project (or explicitly
   const missing = read.filter((f) => !RUNTIME_OK.has(f)
     && !fs.existsSync(path.join(target, '.cockpit', 'state', f)));
   expect(missing, 'declared config the app reads but the scaffolder does not seed:\n' + missing.join('\n')).toEqual([]);
+});
+
+// Communication-contracts parity (ADR-0009 category 1): a spawned project must inherit BOTH the
+// milestone-update machinery AND a working phase manifest, so the generator computes a real % day one
+// (not just UNKNOWN because no manifest travelled). The seeded manifest is a GENERIC starter (renamed
+// per project), never PCC's own 24-slice trust-signoff manifest.
+test('new project gets a generic starter phase-manifest and the inherited generator computes against it', () => {
+  const p = path.join(target, '.cockpit', 'state', 'phase-manifest.json');
+  expect(fs.existsSync(p)).toBe(true);
+  const m = JSON.parse(fs.readFileSync(p, 'utf8'));
+  expect(m.schema).toBe('phase-manifest/v1');
+  expect(Array.isArray(m.slices)).toBe(true);
+  expect(m.slices.length).toBeGreaterThan(0);
+  // must be a generic starter, NOT PCC's own phase leaking in
+  expect(m.phase.id).not.toBe('trust-signoff');
+  expect(m.slices.map((s) => s.id)).not.toContain('communication-contracts');
+  // the inherited generator runs and computes a real (0%) number against the seeded starter
+  const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/new-milestone-update.ps1', '-Json', '-Milestone', 'scaffold smoke', '-Since', 'HEAD'],
+    { cwd: target, encoding: 'utf8', timeout: 30000, windowsHide: true });
+  const o = JSON.parse((r.stdout || '').trim());
+  expect(o.pct).toBe(0);            // computed, not UNKNOWN — the manifest travelled
+  expect(o.total).toBe(m.slices.length);
 });
 
 // Anti-drift guard: EVERY scripts/*.ps1 the app invokes must travel, so no button

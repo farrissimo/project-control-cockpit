@@ -97,6 +97,14 @@ Copy-File 'docs/BACKUP_POLICY.md'   # the mandatory backup policy CLAUDE.md + th
 Copy-File 'docs/DECISION_AND_CHANGE_STANDARD.md'  # the locked decision + change-rollout standard (ADR format + Confirmation/Engagement)
 Copy-File 'docs/TRUST_CALIBRATION.md'             # owner-facing "how much to trust a done" guide
 Copy-File 'docs/specs/README.md'                  # the lean feature-spec standard + template
+# Communication contracts (ADR-0009 category 1): the fixed per-channel formats. The MACHINERY
+# (scripts/new-milestone-update.ps1, scripts/new-verification-request.ps1) already travels via the
+# wholesale scripts/ copy above, and the agent-verdict contract travels in AGENTS.md — but the CONTRACT
+# DOCS did not, so a spawned project inherited the tools without the standard describing them. Seed them.
+Copy-File 'docs/HANDOFF_PACKET_SPEC.md'                 # channel 7: the cross-session/app handoff format
+Copy-File 'docs/specs/communication-contracts.md'       # the per-channel contract (all 7 channels)
+Copy-File 'docs/specs/milestone-update-generator.md'    # channel 1 generator spec
+Copy-File 'docs/specs/verification-request-generator.md' # channels 3&4 generator spec
 
 # --- 4. generic declared state (lifecycle model + thresholds copied; state fresh) ---
 Copy-File '.cockpit/state/lifecycle-model.json'
@@ -105,6 +113,29 @@ Copy-File '.cockpit/state/lifecycle-model.json'
 # default the home cockpit has (fix for under-provisioning: children were born without models.json
 # and fell back to a hard-coded single-model list the owner couldn't edit).
 Copy-File '.cockpit/state/models.json'
+# Seed a GENERIC STARTER phase manifest (not PCC's own) so the inherited milestone-update generator
+# (scripts/new-milestone-update.ps1) works day one: the owner renames the phase + slices, and the %
+# computes honestly (a slice counts done only with an evidence pointer). Same "well-formed generic
+# starter" pattern as the seeded ADR-0000.
+# Built as an object + ConvertTo-Json (NOT a here-string) so the project $Name is JSON-escaped —
+# a name containing a quote/backslash can't break the manifest (same pattern as vision-promises below).
+$phaseManifest = [ordered]@{
+  schema     = 'phase-manifest/v1'
+  purpose    = "Declares THIS project's current phase and its slices as DATA, so the owner milestone-update generator (scripts/new-milestone-update.ps1) can compute a REAL '% complete' = done slices / total, never invented. A slice counts done ONLY with non-empty 'evidence' (a PR number, commit SHA, or doc pointer). Rename the phase and slices to match your project."
+  phase      = [ordered]@{
+    id      = 'phase-1'
+    name    = "$($Name): first phase (rename me)"
+    adr     = ''
+    tagline = 'your first milestone toward a working product'
+  }
+  slice_note = "Replace these example slices with your real ones. Add a slice per meaningful unit of work; flip 'done' to true only when you can point 'evidence' at a merged PR / commit / proof."
+  slices     = @(
+    [ordered]@{ id = 'example-slice-1'; title = 'Rename me - your first slice';  workstream = 'feature'; done = $false; evidence = '' },
+    [ordered]@{ id = 'example-slice-2'; title = 'Rename me - your second slice'; workstream = 'feature'; done = $false; evidence = '' }
+  )
+}
+Set-Content -LiteralPath (Join-Path $Target '.cockpit/state/phase-manifest.json') -Encoding utf8 -Value ($phaseManifest | ConvertTo-Json -Depth 6)
+Write-Output "  + .cockpit/state/phase-manifest.json (generic starter)"
 # NOTE: bloat-thresholds.json is NOT copied from PCC (soak fix F10). PCC's globs point
 # at PCC's own engine (app/, scripts/), so a copied config made the child flag the
 # copied engine as the owner's bloat. A product-scoped config is generated below.

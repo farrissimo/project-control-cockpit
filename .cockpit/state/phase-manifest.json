@@ -28,7 +28,7 @@
     { "id": "scaffolding-parity",               "title": "Multi-project scaffolding & parity",                       "workstream": "audit-category", "done": false, "evidence": "" },
     { "id": "retirement-migration-export",      "title": "Retirement, migration & data export/decommissioning",      "workstream": "audit-category", "done": false, "evidence": "" },
     { "id": "memory-knowledge",                 "title": "Memory & knowledge",                                       "workstream": "audit-category", "done": false, "evidence": "" },
-    { "id": "communication-contracts",          "title": "Communication contracts",                                  "workstream": "audit-category", "done": false, "evidence": "" },
+    { "id": "communication-contracts",          "title": "Communication contracts",                                  "workstream": "audit-category", "done": true,  "evidence": "audit complete + Codex-verified; channels 1/3/4 machinery built (PR #16, #18) + parity-proven (scaffold-kit.spec.js); 2/5/6/7 assessed with disclosed gaps (channel 6 measurement deferred) — see docs/specs/communication-contracts.md grid" },
     { "id": "repo-supply-chain-security",       "title": "Repo & supply-chain security",                             "workstream": "audit-category", "done": false, "evidence": "" },
     { "id": "worker-operation-tooling",         "title": "Worker operation & tooling conventions",                   "workstream": "audit-category", "done": false, "evidence": "" },
     { "id": "owner-report-gate-a",              "title": "Owner-facing sign-off report (gate a)",                    "workstream": "sign-off-gate",  "done": false, "evidence": "" },

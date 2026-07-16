@@ -1,11 +1,26 @@
-# Communication Contracts — one fixed template per channel   (status: Proposed / design; ADR-0009 category 1)
+# Communication Contracts — one fixed template per channel   (status: active — partially machinery-enforced; ADR-0009 category 1)
 
-> **Current state (honest):** this is a **Proposed design**, not an enforced contract. The templates,
-> the generator (structure→machinery), the enforcement checks, and scaffolder-parity propagation are
-> **not built yet**. The `SHALL` acceptance criteria below are the *target* once built; the grid's
-> "state" column is today's reality (most channels are still winging-it or prose-only). This doc moves
-> to `active` only when the machinery exists and is verified — labelling it "active" now would be the
-> exact fake-green this project kills (caught by GPT secondary verification, 2026-07-15).
+> **Current state (honest, updated 2026-07-15):** the high-value channels are now **machinery, built and
+> parity-proven**, not prose — but NOT every channel is enforced, so the honest status is "active,
+> partially machinery-enforced," never "all standardized." What's real:
+> - **Channels 1, 3, 4 — built + verified + travel.** `scripts/new-milestone-update.ps1` (channel 1,
+>   PR #16) and `scripts/new-verification-request.ps1` (channels 3 & 4, PR #18) are deterministic
+>   generators, Codex-verified, and they propagate to spawned projects via the wholesale `scripts/` copy;
+>   a **live scaffold** proves the tools + a seeded starter phase-manifest land and the inherited
+>   generator computes a real % (scaffold-kit.spec.js). AC-1/AC-3/AC-4 are met by these.
+> - **Channel 5 (agent verdict) travels** in AGENTS.md (seeded wholesale) — documented, used by
+>   convention, now proven to reach spawned projects. Still **not machine-enforced** (a verifier could
+>   deviate) — honest residue.
+> - **Channel 7 (app handoff)** spec now travels too (`docs/HANDOFF_PACKET_SPEC.md` seeded). Adherence
+>   is still by convention, not enforced.
+> - **Channel 2 (owner action → copy block)** is a standing discipline, already met and surfaced by the
+>   milestone generator's "Needs you" block; its success metric is a **falling frequency**, not a
+>   generator (a generator there would be over-governance — yardstick #2). **Channel 6 (chat start-off)**
+>   is improved; the remaining work is to **measure** how reliably it fires (deferred, noted below).
+>
+> Labelling the whole category "done/all-standardized" would be the exact fake-green this project kills
+> (the first draft was caught overclaiming by GPT secondary verification, 2026-07-15). The `SHALL`
+> criteria below are met where a channel is built (1/3/4) and remain *targets* where it is not (2/5/6/7).
 
 ## Objective
 Stop winging communication. Every channel — worker↔Codex, worker↔GPT, worker↔owner, app↔app — gets a
@@ -85,12 +100,13 @@ the local suite both missed — all on T0 code, where same-model-class reviewers
 ## Proof & benefit (audit grid — category 1)
 | Contract | State | Proof | Benefit | Gap |
 |---|---|---|---|---|
-| Owner milestone update | winging-it | said 100s of times; format not enforced | owner stops repeating himself | needs a generator (structure→machinery) |
-| Owner action → copy block | prose standing-rule | dated 20+× since 2026-06-01 | owner stops hunting/relaying | not enforced; frequency should fall |
-| Codex request | semi-canonical | worked all phase; shape stable | consistent reviews | not yet a template |
-| GPT secondary verification | winging-it | hand-crafted each time | breaks shared blind spot | needs template + the trigger (now defined) |
-| Agent verdict contract | documented (not enforced) | AGENTS.md | one comparable shape | not enforced; parity to spawned projects unproven |
-| App↔app handoff | spec exists | HANDOFF_PACKET_SPEC.md | lossless handoff | adherence + parity unproven |
+| Owner milestone update | **machinery-enforced + parity-proven** | `scripts/new-milestone-update.ps1` (PR #16); 16 tests; computed %, fails closed to UNKNOWN; travels + scaffold-proven | owner stops repeating himself; the % can't be faked | worker still has to *run* it (habit, not yet enforced) |
+| Owner action → copy block | prose standing-rule (met) | dated 20+× since 2026-06-01; surfaced by the milestone "Needs you" block | owner stops hunting/relaying | not machine-enforced; success = falling frequency (a generator would be over-governance) |
+| Codex request | **machinery-enforced + parity-proven** | `scripts/new-verification-request.ps1 -Channel codex` (PR #18); 9 tests; travels wholesale | consistent reviews | worker still has to run it |
+| GPT secondary verification | **machinery-enforced + parity-proven** | `…-Channel gpt` (PR #18): computed remote URL + push guard + required trigger reason; travels | breaks shared blind spot; won't fire against unpushed code | trigger *applicability* stays judgment (surfaced, not adjudicated) |
+| Agent verdict contract | documented + parity-proven | AGENTS.md, seeded wholesale → reaches spawned projects | one comparable shape | not machine-enforced (a verifier could deviate) — honest residue |
+| App↔app handoff | spec exists + parity-proven | `docs/HANDOFF_PACKET_SPEC.md` now seeded by the scaffolder | lossless handoff | adherence still by convention, not enforced |
+| Chat start-off | improved | resumes from PROJECT.md → live git/CI (this session did) | zero re-briefing | reliability not yet **measured** (deferred) |
 
 ## Notes
 Multi-agent reality: the standard spans Claude Code + Codex + GPT, including GPT's remote-only
