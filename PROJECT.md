@@ -157,8 +157,21 @@ technical calibration; GPT secondary verification fires on the defined trigger.
 
 **First category = Communication contracts** (`docs/specs/communication-contracts.md`, Proposed/design):
 fixed template per channel; the immediate payoff the owner asked for is the **owner milestone-update
-template** made real (structure→machinery generator). **Next chat: read ADR-0009 + the comms spec + the
-`project_trust_signoff_audit_phase` memory, then lead with the milestone-update template.**
+template** made real (structure→machinery generator).
+
+**Phase progress is tracked as DATA** in `.cockpit/state/phase-manifest.json` (the 22 audit categories +
+2 sign-off gates), so the milestone-update generator can compute a real `% complete` (done ÷ total) and
+never invent it. Update a slice to `done` only with an `evidence` pointer — the generator refuses to
+count an evidence-less "done" (reports UNKNOWN).
+
+**Shipped (channel 1 — the milestone-update generator):** `scripts/new-milestone-update.ps1` (PR #16,
+`f78d738`, CI-green, Codex 3-round PASS) assembles the fixed owner milestone-update block set and
+computes the phase % from the manifest, leaving only plain-English judgment slots for the LLM — "same
+format every time" now comes from code, not memory. Fails closed to `pct="UNKNOWN"` on every bad-manifest
+path (Codex caught 4 real anti-fake-green defects, all fixed). Spec: `docs/specs/milestone-update-generator.md`;
+tests: `app/tests/scripts/milestone-update.spec.js` (16). **Run it:** `pwsh -NoProfile -File
+scripts/new-milestone-update.ps1 -Milestone "<name>"`. Remaining comms channels (2–7) + scaffolder parity
+(AC-5) are later slices.
 
 ### Predecessor phase (COMPLETE): Governance Standardization
 Made PCC's safeguards fire predictably, proportionally, self-enforcing — not prose an LLM can skip.
