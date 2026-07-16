@@ -48,7 +48,8 @@ For each practice in the category, one row:
 | State & data integrity | `docs/audit/state-data-integrity.md` | ✅ done |
 | Verification & proof-of-done | `docs/audit/verification-proof-of-done.md` | ✅ done (built the branch-protection live check) |
 | Execution authority & worker safety | `docs/audit/execution-authority-worker-safety.md` | ✅ done (pinned the read-only deny-list) |
-| _(19 remaining)_ | — | pending |
+| Honesty & anti-fake-green | `docs/audit/honesty-anti-fake-green.md` | ✅ done (pinned the phase-progress meter's fail-closed logic) |
+| _(18 remaining)_ | — | pending |
 
 The live `% complete` is computed from the phase manifest by `scripts/new-milestone-update.ps1` — never
 hand-counted here.
