@@ -226,7 +226,7 @@ Shipped this phase (all on `main`, CI-green, independently Codex-verified):
   writer + gate can't drift; a disclosed exact-diff_id bypass ledger
   (`.cockpit/state/governance-gate-exceptions.json`); wired into `.githooks/pre-commit`
   (deterministic, no app launch). Spec: `docs/specs/governor-gate.md`; tests:
-  `app/tests/scripts/governance-gate.spec.js` (11, all 8 ACs). Honest residue (surfaced, not
+  `app/tests/scripts/governance-gate.spec.js` (13, all 8 ACs). Honest residue (surfaced, not
   hidden): the local receipt is worker-attested — it makes the silent-skip default impossible but
   the server-side proof (un-bypassable only under the branch-protection preconditions in Governance
   Hardening O1/O2) stays CI + branch protection. This slice is itself T0 (touches hooks +
