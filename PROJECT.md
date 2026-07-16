@@ -168,7 +168,7 @@ sign-off gates), so `scripts/new-milestone-update.ps1` computes a real `% comple
 (`README.md` = index + tracker). **Check the live % directly** (run the generator) — don't trust a number
 written here.
 
-**Audit categories done (as of 2026-07-15): 4 of 24.** Each produced a real finding, not box-ticking:
+**Audit categories done (as of 2026-07-15): 5 of 24.** Each produced a real finding, not box-ticking:
 - **Communication contracts** (PRs #16/#18/#19) — built the milestone-update + verification-request
   generators (structure→machinery); they travel to spawned projects. `docs/specs/communication-contracts.md`.
 - **State & data integrity** (PR #21) — strong; closed 2 T0-files-without-tests (backup + schema-check) and
@@ -177,8 +177,12 @@ written here.
   owner-asserted branch-protection precondition (O1) into a **live-checked fact** (ran live → PASS).
 - **Execution authority & worker safety** (PR #24) — attacked persuadable-bypass; pinned the read-only
   deny-list (the #1-concern mechanism that had **zero** tests) via `app/authority-tool-profile.js` + test.
+- **Honesty & anti-fake-green** — verified the 3 metric-honesty soft-spot fixes hold AND are test-pinned;
+  attack found the ONE gap: the phase-progress `% complete` meter (`scripts/new-milestone-update.ps1` —
+  the number that gates the owner's sign-off) had **zero** tests on its fail-closed logic → built
+  `app/tests/scripts/milestone-generator.spec.js` (12 tests, CI-run). `docs/audit/honesty-anti-fake-green.md`.
 
-**Next (owner picks):** more audit categories (20 remain), or **sign-off gate (b)** — the live end-to-end
+**Next (owner picks):** more audit categories (19 remain), or **sign-off gate (b)** — the live end-to-end
 adversarial spawned-project build + adoption (the gate that actually earns the owner's sign-off). Open
 sub-items noted in the grids (e.g. comms channel 6 start-off measurement; wiring the branch-protection
 check into the release gate / trust strip).
