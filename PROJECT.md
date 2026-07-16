@@ -145,6 +145,36 @@ exception (.cockpit/state/release-gate-exceptions.json). Design: docs/HARDENING_
 
 ## READ THIS FIRST — where the work actually is (2026-07-16, end of day)
 
+### ACTIVE TRACK: pre-E2E recovery (bounded tasks, ONE at a time, owner-authorized each)
+A prior session became uncontrolled by combining qualification execution, harness repair, product
+repair, governor repair, branch reconciliation and verification in one branch — producing a PR that
+could not land and a run that could not proceed. That mode is over. Each defect that BLOCKS the
+Understudy run is now its own bounded task: one defect class, one branch, one PR, one independent
+verification, one exact-head CI result, hard stop. **Do not start the next task without owner
+authorization.** A qualification attempt may DISCOVER a defect; it may not REPAIR it mid-run.
+
+- **PREE2E-00 (accepted):** workspace normalized. Understudy run-1 evidence preserved OUTSIDE the
+  repo at `C:\PCC-Incidents\Understudy-Run1-20260716\` (hash-verified inventory; `owner.log` +
+  `trace.log` were git-ignored and existed nowhere else). Abandoned squash `55e4452` and remote
+  `ab191ec` are BOTH intact and deliberately unreconciled — they are mutually non-ancestral;
+  reconciliation belongs to the Understudy-branch task, not to a casual sync.
+- **PREE2E-01: governor rename classification** — spec `docs/specs/governor-rename-classification.md`.
+  The manifest rule `delete_or_rename` never fired for a rename: the classifier derived its lists
+  from `git diff --diff-filter=A/D`, and git reports a rename as `R` — neither A nor D. CI's auditor
+  (`git diff-tree`, rename detection off) saw delete+add and said T1; the local gate said T3 and
+  emitted no trailer — so a renaming commit was **impossible to make compliant**. That is why PR #37
+  is red. Fixed in the git-mode derivation only (`-M` forced so the verdict never depends on the
+  machine's `diff.renames` config; `R` read explicitly — old path deleted, new path added). The
+  explicit-list path CI uses is untouched, so the two converge on T1 from opposite directions.
+  `diff_id`/change-identity is untouched (it pins `--no-renames` on purpose; tier classification and
+  diff binding are separate concerns).
+
+**Open, NOT repaired (each its own future authorized task):** PR #38 (composer wedge; green, unmerged);
+new projects are born uncheckpointed (`project-id.json` written after the initial commit — observed live
+in `C:\PCC-Projects\Bike-Garage`); PR #37's branch needs reconstruction (its `9623e14` predates the
+rename fix and carries no trailer, so the fix does not retroactively make it compliant); the Understudy
+harness is unqualified. Bike Garage is scaffold-only (commit `ebc6731`); the app is NOT built.
+
 **The audit phase is over as the primary track. The owner's trust in PCC is currently LOW, and that
 is the honest, evidenced state — not a mood.** On 2026-07-16 he asked one ordinary question ("does my
 installed app need updating?") and it exposed three real defects that 21 audit categories, 126 E2E
