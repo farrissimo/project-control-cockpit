@@ -99,19 +99,60 @@ const VERBS = ['click', 'type', 'read', 'wait', 'done'];
         for (const k of distinct) if (await h.evaluate((a, b) => a === b, k).catch(() => false)) { dup = true; break; }
         if (!dup) distinct.push(h);
       }
-      if (distinct.length === 0) throw new Error('no visible control labelled exactly "' + act.target + '"');
-      if (distinct.length > 1) throw new Error(distinct.length + ' distinct controls are labelled exactly "' + act.target + '" — ambiguous, the driver will not choose');
-      await distinct[0].click({ timeout: 8000 });
+      // Keep only things the owner could actually CLICK. PCC's own messages say things like
+      // 'click **Save Project**', so the exact phrase appears both as a button and as prose in
+      // the transcript — and the text match cannot tell them apart. Counting a sentence as a
+      // rival candidate isn't caution, it's a false ambiguity: prose is not a control, and the
+      // owner's eyes separate a button from a sentence without thinking. So this filters to
+      // what is interactive and only THEN applies the ambiguity rule. It expresses no
+      // preference between two real controls — if two of those match, it still refuses.
+      // (Deliberately NOT the rejected "prefer role over text" rule: PCC has clickable divs
+      // with no button role, so a cursor/tabindex/role test is used rather than a tag test.)
+      const clickable = [];
+      for (const h of distinct) {
+        const live = await h.evaluate((el) => {
+          const t = el.tagName;
+          if (t === 'BUTTON' || t === 'A' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA') return true;
+          if (el.hasAttribute('role') || el.hasAttribute('tabindex') || el.hasAttribute('onclick')) return true;
+          return getComputedStyle(el).cursor === 'pointer';
+        }).catch(() => false);
+        if (live) clickable.push(h);
+      }
+      if (clickable.length === 0) throw new Error('no visible control labelled exactly "' + act.target + '"');
+      if (clickable.length > 1) throw new Error(clickable.length + ' distinct controls are labelled exactly "' + act.target + '" — ambiguous, the driver will not choose');
+      await clickable[0].click({ timeout: 8000 });
     } else if (act.action === 'type') {
       // The brain must name where it is typing, and there is exactly one place an owner can type:
-      // the chat box. Accepting any target and silently routing to #input would mean the driver
-      // decided what the owner meant. (codex round 3.)
+      // the chat box. Accepting any target and silently routing to a composer would mean the
+      // driver decided what the owner meant. (codex round 3.)
       if (act.target !== 'chat input') throw new Error('the only place you can type is "chat input", not "' + act.target + '"');
       if (typeof act.text !== 'string' || !act.text.trim()) throw new Error('no text to type');
-      const box = page.locator('#input');
-      const send = page.locator('#send');
-      if (!(await box.count().catch(() => 0))) throw new Error('no chat input on screen');
-      if (!(await send.count().catch(() => 0))) throw new Error('no Send control on screen');
+      // PCC has TWO composers: the cockpit chat (#input) and the New Project create-flow
+      // (#cf-input), which is a full-window overlay that COVERS the cockpit. Hard-wiring #input
+      // meant the driver could only ever talk to the cockpit chat — the one surface a valid run
+      // must never use, because that worker runs in the PCC repo and can read this rig. Resolve
+      // by VISIBILITY, not by preference: what the owner can see is a fact about the screen, so
+      // this adds no judgment. Nothing visible => ACTION FAILED; more than one visible => the
+      // screen is genuinely ambiguous and the driver refuses to choose, exactly as it does for
+      // ambiguous click targets.
+      // A prompt modal ("Name this project:") is EXCLUSIVE: while it is up, the owner cannot
+      // reach anything behind it — that is what modal means, and PCC enforces it (clicking the
+      // overlay cancels). So when it is open it is the only box there is to type in, and its OK
+      // button is how the text is committed, exactly as Send commits a composer. Treating the
+      // composers behind it as rival candidates would invent an ambiguity the owner never sees.
+      const MODAL = { box: '[data-testid="prompt-input"]', send: '[data-testid="prompt-ok"]' };
+      const COMPOSERS = (await page.locator(MODAL.box).isVisible().catch(() => false))
+        ? [MODAL]
+        : [{ box: '#cf-input', send: '#cf-send' }, { box: '#input', send: '#send' }];
+      const live = [];
+      for (const c of COMPOSERS) {
+        if (await page.locator(c.box).isVisible().catch(() => false)) live.push(c);
+      }
+      if (live.length === 0) throw new Error('no chat input on screen');
+      if (live.length > 1) throw new Error(live.length + ' chat inputs are on screen — ambiguous, the driver will not choose');
+      const box = page.locator(live[0].box);
+      const send = page.locator(live[0].send);
+      if (!(await send.isVisible().catch(() => false))) throw new Error('no Send control on screen');
       await box.fill(act.text, { timeout: 8000 });
       await send.click({ timeout: 8000 });
     } else if (act.action === 'wait') {

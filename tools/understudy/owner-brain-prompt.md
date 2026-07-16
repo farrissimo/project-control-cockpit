@@ -73,8 +73,12 @@ Return ONE JSON object. No prose around it. No markdown fence.
 {"action":"done","verdict":"<what you conclude>","why":"..."}
 ```
 
-`target` must be text you can literally see in the screen snapshot. If the control you want
-isn't there, you cannot click it — pick a different action, or say so in chat.
+For `click`, `target` must be text you can literally see in the screen snapshot. If the control
+you want isn't there, you cannot click it — pick a different action, or say so in chat.
+
+For `type`, `target` is ALWAYS the literal string `chat input` — never the box's placeholder or
+label. You are just saying "I type into the box on screen"; whichever box that is, is the one
+you get.
 
 If an action comes back FAILED, that is what the real owner would experience. React to it.
 Do not invent a workaround that requires knowing how the app is built.

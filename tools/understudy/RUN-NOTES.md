@@ -39,6 +39,60 @@ you want to create") and the driver would have rejected it.
 Visibility is a fact about the screen, not a preference, so this adds no judgment. This is a
 DRIVER capability gap (the owner cannot type at all), not a repair of PCC to help it pass.
 
+## Run 2 (2026-07-16): **Bike Garage EXISTS.** Scaffolded via the real owner path.
+
+The blind owner drove DPCC through the whole create-flow with no help: named it, answered the
+intake interview, **caught the intake's playback summary omitting components/intervals**, dripped
+the rest of the spec (parts move between bikes / history follows the part, CSV, backup/restore,
+mileage), refused a scope-down ("don't scope it down without asking first"), confirmed, and
+clicked Save Project. Result: `C:\PCC-Projects\Bike-Garage`, first commit `ebc6731 Bootstrap Bike
+Garage from PCC`, and the cockpit reloaded INTO the new project (`Bike Garage ▾`, lifecycle
+`Define`). **The app itself is not built yet — this is the scaffold, not the product.**
+
+What DPCC did well here, observed not assumed:
+- The intake **asked instead of assuming** on an ambiguous constraint ("test data only" — permanent
+  rule, or just during build?). Guessing is the owner's #1 trigger; it didn't guess.
+- The playback summary is what **surfaced its own gap** — the owner could see what was missing.
+- It refused to scaffold before Save. "Nothing is written to disk until you click Save Project"
+  held true: nothing existed until the click.
+- The `Uncheckpointed` badge was **correct**. Checked against real git rather than believed.
+
+### Rig work this required (all DRIVER capability gaps, disclosed — none of it repairs PCC)
+1. `type` now resolves to the **visible** composer (`#cf-input` / `#input`) instead of hard-wiring
+   the cockpit box. Without this the owner literally could not speak to the create-flow.
+2. `click` now filters candidates to things that are **actually interactive** before applying the
+   ambiguity rule. PCC's own prose says "click **Save Project**", so the phrase matched both a
+   button and a sentence, and the driver refused to act. Prose is not a control; this is a false
+   ambiguity, not caution. It still refuses when two REAL controls match.
+3. `type` treats an open prompt modal as **exclusive** (it is what modal means, and PCC enforces
+   it — clicking the overlay cancels), so "Name this project:" is typeable.
+4. The persona contradicted itself: it told the brain `target` must be visible screen text, but
+   `type`'s target is the literal string `chat input`. The brain obeyed the first rule and typed
+   the placeholder label. Clarified.
+
+### The native folder picker is a real rig boundary
+`pcc:createFlowPickLocation` opens `dialog.showOpenDialog` — a **native Win32 dialog** that CDP
+cannot see or touch, and it blocks the app. It was driven for real via Windows UI Automation
+(`Edit 'Folder:'` id 1152 + `Button 'Select Folder'` id 1) rather than bypassed, so the owner's
+actual path stayed honest. **Choosing the parent folder (`C:\PCC-Projects`) was harness setup** —
+which folder is not what this test is about.
+
+## Finding: the owner's Save path has NEVER been tested end-to-end
+
+`app/tests/e2e/create-flow.spec.js` does not click Save Project. It calls
+`window.pcc.createFlowSave(name, loc)` directly via `page.evaluate`, skipping the button, the
+name prompt, and the native folder picker. So the suite proves the **IPC handler** works; it
+proves nothing about **the owner's click**. That is the same disease as the rest of the project:
+a true statement about an object the owner does not live in. The native picker is untestable by
+construction (no test hook), which is likely why the seam is where it is — but the effect is that
+the single path required to start any project from PCC is unproven by any automated test.
+
+## Finding: a brand-new project is born uncheckpointed
+
+`bootstrap-project.ps1` commits, then writes `.cockpit/state/project-id.json` and leaves it
+untracked. So the first thing the owner ever sees in a "born-bulletproof" project is a trust strip
+reading `Uncheckpointed`. The badge is honest; the scaffolder is what's untidy.
+
 ## Rig fidelity flaw (noted, not yet fixed)
 
 `driver.js` reads `body.ariaSnapshot()`, which includes DOM *behind* the full-window create-flow
