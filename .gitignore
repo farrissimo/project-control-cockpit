@@ -58,3 +58,15 @@ app/.pcc-mut-tmp/
 
 # Claude Code personal/local settings (machine-specific; never shared)
 .claude/settings.local.json
+
+# Secrets — never commit real credentials (AGENTS.md security rule: "Env is
+# git-ignored"). This block MAKES that promise real: env files and common
+# key/cert formats can't be staged, so a worker or a spawned project (this file
+# travels via bootstrap-project.ps1) can't silently leak a secret into git.
+# .env.example is a deliberately-committed template, so it stays tracked.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json

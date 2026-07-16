@@ -168,8 +168,8 @@ sign-off gates), so `scripts/new-milestone-update.ps1` computes a real `% comple
 (`README.md` = index + tracker). **Check the live % directly** (run the generator) — don't trust a number
 written here.
 
-**Audit categories done (as of 2026-07-16): 6 of 22** (the live meter reads 6/24 = 25% including the 2
-sign-off gates). Each produced a real finding, not box-ticking:
+**Audit categories done (as of 2026-07-16): 9 of 22** (the live meter reads 9/24 = 38% including the 2
+sign-off gates). Each produced a real finding OR converted an assumption to proof, not box-ticking:
 - **Communication contracts** (PRs #16/#18/#19) — built the milestone-update + verification-request
   generators (structure→machinery); they travel to spawned projects. `docs/specs/communication-contracts.md`.
 - **State & data integrity** (PR #21) — strong; closed 2 T0-files-without-tests (backup + schema-check) and
@@ -189,8 +189,16 @@ sign-off gates). Each produced a real finding, not box-ticking:
   fallback (now reaches the API instead of always-UNKNOWN; PASS on this authenticated machine, UNKNOWN
   when unauthenticated — fail-closed) + wired it into the **release gate** as a required fail-closed check
   (off → gate FAIL, unconfirmable → UNKNOWN). `docs/audit/bypass-evidence-tamper-detection.md`.
+- **Backup & recovery** + **Recovery, rollback & damage-repair** + **Multi-project scaffolding & parity**
+  (PR #29) — all three **tested-holds** (re-run green this session: backup 7, journal 6, atomic-store 16,
+  scaffold-kit 34, schema 4); no control built, the expected probe-freely/standardize-rarely outcome.
+- **Privacy, secrets & access control** — **quick probe only** (full category still open): found + fixed the
+  ONE real defect — AGENTS.md claimed "Env is git-ignored" but `.env` was NOT ignored (a fake-green that
+  travels to every spawned project via bootstrap's `.gitignore` copy) → added a secrets block to `.gitignore`
+  (`git check-ignore .env` flips not-ignored→ignored; `.env.example` kept). PCC itself holds no secrets
+  (scrubs API keys, DECISION-003). `docs/audit/privacy-secrets-probe.md`.
 
-**Next (owner picks):** more audit categories (16 of 22 remain), or **sign-off gate (b)** — the live end-to-end
+**Next (owner picks):** more audit categories (13 of 22 remain), or **sign-off gate (b)** — the live end-to-end
 adversarial spawned-project build + adoption (the gate that actually earns the owner's sign-off). Open
 sub-items noted in the grids (e.g. comms channel 6 start-off measurement; the branch-protection check is
 now wired into the **release gate** — the **trust-strip** surface remains an open lighter follow-up).

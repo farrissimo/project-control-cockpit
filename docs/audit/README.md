@@ -50,7 +50,11 @@ For each practice in the category, one row:
 | Execution authority & worker safety | `docs/audit/execution-authority-worker-safety.md` | ✅ done (pinned the read-only deny-list) |
 | Honesty & anti-fake-green | `docs/audit/honesty-anti-fake-green.md` | ✅ done (pinned the phase-progress meter's fail-closed logic) |
 | Bypass evidence & tamper-detection | `docs/audit/bypass-evidence-tamper-detection.md` | ✅ done (fixed + surfaced the branch-protection linchpin) |
-| _(16 of 22 audit categories remaining)_ | — | pending |
+| Backup & recovery | `docs/audit/backup-recovery.md` | ✅ done (tested-holds; no control built) |
+| Recovery, rollback & damage-repair | `docs/audit/recovery-rollback-damage-repair.md` | ✅ done (tested-holds; most-proven area) |
+| Multi-project scaffolding & parity | `docs/audit/scaffolding-parity.md` | ✅ done (tested-holds; derived anti-drift guards) |
+| Privacy, secrets & access control | `docs/audit/privacy-secrets-probe.md` | 🔍 quick probe only (found + fixed the `.env` fake-green; full category still open) |
+| _(13 of 22 audit categories remaining)_ | — | pending |
 
 The live `% complete` is computed from the phase manifest by `scripts/new-milestone-update.ps1` — never
 hand-counted here.
