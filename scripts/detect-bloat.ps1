@@ -52,19 +52,39 @@ if (-not (Test-Path -LiteralPath $cfgPath -PathType Leaf)) {
 } else {
   $cfg = $null
   try { $cfg = Get-Content -Raw -LiteralPath $cfgPath | ConvertFrom-Json } catch { }
-  $maxLines = if ($cfg.max_source_file_lines) { [int]$cfg.max_source_file_lines } else { 600 }
-  $maxDeps  = if ($cfg.max_dependencies) { [int]$cfg.max_dependencies } else { 20 }
-  $srcGlobs = @($cfg.source_globs)
-  $manifests = @($cfg.dependency_manifests)
-  # Soak fix F10: exclude_globs lets a project scope bloat to ITS OWN code and skip
-  # the copied PCC cockpit engine (app/, scripts/, schemas/) and vendored deps. Without
-  # this, a scaffolded project's bloat scan flagged PCC's own renderer.js as if it were
-  # the owner's product. Absent exclude_globs = no exclusions (PCC's own config).
-  $excludeGlobs = @($cfg.exclude_globs)
+  if ($null -eq $cfg) {
+    # Present but unusable (malformed JSON, or an empty/null file). Reporting 'clear'
+    # here would be a false all-clear over a project we never actually scanned - the
+    # exact green-over-unchecked bug the sibling config-driven detectors (drift,
+    # stale-docs, high-stakes) already guard against. Match the badge to the truth.
+    $r = New-Result 'unknown' @() "$cfgPath is present but could not be read as valid JSON." `
+      'A malformed thresholds file cannot be used to check anything.' 'Whether the project is bloating.' `
+      "Fix the JSON in $cfgPath (or delete it to fall back to defaults), then re-run."
+  } else {
+    $maxLines = if ($cfg.max_source_file_lines) { [int]$cfg.max_source_file_lines } else { 600 }
+    $maxDeps  = if ($cfg.max_dependencies) { [int]$cfg.max_dependencies } else { 20 }
+    # Filter out nulls: @($cfg.source_globs) when the key is ABSENT yields @($null) —
+    # a 1-element array in PowerShell, not empty — which would defeat the empty-config
+    # guard below. Where-Object drops the phantom null so "no globs declared" is Count 0.
+    $srcGlobs = @($cfg.source_globs | Where-Object { $_ })
+    $manifests = @($cfg.dependency_manifests | Where-Object { $_ })
+    # Soak fix F10: exclude_globs lets a project scope bloat to ITS OWN code and skip
+    # the copied PCC cockpit engine (app/, scripts/, schemas/) and vendored deps. Without
+    # this, a scaffolded project's bloat scan flagged PCC's own renderer.js as if it were
+    # the owner's product. Absent exclude_globs = no exclusions (PCC's own config).
+    $excludeGlobs = @($cfg.exclude_globs)
 
-  $items = @()
+    if ($srcGlobs.Count -eq 0 -and $manifests.Count -eq 0) {
+      # Nothing declared to scan - neither source globs nor dependency manifests. A
+      # 'clear' would paint green over zero files checked (same false all-clear class
+      # as a malformed config above); fail closed to 'unknown' instead.
+      $r = New-Result 'unknown' @() "$cfgPath declares no source_globs and no dependency_manifests." `
+        'With nothing declared to scan, a "clear" would be a green over an unchecked project.' 'Whether the project is bloating.' `
+        "Add source_globs (and/or dependency_manifests) to $cfgPath, then re-run."
+    } else {
+      $items = @()
 
-  # --- Large source files (from tracked files matching the source globs) ---
+      # --- Large source files (from tracked files matching the source globs) ---
   $tracked = @(& git ls-files 2>$null | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
   $srcRegexes = $srcGlobs | ForEach-Object { Convert-GlobToRegex $_ }
   $excludeRegexes = $excludeGlobs | ForEach-Object { Convert-GlobToRegex $_ }
@@ -99,11 +119,13 @@ if (-not (Test-Path -LiteralPath $cfgPath -PathType Leaf)) {
       'The project is within the size/count limits you set.' `
       'This checks only file size and dependency count - not duplication or dead code (those need language tooling).' `
       'Nothing needed for this signal.'
-  } else {
-    $r = New-Result 'notice' $items "Bloat threshold(s) exceeded. $summary" `
-      'Growth past the limits you set - could be genuine bloat, or legitimate growth that warrants raising the threshold.' `
-      'Whether the growth is actually a problem; size/count are facts, not verdicts.' `
-      "Review the flagged items: split large files or prune dependencies if warranted; otherwise raise the limits in $cfgPath on purpose."
+      } else {
+        $r = New-Result 'notice' $items "Bloat threshold(s) exceeded. $summary" `
+          'Growth past the limits you set - could be genuine bloat, or legitimate growth that warrants raising the threshold.' `
+          'Whether the growth is actually a problem; size/count are facts, not verdicts.' `
+          "Review the flagged items: split large files or prune dependencies if warranted; otherwise raise the limits in $cfgPath on purpose."
+      }
+    }
   }
 }
 

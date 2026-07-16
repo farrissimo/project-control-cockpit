@@ -168,7 +168,7 @@ sign-off gates), so `scripts/new-milestone-update.ps1` computes a real `% comple
 (`README.md` = index + tracker). **Check the live % directly** (run the generator) — don't trust a number
 written here.
 
-**Audit categories done (as of 2026-07-16): 12 of 22** (the live meter reads 12/24 = 50% including the 2
+**Audit categories done (as of 2026-07-16): 15 of 22** (the live meter reads 15/24 = 62% including the 2
 sign-off gates). Each produced a real finding OR converted an assumption to proof, not box-ticking:
 - **Communication contracts** (PRs #16/#18/#19) — built the milestone-update + verification-request
   generators (structure→machinery); they travel to spawned projects. `docs/specs/communication-contracts.md`.
@@ -211,8 +211,21 @@ sign-off gates). Each produced a real finding OR converted an assumption to proo
   `app/error-log.js` (never-throws, 6 tests) + rerouted the 3 worst `main.js` swallows to a durable trace +
   `doctor.ps1` "App errors" WARN surface + git-ignored the log; app boots green (ipc 27).
   `docs/audit/incident-response-diagnostics.md`.
+- **Testing & assurance** — tested-holds (strong): independent grep found ZERO dishonest tests (no
+  `.only`/`.skip`/`.todo`/empty/always-pass across ~70 files); CI runs the full suite + lint + audit; the guard
+  can't turn a hang/abort into green; mutation+failure proofs won't count a crash as a kill. No build.
+  `docs/audit/testing-assurance.md`.
+- **Detection & signals** — **found a real break → fixed.** `detect-bloat.ps1` was the one config-driven detector
+  missing the empty/malformed-config guard its siblings have → a malformed/nothing-declared `bloat-thresholds.json`
+  painted "clear" over ZERO files (green-over-unchecked; reproduced live). Fixed (malformed/empty → unknown, incl.
+  the `@($null).Count===1` trap) + 2 red-proven tests (17/17 green); travels to spawned projects.
+  `docs/audit/detection-signals.md`.
+- **Memory & knowledge** — tested-holds for what's built (summaries fail closed/never fabricate; recall is
+  recall-safe + verbatim-quote anti-hallucination; handoff deterministic). No proactive "don't repeat mistakes"
+  enforcement — a DELIBERATE accepted-residue (DECISION-008 no-fake-intelligence; instruction-repeat measurement
+  "permanently declined" pcc-postbrr-002). Named for owner acceptance. No build. `docs/audit/memory-knowledge.md`.
 
-**Next (owner picks):** more audit categories (10 of 22 remain), or **sign-off gate (b)** — the live end-to-end
+**Next (owner picks):** more audit categories (7 of 22 remain), or **sign-off gate (b)** — the live end-to-end
 adversarial spawned-project build + adoption (the gate that actually earns the owner's sign-off). Open
 sub-items noted in the grids (e.g. comms channel 6 start-off measurement; the branch-protection check is
 now wired into the **release gate** — the **trust-strip** surface remains an open lighter follow-up).
