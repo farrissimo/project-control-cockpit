@@ -1,0 +1,369 @@
+<title>PCC Trust Qualification — Owner Sign-off Report</title>
+<style>
+  :root {
+    --bg: #f4f6f8; --surface: #ffffff; --surface-2: #eef1f4;
+    --ink: #14181f; --muted: #5b6672; --faint: #8b96a3;
+    --hair: #e0e5ea; --hair-strong: #cdd5dd;
+    --accent: #1a7391; --accent-ink: #0f4a5f;
+    --good: #1f7a4d; --good-bg: #e7f4ec;
+    --hold: #1a6f88; --hold-bg: #e4f1f5;
+    --residue: #97650f; --residue-bg: #f8efdc;
+    --defer: #5b6672; --defer-bg: #eceff2;
+    --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: "SFMono-Regular", "Cascadia Code", "Consolas", "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c1015; --surface: #141a21; --surface-2: #1a222b;
+      --ink: #e7ecf2; --muted: #9aa6b4; --faint: #6c7885;
+      --hair: #232c36; --hair-strong: #303b47;
+      --accent: #4cbad7; --accent-ink: #8fd8ea;
+      --good: #52c98c; --good-bg: #10281c;
+      --hold: #56c0dc; --hold-bg: #0e2630;
+      --residue: #e0a94a; --residue-bg: #2c2312;
+      --defer: #9aa6b4; --defer-bg: #1c242d;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0c1015; --surface: #141a21; --surface-2: #1a222b;
+    --ink: #e7ecf2; --muted: #9aa6b4; --faint: #6c7885;
+    --hair: #232c36; --hair-strong: #303b47;
+    --accent: #4cbad7; --accent-ink: #8fd8ea;
+    --good: #52c98c; --good-bg: #10281c;
+    --hold: #56c0dc; --hold-bg: #0e2630;
+    --residue: #e0a94a; --residue-bg: #2c2312;
+    --defer: #9aa6b4; --defer-bg: #1c242d;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6f8; --surface: #ffffff; --surface-2: #eef1f4;
+    --ink: #14181f; --muted: #5b6672; --faint: #8b96a3;
+    --hair: #e0e5ea; --hair-strong: #cdd5dd;
+    --accent: #1a7391; --accent-ink: #0f4a5f;
+    --good: #1f7a4d; --good-bg: #e7f4ec;
+    --hold: #1a6f88; --hold-bg: #e4f1f5;
+    --residue: #97650f; --residue-bg: #f8efdc;
+    --defer: #5b6672; --defer-bg: #eceff2;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: clamp(1.2rem, 4vw, 3rem) clamp(1rem, 4vw, 2.4rem) 5rem; }
+  .prose { max-width: 68ch; }
+
+  h1, h2, h3 { font-family: var(--serif); font-weight: 600; text-wrap: balance; line-height: 1.2; }
+  a { color: var(--accent); }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem;
+  }
+  :root[data-theme="dark"] .eyebrow, .eyebrow { color: var(--accent); }
+
+  /* Masthead */
+  .masthead { border-top: 3px solid var(--accent); padding-top: 1.4rem; margin-bottom: 2.4rem; }
+  .masthead h1 { font-size: clamp(1.8rem, 4.5vw, 2.9rem); margin: .2rem 0 .6rem; letter-spacing: -0.01em; }
+  .masthead .lede { font-size: 1.08rem; color: var(--muted); max-width: 64ch; margin: 0; }
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: .5rem 1.8rem; margin-top: 1.4rem;
+    font-family: var(--mono); font-size: .8rem; color: var(--muted);
+  }
+  .meta-row b { color: var(--ink); font-weight: 600; }
+
+  .callout {
+    background: var(--surface); border: 1px solid var(--hair); border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: 1rem 1.2rem; margin: 1.6rem 0;
+  }
+  .callout.warn { border-left-color: var(--residue); }
+  .callout p { margin: .4rem 0; }
+  .callout p:first-child { margin-top: 0; } .callout p:last-child { margin-bottom: 0; }
+
+  section { margin-top: 3rem; }
+  section > h2 { font-size: 1.5rem; margin: 0 0 .3rem; }
+  .section-sub { color: var(--muted); margin: 0 0 1.4rem; max-width: 66ch; }
+
+  /* Scoreboard */
+  .scoreboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .9rem; margin: 1.6rem 0; }
+  .stat { background: var(--surface); border: 1px solid var(--hair); border-radius: 10px; padding: 1.1rem 1.2rem; }
+  .stat .n { font-family: var(--mono); font-size: 2rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .stat .l { font-size: .82rem; color: var(--muted); margin-top: .15rem; }
+  .stat.good .n { color: var(--good); } .stat.hold .n { color: var(--hold); } .stat.residue .n { color: var(--residue); }
+
+  /* State legend */
+  .legend { display: flex; flex-wrap: wrap; gap: .5rem .7rem; margin: 1.2rem 0 0; }
+  .chip {
+    display: inline-flex; align-items: center; gap: .4rem; font-family: var(--mono);
+    font-size: .72rem; letter-spacing: .02em; padding: .28rem .6rem; border-radius: 999px;
+    border: 1px solid transparent; white-space: nowrap;
+  }
+  .chip::before { content: ""; width: .55rem; height: .55rem; border-radius: 50%; background: currentColor; flex: none; }
+  .chip.fixed { color: var(--good); background: var(--good-bg); border-color: color-mix(in srgb, var(--good) 30%, transparent); }
+  .chip.hold { color: var(--hold); background: var(--hold-bg); border-color: color-mix(in srgb, var(--hold) 30%, transparent); }
+  .chip.residue { color: var(--residue); background: var(--residue-bg); border-color: color-mix(in srgb, var(--residue) 34%, transparent); }
+  .chip.defer { color: var(--defer); background: var(--defer-bg); border-color: color-mix(in srgb, var(--defer) 30%, transparent); }
+
+  /* Fixes strip */
+  .fixes { display: grid; gap: .75rem; margin-top: 1.4rem; }
+  .fix { display: grid; grid-template-columns: auto 1fr; gap: .9rem; align-items: start;
+    background: var(--surface); border: 1px solid var(--hair); border-radius: 10px; padding: .9rem 1.1rem; }
+  .fix .tag { font-family: var(--mono); font-size: .7rem; color: var(--good); background: var(--good-bg);
+    border-radius: 6px; padding: .3rem .5rem; white-space: nowrap; align-self: center; }
+  .fix h4 { margin: 0 0 .2rem; font-family: var(--sans); font-size: .98rem; font-weight: 650; }
+  .fix p { margin: 0; color: var(--muted); font-size: .9rem; }
+
+  /* Inventory */
+  .domain { margin-top: 2rem; }
+  .domain > h3 { font-size: 1.1rem; margin: 0 0 .1rem; padding-bottom: .5rem; border-bottom: 1px solid var(--hair-strong); }
+  .rows { display: grid; gap: 0; }
+  .row {
+    display: grid; grid-template-columns: 1fr auto; gap: .3rem 1rem; align-items: start;
+    padding: .95rem .2rem; border-bottom: 1px solid var(--hair);
+  }
+  .row .name { font-weight: 640; font-size: 1rem; }
+  .row .boundary { grid-column: 1 / -1; color: var(--muted); font-size: .9rem; margin-top: .1rem; }
+  .row .residue-line { grid-column: 1 / -1; font-size: .86rem; margin-top: .35rem; color: var(--ink); }
+  .row .residue-line b { color: var(--residue); font-weight: 640; font-family: var(--mono); font-size: .74rem; letter-spacing: .03em; text-transform: uppercase; }
+
+  /* Acceptance list */
+  .accept { display: grid; gap: 1rem; margin-top: 1.5rem; counter-reset: risk; }
+  .risk {
+    background: var(--surface); border: 1px solid var(--hair); border-radius: 10px;
+    padding: 1.1rem 1.2rem; display: grid; grid-template-columns: auto 1fr; gap: .2rem 1rem;
+  }
+  .risk input[type="checkbox"] { width: 1.15rem; height: 1.15rem; margin-top: .2rem; accent-color: var(--accent); grid-row: 1 / 3; cursor: pointer; }
+  .risk h4 { margin: 0; font-family: var(--sans); font-size: 1rem; font-weight: 650; }
+  .risk h4::before { counter-increment: risk; content: "R" counter(risk) " · "; font-family: var(--mono); color: var(--residue); font-weight: 600; }
+  .risk p { margin: .35rem 0 0; color: var(--muted); font-size: .92rem; }
+  .risk .mean { color: var(--ink); }
+
+  .confirm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.4rem; }
+  .panel { background: var(--surface); border: 1px solid var(--hair); border-radius: 10px; padding: 1.1rem 1.2rem; }
+  .panel h4 { margin: 0 0 .6rem; font-family: var(--sans); font-size: .95rem; }
+  .panel ul { margin: 0; padding-left: 1.1rem; } .panel li { margin: .35rem 0; color: var(--muted); font-size: .92rem; }
+  .panel li b { color: var(--ink); font-weight: 620; }
+
+  /* Sign block */
+  .signblock { margin-top: 1.6rem; background: var(--surface-2); border: 1px solid var(--hair-strong); border-radius: 12px; padding: 1.4rem 1.5rem; }
+  .signrow { display: flex; flex-wrap: wrap; gap: 1.4rem; margin-top: 1.2rem; }
+  .signrow .field { flex: 1 1 200px; }
+  .signrow .line { border-bottom: 1.5px solid var(--hair-strong); height: 1.9rem; }
+  .signrow .cap { font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: .35rem; }
+  .choice { display: flex; gap: .6rem; align-items: flex-start; margin-top: .7rem; }
+  .choice input { margin-top: .25rem; width: 1.1rem; height: 1.1rem; accent-color: var(--accent); }
+
+  footer { margin-top: 3.5rem; padding-top: 1.2rem; border-top: 1px solid var(--hair); color: var(--faint); font-size: .82rem; font-family: var(--mono); }
+
+  @media (max-width: 620px) { .confirm-grid { grid-template-columns: 1fr; } .row { grid-template-columns: 1fr; } }
+  @media print {
+    body { background: #fff; color: #000; }
+    .wrap { max-width: none; padding: 0; }
+    .stat, .fix, .risk, .panel, .row, .signblock, .callout { break-inside: avoid; }
+    .chip { border: 1px solid #999 !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Operational Trust Qualification &amp; Adoption · Sign-off Gate A</p>
+    <h1>Project Control Cockpit — Owner Sign-off Report</h1>
+    <p class="lede">An honest, per-area account of what PCC's own safety net actually enforces, what it merely
+      records, and what it deliberately does not do — so you can decide, with the real boundaries in front of you,
+      whether to trust it.</p>
+    <div class="meta-row">
+      <span>Date <b>2026-07-16</b></span>
+      <span>Audit scope <b>21 of 22 categories</b></span>
+      <span>Every item independently verified (Codex) · CI-green on the exact commit</span>
+    </div>
+  </header>
+
+  <div class="callout warn">
+    <p><b>What this document is — and is not.</b> This is the evidence base and your acceptance form. It does
+      <b>not</b> convert "documented" into "proven," and reading it is <b>not</b> the full sign-off. Per the phase
+      plan, your true sign-off waits for <b>Gate B</b> — a live, adversarially-tested build of a real project,
+      packaged and used outside this repo. This report earns Gate A: an honest map you can judge.</p>
+    <p>The trust claim stays <b>bounded</b>: at the end, PCC is "approved for the tested workflows, the documented
+      boundaries, and the residual risks you accept" — never "any project." Claiming universal trust would be the
+      exact fake-green this whole phase exists to kill.</p>
+  </div>
+
+  <section>
+    <p class="eyebrow">The headline</p>
+    <h2>Where things stand</h2>
+    <div class="scoreboard">
+      <div class="stat good"><div class="n">10</div><div class="l">categories where a real defect was fixed or a real test-gap closed</div></div>
+      <div class="stat hold"><div class="n">11</div><div class="l">categories confirmed sound (tested, holds) or a deliberate, disclosed limit</div></div>
+      <div class="stat residue"><div class="n">7</div><div class="l">residual risks that are yours to actively accept (below)</div></div>
+      <div class="stat"><div class="n">0</div><div class="l">areas painted green over something unproven</div></div>
+    </div>
+    <p class="prose" style="margin-top:1.2rem">The audit did what it was meant to. Most areas held up under a
+      deliberate attack — that's a first-class result, not a shortfall. Where it found something real, it was fixed,
+      verified by an independent checker, and merged with the tests to keep it fixed. Where a gap couldn't or
+      shouldn't be closed with machinery, it is named plainly here rather than papered over.</p>
+
+    <p class="eyebrow" style="margin-top:1.6rem">How to read the states</p>
+    <div class="legend">
+      <span class="chip fixed">Fixed / built</span>
+      <span class="chip hold">Tested — holds</span>
+      <span class="chip residue">Accepted residue</span>
+      <span class="chip defer">Deferred — needs your go</span>
+    </div>
+    <p class="prose" style="margin-top:.9rem;font-size:.92rem;color:var(--muted)">
+      <b style="color:var(--good)">Fixed/built</b> — a real problem was found and a durable control now prevents it.
+      <b style="color:var(--hold)">Tested–holds</b> — probed hard, works, backed by real tests.
+      <b style="color:var(--residue)">Accepted residue</b> — a known limit that is honestly disclosed and is yours to accept, not a bug to fix.
+      <b style="color:var(--defer)">Deferred</b> — real work not yet started, awaiting your decision.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Proof it was worth doing</p>
+    <h2>What the audit changed</h2>
+    <p class="section-sub">Ten categories yielded a concrete fix or a new control in PCC's own code — several were
+      the exact "a green that's actually red" disease PCC exists to kill, caught in PCC itself.</p>
+    <div class="fixes">
+      <div class="fix"><span class="tag">FAKE-GREEN</span><div><h4>"Env is git-ignored" was a false promise</h4><p>The rules told every worker secrets were safe from git — but <span style="font-family:var(--mono)">.env</span> wasn't actually ignored. Now it is, and the fix rides into every project PCC spawns.</p></div></div>
+      <div class="fix"><span class="tag">SILENT FAIL</span><div><h4>Security failures vanished without a trace</h4><p>A failed <em>revoke</em> of build permission was silently dropped — you'd never know. Now every such failure lands in a durable log the health check surfaces in plain language.</p></div></div>
+      <div class="fix"><span class="tag">FALSE ALL-CLEAR</span><div><h4>A "smoke alarm" flashed green while checking nothing</h4><p>The bloat signal reported "within limits" when its config was broken and it had scanned zero files. Now it honestly says "unknown."</p></div></div>
+      <div class="fix"><span class="tag">UNTESTED GATE</span><div><h4>The rule-book validator had no tests</h4><p>The check that blocks every commit if a decision record is malformed — itself a constitutional file — had zero tests, and an old note claimed it was "proven" from a one-time manual check. Now 8 tests lock it in.</p></div></div>
+      <div class="fix"><span class="tag">LINCHPIN</span><div><h4>The branch-protection check was silently dead</h4><p>The verifier the whole "un-bypassable" guarantee rests on could never actually run (the tool it needed was off the system path). Fixed, and wired into the release gate so a disabled backstop now fails loudly.</p></div></div>
+      <div class="fix"><span class="tag">+5 MORE</span><div><h4>And five more across state, verification, honesty &amp; execution</h4><p>Closed two untested constitutional data files, pinned the sign-off progress meter's fail-safe logic, pinned the read-only worker lockdown, built the branch-protection live check, and fixed a docstring that lied about being a gate.</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">The full inventory</p>
+    <h2>Every area, its true state, and its boundary</h2>
+    <p class="section-sub">All 21 audited categories. Each line: what it buys you, the exact boundary that was
+      tested, and any residue you should know about.</p>
+
+    <div class="domain">
+      <h3>State, data &amp; recovery</h3>
+      <div class="rows">
+        <div class="row"><span class="name">State &amp; data integrity</span><span class="chip fixed">Fixed / built</span><div class="boundary">Atomic writes, journaled paired writes, and fail-closed recovery keep durable state truthful under crashes and corruption. Closed two constitutional files that had no test.</div></div>
+        <div class="row"><span class="name">Backup &amp; recovery</span><span class="chip hold">Tested — holds</span><div class="boundary">A restore aborts before touching any live file if the snapshot is incomplete — a bad backup can't half-overwrite good work.</div><div class="residue-line"><b>Residue</b> Taking a restore point is a habit, not enforced — but your git commits are the real, enforced safety net.</div></div>
+        <div class="row"><span class="name">Recovery, rollback &amp; damage-repair</span><span class="chip hold">Tested — holds</span><div class="boundary">Interrupted writes self-heal; corruption serves the last-good copy and blocks further writes; it never fabricates a healthy state.</div></div>
+      </div>
+    </div>
+
+    <div class="domain">
+      <h3>Verification, governance &amp; decisions</h3>
+      <div class="rows">
+        <div class="row"><span class="name">Verification &amp; proof-of-done</span><span class="chip fixed">Fixed / built</span><div class="boundary">Built a live check that turns the "branch protection is on" precondition from an assumption into a verified fact.</div></div>
+        <div class="row"><span class="name">Bypass evidence &amp; tamper-detection</span><span class="chip fixed">Fixed / built</span><div class="boundary">Every escape hatch leaves a committed, auditable trail; fixed the branch-protection linchpin that was silently dead and unsurfaced.</div><div class="residue-line"><b>Residue</b> A local "PASS" is worker-attested and could be faked — see R3.</div></div>
+        <div class="row"><span class="name">Change governance &amp; decisions</span><span class="chip fixed">Fixed / built</span><div class="boundary">The decision-record format is enforced at commit and CI; regression-locked the validator that had zero tests.</div><div class="residue-line"><b>Residue</b> A decision record is validated when written, but not <em>required</em> — mechanizing "was this significant?" would be over-governance.</div></div>
+        <div class="row"><span class="name">Project lifecycle</span><span class="chip hold">Tested — holds</span><div class="boundary">Only legal stage moves are allowed; closing a phase is gated on a fresh, typed, execution-backed PASS that fails closed. 18 tests.</div><div class="residue-line"><b>Residue</b> The local verification file is hand-editable — same forged-PASS limit as R3.</div></div>
+      </div>
+    </div>
+
+    <div class="domain">
+      <h3>Honesty &amp; detection</h3>
+      <div class="rows">
+        <div class="row"><span class="name">Honesty &amp; anti-fake-green</span><span class="chip fixed">Fixed / built</span><div class="boundary">The sign-off progress meter (the number that gates your trust) had no tests on its fail-safe logic; pinned every defense to fail to "unknown," never invent a green.</div></div>
+        <div class="row"><span class="name">Detection &amp; signals</span><span class="chip fixed">Fixed / built</span><div class="boundary">The honest detectors declare their boundaries as data and fail to "unknown." Fixed the one that flashed green over an unchecked project.</div><div class="residue-line"><b>Residue</b> A weak sycophancy "nudge" shows green when it didn't evaluate — low consequence, labelled as a nudge.</div></div>
+        <div class="row"><span class="name">Testing &amp; assurance</span><span class="chip hold">Tested — holds</span><div class="boundary">No skipped/faked/always-pass tests exist; CI runs the whole suite; the test guard can't turn a hang or crash into a green.</div><div class="residue-line"><b>Residue</b> The deepest "are the tests real" proofs run on-demand, not on every push (their guarantees are separately covered).</div></div>
+      </div>
+    </div>
+
+    <div class="domain">
+      <h3>Execution &amp; the worker</h3>
+      <div class="rows">
+        <div class="row"><span class="name">Execution authority &amp; worker safety</span><span class="chip fixed">Fixed / built</span><div class="boundary">Builds need explicit, expiring, owner-granted permission; pasted "you're authorized" text can't grant it. Pinned the read-only lockdown that had no test.</div></div>
+        <div class="row"><span class="name">Worker operation &amp; tooling</span><span class="chip hold">Tested — holds</span><div class="boundary">The worker is driven through Claude Code's supported mode (a UI change can't brick it); session pinning fixes a real hijack bug; the read-only/build lockdown is test-pinned.</div><div class="residue-line"><b>Residue</b> Attachment-parsing can fail <em>silently</em> if a future Claude Code update changes its output format (bounded); one lockdown keeps a duplicate rule-copy — see R8.</div></div>
+        <div class="row"><span class="name">External dependency &amp; failure behavior</span><span class="chip hold">Tested — holds</span><div class="boundary">Every tool (worker, verifier, git, CI, network) degrades to an honest "unknown," proven never to fake a green.</div><div class="residue-line"><b>Residue</b> A retired, owner-run verification watcher can hang (never fakes a pass) — see R8.</div></div>
+      </div>
+    </div>
+
+    <div class="domain">
+      <h3>Privacy &amp; supply chain</h3>
+      <div class="rows">
+        <div class="row"><span class="name">Privacy, secrets &amp; access control</span><span class="chip fixed">Fixed / built</span><div class="boundary">PCC holds no secrets of its own (it actively scrubs API keys); personal chat content is kept out of git; projects can't read each other's data. Fixed the <span style="font-family:var(--mono)">.env</span> false promise.</div><div class="residue-line"><b>Residue</b> Secrets pasted into chat are stored in cleartext on your local disk (never pushed); no commit-time secret scanner yet — see R4 and R5.</div></div>
+        <div class="row"><span class="name">Repo &amp; supply-chain security</span><span class="chip hold">Tested — holds</span><div class="boundary">Least-privilege CI, all actions pinned to exact versions, dependency audit fails the build on a serious vulnerability, zero production dependencies. Verified directly.</div><div class="residue-line"><b>Residue</b> The CI file can be weakened by editing it — closed only by GitHub settings you control — see R6.</div></div>
+      </div>
+    </div>
+
+    <div class="domain">
+      <h3>Communication, memory, requirements &amp; retirement</h3>
+      <div class="rows">
+        <div class="row"><span class="name">Communication contracts</span><span class="chip fixed">Fixed / built</span><div class="boundary">Built the milestone-update and verification-request generators so updates follow a fixed, honest structure — and they travel to spawned projects.</div></div>
+        <div class="row"><span class="name">Incident response &amp; diagnostics</span><span class="chip fixed">Fixed / built</span><div class="boundary">Built a durable app-error log surfaced by the health check, so an app failure you couldn't otherwise see leaves a plain-language trace.</div></div>
+        <div class="row"><span class="name">Multi-project scaffolding &amp; parity</span><span class="chip hold">Tested — holds</span><div class="boundary">Guards derived from the app itself force every engine file to travel to a new project — a forgotten file fails the build instead of shipping a dead feature. Every fix above rides along automatically.</div></div>
+        <div class="row"><span class="name">Memory &amp; knowledge</span><span class="chip hold">Tested — holds</span><div class="boundary">Chat summaries and recall never fabricate (they fail closed on junk and require a verbatim quote); handoffs are deterministic; the real memory is open files on disk.</div><div class="residue-line"><b>Residue</b> Nothing proactively stops you repeating a past mistake — that knowledge is there to search, not pushed at you — see R2.</div></div>
+        <div class="row"><span class="name">Requirements / intent &amp; acceptance</span><span class="chip residue">Accepted residue</span><div class="boundary">A lightweight one-screen spec ties intent to tests, deliberately kept as a discipline rather than a heavy pipeline.</div><div class="residue-line"><b>Residue</b> No machine can prove the worker built the <em>right</em> thing — human judgment is the backstop — see R1.</div></div>
+        <div class="row"><span class="name">Retirement, migration &amp; export</span><span class="chip hold">Tested — holds</span><div class="boundary">All your data is open formats (text, JSON, git) in the project folder; deleting the folder cleanly removes the project. You are not locked in.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Your decision · the engagement</p>
+    <h2>Residual risks to accept</h2>
+    <p class="section-sub">These are not bugs to fix — they are honest limits. A real trust guarantee means you
+      <b>actively accept</b> them, not just read them. Tick each one you accept; flag any you don't.</p>
+    <div class="accept">
+      <label class="risk"><input type="checkbox"><h4>A worker can build the wrong thing and pass every automated gate</h4><p class="mean">The machinery proves work was <em>verified against this exact change</em> — never that the change is what you actually wanted. Correctness-of-intent is judged by you, the independent verifier, and the live build. <b>This is by design</b> (a heavier spec pipeline was the trap that burned a prior project).</p></label>
+      <label class="risk"><input type="checkbox"><h4>PCC won't proactively stop you repeating a past mistake</h4><p class="mean">Past lessons are recorded and searchable, but nothing pushes "you tried this before and it failed" at you. Building that would mean either invasive capture or a fabricated signal — the fake-intelligence PCC deliberately refuses.</p></label>
+      <label class="risk"><input type="checkbox"><h4>A local "PASS" can be forged</h4><p class="mean">A local verification record is worker-attested — a well-formed fake would be accepted locally. The real, un-forgeable proof is the server-side CI check plus branch protection. Signing every local record was judged over-governance for a cooperative worker.</p></label>
+      <label class="risk"><input type="checkbox"><h4>Secrets pasted into chat are stored in cleartext on your local disk</h4><p class="mean">Chat is stored locally in plain text (never pushed to git). PCC does not auto-redact — detecting "what is a secret" means guessing, which would be false confidence. <b>Keep real secrets out of chat.</b></p></label>
+      <label class="risk"><input type="checkbox"><h4>No commit-time secret scanner (yet)</h4><p class="mean">A secret accidentally hardcoded inside an otherwise-normal file is caught only by review. A scanner (e.g. gitleaks) is worth adding when a spawned project starts handling real product secrets — flagged for your decision, not built speculatively.</p></label>
+      <label class="risk"><input type="checkbox"><h4>The self-governing CI can be weakened by editing the CI file itself</h4><p class="mean">Everything else is judged from trusted <span style="font-family:var(--mono)">main</span>, but the workflow file and branch-protection settings run from the change's own branch. This is closed only by GitHub settings <b>you</b> control — branch protection is ON; required code-owner review is deliberately left off in a single-account repo.</p></label>
+      <label class="risk"><input type="checkbox"><h4>The overall boundary: cooperative worker, not adversarial</h4><p class="mean">All of the above sum to one honest line: PCC's guarantees hold for a <b>cooperative</b> worker (the normal case) and reduce the blast radius of mistakes. A truly <b>adversarial</b> worker with write access is <b>not</b> fully contained. That is the real edge of the trust claim.</p></label>
+    </div>
+    <div class="callout" style="margin-top:1.4rem"><p style="margin:0"><b>Minor (R8), for completeness:</b> a retired, owner-run verification watcher can hang (it never fakes a pass, just stops), and attachment-parsing can fail silently if a future Claude Code update changes its output format. Both are bounded and flagged as small follow-ups.</p></div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Your decision · confirm the intent</p>
+    <h2>The behavior you're trusting — and the failures you won't tolerate</h2>
+    <p class="section-sub">Confirm these match what you actually want, or correct them. This is the intent the whole
+      system is measured against.</p>
+    <div class="confirm-grid">
+      <div class="panel">
+        <h4>What PCC is meant to do</h4>
+        <ul>
+          <li><b>Reduce babysitting</b> — you set direction; it runs and stops for real decisions.</li>
+          <li><b>Never fake "done"</b> — a claim is proven, or plainly marked unproven.</li>
+          <li><b>Honest surfaces</b> — every green means a real check said so; unknown reads as unknown.</li>
+          <li><b>Protect your data</b> — nothing is lost; damage is recoverable; you're never locked in.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h4>The failure modes it must never allow</h4>
+        <ul>
+          <li><b>Silent data loss</b> — corruption must fail visibly, never overwrite good state.</li>
+          <li><b>A green that's actually red</b> — no painted-over unknown or stale result.</li>
+          <li><b>Work marked done that isn't</b> — no self-certified "verified" without independent proof.</li>
+          <li><b>Acting without authority</b> — no build/no destructive action without your explicit grant.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">The bounded claim</p>
+    <h2>What your signature would mean</h2>
+    <div class="signblock">
+      <p style="margin:0"><b>Approved for the tested workflows, the documented boundaries, and the accepted residual
+        risks above — not "any project."</b> This is Gate A. Your full sign-off follows <b>Gate B</b>: a live,
+        adversarially-tested spawned-project build, packaged and used outside this checkout, shown to fail safe and
+        stay visible under attempted bypass, failed verification, and recovery from damage.</p>
+
+      <div class="choice"><input type="radio" name="decision"><span>I have reviewed this report, <b>accept the residual risks</b> above, confirm the intended behavior and the unacceptable failure modes, and <b>authorize proceeding to Gate B</b> (the live build + packaging).</span></div>
+      <div class="choice"><input type="radio" name="decision"><span>I need <b>changes or answers</b> first (noted separately) before proceeding.</span></div>
+
+      <div class="signrow">
+        <div class="field"><div class="line"></div><div class="cap">Owner signature</div></div>
+        <div class="field"><div class="line"></div><div class="cap">Date</div></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    PCC Operational Trust Qualification &amp; Adoption · Sign-off Gate A · Generated 2026-07-16 ·
+    Source of truth: docs/audit/*.md (21 category grids) · Every claim independently verified &amp; CI-green on its commit.
+  </footer>
+
+</div>
