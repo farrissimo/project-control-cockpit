@@ -36,7 +36,7 @@ jobs:
       # version the SHA corresponds to; Dependabot (github-actions ecosystem)
       # bumps the SHA + comment together when a new release lands.
       - name: Check out the repo
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 (v4.3.1)
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v4 (v4.3.1)
         with:
           fetch-depth: 0   # full history: the trailer audit re-derives each commit's diff vs its recorded base
 
