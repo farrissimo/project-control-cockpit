@@ -40,6 +40,23 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
+# Resolve the gh CLI. Prefer PATH; else fall back to the standard Windows install locations, because
+# a -NoProfile / gate / hook context routinely has a bare PATH that omits gh EVEN WHEN IT IS INSTALLED
+# (observed live: gh present at 'C:\Program Files\GitHub CLI\gh.exe' but not on PATH -> the check read
+# UNKNOWN and could never confirm protection). Returns the invokable path, or $null if genuinely absent
+# (still fail-closed -> UNKNOWN, never a fake PASS).
+function Resolve-Gh {
+  $onPath = Get-Command gh -ErrorAction SilentlyContinue
+  if ($onPath) { return $onPath.Source }
+  $bases = @($env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:ProgramW6432, (Join-Path $env:LOCALAPPDATA 'Programs')) |
+    Where-Object { $_ }
+  foreach ($b in $bases) {
+    $p = Join-Path $b 'GitHub CLI\gh.exe'
+    if (Test-Path -LiteralPath $p) { return $p }
+  }
+  return $null
+}
+
 # Evaluate a single ruleset-DETAIL object against the required protection contract.
 # Returns @{ verdict='PASS'|'FAIL'; reasons=@(...) }.
 function Test-RulesetProtects($detail) {
@@ -98,10 +115,10 @@ if (-not [string]::IsNullOrWhiteSpace($FixtureRuleset)) {
     }
     if ([string]::IsNullOrWhiteSpace($Repo)) {
       $verdict = 'UNKNOWN'; $notProven = 'could not determine owner/repo (pass -Repo)'
-    } elseif (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-      $verdict = 'UNKNOWN'; $notProven = 'gh CLI not found — cannot query the GitHub API (cannot tell; not reported as protected)'
+    } elseif (-not ($ghCmd = Resolve-Gh)) {
+      $verdict = 'UNKNOWN'; $notProven = 'gh CLI not found (checked PATH + standard install locations) — cannot query the GitHub API (cannot tell; not reported as protected)'
     } else {
-      $listRaw = & gh api "repos/$Repo/rulesets" 2>$null
+      $listRaw = & $ghCmd api "repos/$Repo/rulesets" 2>$null
       if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($listRaw | Out-String).Trim())) {
         $verdict = 'UNKNOWN'; $notProven = "GitHub rulesets API unreachable/unauthorized for '$Repo' (cannot tell)"
       } else { $listAvailable = $true }
@@ -129,7 +146,7 @@ if (-not [string]::IsNullOrWhiteSpace($FixtureRuleset)) {
         $firstFail = $null
         $detailReadError = $false
         foreach ($c in $candidates) {
-          $detailRaw = & gh api "repos/$Repo/rulesets/$($c.id)" 2>$null
+          $detailRaw = & $ghCmd api "repos/$Repo/rulesets/$($c.id)" 2>$null
           if ($LASTEXITCODE -ne 0) { $detailReadError = $true; continue }
           $detail = $null
           try { $detail = ($detailRaw | Out-String) | ConvertFrom-Json -ErrorAction Stop } catch { $detail = $null }

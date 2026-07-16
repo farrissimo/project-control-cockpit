@@ -7,7 +7,7 @@
   "required": [
     "schema", "generated_at", "commit", "commit_at_end", "branch",
     "head_stable", "tree_clean_start", "tree_clean_end",
-    "backup_sync", "remote_head", "ci", "suites", "detectors",
+    "backup_sync", "remote_head", "ci", "branch_protection", "suites", "detectors",
     "exceptions_applied", "evidence_valid", "verdict"
   ],
   "properties": {
@@ -42,6 +42,16 @@
       "properties": {
         "status": { "enum": ["passed", "failed", "cancelled", "skipped", "pending", "missing", "unreachable", "ambiguous", "no_remote", "not_github", "unknown"] },
         "sha": { "type": ["string", "null"] }
+      }
+    },
+    "branch_protection": {
+      "type": "object",
+      "required": ["verdict", "source"],
+      "properties": {
+        "verdict": { "enum": ["PASS", "FAIL", "UNKNOWN"] },
+        "ruleset_name": { "type": "string" },
+        "reasons": { "type": "array" },
+        "source": { "type": "string" }
       }
     },
     "suites": {
