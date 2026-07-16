@@ -28,6 +28,7 @@ const { parseStreamJson } = require('./stream-json');
 const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
 const { logAppError } = require('./error-log'); // durable trace for otherwise-swallowed app failures
+const { readBuildIdentity, formatIdentity } = require('./build-identity'); // "which build is this?" — stamp in a package, live git in dev
 
 // This app is the single "home" cockpit. It opens PROJECTS (self-contained
 // folders each with their own .cockpit + engine scripts + CLAUDE.md, exactly
@@ -597,6 +598,34 @@ ipcMain.handle('pcc:toolStatus', () => {
   };
   const missing = Object.keys(meta).filter((k) => !present[k]).map((k) => ({ tool: k, label: meta[k].label, why: meta[k].why }));
   return { present, missing };
+});
+
+// Build identity — lets the app answer "which build am I running?" instead of the owner
+// having to grep the packaged binary (which is literally what it took, 2026-07-16). The
+// logic is pure + unit-tested in build-identity.js; this only supplies the real-world
+// sources. Fails closed to `unknown` — never invents a version. Spec: docs/specs/build-identity.md
+ipcMain.handle('pcc:buildInfo', () => {
+  // The repo to ask git about is the app's OWN checkout (where its code came from), NOT the
+  // active project — a packaged install pointed at a user's project must not report that
+  // project's commit as PCC's build.
+  const appRepo = path.join(__dirname, '..');
+  const id = readBuildIdentity({
+    packaged: app.isPackaged,
+    stampPath: path.join(__dirname, 'build-info.json'),
+    version: app.getVersion(),
+    readFile: (p) => { try { return fs.readFileSync(p, 'utf8'); } catch (e) { return null; } },
+    runGit: (args) => {
+      try {
+        const r = spawnSync('git', args, { cwd: appRepo, encoding: 'utf8', timeout: 5000, windowsHide: true });
+        if (!r || r.status !== 0) return { ok: false, out: '' };
+        return { ok: true, out: r.stdout || '' };
+      } catch (e) { return { ok: false, out: '' }; } // git absent/blocked => unknown, never a guess
+    },
+  });
+  // Formatted HERE, not in the renderer: the renderer cannot require() this module under
+  // context isolation, and a hand-copied formatter in the view would be free to drift from
+  // the fail-closed rules the module enforces. One authority for what this build is CALLED.
+  return Object.assign({}, id, { display: formatIdentity(id) });
 });
 
 // Start a fresh chat: assign a brand-new pinned session id, so the next

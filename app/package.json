@@ -1,6 +1,6 @@
 {
   "name": "pcc-cockpit",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "PCC - local-first project control cockpit (desktop app). Consumes the .cockpit/ file bridge; drives Claude Code as the worker.",
   "main": "main.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "test:unit": "node tests/run-unit.js",
     "test:external-smoke": "playwright test -c playwright.external.config.js",
     "lint": "eslint .",
-    "dist": "electron-builder --win nsis",
+    "dist": "node tools/write-build-info.js && electron-builder --win nsis",
     "postinstall": "node tools/install-git-hooks.js"
   },
   "license": "UNLICENSED",

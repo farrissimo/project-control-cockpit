@@ -33,7 +33,7 @@ const call = (method, ...args) =>
 test('bridge exposes exactly the expected channels', async () => {
   const keys = await page.evaluate(() => Object.keys(window.pcc).sort());
   expect(keys).toEqual([
-    'addProject', 'approveJob', 'authorityLog', 'authorityState', 'autoNameChat', 'backup', 'cancelJob',
+    'addProject', 'approveJob', 'authorityLog', 'authorityState', 'autoNameChat', 'backup', 'buildInfo', 'cancelJob',
     'chatsAppend', 'chatsBootstrap', 'chatsCreate', 'chatsDelete', 'chatsRead', 'chatsRename', 'chatsSetActive', 'chatsUpdateMeta', 'ciStatus',
     'createFlowCancel', 'createFlowPickLocation', 'createFlowSave', 'createFlowSend', 'createFlowStart',
     'deleteChatFiles', 'detections', 'endJob', 'engineStatus', 'getActiveProject', 'getMemory', 'getModels',
@@ -42,6 +42,27 @@ test('bridge exposes exactly the expected channels', async () => {
     'runProduct', 'saveChatsBackup', 'saveMemory', 'searchChats', 'secondOpinion', 'send', 'setActiveProject', 'setPhaseKind',
     'stakes', 'summarizeChat', 'syncStatus', 'toolStatus', 'trustExtras', 'verify', 'verifyProduct', 'visionPromises',
   ]);
+});
+
+// Build identity: the app must be able to say WHICH build it is. Under test it runs from the
+// dev checkout, so it derives live from git and must name a real commit — never a bare version
+// (which proves nothing) and never a blank. The fail-closed branches are unit-proven in
+// tests/unit/build-identity.test.js; this pins the real wiring end to end.
+test('buildInfo names a real commit and always renders a non-empty identity', async () => {
+  const r = await call('buildInfo');
+  expect(['stamped', 'dev']).toContain(r.status); // a dev checkout can always identify itself
+  expect(r.sha).toMatch(/^[0-9a-f]{40}$/);
+  expect(r.shortSha).toBe(r.sha.slice(0, 7));
+  expect(typeof r.display).toBe('string');
+  expect(r.display.trim().length).toBeGreaterThan(0);
+  expect(r.display).toContain(r.shortSha); // the owner-visible line names the commit, not just a version
+});
+
+test('the build identity is visible in the app, not buried', async () => {
+  const el = page.locator('#build-id');
+  await expect(el).toBeVisible();
+  await expect(el).not.toHaveText(/^\s*$/);
+  await expect(el).toContainText(/build [0-9a-f]{7}|Unknown build/);
 });
 
 // CI status (surface CI into the Verified chip): must be safe + honest. In test mode it never
