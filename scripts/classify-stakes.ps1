@@ -40,6 +40,13 @@ function Add-Tokens($list, $s) {
   if ($null -eq $s) { return }
   foreach ($p in (([string]$s) -split "[`r`n,]")) { $t = "$p".Trim(); if ($t.Length -gt 0) { [void]$list.Add($t) } }
 }
+# Add ONE already-delimited path verbatim. Used for rename status lines, whose old/new paths are
+# split on TAB by git and must NOT be re-split on commas the way an operator-supplied -Files list is
+# (a tracked path may legitimately contain a comma; splitting it would invent two fake paths).
+function Add-Path($list, $s) {
+  $t = "$s".Trim()
+  if ($t.Length -gt 0) { [void]$list.Add($t) }
+}
 function Convert-GlobToRegex([string]$glob) {
   $e = [regex]::Escape($glob)
   $e = $e -replace '\\\*\\\*', '.*'   # ** -> any chars incl. /
@@ -80,19 +87,42 @@ if (-not $Files -and -not $Added -and -not $Deleted) {
   $fromGit = $true
   & git rev-parse --verify --quiet $Baseline > $null 2>&1
   $haveBase = ($LASTEXITCODE -eq 0)
+  # -M forces rename detection ON regardless of this machine's `diff.renames` config, so the
+  # verdict is deterministic (lib/change-identity.ps1 pins --no-renames for the same reason: git
+  # config must never decide an answer). Git reports a rename as `R` — which is NEITHER A NOR D —
+  # so --diff-filter=A/D alone silently misses one, and the manifest's `delete_or_rename` rule
+  # could never fire for the rename half of its own name. Read R explicitly below.
   if ($haveBase) {
-    $mArr = @(& git diff --name-only "$Baseline...HEAD" 2>$null) + @(& git diff --name-only HEAD 2>$null)
-    $aArr = @(& git diff --name-only --diff-filter=A "$Baseline...HEAD" 2>$null) + @(& git diff --name-only --diff-filter=A HEAD 2>$null)
-    $dArr = @(& git diff --name-only --diff-filter=D "$Baseline...HEAD" 2>$null) + @(& git diff --name-only --diff-filter=D HEAD 2>$null)
+    $mArr = @(& git diff -M --name-only "$Baseline...HEAD" 2>$null) + @(& git diff -M --name-only HEAD 2>$null)
+    $aArr = @(& git diff -M --name-only --diff-filter=A "$Baseline...HEAD" 2>$null) + @(& git diff -M --name-only --diff-filter=A HEAD 2>$null)
+    $dArr = @(& git diff -M --name-only --diff-filter=D "$Baseline...HEAD" 2>$null) + @(& git diff -M --name-only --diff-filter=D HEAD 2>$null)
+    $rArr = @(& git diff -M --name-status --diff-filter=R "$Baseline...HEAD" 2>$null) + @(& git diff -M --name-status --diff-filter=R HEAD 2>$null)
   } else {
     $baseErr = "baseline '$Baseline' not found; used working-tree vs HEAD only"
-    $mArr = @(& git diff --name-only HEAD 2>$null)
-    $aArr = @(& git diff --name-only --diff-filter=A HEAD 2>$null)
-    $dArr = @(& git diff --name-only --diff-filter=D HEAD 2>$null)
+    $mArr = @(& git diff -M --name-only HEAD 2>$null)
+    $aArr = @(& git diff -M --name-only --diff-filter=A HEAD 2>$null)
+    $dArr = @(& git diff -M --name-only --diff-filter=D HEAD 2>$null)
+    $rArr = @(& git diff -M --name-status --diff-filter=R HEAD 2>$null)
   }
-  foreach ($f in $mArr) { Add-Tokens $changedFiles "$f" }
-  foreach ($f in $aArr) { Add-Tokens $addedFiles "$f" }
-  foreach ($f in $dArr) { Add-Tokens $deletedFiles "$f" }
+  # Add-Path, NOT Add-Tokens: git already emits exactly one path per line, so these must be taken
+  # verbatim. Comma-splitting them would turn a tracked path that legitimately contains a comma
+  # into two invented paths — which inflates the touched-file/area counts (and so could trip
+  # large_cross_cutting) and could glob-match something the real path never would. Add-Tokens'
+  # comma splitting exists for the OPERATOR-supplied -Files/-Added/-Deleted lists below, whose
+  # documented contract IS comma-separated; it does not belong on git output.
+  foreach ($f in $mArr) { Add-Path $changedFiles "$f" }
+  foreach ($f in $aArr) { Add-Path $addedFiles "$f" }
+  foreach ($f in $dArr) { Add-Path $deletedFiles "$f" }
+  # A rename is a removal AND an addition. Each R line is "R<score>`t<old path>`t<new path>":
+  # the OLD path is gone (delete_or_rename must fire), the NEW path is added. --name-only already
+  # reports the new path, so only the old path is otherwise invisible.
+  foreach ($ln in $rArr) {
+    $parts = "$ln" -split "`t"
+    if ($parts.Count -ge 3 -and $parts[0] -match '^R') {
+      Add-Path $deletedFiles $parts[1]
+      Add-Path $addedFiles $parts[2]
+    }
+  }
 } else {
   Add-Tokens $changedFiles $Files
   Add-Tokens $addedFiles $Added
