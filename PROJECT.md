@@ -168,8 +168,9 @@ sign-off gates), so `scripts/new-milestone-update.ps1` computes a real `% comple
 (`README.md` = index + tracker). **Check the live % directly** (run the generator) — don't trust a number
 written here.
 
-**Audit categories done (as of 2026-07-16): 18 of 22** (the live meter reads 18/24 = 75% including the 2
-sign-off gates). Each produced a real finding OR converted an assumption to proof, not box-ticking:
+**Audit categories done (as of 2026-07-16): 21 of 22** (the live meter reads 21/24 = 88% including the 2
+sign-off gates). All probe-able categories are DONE; only **packaging** remains (needs owner go — it's a build,
+not a probe). Each produced a real finding OR converted an assumption to proof, not box-ticking:
 - **Communication contracts** (PRs #16/#18/#19) — built the milestone-update + verification-request
   generators (structure→machinery); they travel to spawned projects. `docs/specs/communication-contracts.md`.
 - **State & data integrity** (PR #21) — strong; closed 2 T0-files-without-tests (backup + schema-check) and
@@ -236,11 +237,26 @@ sign-off gates). Each produced a real finding OR converted an assumption to proo
   build profile (test-pinned), orphan-kill, stream-json validated vs real capture, honest model fallback. Two
   disclosed bounded residues (recommendations): `parseStreamJson` fails QUIET on a future CC format change
   (attachments path only); `oneShotWorker` keeps an un-shared copy of the read-only deny-list. `docs/audit/worker-operation-tooling.md`.
+- **Privacy, secrets & access control (FULL)** — sound: PCC holds NO secrets of its own (API-key scrub), personal
+  content git-ignored, cross-project isolation fail-closed. Two absences disclosed as owner-decision residues (NOT
+  fake-greens): no write-path secret redaction (honest local-first boundary — auto-redaction=guessing, forbidden by
+  principle) + no commit-time secret scanner (owner-gated prior-art, evaluate when spawned projects handle real
+  secrets). `docs/audit/privacy-secrets-access-control.md`.
+- **Repo & supply-chain security** — tested-holds; verified directly (least-privilege token, SHA-pinned actions,
+  gating `npm audit`, `npm ci`, zero prod deps, judge-from-main). ci.yml-self-edit = already-accepted ADR-0008
+  residue. `docs/audit/repo-supply-chain-security.md`.
+- **Retirement, migration & export** — tested-holds, low consequence: data is 100% open formats, extractability
+  real+tested, registry self-prunes (no lock-in). `docs/audit/retirement-migration-export.md`.
 
-**Next (owner picks):** more audit categories (4 of 22 remain), or **sign-off gate (b)** — the live end-to-end
-adversarial spawned-project build + adoption (the gate that actually earns the owner's sign-off). Open
-sub-items noted in the grids (e.g. comms channel 6 start-off measurement; the branch-protection check is
-now wired into the **release gate** — the **trust-strip** surface remains an open lighter follow-up).
+**Next (owner decisions — all probe-able audit categories are done):**
+- **Packaging, install, upgrade & runtime** — the last audit category, NOT started; it's a real build (Windows
+  installer + fresh-machine install), explicitly deferred and needing owner go. Overlaps sign-off gate (b).
+- **Sign-off gate (a)** — compile the 21 grids into the owner-facing HTML/PDF report (disclosed state + boundaries +
+  residues to accept).
+- **Sign-off gate (b)** — the live end-to-end adversarial spawned-project build + adoption (the gate that actually
+  earns the owner's sign-off). Open sub-items noted in the grids (e.g. comms channel 6 start-off measurement; the
+  branch-protection check is now wired into the **release gate** — the **trust-strip** surface remains an open
+  lighter follow-up; and two worker-op recommendations: `parseStreamJson` fail-loud + `oneShotWorker` deny-list dedup).
 
 ### Predecessor phase (COMPLETE): Governance Standardization
 Made PCC's safeguards fire predictably, proportionally, self-enforcing — not prose an LLM can skip.
