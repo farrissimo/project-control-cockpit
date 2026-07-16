@@ -169,8 +169,9 @@ sign-off gates), so `scripts/new-milestone-update.ps1` computes a real `% comple
 written here.
 
 **Audit categories done (as of 2026-07-16): 21 of 22** (the live meter reads 21/24 = 88% including the 2
-sign-off gates). All probe-able categories are DONE; only **packaging** remains (needs owner go — it's a build,
-not a probe). Each produced a real finding OR converted an assumption to proof, not box-ticking:
+sign-off gates). All probe-able categories are DONE; only **packaging** remains — and it is partly built already
+(see the packaging bullet below for the 2026-07-16 correction), with its remaining piece being a build, not a probe.
+Each produced a real finding OR converted an assumption to proof, not box-ticking:
 - **Communication contracts** (PRs #16/#18/#19) — built the milestone-update + verification-request
   generators (structure→machinery); they travel to spawned projects. `docs/specs/communication-contracts.md`.
 - **State & data integrity** (PR #21) — strong; closed 2 T0-files-without-tests (backup + schema-check) and
@@ -258,8 +259,15 @@ not the worker producing the document (marking it done pre-sign-off would be the
 kills). The owner is reviewing now; secondary GPT verification is offered (trust-boundary doc) but the owner's call.
 
 **Next (owner decisions — all probe-able audit categories are done; awaiting owner sign-off on the Gate (a) report):**
-- **Packaging, install, upgrade & runtime** — the last audit category, NOT started; it's a real build (Windows
-  installer + fresh-machine install), explicitly deferred and needing owner go. Overlaps sign-off gate (b).
+- **Packaging, install, upgrade & runtime** — the last audit category, PARTLY BUILT, never audited. **Correction
+  (2026-07-16): this file previously said packaging was "NOT started". That was false** — packaging slice 1 + 1b
+  shipped 2026-07-13 (`1a744d5`, `14e82ab`, `73d5bde`, `b4bb3f2`, `ee37239`): PCC is packageable (unsigned NSIS),
+  a clean install was proven to launch, a packaged first run shows an honest empty state, and an external-tool
+  preflight banner warns when pwsh/git/claude/codex are missing. An installer WAS built and IS installed on the
+  owner's machine (`%LOCALAPPDATA%\Programs\PCC`). What is genuinely NOT done: **packaged "New Project"
+  scaffolding end-to-end is unproven** (named as "slice 2" in `1a744d5` and never built) — i.e. the one path the
+  owner would need to actually start a project from the installed app. Also unproven: upgrade-over-install and
+  fresh-MACHINE (not just fresh-profile) install. Overlaps sign-off gate (b).
 - **Sign-off gate (a)** — report BUILT + published (above), UNDER OWNER REVIEW. On owner sign-off: record it +
   mark the slice done. On changes: revise the report. This is the payoff artifact; needs no new build.
 - **Sign-off gate (b)** — the live end-to-end adversarial spawned-project build + adoption (the gate that actually
@@ -385,9 +393,12 @@ admin bypass + a pre-compromised `main` (all owner-side, not code). Spec `docs/s
   owner-side residues belong on it). None started; owner schedules.
 
 ## Pending / next (owner schedules)
-- **Packaging** is the last explicitly-deferred hardening slice not started
-  (security scanners shipped as Phase 3, mutation testing as Phase 4, failure
-  injection as Phase 5). No owner go yet.
+- **Packaging** is PARTLY BUILT (slice 1 + 1b, 2026-07-13 — see the correction in the
+  packaging bullet above; this line previously claimed it was "not started", which was
+  false). The remaining, genuinely-unbuilt piece is **slice 2: packaged "New Project"
+  scaffolding, end-to-end** — plus upgrade-over-install and a fresh-machine install proof.
+  (Security scanners shipped as Phase 3, mutation testing as Phase 4, failure injection as
+  Phase 5.)
 - **IDEA-020** (backlog/IDEAS.md): a one-click "Run integrity proofs" button in
   the Verify view (runs the mutation + failure-injection proofs from the app,
   honest summary, no LLM). Owner-approved as an idea; its own small slice.

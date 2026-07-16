@@ -36,6 +36,11 @@
   .nav:hover { background: #1a1d23; }
   .nav.active { background: #1c2637; color: #dbe8ff; }
   .side-foot { margin-top: auto; font-size: 11px; color: #5f646c; padding: 8px; }
+  /* Build identity — which build of PCC this actually is. Deliberately always-visible rather
+     than buried in an About dialog: the question "am I running a stale build?" went unanswerable
+     for 3 days (2026-07-16). Amber when the build cannot be pinned to a commit. */
+  #build-id { font-size: 10px; color: #5f646c; padding: 0 8px 8px; line-height: 1.45; word-break: break-word; }
+  #build-id.unknown, #build-id.dirty { color: var(--warning-text, #d29922); }
 
   #content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   #lifecycle { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; padding: 8px 20px;
@@ -488,6 +493,9 @@
       <button class="nav" data-view="verify" title="Deterministic hard checks plus independent AI review of the work.">Verify</button>
     </nav>
     <div class="side-foot">Talking to your Claude Code</div>
+    <!-- Which build this is (version · commit · build date). Filled by renderBuildId(); says
+         "Unknown build" outright rather than showing a bare version that proves nothing. -->
+    <div id="build-id" title="Which build of PCC you are running.">…</div>
   </aside>
 
   <section id="content">

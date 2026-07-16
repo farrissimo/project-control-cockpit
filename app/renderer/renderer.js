@@ -2335,6 +2335,24 @@ async function renderToolWarning() {
   } catch (e) { /* preflight is advisory; a failure here must never block the app */ }
 }
 
+// Which build of PCC this is (version · commit · build date), in the sidebar foot. main.js owns
+// both the identity and its wording (fail-closed: "Unknown build" rather than a bare version that
+// proves nothing). If even the IPC fails we say Unknown — never leave a stale or blank claim.
+async function renderBuildId() {
+  const el = document.getElementById('build-id');
+  if (!el) return;
+  try {
+    const id = await window.pcc.buildInfo();
+    el.textContent = (id && id.display) ? id.display : 'Unknown build';
+    el.classList.toggle('unknown', !id || id.status === 'unknown');
+    el.classList.toggle('dirty', !!(id && id.dirty === true));
+    if (id && id.reason) el.title = id.reason;
+  } catch (e) {
+    el.textContent = 'Unknown build';
+    el.classList.add('unknown');
+  }
+}
+
 async function boot() {
   // Resolve the active project first so chat history loads from its namespace. RETRY on a THROWN error
   // (a transient IPC hiccup once left activeProjectPath null -> the 'home' namespace -> an empty list ->
@@ -2353,6 +2371,7 @@ async function boot() {
   }
   renderCorrections();
   renderToolWarning();   // fire-and-forget; shows in BOTH the empty state and the normal cockpit (z-index 46)
+  renderBuildId();       // fire-and-forget; independent of any project being open
   initModels();
   loadProjectSwitcher();
   initHeader();
