@@ -54,7 +54,10 @@ For each practice in the category, one row:
 | Recovery, rollback & damage-repair | `docs/audit/recovery-rollback-damage-repair.md` | ✅ done (tested-holds; most-proven area) |
 | Multi-project scaffolding & parity | `docs/audit/scaffolding-parity.md` | ✅ done (tested-holds; derived anti-drift guards) |
 | Privacy, secrets & access control | `docs/audit/privacy-secrets-probe.md` | 🔍 quick probe only (found + fixed the `.env` fake-green; full category still open) |
-| _(13 of 22 audit categories remaining)_ | — | pending |
+| Requirements / intent & acceptance correctness | `docs/audit/requirements-intent-acceptance.md` | ✅ done (accepted-residue by ADR-0003; risk named for owner acceptance) |
+| External dependency / tool availability & failure | `docs/audit/external-dependency-availability.md` | ✅ done (tested-holds; retired-watcher residue disclosed) |
+| Incident response, diagnostics & supportability | `docs/audit/incident-response-diagnostics.md` | ✅ done (found + fixed: durable app-error log for swallowed failures) |
+| _(12 of 22 audit categories done; 10 remaining)_ | — | pending |
 
 The live `% complete` is computed from the phase manifest by `scripts/new-milestone-update.ps1` — never
 hand-counted here.

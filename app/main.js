@@ -27,6 +27,7 @@ const { singleFlight } = require('./single-flight'); // coalesce concurrent dete
 const { parseStreamJson } = require('./stream-json');
 const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
+const { logAppError } = require('./error-log'); // durable trace for otherwise-swallowed app failures
 
 // This app is the single "home" cockpit. It opens PROJECTS (self-contained
 // folders each with their own .cockpit + engine scripts + CLAUDE.md, exactly
@@ -53,6 +54,15 @@ const ENGINE_DIR = (app.isPackaged)
   ? path.join(process.resourcesPath, 'engine')
   : path.join(__dirname, '..');
 const cockpitDir = () => path.join(projectDir, '.cockpit');
+// Last-resort recorder for otherwise-swallowed app failures. Logs to the active
+// project's .cockpit/logs (where doctor.ps1 looks); when no project is open
+// (packaged first run), falls back to the app's userData. Never throws.
+function appErr(context, e) {
+  try {
+    const dir = projectDir ? path.join(projectDir, '.cockpit', 'logs') : path.join(app.getPath('userData'), 'logs');
+    logAppError(dir, context, e);
+  } catch (_) { /* logging must never itself break a failure path */ }
+}
 // PROJECT.md path. In TEST MODE, when the active project is the HOME repo (the real
 // codebase), redirect to a throwaway shadow under userData — SEEDED once from the
 // real file — so the suite exercises the real read/write path but can NEVER write
@@ -635,7 +645,7 @@ function importScaffoldedInbox() {
     }
     if (added) writeRegistry(reg);
     fs.writeFileSync(inboxPath, JSON.stringify(remaining), 'utf8'); // consume only what we handled
-  } catch (e) { /* ignore a malformed inbox */ }
+  } catch (e) { appErr('importScaffoldedInbox', e); /* a malformed inbox is non-fatal, but now leaves a trace */ }
   return added;
 }
 
@@ -712,7 +722,7 @@ function authorityStorePath() { return path.join(app.getPath('userData'), 'autho
 const authority = createAuthorityStore({
   storage: {
     read() { try { return JSON.parse(fs.readFileSync(authorityStorePath(), 'utf8')); } catch (e) { return null; } },
-    write(obj) { try { fs.writeFileSync(authorityStorePath(), JSON.stringify(obj, null, 2), 'utf8'); } catch (e) { /* best effort */ } },
+    write(obj) { try { fs.writeFileSync(authorityStorePath(), JSON.stringify(obj, null, 2), 'utf8'); } catch (e) { appErr('authority-store.write', e); /* best effort, but no longer silent: a dropped grant/revoke leaves a trace */ } },
   },
 });
 // Per-chat snapshot for the badge: reflects THIS chat's authority only — never a global state
@@ -913,7 +923,7 @@ ipcMain.handle('pcc:summarizeChat', async (_e, chatId, messages) => {
     fs.writeFileSync(path.join(dir, 'summary.json'), JSON.stringify({ chatId, at, summary }, null, 2), 'utf8');
     fs.writeFileSync(path.join(dir, 'summary.md'), chatSummary.renderSummaryMd(summary, at), 'utf8');
     fs.writeFileSync(path.join(dir, 'transcript.jsonl'), messages.map((m) => JSON.stringify(m)).join('\n'), 'utf8');
-  } catch (e) { /* durable mirror is best-effort; the card still returns to the UI */ }
+  } catch (e) { appErr('chat-summary.mirror', e); /* durable mirror is best-effort; the card still returns to the UI, but the miss is now recorded */ }
   return { ok: true, summary, at };
 });
 

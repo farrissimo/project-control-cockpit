@@ -59,6 +59,11 @@ app/.pcc-mut-tmp/
 # Claude Code personal/local settings (machine-specific; never shared)
 .claude/settings.local.json
 
+# App-level error log (app/error-log.js): a local, per-machine diagnostic trace of
+# otherwise-swallowed app failures, surfaced by doctor.ps1. Runtime output with local
+# paths/stack traces — never committed repo truth (unlike the workflow routing-log).
+.cockpit/logs/app-error.log
+
 # Secrets — never commit real credentials (AGENTS.md security rule: "Env is
 # git-ignored"). This block MAKES that promise real: env files and common
 # key/cert formats can't be staged, so a worker or a spawned project (this file

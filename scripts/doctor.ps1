@@ -290,6 +290,30 @@ try {
   Add-Finding -Check "File structure" -Status "WARN" -Detail "Could not check file structure: $($_.Exception.Message)"
 }
 
+# Check 9: App-level error log. The app (app/main.js) records otherwise-swallowed
+# failures (a failed authority write, a dropped scaffolded-inbox, a durable-mirror
+# miss) to .cockpit/logs/app-error.log via app/error-log.js, so they are no longer
+# silent. Surface them in plain language here — a non-coder owner never sees a
+# devtools/terminal console. WARN, not ISSUE: these were handled (the app did not
+# crash), but the owner should know they happened.
+try {
+  $appErrLog = ".cockpit/logs/app-error.log"
+  if (Test-Path -LiteralPath $appErrLog -PathType Leaf) {
+    $errLines = @(Get-Content -LiteralPath $appErrLog -ErrorAction Stop | Where-Object { $_.Trim() -ne "" })
+    if ($errLines.Count -gt 0) {
+      $lastCtx = "?"; $lastTs = "?"
+      try { $lastErr = $errLines[-1] | ConvertFrom-Json; $lastCtx = $lastErr.context; $lastTs = $lastErr.ts } catch { }
+      Add-Finding -Check "App errors" -Status "WARN" -Detail "The app recorded $($errLines.Count) internal error(s) in $appErrLog (most recent: '$lastCtx' at $lastTs). These were handled without a crash, but review them; delete the file once addressed."
+    } else {
+      Add-Finding -Check "App errors" -Status "OK" -Detail "App-error log exists but is empty; no recorded app failures."
+    }
+  } else {
+    Add-Finding -Check "App errors" -Status "OK" -Detail "No app-error log; the app has recorded no internal failures."
+  }
+} catch {
+  Add-Finding -Check "App errors" -Status "WARN" -Detail "Could not read the app-error log: $($_.Exception.Message)"
+}
+
 # --- Report ---
 Write-Output "PCC Doctor Report - $((Get-Date).ToString('yyyy-MM-ddTHH:mm:sszzz'))"
 Write-Output "(Advisory only. Read-only. Does not gate or block any task cycle.)"
