@@ -63,7 +63,11 @@ For each practice in the category, one row:
 | Change governance & decisions | `docs/audit/change-governance-decisions.md` | ✅ done (found + fixed: regression-locked the untested T0 ADR validator) |
 | Project lifecycle | `docs/audit/project-lifecycle.md` | ✅ done (tested-holds; forgeable-PASS = accepted origin-seam residue) |
 | Worker operation & tooling conventions | `docs/audit/worker-operation-tooling.md` | ✅ done (tested-holds; parseStreamJson-fail-quiet + oneShotWorker-dedup disclosed) |
-| _(18 of 22 audit categories done; 4 remaining)_ | — | pending |
+| Privacy, secrets & access control | `docs/audit/privacy-secrets-access-control.md` | ✅ done — FULL (sound; redaction + secret-scanner disclosed as owner-decision residues) |
+| Repo & supply-chain security | `docs/audit/repo-supply-chain-security.md` | ✅ done (tested-holds; Phase-3 hardening verified directly) |
+| Retirement, migration & data export | `docs/audit/retirement-migration-export.md` | ✅ done (tested-holds; open formats, not locked in) |
+| Packaging, install, upgrade & runtime | — | ⏸ NOT started — needs owner go (a build, not a probe) |
+| _(21 of 22 audit categories done; only packaging remains, which needs owner go)_ | — | — |
 
 The live `% complete` is computed from the phase manifest by `scripts/new-milestone-update.ps1` — never
 hand-counted here.
