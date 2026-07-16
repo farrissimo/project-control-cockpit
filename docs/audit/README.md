@@ -60,7 +60,10 @@ For each practice in the category, one row:
 | Testing & assurance | `docs/audit/testing-assurance.md` | ✅ done (tested-holds; zero dishonest tests, full-suite CI) |
 | Detection & signals | `docs/audit/detection-signals.md` | ✅ done (found + fixed: bloat false-green on malformed/empty config) |
 | Memory & knowledge | `docs/audit/memory-knowledge.md` | ✅ done (tested-holds; no-proactive-repeat-prevention is a DECISION-008 residue) |
-| _(15 of 22 audit categories done; 7 remaining)_ | — | pending |
+| Change governance & decisions | `docs/audit/change-governance-decisions.md` | ✅ done (found + fixed: regression-locked the untested T0 ADR validator) |
+| Project lifecycle | `docs/audit/project-lifecycle.md` | ✅ done (tested-holds; forgeable-PASS = accepted origin-seam residue) |
+| Worker operation & tooling conventions | `docs/audit/worker-operation-tooling.md` | ✅ done (tested-holds; parseStreamJson-fail-quiet + oneShotWorker-dedup disclosed) |
+| _(18 of 22 audit categories done; 4 remaining)_ | — | pending |
 
 The live `% complete` is computed from the phase manifest by `scripts/new-milestone-update.ps1` — never
 hand-counted here.

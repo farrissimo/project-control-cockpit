@@ -168,7 +168,7 @@ sign-off gates), so `scripts/new-milestone-update.ps1` computes a real `% comple
 (`README.md` = index + tracker). **Check the live % directly** (run the generator) — don't trust a number
 written here.
 
-**Audit categories done (as of 2026-07-16): 15 of 22** (the live meter reads 15/24 = 62% including the 2
+**Audit categories done (as of 2026-07-16): 18 of 22** (the live meter reads 18/24 = 75% including the 2
 sign-off gates). Each produced a real finding OR converted an assumption to proof, not box-ticking:
 - **Communication contracts** (PRs #16/#18/#19) — built the milestone-update + verification-request
   generators (structure→machinery); they travel to spawned projects. `docs/specs/communication-contracts.md`.
@@ -224,8 +224,20 @@ sign-off gates). Each produced a real finding OR converted an assumption to proo
   recall-safe + verbatim-quote anti-hallucination; handoff deterministic). No proactive "don't repeat mistakes"
   enforcement — a DELIBERATE accepted-residue (DECISION-008 no-fake-intelligence; instruction-repeat measurement
   "permanently declined" pcc-postbrr-002). Named for owner acceptance. No build. `docs/audit/memory-knowledge.md`.
+- **Change governance & decisions** — **found a real break → fixed.** `check-adr.ps1` is T0 (gates every commit +
+  CI) but had ZERO tests, and ADR-0000 claimed it was "proven to bite" via a one-time demo never regression-locked
+  → built `check-adr.spec.js` (8, red-biting). The "ADR-not-required" + rollout-is-prose gaps are deliberate
+  accepted-residues (mechanizing significance = over-governance/fake-intelligence). `docs/audit/change-governance-decisions.md`.
+- **Project lifecycle** — tested-holds (strong): legal-transition allow-list + phase-close fresh-PASS gate
+  (fail-closed on git failure; forgery of ci_execution/live_boundary rejected) all pinned by lifecycle-advance.spec
+  (18); app fail-closed. Forgeable local `last-verification.txt` = the same owner-accepted forged-PASS/origin-seam
+  residue. No build. `docs/audit/project-lifecycle.md`.
+- **Worker operation & tooling** — tested-holds: supported `claude -p` spawn, session-hijack UUID fix, read-only/
+  build profile (test-pinned), orphan-kill, stream-json validated vs real capture, honest model fallback. Two
+  disclosed bounded residues (recommendations): `parseStreamJson` fails QUIET on a future CC format change
+  (attachments path only); `oneShotWorker` keeps an un-shared copy of the read-only deny-list. `docs/audit/worker-operation-tooling.md`.
 
-**Next (owner picks):** more audit categories (7 of 22 remain), or **sign-off gate (b)** — the live end-to-end
+**Next (owner picks):** more audit categories (4 of 22 remain), or **sign-off gate (b)** — the live end-to-end
 adversarial spawned-project build + adoption (the gate that actually earns the owner's sign-off). Open
 sub-items noted in the grids (e.g. comms channel 6 start-off measurement; the branch-protection check is
 now wired into the **release gate** — the **trust-strip** surface remains an open lighter follow-up).
