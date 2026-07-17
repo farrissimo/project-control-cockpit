@@ -50,14 +50,26 @@ test('AC-1/AC-2/AC-3: a freshly scaffolded project stays clean through the app\'
   } finally { fs.rmSync(target, { recursive: true, force: true }); }
 });
 
-test('AC-4: the minted id shape is unchanged -- a valid proj-<uuid> string chat-store.js already understands', () => {
+// Secondary-verification catch: mintedAt must match chat-store.js's OWN canonical mint
+// path exactly (resolveProjectId's fallback writes `mintedAt: _now(opts)`, and _now()
+// returns Date.now() -- a NUMBER, not an ISO string). An earlier version of the fix
+// wrote an ISO string here; this test now checks against the real contract, not just
+// against whatever the implementation happened to produce.
+test('AC-4: the minted id shape matches chat-store.js\'s OWN canonical mint contract exactly', () => {
   const target = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-birth-shape-'));
   try {
+    const before = Date.now();
     bootstrap(target);
+    const after = Date.now();
     const raw = fs.readFileSync(path.join(target, '.cockpit', 'state', 'project-id.json'), 'utf8');
     const parsed = JSON.parse(raw);
     expect(typeof parsed.projectId).toBe('string');
     expect(parsed.projectId).toMatch(/^proj-/);
-    expect(typeof parsed.mintedAt).toBe('string');
+    // Same type AND same semantics as Date.now() -- a plausible epoch-ms value bracketed
+    // by the test's own before/after wall-clock, not just "is a number".
+    expect(typeof parsed.mintedAt).toBe('number');
+    expect(Number.isFinite(parsed.mintedAt)).toBe(true);
+    expect(parsed.mintedAt).toBeGreaterThanOrEqual(before - 5000);
+    expect(parsed.mintedAt).toBeLessThanOrEqual(after + 5000);
   } finally { fs.rmSync(target, { recursive: true, force: true }); }
 });
