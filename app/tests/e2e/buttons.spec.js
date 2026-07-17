@@ -40,6 +40,25 @@ test('chat: Send produces a user bubble and a worker reply', async () => {
   await expect(page.locator('.bubble.assistant').last()).toContainText('FAKE-CLAUDE-REPLY', { timeout: 15000 });
 });
 
+// --- Finding C: Send must not be left stuck disabled after a completed turn, with no
+// error shown and no turn in flight -- an owner-blocking defect (traced statically in
+// docs/specs/send-button-busy-state.md; proved here via the actual owner-facing path,
+// not internal state inspection: a real second click on the real button). ---
+test('chat: Send stays usable for a second message after the first turn completes', async () => {
+  await page.locator('.nav[data-view="chat"]').click();
+  await page.locator('#input').fill('first message');
+  await page.locator('#send').click();
+  await expect(page.locator('.bubble.assistant').last()).toContainText('FAKE-CLAUDE-REPLY', { timeout: 15000 });
+  // Semantic completion: no turn in flight, no error state -- Send must be enabled.
+  await expect(page.locator('#send')).toBeEnabled({ timeout: 5000 });
+  const beforeCount = await page.locator('.bubble.user').count();
+  await page.locator('#input').fill('second message');
+  await page.locator('#send').click();
+  await expect(page.locator('.bubble.user')).toHaveCount(beforeCount + 1);
+  await expect(page.locator('.bubble.user').last()).toHaveText(/second message/);
+  await expect(page.locator('.bubble.assistant').last()).toContainText('FAKE-CLAUDE-REPLY', { timeout: 15000 });
+});
+
 // --- correction quick-buttons: clicking one sends its canned instruction ---
 test('corrections: a quick-button sends and gets a reply', async () => {
   const before = await page.locator('.bubble.user').count();

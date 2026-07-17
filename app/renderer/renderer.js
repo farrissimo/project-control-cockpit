@@ -368,6 +368,13 @@ async function runSend(item) {
     await appendMessage('assistant error', 'Something went wrong: ' + err.message, chatId);
   } finally {
     busy = false; input.focus();
+    // Finding C fix: a mid-turn resync (appendMessage's assistant-reply persist, above,
+    // runs a refreshCanonical -> setRecoveryState while busy was still true) can leave
+    // sendBtn.disabled=true as a stale snapshot -- nothing re-derived it after busy
+    // cleared. Re-run the SAME function that owns this state so it reflects the CURRENT
+    // busy/recovery state, not a snapshot from mid-turn. Idempotent / cheap; matches
+    // whatever refreshCanonical last observed for servedGeneration.
+    setRecoveryState(servedGeneration);
     if (sendQueue.length) {
       runSend(sendQueue.shift()); // steering: send the next queued message
     } else {
