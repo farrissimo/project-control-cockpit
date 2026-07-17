@@ -396,6 +396,23 @@ Related: docs/DECISION_AND_CHANGE_STANDARD.md, docs/specs/README.md, docs/TRUST_
 "@)
 Write-Output "  + docs/adr/0000-record-decisions-as-adrs.md (starter)"
 
+# Stable project identity (Finding D, patch-intake report; docs/specs/scaffold-project-identity.md).
+# app/state/chat-store.js's resolveProjectId mints THIS EXACT file/shape lazily on the app's
+# first read of a project with no existing identity -- which happens automatically the moment
+# the owner opens a freshly scaffolded project, dirtying an otherwise-clean tree immediately
+# ("Uncheckpointed" on day one). Minting it here instead, in the SAME shape resolveProjectId
+# already reads (no change to that logic), means the bootstrap commit already contains it, so
+# the first app read finds an existing id (source: 'minted') instead of writing a new one.
+$projectId = 'proj-' + [guid]::NewGuid().ToString()
+$mintedAt = (Get-Date).ToUniversalTime().ToString('o')
+Set-Content -LiteralPath (Join-Path $Target '.cockpit/state/project-id.json') -Encoding utf8 -Value (@"
+{
+  "projectId": "$projectId",
+  "mintedAt": "$mintedAt"
+}
+"@)
+Write-Output "  + .cockpit/state/project-id.json (stable identity, minted once at scaffold time)"
+
 # --- 6. git init ---
 if (-not $NoGit) {
   Push-Location $Target
