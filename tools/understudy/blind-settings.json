@@ -1,5 +1,0 @@
-{
-  "permissions": {
-    "deny": ["Read", "Edit", "Write", "Glob", "Grep", "Bash", "PowerShell", "WebFetch", "WebSearch", "Task", "Agent", "NotebookEdit", "ToolSearch", "Skill", "SendMessage", "Monitor", "TaskCreate", "TaskOutput"]
-  }
-}

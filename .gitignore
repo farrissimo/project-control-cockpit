@@ -56,12 +56,6 @@ app/.pcc-mut-tmp/
 # Packaged installer output (electron-builder)
 /dist/
 
-# Build stamp (app/tools/write-build-info.js): generated at package time to record the exact
-# commit a build came from. A build ARTIFACT, not source — committing it would let a stale,
-# hand-editable file masquerade as build provenance. Absent in dev, where the app reads git live.
-# See docs/specs/build-identity.md
-/app/build-info.json
-
 # Claude Code personal/local settings (machine-specific; never shared)
 .claude/settings.local.json
 
@@ -81,9 +75,3 @@ app/.pcc-mut-tmp/
 *.pem
 *.key
 secrets.json
-
-# Operation Understudy run artifacts (tools/understudy/driver.js): the owner transcript and the
-# sealed technical trace are OUTPUT of a qualification run, not source. Committing them would let
-# a stale run masquerade as current evidence. See tools/understudy/README.md
-/tools/understudy/owner.log
-/tools/understudy/trace.log

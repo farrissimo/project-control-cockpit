@@ -143,91 +143,7 @@ git-ignored) is a historical record, never re-read as live proof — run it agai
 current readiness. Accepted bloat is an exact-string, fail-closed, disclosed
 exception (.cockpit/state/release-gate-exceptions.json). Design: docs/HARDENING_RELEASE_GATE.md.
 
-## READ THIS FIRST — where the work actually is (2026-07-16, end of day)
-
-### ACTIVE TRACK: pre-E2E recovery (bounded tasks, ONE at a time, owner-authorized each)
-A prior session became uncontrolled by combining qualification execution, harness repair, product
-repair, governor repair, branch reconciliation and verification in one branch — producing a PR that
-could not land and a run that could not proceed. That mode is over. Each defect that BLOCKS the
-Understudy run is now its own bounded task: one defect class, one branch, one PR, one independent
-verification, one exact-head CI result, hard stop. **Do not start the next task without owner
-authorization.** A qualification attempt may DISCOVER a defect; it may not REPAIR it mid-run.
-
-- **PREE2E-00 (accepted):** workspace normalized. Understudy run-1 evidence preserved OUTSIDE the
-  repo at `C:\PCC-Incidents\Understudy-Run1-20260716\` (hash-verified inventory; `owner.log` +
-  `trace.log` were git-ignored and existed nowhere else). Abandoned squash `55e4452` and remote
-  `ab191ec` are BOTH intact and deliberately unreconciled — they are mutually non-ancestral;
-  reconciliation belongs to the Understudy-branch task, not to a casual sync.
-- **PREE2E-01: governor rename classification** — spec `docs/specs/governor-rename-classification.md`.
-  The manifest rule `delete_or_rename` never fired for a rename: the classifier derived its lists
-  from `git diff --diff-filter=A/D`, and git reports a rename as `R` — neither A nor D. CI's auditor
-  (`git diff-tree`, rename detection off) saw delete+add and said T1; the local gate said T3 and
-  emitted no trailer — so a renaming commit was **impossible to make compliant**. That is why PR #37
-  is red. Fixed in the git-mode derivation only (`-M` forced so the verdict never depends on the
-  machine's `diff.renames` config; `R` read explicitly — old path deleted, new path added). The
-  explicit-list path CI uses is untouched, so the two converge on T1 from opposite directions.
-  `diff_id`/change-identity is untouched (it pins `--no-renames` on purpose; tier classification and
-  diff binding are separate concerns).
-
-**Open, NOT repaired (each its own future authorized task):** PR #38 (composer wedge; green, unmerged);
-new projects are born uncheckpointed (`project-id.json` written after the initial commit — observed live
-in `C:\PCC-Projects\Bike-Garage`); PR #37's branch needs reconstruction (its `9623e14` predates the
-rename fix and carries no trailer, so the fix does not retroactively make it compliant); the Understudy
-harness is unqualified. Bike Garage is scaffold-only (commit `ebc6731`); the app is NOT built.
-
-**The audit phase is over as the primary track. The owner's trust in PCC is currently LOW, and that
-is the honest, evidenced state — not a mood.** On 2026-07-16 he asked one ordinary question ("does my
-installed app need updating?") and it exposed three real defects that 21 audit categories, 126 E2E
-tests, and every gate had missed. He found all three. That is a failure of the founding rule (reduce
-owner babysitting), and it is the reason the next phase exists.
-
-**What today established (all evidenced, none of it opinion):**
-- PCC's checks all point at the **repo**. None point at the **product the owner uses**. Every green is
-  a true statement about an object he doesn't live in.
-- The stale-docs detector asks "was this doc edited?", never "is it true?" — its own output says so.
-  PROJECT.md is edited constantly, so it can lie indefinitely and never look stale. It did.
-- **`engine_version` is a LIVE FALSE GREEN, still unfixed.** Three engine copies exist on this machine
-  (repo, `C:\Tax-Prep-and-Assistant`, and the installed app's bundle). All three report
-  `engine_version: 1` = "current". One is 83 commits stale. `pcc:engineStatus` / "Upgrade Existing
-  Project" compares those integers and would tell the owner a stale project is current. **Fix or
-  delete it — a marker that says "current" for a 3-day-old copy is worse than no marker.**
-- PCC propagates itself by **copying** (every install AND every scaffolded project gets a wholesale
-  engine copy — `bootstrap-project.ps1`). The only currency signal is a hand-bumped integer nobody
-  bumps. The architecture manufactures copies it cannot track. **This is an unmade architectural
-  decision (copy-propagation vs one engine), and it is the thing standing between the owner and
-  "projects I can trust." It needs an ADR, not a patch.**
-
-**SHIPPED today:** build identity (PR #35, merged `main` 4b50483, CI-green, Codex PASS) — version
-0.0.1 → **0.1.0**, and the app now reports `PCC 0.1.0 · build <sha> · built <date>` in the sidebar,
-failing closed to "Unknown build" rather than a bare version. Spec `docs/specs/build-identity.md`.
-
-**THE NEXT PHASE (agreed with the owner, started, not finished): Operation Understudy.**
-Stop auditing. Stop building governance. **Prove DPCC works by building a real project with it.**
-- **DPCC** = the `npm start` / repo-run PCC. **This is the ONLY target.** The owner has explicitly and
-  repeatedly ruled the installed/packaged app OUT OF SCOPE. Do not raise it. Do not test it.
-- **The project: Bike Garage** — a local-first bicycle maintenance + component tracker (bikes,
-  components, mileage, date-OR-mileage service intervals, due/overdue, parts moved between bikes with
-  history following the part, CSV import/export, backup/restore). No accounts, no cloud, no external
-  APIs, no telemetry, no runtime AI. Synthetic data only. Chosen because the owner can judge it
-  without reading code and its ground truth is objective (a chain due at 250 miles OR 90 days either
-  is or isn't).
-- **The method:** a **blind simulated owner** (no tools, sees only screen text) drives DPCC through a
-  **dumb driver**; an **independent evaluator** (Codex/GPT) grades the record afterwards. Rig + all
-  verified gotchas: **`tools/understudy/README.md`** (read it before touching this). Plan:
-  `docs/audit/UNDERSTUDY_PLAN.html`. Owner profile (mined from 1,441 of his real turns):
-  `docs/OWNER_BEHAVIOUR_MODEL.md` + `docs/audit/OWNER_PROFILE.html`.
-- **Seven pass criteria, all required:** it builds the thing · the thing is correct by ground truth ·
-  it told the truth throughout · it caught its own problems · nothing was lost · context survived
-  across chats · **the owner stayed the owner**.
-- **The metric:** babysitting ratio = owner-found ÷ total defects. **Baseline 2026-07-16: 3/3 = 100%
-  owner-found.** Beat it or the phase hasn't moved.
-- **Status: rig BUILT and verified working; run barely started (2 turns).** Bike Garage is NOT built.
-
-**Gate A (owner sign-off report) is NOT signed and should not be pushed.** The owner's position:
-the report describes code truth, not lived truth, and the lived path is what he'd be signing for.
-Gate A and Gate B are intertwined; Understudy IS gate B.
-
-## Predecessor phase (2026-07-15): Operational Trust Qualification & Adoption (ADR-0009)
+## Current phase (2026-07-15): Operational Trust Qualification & Adoption — the FINAL phase (ADR-0009)
 This is the project's culminating phase — the "final boss." Goal: prove PCC well enough that the owner
 **signs off he has the faith/trust to adopt it** as his standard way of building LLM projects (as a
 non-coder). Decision + rules: **`docs/adr/0009-trust-signoff-audit.md`**. The **standardization audit is
@@ -253,9 +169,8 @@ sign-off gates), so `scripts/new-milestone-update.ps1` computes a real `% comple
 written here.
 
 **Audit categories done (as of 2026-07-16): 21 of 22** (the live meter reads 21/24 = 88% including the 2
-sign-off gates). All probe-able categories are DONE; only **packaging** remains — and it is partly built already
-(see the packaging bullet below for the 2026-07-16 correction), with its remaining piece being a build, not a probe.
-Each produced a real finding OR converted an assumption to proof, not box-ticking:
+sign-off gates). All probe-able categories are DONE; only **packaging** remains (needs owner go — it's a build,
+not a probe). Each produced a real finding OR converted an assumption to proof, not box-ticking:
 - **Communication contracts** (PRs #16/#18/#19) — built the milestone-update + verification-request
   generators (structure→machinery); they travel to spawned projects. `docs/specs/communication-contracts.md`.
 - **State & data integrity** (PR #21) — strong; closed 2 T0-files-without-tests (backup + schema-check) and
@@ -343,15 +258,8 @@ not the worker producing the document (marking it done pre-sign-off would be the
 kills). The owner is reviewing now; secondary GPT verification is offered (trust-boundary doc) but the owner's call.
 
 **Next (owner decisions — all probe-able audit categories are done; awaiting owner sign-off on the Gate (a) report):**
-- **Packaging, install, upgrade & runtime** — the last audit category, PARTLY BUILT, never audited. **Correction
-  (2026-07-16): this file previously said packaging was "NOT started". That was false** — packaging slice 1 + 1b
-  shipped 2026-07-13 (`1a744d5`, `14e82ab`, `73d5bde`, `b4bb3f2`, `ee37239`): PCC is packageable (unsigned NSIS),
-  a clean install was proven to launch, a packaged first run shows an honest empty state, and an external-tool
-  preflight banner warns when pwsh/git/claude/codex are missing. An installer WAS built and IS installed on the
-  owner's machine (`%LOCALAPPDATA%\Programs\PCC`). What is genuinely NOT done: **packaged "New Project"
-  scaffolding end-to-end is unproven** (named as "slice 2" in `1a744d5` and never built) — i.e. the one path the
-  owner would need to actually start a project from the installed app. Also unproven: upgrade-over-install and
-  fresh-MACHINE (not just fresh-profile) install. Overlaps sign-off gate (b).
+- **Packaging, install, upgrade & runtime** — the last audit category, NOT started; it's a real build (Windows
+  installer + fresh-machine install), explicitly deferred and needing owner go. Overlaps sign-off gate (b).
 - **Sign-off gate (a)** — report BUILT + published (above), UNDER OWNER REVIEW. On owner sign-off: record it +
   mark the slice done. On changes: revise the report. This is the payoff artifact; needs no new build.
 - **Sign-off gate (b)** — the live end-to-end adversarial spawned-project build + adoption (the gate that actually
@@ -477,12 +385,9 @@ admin bypass + a pre-compromised `main` (all owner-side, not code). Spec `docs/s
   owner-side residues belong on it). None started; owner schedules.
 
 ## Pending / next (owner schedules)
-- **Packaging** is PARTLY BUILT (slice 1 + 1b, 2026-07-13 — see the correction in the
-  packaging bullet above; this line previously claimed it was "not started", which was
-  false). The remaining, genuinely-unbuilt piece is **slice 2: packaged "New Project"
-  scaffolding, end-to-end** — plus upgrade-over-install and a fresh-machine install proof.
-  (Security scanners shipped as Phase 3, mutation testing as Phase 4, failure injection as
-  Phase 5.)
+- **Packaging** is the last explicitly-deferred hardening slice not started
+  (security scanners shipped as Phase 3, mutation testing as Phase 4, failure
+  injection as Phase 5). No owner go yet.
 - **IDEA-020** (backlog/IDEAS.md): a one-click "Run integrity proofs" button in
   the Verify view (runs the mutation + failure-injection proofs from the app,
   honest summary, no LLM). Owner-approved as an idea; its own small slice.
