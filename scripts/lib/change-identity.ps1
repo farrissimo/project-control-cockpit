@@ -67,25 +67,57 @@ function Get-CommitDiffId([string]$base, [string]$commit) {
   return Get-DiffIdFromText $base $t
 }
 
+# Resolve the ACTUAL ref to diff against for a given symbolic baseline name (e.g. 'main'), in
+# a fixed, deterministic priority order -- never a heuristic guess (Finding B, patch-intake
+# report; docs/specs/governor-trusted-baseline.md). Local `main` is a ref any local-only
+# operation (a reset, a rebase, an unpushed commit, a restore) can move; a fetched
+# `origin/<name>` cannot silently drift the same way. Same class of fix as ADR-0008 (CI judges
+# from a trusted origin/main worktree, not the PR's own tree), applied to the LOCAL side.
+#   1. origin/<name>   -- a network-anchored copy, if this repo has a remote and it resolves.
+#   2. <name>            -- the local ref, unchanged existing behavior (covers local-only
+#                            projects with no origin remote at all).
+#   3. pcc-baseline tag -- already created by scripts/bootstrap-project.ps1 on every scaffolded
+#                            project's first commit for exactly this purpose; reused, not invented.
+#   4. $null            -- nothing resolves; caller falls back to HEAD (unchanged, honest).
+# Skips step 1 when $Baseline already names a remote-tracking ref itself (e.g. a caller that
+# already passed 'origin/main' explicitly) -- 'origin/origin/main' is never a sensible ref.
+function Resolve-TrustedBaseline([string]$Baseline) {
+  if ($Baseline -notmatch '^origin/') {
+    $originCandidate = "origin/$Baseline"
+    & git rev-parse --verify --quiet $originCandidate > $null 2>&1
+    if ($LASTEXITCODE -eq 0) { return $originCandidate }
+  }
+  & git rev-parse --verify --quiet $Baseline > $null 2>&1
+  if ($LASTEXITCODE -eq 0) { return $Baseline }
+  & git rev-parse --verify --quiet 'refs/tags/pcc-baseline' > $null 2>&1
+  if ($LASTEXITCODE -eq 0) { return 'refs/tags/pcc-baseline' }
+  return $null
+}
+
 function Get-ChangeIdentity {
   param([string]$Baseline = 'main')
 
   $head = (& git rev-parse --verify --quiet HEAD 2>$null)
   $head = if ($head) { "$head".Trim() } else { '' }
 
-  # Resolve the base: merge-base(baseline, HEAD). If the baseline ref does not exist (fresh
-  # repo, detached history), fall back to HEAD so only staged-vs-HEAD changes define the diff —
-  # and record that so callers surface it honestly rather than silently narrowing scope.
+  # Resolve the base: merge-base(trusted baseline, HEAD). If nothing resolves (fresh repo,
+  # detached history, no remote/local/tag match), fall back to HEAD so only staged-vs-HEAD
+  # changes define the diff — and record that so callers surface it honestly rather than
+  # silently narrowing scope.
   $base = $head
   $baseNote = ''
-  & git rev-parse --verify --quiet $Baseline > $null 2>&1
-  if ($LASTEXITCODE -eq 0 -and $head) {
-    $mb = (& git merge-base $Baseline HEAD 2>$null)
+  $resolvedBaseline = Resolve-TrustedBaseline $Baseline
+  if ($resolvedBaseline -and $head) {
+    $mb = (& git merge-base $resolvedBaseline HEAD 2>$null)
     if ($LASTEXITCODE -eq 0 -and $mb) { $base = "$mb".Trim() }
-    else { $baseNote = "merge-base($Baseline, HEAD) unresolved; used HEAD as base" }
+    else { $baseNote = "merge-base($resolvedBaseline, HEAD) unresolved; used HEAD as base" }
   } elseif (-not $head) {
     $baseNote = 'no commits yet (HEAD unresolved); base = HEAD = empty'
   } else {
+    # Exact original wording preserved (Codex review: an earlier draft unconditionally claimed
+    # "checked origin/$Baseline" even when $Baseline itself already started with 'origin/' --
+    # a check Resolve-TrustedBaseline deliberately skips in that case -- describing a lookup
+    # that never ran. Simplest honest fix: don't claim what was checked, just the plain fact.
     $baseNote = "baseline '$Baseline' not found; used HEAD as base"
   }
 
