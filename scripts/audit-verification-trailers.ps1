@@ -45,10 +45,14 @@ $exceptionsPath = '.cockpit/state/governance-gate-exceptions.json'
 
 function Classify-Commit([string]$c) {
   # The files THIS commit introduced (vs its first parent; --root handles the initial commit).
-  $files = @(& git diff-tree --no-commit-id --name-only -r --root $c 2>$null | Where-Object { $_ })
+  # --no-renames pinned explicitly (Finding G; docs/specs/rename-classification-convergence.md):
+  # diff-tree does not detect renames by default on this git version -- confirmed no behavior
+  # change today -- but pinning it here too, matching the local classification paths, means
+  # convergence no longer depends on git-tree vs git-diff defaults happening to stay this way.
+  $files = @(& git diff-tree --no-commit-id --name-only -r --root --no-renames $c 2>$null | Where-Object { $_ })
   if ($files.Count -eq 0) { return 'NONE' }
-  $added = @(& git diff-tree --no-commit-id --name-only -r --root --diff-filter=A $c 2>$null | Where-Object { $_ })
-  $deleted = @(& git diff-tree --no-commit-id --name-only -r --root --diff-filter=D $c 2>$null | Where-Object { $_ })
+  $added = @(& git diff-tree --no-commit-id --name-only -r --root --no-renames --diff-filter=A $c 2>$null | Where-Object { $_ })
+  $deleted = @(& git diff-tree --no-commit-id --name-only -r --root --no-renames --diff-filter=D $c 2>$null | Where-Object { $_ })
   $raw = & pwsh -NoProfile -File $classifier -Json -Files ($files -join "`n") -Added ($added -join "`n") -Deleted ($deleted -join "`n") 2>$null
   $obj = $null; try { $obj = $raw | ConvertFrom-Json } catch {}
   if ($obj -and $obj.tier) { return "$($obj.tier)" }

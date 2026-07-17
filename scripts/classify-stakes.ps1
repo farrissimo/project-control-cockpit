@@ -80,15 +80,21 @@ if (-not $Files -and -not $Added -and -not $Deleted) {
   $fromGit = $true
   & git rev-parse --verify --quiet $Baseline > $null 2>&1
   $haveBase = ($LASTEXITCODE -eq 0)
+  # --no-renames (Finding G, patch-intake report; docs/specs/rename-classification-convergence.md):
+  # `git diff` detects a tracked rename as R by default, hiding it from --diff-filter=A/=D, so a
+  # rename would never trip the delete_or_rename escalation here -- while the CI audit's
+  # `git diff-tree` does not detect renames by default and always sees delete+add for the same
+  # commit. Pinning here makes this standalone git-mode (used live by the Signals-tab card and by
+  # the pre-commit gate's classifier call) agree with the CI audit always, not by coincidence.
   if ($haveBase) {
-    $mArr = @(& git diff --name-only "$Baseline...HEAD" 2>$null) + @(& git diff --name-only HEAD 2>$null)
-    $aArr = @(& git diff --name-only --diff-filter=A "$Baseline...HEAD" 2>$null) + @(& git diff --name-only --diff-filter=A HEAD 2>$null)
-    $dArr = @(& git diff --name-only --diff-filter=D "$Baseline...HEAD" 2>$null) + @(& git diff --name-only --diff-filter=D HEAD 2>$null)
+    $mArr = @(& git diff --no-renames --name-only "$Baseline...HEAD" 2>$null) + @(& git diff --no-renames --name-only HEAD 2>$null)
+    $aArr = @(& git diff --no-renames --name-only --diff-filter=A "$Baseline...HEAD" 2>$null) + @(& git diff --no-renames --name-only --diff-filter=A HEAD 2>$null)
+    $dArr = @(& git diff --no-renames --name-only --diff-filter=D "$Baseline...HEAD" 2>$null) + @(& git diff --no-renames --name-only --diff-filter=D HEAD 2>$null)
   } else {
     $baseErr = "baseline '$Baseline' not found; used working-tree vs HEAD only"
-    $mArr = @(& git diff --name-only HEAD 2>$null)
-    $aArr = @(& git diff --name-only --diff-filter=A HEAD 2>$null)
-    $dArr = @(& git diff --name-only --diff-filter=D HEAD 2>$null)
+    $mArr = @(& git diff --no-renames --name-only HEAD 2>$null)
+    $aArr = @(& git diff --no-renames --name-only --diff-filter=A HEAD 2>$null)
+    $dArr = @(& git diff --no-renames --name-only --diff-filter=D HEAD 2>$null)
   }
   foreach ($f in $mArr) { Add-Tokens $changedFiles "$f" }
   foreach ($f in $aArr) { Add-Tokens $addedFiles "$f" }
