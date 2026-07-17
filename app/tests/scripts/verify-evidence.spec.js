@@ -11,11 +11,14 @@ const REPO = path.join(__dirname, '..', '..', '..');
 
 function makeRepo() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-ve-'));
-  fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'scripts', 'lib'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'app'), { recursive: true });
   fs.copyFileSync(path.join(REPO, 'scripts', 'verify-evidence.ps1'), path.join(dir, 'scripts', 'verify-evidence.ps1'));
   // verify-evidence now delegates its CI note to the single authority ci-status.ps1 — it must be present.
   fs.copyFileSync(path.join(REPO, 'scripts', 'ci-status.ps1'), path.join(dir, 'scripts', 'ci-status.ps1'));
+  // Finding A fix: verify-evidence now dot-sources change-identity.ps1 to re-derive a tip
+  // commit's Verified-Receipt trailer (same shared helper the gate/writer/audit already use).
+  fs.copyFileSync(path.join(REPO, 'scripts', 'lib', 'change-identity.ps1'), path.join(dir, 'scripts', 'lib', 'change-identity.ps1'));
   execFileSync('git', ['init'], { cwd: dir });
   execFileSync('git', ['config', 'user.email', 't@t.local'], { cwd: dir });
   execFileSync('git', ['config', 'user.name', 'T'], { cwd: dir });
@@ -25,6 +28,27 @@ function commit(dir, name, msg) {
   fs.writeFileSync(path.join(dir, name), String(Date.now()) + Math.random());
   execFileSync('git', ['add', '-A'], { cwd: dir });
   execFileSync('git', ['commit', '-m', msg], { cwd: dir });
+  return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir }).toString().trim();
+}
+// Re-derive a commit's diff_id exactly the way scripts/lib/change-identity.ps1 (Get-CommitDiffId)
+// and the CI trailer audit do, so a test-written trailer is REAL (re-derivable), not asserted text.
+function realDiffId(dir, base, commitSha) {
+  const script = ". '" + path.join(dir, 'scripts', 'lib', 'change-identity.ps1').replace(/\\/g, '/') + "'\nGet-CommitDiffId '" + base + "' '" + commitSha + "'";
+  const r = spawnSync('pwsh', ['-NoProfile', '-Command', script], { cwd: dir, encoding: 'utf8', timeout: 20000 });
+  return r.stdout.trim();
+}
+// Commit, then AMEND the message to carry a Verified-Receipt trailer. Amending only changes the
+// message, not the tree/content, so a diff_id computed against the PRE-amend sha still re-derives
+// correctly against the POST-amend sha (Get-CommitDiffId diffs content, never the message).
+function commitWithTrailer(dir, name, subject, trailerBase, opts) {
+  opts = opts || {};
+  const sha = commit(dir, name, subject);
+  const diffId = opts.forgedDiffId || realDiffId(dir, trailerBase, sha);
+  const verdict = opts.verdict || 'PASS';
+  const verifier = opts.verifier || 'codex exec';
+  const trailer = 'Verified-Receipt: base=' + trailerBase + ' diff_id=' + diffId + ' verdict=' + verdict + ' verifier=' + verifier;
+  const msg = opts.malformed ? (subject + '\n\nVerified-Receipt: not a real trailer line') : (subject + '\n\n' + trailer);
+  execFileSync('git', ['commit', '--amend', '-m', msg], { cwd: dir });
   return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir }).toString().trim();
 }
 function run(dir) {
@@ -174,6 +198,80 @@ test('a ci-status helper returning a bogus status -> ci_state unavailable (white
       "param([string]$Sha,[switch]$Json,[switch]$UrlOnly)\n@{ sha=$Sha; status='bogus'; detail='x' } | ConvertTo-Json -Compress\n");
     const e = run(dir);
     expect(e.ci_state).toBe('unavailable');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// --- Finding A: prefer HEAD's own attested Verified-Receipt trailer over a stale VERIFIED_SHA ---
+// Reproduces the real 2026-07-17 incident: a recorded VERIFIED_SHA that is a real, valid ancestor
+// of HEAD (so today's ancestry check passes it through) but far older than the work actually
+// under review, producing a huge, wrong-scope range that LOOKS authoritative to the verifier.
+
+test('AC-1/AC-5: a valid Verified-Receipt trailer on the tip commit is preferred over a stale-but-valid VERIFIED_SHA', () => {
+  const dir = makeRepo();
+  try {
+    const shaAncient = commit(dir, 'a.txt', 'ancient verified point');
+    for (let i = 0; i < 3; i++) commit(dir, 'filler' + i + '.txt', 'unrelated filler ' + i);
+    recordVerifiedSha(dir, shaAncient); // stale but a real, valid ancestor -- today's code trusts this
+    const shaParent = commit(dir, 'before.txt', 'right before the real change');
+    commitWithTrailer(dir, 'restore.txt', 'the real restore work', shaParent);
+    const e = run(dir);
+    expect(e.range).toBe(shaParent + '..HEAD'); // narrow, precise -- not shaAncient..HEAD
+    expect(e.commits).toContain('the real restore work');
+    expect(e.commits).not.toContain('ancient verified point');
+    expect(e.commits).not.toContain('unrelated filler');
+    expect(e.range_kind).toMatch(/trailer/i);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('AC-2: a trailer whose diff_id does not re-derive (forged/corrupted) is ignored -- falls back to VERIFIED_SHA', () => {
+  const dir = makeRepo();
+  try {
+    const shaA = commit(dir, 'a.txt', 'commitA');
+    recordVerifiedSha(dir, shaA);
+    const shaB = commit(dir, 'b.txt', 'commitB');
+    commitWithTrailer(dir, 'c.txt', 'commitC', shaB, { forgedDiffId: 'deadbeef'.repeat(8) });
+    const e = run(dir);
+    expect(e.range).toBe(shaA + '..HEAD'); // never trusts an unverifiable trailer
+    expect(e.range_kind).not.toMatch(/trailer/i);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a malformed trailer line on the tip commit is ignored -- falls back to VERIFIED_SHA', () => {
+  const dir = makeRepo();
+  try {
+    const shaA = commit(dir, 'a.txt', 'commitA');
+    recordVerifiedSha(dir, shaA);
+    commitWithTrailer(dir, 'b.txt', 'commitB', shaA, { malformed: true });
+    const e = run(dir);
+    expect(e.range).toBe(shaA + '..HEAD');
+    expect(e.range_kind).not.toMatch(/trailer/i);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a trailer whose base is NOT an ancestor of HEAD is ignored -- falls back to VERIFIED_SHA', () => {
+  const dir = makeRepo();
+  try {
+    const shaA = commit(dir, 'a.txt', 'commitA');
+    recordVerifiedSha(dir, shaA);
+    commit(dir, 'b.txt', 'commitB');
+    // a real-looking but unrelated sha as the trailer's claimed base (never an ancestor here)
+    const fakeBase = '0123456789abcdef0123456789abcdef01234567';
+    commitWithTrailer(dir, 'c.txt', 'commitC', fakeBase, { forgedDiffId: realDiffId(dir, fakeBase, fakeBase) || 'x'.repeat(64) });
+    const e = run(dir);
+    expect(e.range).toBe(shaA + '..HEAD');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('AC-3: no trailer on the tip commit -- existing VERIFIED_SHA behavior is unchanged', () => {
+  const dir = makeRepo();
+  try {
+    const shaA = commit(dir, 'a.txt', 'commitA');
+    commit(dir, 'b.txt', 'commitB');
+    commit(dir, 'c.txt', 'commitC');
+    recordVerifiedSha(dir, shaA);
+    const e = run(dir);
+    expect(e.range).toBe(shaA + '..HEAD');
+    expect(e.range_kind).toMatch(/since the last recorded verification/i);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
