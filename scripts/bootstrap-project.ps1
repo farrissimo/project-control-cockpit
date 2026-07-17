@@ -404,11 +404,18 @@ Write-Output "  + docs/adr/0000-record-decisions-as-adrs.md (starter)"
 # already reads (no change to that logic), means the bootstrap commit already contains it, so
 # the first app read finds an existing id (source: 'minted') instead of writing a new one.
 $projectId = 'proj-' + [guid]::NewGuid().ToString()
-$mintedAt = (Get-Date).ToUniversalTime().ToString('o')
+# Numeric epoch-milliseconds, matching chat-store.js's OWN mint path exactly
+# (resolveProjectId's fallback writes `mintedAt: _now(opts)`, and _now() returns
+# Date.now() -- a number, not an ISO string). resolveProjectId's read path doesn't
+# itself validate mintedAt's type, but the file should carry the SAME contract the
+# canonical writer uses, not a look-alike shape a future reader could trip on.
+# (Secondary verification caught this: an earlier version of this fix wrote an ISO
+# string here.)
+$mintedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
 Set-Content -LiteralPath (Join-Path $Target '.cockpit/state/project-id.json') -Encoding utf8 -Value (@"
 {
   "projectId": "$projectId",
-  "mintedAt": "$mintedAt"
+  "mintedAt": $mintedAt
 }
 "@)
 Write-Output "  + .cockpit/state/project-id.json (stable identity, minted once at scaffold time)"
