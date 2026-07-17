@@ -126,8 +126,15 @@ function Get-ChangeIdentity {
   $tree = if ($tree) { "$tree".Trim() } else { '' }
 
   # Staged change vs base (index compared to the base commit), for the classifier + reasons.
+  # --no-renames (Finding G, patch-intake report; docs/specs/rename-classification-convergence.md):
+  # `git diff` detects a tracked rename as a single R entry by DEFAULT, so without this flag a
+  # rename never appears under --diff-filter=A or =D and delete_or_rename never fires here --
+  # while `git diff-tree` (the CI audit's command) does NOT detect renames by default and always
+  # sees delete+add, for the SAME commit. Pinning both to --no-renames makes them agree always,
+  # not just on machines/configs where the defaults happen to line up. Same flag, same reasoning
+  # already applied a few lines below to diff_id — extended here to the classification lists too.
   function StagedNames([string]$filter) {
-    $args = @('diff', '--cached', '--name-only')
+    $args = @('diff', '--cached', '--no-renames', '--name-only')
     if ($filter) { $args += "--diff-filter=$filter" }
     if ($base) { $args += $base }
     $out = & git @args 2>$null
