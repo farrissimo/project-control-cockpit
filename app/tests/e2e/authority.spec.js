@@ -104,7 +104,39 @@ test('a chat message during read_only cannot move authority into a build state',
 
 // These are real page globals defined by renderer.js (a classic <script>), reached here
 // inside page.evaluate — declared so the no-undef tripwire knows they exist at runtime.
-/* global chats:writable, activeId:writable, renderActiveChat:readonly */
+/* global chats:writable, activeId:writable, renderActiveChat:readonly, activeChat:readonly, loadAuthorityBadge:readonly, startAuthorityCountdown:readonly */
+
+// ---- Build-session countdown (DECISION-112 refinement, ADR-0010) ----
+// Two proofs, kept separate on purpose: (1) the AUTHORITY STORE exposes the deadlines a
+// countdown needs — the real request->approve->state integration; (2) the badge RENDERER
+// turns those deadlines into a live "Build session — … left" chip (not the static label).
+test('an approved session exposes the deadlines a countdown needs', async () => {
+  await withApp(async (page) => {
+    const req = await page.evaluate(() => window.pcc.requestJob('new_project', 'DemoProj'));
+    await page.evaluate(() => window.pcc.approveJob());
+    const s = await page.evaluate((cid) => window.pcc.authorityState(cid), req.chatId);
+    expect(s.mode).toBe('authorized_running');
+    expect(Number.isFinite(s.idleExpiresAt)).toBe(true);
+    expect(Number.isFinite(s.hardExpiresAt)).toBe(true);
+    expect(s.hardExpiresAt).toBeGreaterThan(s.idleExpiresAt); // 2h cap sits beyond the 30-min idle
+  });
+});
+
+test('the header badge renders a live countdown from real deadlines, not the read-only label', async () => {
+  await withApp(async (page) => {
+    // Drive the renderer directly with known deadlines (idle 30m, hard 2h out) — deterministic,
+    // no dependence on mutable active-chat state that the app refreshes asynchronously.
+    await page.evaluate(() => {
+      const now = Date.now();
+      startAuthorityCountdown(now + 30 * 60000, now + 2 * 60 * 60000, 'DemoProj', 'countdown-test');
+    });
+    const chip = page.locator('#trust-authority');
+    await expect(chip).toContainText('Build session —');
+    await expect(chip).toContainText('left');
+    await expect(chip).toContainText('DemoProj');       // the job name rides along
+    await expect(chip).not.toContainText('Read-only');
+  });
+});
 
 // Metric-honesty fix (2026-07-14): a build-enabled status banner that was mistakenly
 // persisted into a transcript must NOT render as current status on reopen. It used to read

@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('pcc', {
   send: (message, model, workerSessionId, isFirstTurn, chatId, attachments) => ipcRenderer.invoke('pcc:send', message, model, workerSessionId, isFirstTurn, chatId, attachments),
   authorityState: (chatId) => ipcRenderer.invoke('pcc:authorityState', chatId), // read-only, per-chat; no setter is exposed
   authorityLog: () => ipcRenderer.invoke('pcc:authorityLog'),
+  touchActivity: (chatId) => ipcRenderer.invoke('pcc:touchActivity', chatId), // renews idle for an ALREADY-authorized chat only; never grants
+
   // Owner-driven authority transitions (wired ONLY to explicit UI controls, never chat text):
   requestJob: (type, name, chatId) => ipcRenderer.invoke('pcc:requestJob', type, name, chatId),
   approveJob: () => ipcRenderer.invoke('pcc:approveJob'),

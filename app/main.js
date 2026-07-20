@@ -752,10 +752,18 @@ const authority = createAuthorityStore({
 // that could show "authorized" while a different chat spawns read-only.
 function authoritySnapshot(chatId) {
   const s = authority.stateFor(chatId, Date.now());
-  return { mode: s.mode, label: AUTHORITY_LABELS[s.mode] || AUTHORITY_LABELS.read_only, job: s.job };
+  // Pass the deadlines through (present only when authorized) so the renderer can show a
+  // live countdown. They're read-only display data — the snapshot never mutates authority.
+  return { mode: s.mode, label: AUTHORITY_LABELS[s.mode] || AUTHORITY_LABELS.read_only, job: s.job,
+    idleExpiresAt: s.idleExpiresAt, hardExpiresAt: s.hardExpiresAt };
 }
 // Read-only IPC: report the ACTIVE chat's authority state (by stable chatId). Never mutates.
 ipcMain.handle('pcc:authorityState', (_e, chatId) => authoritySnapshot(chatId));
+// Activity heartbeat: renew the idle window for an ALREADY-authorized chat while its worker
+// turn is actively running. Cannot grant or extend authority beyond the hard cap — it only
+// slides the idle deadline for a chat that is already authorized (touchActivity is a no-op
+// otherwise). Wired to the renderer's in-flight-turn heartbeat, never to chat text.
+ipcMain.handle('pcc:touchActivity', (_e, chatId) => authority.touchActivity(chatId, Date.now()));
 ipcMain.handle('pcc:authorityLog', () => authority.logTail(20));
 // Owner-initiated ONLY (wired to explicit UI buttons, never to chat text). Request a
 // bounded job -> approval_needed; nothing runs yet.

@@ -128,11 +128,32 @@
       },
 
       // Per-chat authority view for the badge. Reflects THIS chat only; never renews.
+      // Carries BOTH deadlines when authorized so the UI can show a live countdown — the
+      // session actually ends at the SOONER of the two (min(idle, hardcap)). Read-only:
+      // exposing the times cannot grant or extend authority.
       stateFor(chatId, now) {
         if (chatId && expireOne(chatId, now)) persist();
-        if (chatId && authorized[chatId]) return { mode: 'authorized_running', job: { name: authorized[chatId].name } };
+        if (chatId && authorized[chatId]) {
+          const a = authorized[chatId];
+          return { mode: 'authorized_running', job: { name: a.name }, idleExpiresAt: a.idleExpiresAt, hardExpiresAt: a.hardExpiresAt };
+        }
         if (pending && pending.chatId === chatId) return { mode: 'approval_needed', job: { name: pending.name } };
         return { mode: 'read_only', job: null };
+      },
+
+      // Renew the idle window from real worker ACTIVITY (not just an owner send), so an
+      // actively-working long turn doesn't idle out mid-task. Safety-preserving: it ONLY
+      // extends an ALREADY-authorized chat's idle deadline — it can never grant authority,
+      // and it NEVER touches the absolute hard cap (checked first via expireOne). A chat
+      // past either deadline expires as normal and this is a no-op. Returns true if renewed.
+      touchActivity(chatId, now) {
+        if (!chatId) return false;
+        if (expireOne(chatId, now)) { persist(); return false; }
+        const a = authorized[chatId];
+        if (!a) return false;
+        a.idleExpiresAt = now + idleMs; // slide idle forward; hard cap is untouched and still binds
+        persist();
+        return true;
       },
 
       // Diagnostics.
