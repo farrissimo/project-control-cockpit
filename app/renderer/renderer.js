@@ -1748,20 +1748,63 @@ function railsFrom(d) {
   return parts.some((p) => p.signal === 'notice') ? 'warn' : 'good';
 }
 
+// Build-session countdown (DECISION-112 refinement). The authority badge shows the LIVE
+// time left in an approved build session so it never expires silently. See docs/adr/0010.
+let authorityCountdownTimer = null;
+function stopAuthorityCountdown() {
+  if (authorityCountdownTimer) { clearInterval(authorityCountdownTimer); authorityCountdownTimer = null; }
+}
+// Human-friendly remaining time: coarse when there's lots left, second-by-second near the end.
+function fmtRemaining(ms) {
+  if (ms < 0) ms = 0;
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  if (m >= 60) return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+  if (m >= 10) return m + 'm';
+  return m + 'm ' + String(sec).padStart(2, '0') + 's';
+}
+// Tick a live countdown for an authorized session. While a worker turn is in flight (busy)
+// we heartbeat touchActivity so the idle window keeps sliding — the session then really ends
+// at the fixed 2h hard cap, so the countdown tracks that; otherwise it tracks the sooner of
+// idle/hard. At zero we stop and re-derive the badge (buttons + read-only styling) rather than
+// letting command access vanish with no signal.
+function startAuthorityCountdown(idleAt, hardAt, jobName, chatId) {
+  stopAuthorityCountdown();
+  let hb = 0;
+  const tick = () => {
+    const now = Date.now();
+    if (busy && chatId && (hb % 15 === 0)) { try { window.pcc.touchActivity(chatId); } catch (e) { /* best effort */ } }
+    hb++;
+    const expiresAt = Math.min(busy ? Infinity : idleAt, hardAt); // idle is kept alive during active work
+    const remaining = expiresAt - now;
+    if (remaining <= 0) {
+      stopAuthorityCountdown();
+      setChip('trust-authority', 'bad', 'Build session expired — re-enable to continue',
+        'Your bounded build session hit its limit. Re-enable it to run commands again; reading and planning still work.');
+      loadAuthorityBadge();
+      return;
+    }
+    const low = remaining <= 5 * 60 * 1000;
+    let label = 'Build session — ' + fmtRemaining(remaining) + ' left';
+    if (jobName) label += ' · ' + jobName;
+    setChip('trust-authority', low ? 'bad' : 'warn', label,
+      'Time left in this bounded build session — the sooner of a 30-min idle window and a fixed 2-hour hard cap. It renews while the worker is actively working; the 2-hour ceiling never extends.');
+  };
+  tick();
+  authorityCountdownTimer = setInterval(tick, 1000);
+}
+
 // Authority badge (DECISION-112): show the main-process authority state in the chat
 // header. Read-only source of truth — the renderer only displays it, never sets it.
-// For this slice it is always read_only; falls back to the safe read_only label if the
-// state can't be read.
+// When authorized, drives a live countdown (startAuthorityCountdown renders the chip);
+// otherwise renders the static label. Falls back to the safe read_only label on error.
 async function loadAuthorityBadge() {
   const clsFor = { read_only: 'readonly', approval_needed: 'warn', authorized_running: 'warn', completed_needs_review: 'good', blocked: 'bad' };
   let s = null;
   const activeForBadge = activeChat();
   try { s = await window.pcc.authorityState(activeForBadge && activeForBadge.id); } catch (e) { /* keep the safe default */ }
   const mode = (s && s.mode) || 'read_only';
-  let label = (s && s.label) || 'Read-only — safe to paste context';
-  if (mode === 'authorized_running' && s && s.job && s.job.name) label += ' — ' + s.job.name;
-  setChip('trust-authority', clsFor[mode] || 'readonly', label,
-    'PCC chat authority. Read-only means it can read, explain, and plan — it cannot run commands, change files, or launch anything. Reading context is never authorization to act.');
   const endBtn = document.getElementById('authority-end');
   if (endBtn) endBtn.classList.toggle('hidden', mode !== 'authorized_running');
   // Offer "Resume build session" when the active chat is a New Project build chat but the
@@ -1769,6 +1812,16 @@ async function loadAuthorityBadge() {
   // expiry). This is the escape hatch from a stranded, un-writable New Project chat.
   const resumeBtn = document.getElementById('authority-resume');
   if (resumeBtn) resumeBtn.classList.toggle('hidden', mode === 'authorized_running' || !activeChat());
+  // Authorized with real deadlines: hand off to the live countdown (it sets the chip + ticks).
+  if (mode === 'authorized_running' && s && Number.isFinite(s.idleExpiresAt) && Number.isFinite(s.hardExpiresAt)) {
+    startAuthorityCountdown(s.idleExpiresAt, s.hardExpiresAt, s.job && s.job.name, activeForBadge && activeForBadge.id);
+    return;
+  }
+  // Not authorized (or no deadlines): stop any countdown and show the static label.
+  stopAuthorityCountdown();
+  const label = (s && s.label) || 'Read-only — safe to paste context';
+  setChip('trust-authority', clsFor[mode] || 'readonly', label,
+    'PCC chat authority. Read-only means it can read, explain, and plan — it cannot run commands, change files, or launch anything. Reading context is never authorization to act.');
 }
 
 async function loadTrust() {

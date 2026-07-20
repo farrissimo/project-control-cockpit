@@ -189,3 +189,50 @@ test('the log distinguishes idle expiry from hard-cap expiry', () => {
   hard.authorizeSend('chat-2', HARD + 1);
   expect(hard.logTail().some((e) => e.event === 'expired_hardcap')).toBe(true);
 });
+
+// --- the build-session countdown (DECISION-112 refinement, ADR-0010) ---
+
+test('stateFor exposes BOTH deadlines when authorized so the UI can show a live countdown', () => {
+  const a = approved('chat-1', 0);
+  const s = a.stateFor('chat-1', MIN);
+  expect(s.mode).toBe('authorized_running');
+  expect(s.idleExpiresAt).toBe(0 + IDLE);   // set at approve time (t0 = 0)
+  expect(s.hardExpiresAt).toBe(0 + HARD);
+});
+
+test('stateFor exposes NO deadlines for a read_only chat (nothing to count down)', () => {
+  const a = createAuthorityStore();
+  const s = a.stateFor('chat-1', MIN);
+  expect(s.mode).toBe('read_only');
+  expect(s.idleExpiresAt).toBeUndefined();
+  expect(s.hardExpiresAt).toBeUndefined();
+});
+
+test('touchActivity renews the idle window for an authorized chat (long active turn survives)', () => {
+  const a = approved('chat-1', 0);
+  expect(a.touchActivity('chat-1', 25 * MIN)).toBe(true);        // slide idle to 55 min
+  expect(a.stateFor('chat-1', 25 * MIN).idleExpiresAt).toBe(25 * MIN + IDLE);
+  expect(a.authorizeSend('chat-1', 45 * MIN)).toBe(true);        // past the original 30-min window
+});
+
+test('touchActivity can NEVER grant authority: a read_only / unapproved chat stays read_only', () => {
+  const a = createAuthorityStore();
+  expect(a.touchActivity('chat-1', MIN)).toBe(false);            // no grant to renew
+  expect(a.stateFor('chat-1', MIN).mode).toBe('read_only');
+  a.request('new_project', 'Demo', 'chat-1');                    // pending, NOT approved
+  expect(a.touchActivity('chat-1', MIN)).toBe(false);
+  expect(a.authorizeSend('chat-1', MIN)).toBe(false);
+});
+
+test('touchActivity never beats the hard cap: relentless activity still ends at 2h', () => {
+  const a = approved('chat-1', 0);
+  for (let t = 0; t <= HARD; t += 20 * MIN) expect(a.touchActivity('chat-1', t)).toBe(true);
+  expect(a.touchActivity('chat-1', HARD + 1)).toBe(false);       // past ceiling -> expired, no renew
+  expect(a.stateFor('chat-1', HARD + 1).mode).toBe('read_only');
+});
+
+test('touchActivity is chat-scoped: activity on one chat never renews another', () => {
+  const a = approved('chat-1', 0);
+  expect(a.touchActivity('chat-OTHER', 10 * MIN)).toBe(false);
+  expect(a.authorizeSend('chat-1', 31 * MIN)).toBe(false);       // chat-1 idle never renewed -> expired
+});
