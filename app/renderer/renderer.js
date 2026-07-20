@@ -235,6 +235,65 @@ function renderAssistant(text) {
   return html;
 }
 
+// Work-packet sections (docs/specs/work-packet-messages.md). The worker already emits
+// its final reply in the reporting shape AGENTS.md requires; when it does, split that
+// text into separately collapsible sections so the owner expands only what matters and
+// sees short summaries otherwise. This parses the worker's OWN text — it does not depend
+// on live tool events (that is the separate action-timeline spec). No recognised header
+// => returns null, so the caller renders exactly as before (no regression).
+const WORK_PACKET_SECTIONS = [
+  'What I understood', 'What I inspected', 'What I changed', 'Tests run',
+  'Problems found', 'Decisions needed', 'Proof', 'Next legal action',
+];
+const WORK_PACKET_BY_KEY = new Map(WORK_PACKET_SECTIONS.map((n) => [n.toLowerCase(), n]));
+
+// Reduce a single line to a bare header key if it IS a recognised header, else ''.
+// Tolerant of leading `#` heading markup, surrounding `**bold**`, and a trailing colon.
+function workPacketHeaderKey(line) {
+  let s = String(line).trim();
+  s = s.replace(/^#{1,6}\s*/, '');            // markdown heading hashes
+  s = s.replace(/^\*\*(.*)\*\*$/, '$1').trim(); // fully-bold line
+  s = s.replace(/:\s*$/, '').trim();           // trailing colon
+  s = s.replace(/^\*\*(.*)\*\*$/, '$1').trim(); // bold again (in case colon sat outside **)
+  const key = s.toLowerCase();
+  return WORK_PACKET_BY_KEY.has(key) ? key : '';
+}
+
+// Split an assistant reply into { lead, sections:[{name, body}] } when it contains one
+// or more recognised work-packet headers; otherwise null. Partial packets keep only the
+// sections that exist; pre-header text stays as a visible lead-in.
+function splitWorkPacket(text) {
+  const lines = String(text).split('\n');
+  const heads = [];
+  for (let i = 0; i < lines.length; i++) {
+    const key = workPacketHeaderKey(lines[i]);
+    if (key) heads.push({ i, name: WORK_PACKET_BY_KEY.get(key) });
+  }
+  if (heads.length === 0) return null;
+  const lead = lines.slice(0, heads[0].i).join('\n').trim();
+  const sections = [];
+  for (let h = 0; h < heads.length; h++) {
+    const start = heads[h].i + 1;
+    const end = h + 1 < heads.length ? heads[h + 1].i : lines.length;
+    sections.push({ name: heads[h].name, body: lines.slice(start, end).join('\n').trim() });
+  }
+  return { lead, sections };
+}
+
+// Render a parsed work packet: an optional visible lead-in, then one collapsed <details>
+// per section with its name as the summary. Each part is rendered through renderAssistant
+// so fenced code still becomes a working copy block (the copy handler is delegated on #log,
+// so it fires inside <details> too).
+function renderWorkPacket(packet) {
+  let html = '';
+  if (packet.lead) html += '<div class="wp-lead">' + renderAssistant(packet.lead) + '</div>';
+  for (const s of packet.sections) {
+    html += '<details class="wp-section"><summary>' + escapeHtml(s.name) + '</summary>'
+      + '<div class="wp-body">' + renderAssistant(s.body) + '</div></details>';
+  }
+  return html;
+}
+
 // A build session turning on is LIVE status, not conversation. It must never be persisted
 // into the transcript: a saved copy reloads on open and falsely claims build is active long
 // after the bounded session expired (metric-honesty fix, 2026-07-14). Kept as one constant so
@@ -246,7 +305,9 @@ function addBubbleUI(cls, text) {
   const el = document.createElement('div');
   el.className = 'bubble ' + cls;
   const isAssistant = cls.indexOf('assistant') !== -1 && cls.indexOf('thinking') === -1;
-  if (isAssistant && String(text).indexOf('```') !== -1) { el.innerHTML = renderAssistant(text); }
+  const packet = isAssistant ? splitWorkPacket(text) : null;
+  if (packet) { el.innerHTML = renderWorkPacket(packet); }
+  else if (isAssistant && String(text).indexOf('```') !== -1) { el.innerHTML = renderAssistant(text); }
   else { el.textContent = text; }
   // Keep the ORIGINAL text (fences and all) so the handoff packet can reproduce a
   // message verbatim rather than scraping rendered DOM (which would include the
@@ -657,7 +718,9 @@ function cfAddBubble(cls, text) {
   const el = document.createElement('div');
   el.className = 'bubble ' + cls;
   const isAssistant = cls.indexOf('assistant') !== -1 && cls.indexOf('thinking') === -1;
-  if (isAssistant && String(text).indexOf('```') !== -1) { el.innerHTML = renderAssistant(text); }
+  const packet = isAssistant ? splitWorkPacket(text) : null;
+  if (packet) { el.innerHTML = renderWorkPacket(packet); }
+  else if (isAssistant && String(text).indexOf('```') !== -1) { el.innerHTML = renderAssistant(text); }
   else { el.textContent = text; }
   cfLog.appendChild(el);
   cfLog.scrollTop = cfLog.scrollHeight;
@@ -2477,4 +2540,8 @@ async function boot() {
   loadTrust();
   await loadChats();
 }
-boot();
+// Signal when the initial async render has settled. boot() clears and repaints #log
+// (loadChats), so anything that seeds #log before this resolves gets wiped — E2E tests
+// wait on this flag instead of racing startup. Inert in production; nothing reads it there.
+// .finally covers every exit (early no-project return and thrown errors alike).
+boot().finally(() => { window.__pccBooted = true; });
