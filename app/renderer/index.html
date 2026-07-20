@@ -130,6 +130,11 @@
   textarea { flex: 1; resize: none; background: #1a1d23; color: #e8eaed; border: 1px solid #2b2f37;
     border-radius: 10px; padding: 10px 12px; font-family: inherit; font-size: 14px; max-height: 160px; }
   textarea:focus { outline: none; border-color: #3a6bd6; }
+  /* Composer box (owner ask 2026-07-20): comfortable multi-line default, draggable
+     taller via the resize grip, and the dragged size is remembered (renderer.js).
+     Scoped to #input so it overrides the bare textarea's resize:none + 160px cap for
+     the chat composer only — create-flow/memory boxes are unaffected. */
+  #input { resize: vertical; min-height: 66px; max-height: 60vh; }
   #send { background: #2f6bde; color: #fff; border: none; border-radius: 10px; padding: 0 18px;
     font-weight: 500; font-size: 14px; cursor: pointer; }
   #send:disabled { opacity: .5; cursor: default; }

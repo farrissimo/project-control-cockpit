@@ -1186,8 +1186,34 @@ async function runChatSearch() {
   });
 }
 
-form.addEventListener('submit', (e) => { e.preventDefault(); const t = input.value; input.value = ''; sendMessage(t); });
+form.addEventListener('submit', (e) => { e.preventDefault(); const t = input.value; input.value = ''; growComposer(); sendMessage(t); });
 input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
+
+// Composer sizing (owner ask 2026-07-20). The chat box was a single fixed line —
+// painful for pasting. Now it defaults to ~3 lines, auto-grows with content up to a
+// cap, and the owner can drag it taller via the resize grip; the dragged height is
+// remembered across sessions (localStorage) and used as the floor, so clearing the
+// text never shrinks a box the owner deliberately enlarged.
+const COMPOSER_H_KEY = 'pcc.composer.height';
+const COMPOSER_MIN = 66; // ~3 lines
+let composerFloor = COMPOSER_MIN;
+function composerCap() { return Math.max(Math.round(window.innerHeight * 0.45), composerFloor); }
+function growComposer() {
+  input.style.height = 'auto';
+  input.style.height = Math.min(Math.max(input.scrollHeight, composerFloor), composerCap()) + 'px';
+}
+(function initComposerHeight() {
+  const saved = parseInt(localStorage.getItem(COMPOSER_H_KEY), 10);
+  if (saved && saved >= COMPOSER_MIN) composerFloor = saved;
+  growComposer();
+})();
+input.addEventListener('input', growComposer);
+// A manual drag of the resize grip ends with mouseup on the textarea; persist that
+// height as the new floor so it sticks across turns and restarts.
+input.addEventListener('mouseup', () => {
+  const h = input.offsetHeight;
+  if (Math.abs(h - composerFloor) > 2) { composerFloor = h; localStorage.setItem(COMPOSER_H_KEY, String(h)); }
+});
 
 // ---- navigation ----
 const views = {
