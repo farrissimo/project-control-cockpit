@@ -248,6 +248,10 @@ function addBubbleUI(cls, text) {
   const isAssistant = cls.indexOf('assistant') !== -1 && cls.indexOf('thinking') === -1;
   if (isAssistant && String(text).indexOf('```') !== -1) { el.innerHTML = renderAssistant(text); }
   else { el.textContent = text; }
+  // Keep the ORIGINAL text (fences and all) so the handoff packet can reproduce a
+  // message verbatim rather than scraping rendered DOM (which would include the
+  // code blocks' "Copy" button text). See docs/specs/conversation-handoff-packet.md.
+  el.dataset.raw = String(text);
   log.appendChild(el);
   scrollDown();
   return el;
@@ -1186,8 +1190,111 @@ async function runChatSearch() {
   });
 }
 
-form.addEventListener('submit', (e) => { e.preventDefault(); const t = input.value; input.value = ''; sendMessage(t); });
+form.addEventListener('submit', (e) => { e.preventDefault(); const t = input.value; input.value = ''; growComposer(); sendMessage(t); });
 input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
+
+// Composer sizing (owner ask 2026-07-20). The chat box was a single fixed line —
+// painful for pasting. Now it defaults to ~3 lines, auto-grows with content up to a
+// cap, and the owner can drag it taller via the resize grip; the dragged height is
+// remembered across sessions (localStorage) and used as the floor, so clearing the
+// text never shrinks a box the owner deliberately enlarged.
+const COMPOSER_H_KEY = 'pcc.composer.height';
+const COMPOSER_MIN = 66; // ~3 lines
+let composerFloor = COMPOSER_MIN;
+function composerCap() { return Math.max(Math.round(window.innerHeight * 0.45), composerFloor); }
+function growComposer() {
+  input.style.height = 'auto';
+  input.style.height = Math.min(Math.max(input.scrollHeight, composerFloor), composerCap()) + 'px';
+}
+(function initComposerHeight() {
+  const saved = parseInt(localStorage.getItem(COMPOSER_H_KEY), 10);
+  if (saved && saved >= COMPOSER_MIN) composerFloor = saved;
+  growComposer();
+})();
+input.addEventListener('input', growComposer);
+// A manual drag of the resize grip ends with mouseup on the textarea; persist that
+// height as the new floor so it sticks across turns and restarts.
+input.addEventListener('mouseup', () => {
+  const h = input.offsetHeight;
+  if (Math.abs(h - composerFloor) > 2) { composerFloor = h; localStorage.setItem(COMPOSER_H_KEY, String(h)); }
+});
+
+// Handoff packet (docs/specs/conversation-handoff-packet.md). Select a slice of the
+// conversation and copy a self-contained packet — source boundaries (chat id, repo SHA,
+// time) + the selected messages by role + a PROOF footer — so handing a slice to another
+// agent never needs hand-editing. Renderer-only; no worker, nothing sent anywhere.
+const HANDOFF_PROOF = [
+  '--- PROOF REQUIRED (do not skip) ---',
+  'Before claiming anything is done, run the exact command below and paste its FULL',
+  'output here, then STOP. Do not summarize; do not claim success without the output.',
+  '',
+  '    <put the exact command here>',
+].join('\n');
+
+function handoffFlash(btn, label) {
+  if (!btn) return;
+  btn.textContent = label;
+  clearTimeout(btn._hoTimer);
+  btn._hoTimer = setTimeout(() => { btn.textContent = 'Handoff packet'; }, 1800);
+}
+
+// The messages whose bubbles the current text selection touches, in transcript order,
+// labelled by role. Ephemeral "thinking" bubbles and non-role notices are skipped.
+function collectSelectedMessages() {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed) return [];
+  const out = [];
+  log.querySelectorAll('.bubble').forEach((b) => {
+    if (!sel.containsNode(b, true)) return;
+    const cls = b.className;
+    if (cls.indexOf('thinking') !== -1) return;
+    let role = null;
+    if (cls.indexOf('user') !== -1) role = 'You';
+    else if (cls.indexOf('codex') !== -1) role = 'Codex';
+    else if (cls.indexOf('assistant') !== -1) role = 'Claude';
+    if (!role) return;
+    out.push({ role, text: b.dataset.raw != null ? b.dataset.raw : b.textContent });
+  });
+  return out;
+}
+
+function formatHandoffPacket(items, meta) {
+  const header = [
+    '=== PCC handoff packet ===',
+    'Chat: ' + (meta.chatName || 'untitled') + '  (id ' + (meta.chatId || 'unknown') + ')',
+    'Repo: ' + meta.sha + (meta.dirty ? '  (working tree DIRTY — uncommitted changes)' : ''),
+    'Generated: ' + new Date().toISOString(),
+    '==========================',
+  ].join('\n');
+  const body = items.map((m) => m.role + ':\n' + m.text).join('\n\n');
+  return header + '\n\n' + body + '\n\n' + HANDOFF_PROOF + '\n';
+}
+
+async function copyHandoffPacket(preselected) {
+  const btn = document.getElementById('handoff-packet-btn');
+  // Prefer the snapshot taken on mousedown (before the click collapses the selection);
+  // fall back to the live selection for non-mouse activation.
+  const items = (preselected && preselected.length) ? preselected : collectSelectedMessages();
+  if (!items.length) { handoffFlash(btn, 'Select text first'); return; }
+  // Real repo SHA at generation time, so the receiving agent knows the source state.
+  let sha = 'unknown', dirty = false;
+  try { const rh = await window.pcc.repoHead(); if (rh && rh.ok && rh.sha) { sha = rh.sha; dirty = !!rh.dirty; } }
+  catch (e) { /* SHA stays 'unknown' — never block the copy on a git hiccup */ }
+  const chat = activeChat();
+  const packet = formatHandoffPacket(items, { chatName: chat && chat.name, chatId: chat && chat.id, sha, dirty });
+  // Native clipboard via IPC — focus-independent, unlike navigator.clipboard.
+  try { const r = await window.pcc.copyText(packet); handoffFlash(btn, r && r.ok ? 'Copied ✓' : 'Copy failed'); }
+  catch (e) { handoffFlash(btn, 'Copy failed'); }
+}
+
+const handoffBtn = document.getElementById('handoff-packet-btn');
+if (handoffBtn) {
+  // mousedown fires before the click collapses the selection: preventDefault keeps focus
+  // off the button, and we snapshot the selected messages right then so the async click
+  // handler works from a stable copy.
+  handoffBtn.addEventListener('mousedown', (e) => { e.preventDefault(); handoffBtn._sel = collectSelectedMessages(); });
+  handoffBtn.addEventListener('click', () => { const s = handoffBtn._sel; handoffBtn._sel = null; copyHandoffPacket(s); });
+}
 
 // ---- navigation ----
 const views = {

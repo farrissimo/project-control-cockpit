@@ -70,6 +70,8 @@ contextBridge.exposeInMainWorld('pcc', {
   stakes: () => ipcRenderer.invoke('pcc:stakes'),
   trustExtras: () => ipcRenderer.invoke('pcc:trustExtras'),
   handoff: () => ipcRenderer.invoke('pcc:handoff'),
+  copyText: (text) => ipcRenderer.invoke('pcc:copyText', text),
+  repoHead: () => ipcRenderer.invoke('pcc:repoHead'),
   lifecycle: () => ipcRenderer.invoke('pcc:lifecycle'),
   lifecycleAdvance: (toStageId) => ipcRenderer.invoke('pcc:lifecycleAdvance', toStageId),
   recentDecisions: () => ipcRenderer.invoke('pcc:recentDecisions'),

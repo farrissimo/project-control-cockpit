@@ -35,13 +35,30 @@ test('bridge exposes exactly the expected channels', async () => {
   expect(keys).toEqual([
     'addProject', 'approveJob', 'authorityLog', 'authorityState', 'autoNameChat', 'backup', 'cancelJob',
     'chatsAppend', 'chatsBootstrap', 'chatsCreate', 'chatsDelete', 'chatsRead', 'chatsRename', 'chatsSetActive', 'chatsUpdateMeta', 'ciStatus',
-    'createFlowCancel', 'createFlowPickLocation', 'createFlowSave', 'createFlowSend', 'createFlowStart',
+    'copyText', 'createFlowCancel', 'createFlowPickLocation', 'createFlowSave', 'createFlowSend', 'createFlowStart',
     'deleteChatFiles', 'detections', 'endJob', 'engineStatus', 'getActiveProject', 'getMemory', 'getModels',
     'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
-    'listProjects', 'loadChatsBackup', 'metrics', 'newChat', 'persistChat', 'pickFolder', 'pull', 'recentDecisions', 'requestJob',
+    'listProjects', 'loadChatsBackup', 'metrics', 'newChat', 'persistChat', 'pickFolder', 'pull', 'recentDecisions', 'repoHead', 'requestJob',
     'runProduct', 'saveChatsBackup', 'saveMemory', 'searchChats', 'secondOpinion', 'send', 'setActiveProject', 'setPhaseKind',
     'stakes', 'summarizeChat', 'syncStatus', 'toolStatus', 'trustExtras', 'verify', 'verifyProduct', 'visionPromises',
   ]);
+});
+
+// Handoff-packet plumbing. copyText writes the native clipboard (focus-independent,
+// unlike navigator.clipboard); repoHead is a bounded, read-only HEAD probe for the
+// packet boundary and must resolve honestly (a real short SHA here, since git runs).
+test('copyText writes the native clipboard', async () => {
+  const r = await call('copyText', 'PCC-IPC-CLIP-CHECK');
+  expect(r.ok).toBe(true);
+  const back = await app.evaluate(({ clipboard }) => clipboard.readText());
+  expect(back).toBe('PCC-IPC-CLIP-CHECK');
+});
+
+test('repoHead returns a short SHA and dirty flag, never hanging', async () => {
+  const r = await call('repoHead');
+  expect(r.ok).toBe(true);
+  expect(r.sha).toMatch(/^[0-9a-f]{7,}$/);
+  expect(typeof r.dirty).toBe('boolean');
 });
 
 // CI status (surface CI into the Verified chip): must be safe + honest. In test mode it never

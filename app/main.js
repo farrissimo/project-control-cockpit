@@ -7,7 +7,7 @@
 // reads CLAUDE.md from the project directory on its own; nothing is injected
 // into the prompt stream, so we don't bust Claude's prompt cache.
 
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -391,6 +391,29 @@ ipcMain.handle('pcc:handoff', () => new Promise((resolve) => {
     const out = (stdout || '').trim();
     if (out) return resolve({ ok: true, text: out });
     resolve({ ok: false, text: 'Could not generate handoff: ' + (err ? (stderr || err.message) : 'no output') });
+  });
+}));
+
+// Native clipboard write. The renderer uses this for the handoff packet instead of
+// navigator.clipboard, which requires window focus/permission and silently hangs when
+// the window is not focused (e.g. headless test, or the owner tabbed away). Electron's
+// clipboard is focus-independent and reliable. Write-only; never reads the clipboard.
+ipcMain.handle('pcc:copyText', (_e, text) => {
+  try { clipboard.writeText(String(text == null ? '' : text)); return { ok: true }; }
+  catch (e) { return { ok: false, error: e.message }; }
+});
+
+// Lightweight repo HEAD probe for the handoff packet: short SHA + dirty flag. Bounded
+// timeouts so a git hiccup can never hang the copy, and independent of hardChecks (which
+// does heavier verification work and must not sit on the copy path). Read-only.
+ipcMain.handle('pcc:repoHead', () => new Promise((resolve) => {
+  execFile('git', ['-C', projectDir, 'rev-parse', '--short=10', 'HEAD'], { timeout: 4000, windowsHide: true }, (err, out) => {
+    if (err || !out) return resolve({ ok: false });
+    const sha = String(out).trim();
+    execFile('git', ['-C', projectDir, 'status', '--porcelain'], { timeout: 4000, windowsHide: true }, (e2, out2) => {
+      if (e2) return resolve({ ok: true, sha, dirty: false, dirtyKnown: false });
+      resolve({ ok: true, sha, dirty: String(out2).trim().length > 0, dirtyKnown: true });
+    });
   });
 }));
 
