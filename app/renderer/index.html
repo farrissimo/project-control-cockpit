@@ -68,9 +68,9 @@
   #model-select { background: #1a1d23; color: #e8eaed; border: 1px solid #2b2f37; border-radius: 8px;
     padding: 4px 8px; font-size: 12px; font-family: inherit; }
   .chats-wrap { margin-left: auto; position: relative; }
-  #chats-btn, #new-chat { background: #14171c; color: #aeb4bd; border: 1px solid #2b2f37;
+  #chats-btn, #new-chat, #handoff-packet-btn { background: #14171c; color: #aeb4bd; border: 1px solid #2b2f37;
     border-radius: 8px; padding: 4px 12px; font-size: 12px; cursor: pointer; }
-  #chats-btn:hover, #new-chat:hover { background: #1d2230; color: #dbe8ff; }
+  #chats-btn:hover, #new-chat:hover, #handoff-packet-btn:hover { background: #1d2230; color: #dbe8ff; }
   #chats-panel { position: absolute; top: 30px; right: 0; width: 320px; max-height: 380px; overflow-y: auto;
     background: #0e1014; border: 1px solid #2b2f37; border-radius: 10px; padding: 6px; z-index: 50;
     box-shadow: 0 8px 24px rgba(0,0,0,.5); }
@@ -528,6 +528,7 @@
           </div>
         </div>
         <button id="new-chat" type="button" title="Start a fresh conversation (a new saved chat).">New chat</button>
+        <button id="handoff-packet-btn" type="button" title="Select part of this conversation, then click to copy a ready-to-paste handoff packet — source boundaries (chat id, repo SHA, time), the selected messages by role, and a PROOF prompt — for another agent.">Handoff packet</button>
       </div>
       <div id="chat-health" title="Project health at a glance. Click any tile to open the full detail in the Signals tab."></div>
       <div id="chat-recovery" class="chat-recovery hidden" data-testid="recovery-banner" role="alert"></div>
