@@ -8,7 +8,13 @@ const { test, expect } = require('@playwright/test');
 const { launchApp, closeApp } = require('../helpers/launch');
 
 let app, page;
-test.beforeAll(async () => { ({ app, page } = await launchApp()); });
+test.beforeAll(async () => {
+  ({ app, page } = await launchApp());
+  // Wait for the app's own startup render to settle before any test seeds #log. boot()
+  // asynchronously repaints #log (loadChats), which otherwise wipes an early test's bubble
+  // out from under it — the real cause of the flaky "0 sections" failures. See renderer.js.
+  await page.waitForFunction(() => window.__pccBooted === true, null, { timeout: 15000 });
+});
 test.afterAll(async () => { await closeApp(app); });
 
 function clip() { return app.evaluate(({ clipboard }) => clipboard.readText()); }

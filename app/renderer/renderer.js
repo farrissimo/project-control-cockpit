@@ -2540,4 +2540,8 @@ async function boot() {
   loadTrust();
   await loadChats();
 }
-boot();
+// Signal when the initial async render has settled. boot() clears and repaints #log
+// (loadChats), so anything that seeds #log before this resolves gets wiped — E2E tests
+// wait on this flag instead of racing startup. Inert in production; nothing reads it there.
+// .finally covers every exit (early no-project return and thrown errors alike).
+boot().finally(() => { window.__pccBooted = true; });
