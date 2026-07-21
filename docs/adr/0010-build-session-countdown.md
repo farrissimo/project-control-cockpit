@@ -53,10 +53,15 @@ Refine — do **not** weaken — the DECISION-112 bound:
 - **Honest residue:** the timer is UI over a main-owned source of truth; if the renderer is wrong
   the *display* could mislead, but authority itself is still enforced only by the store + spawn
   profile (the badge never sets authority). The hard cap remains the real safety guarantee.
+- **Scope note (Codex V2, 2026-07-20):** this is an execution-authority **UX/safety refinement,
+  not a desktop-parity safeguard.** It does **not** address model-usage runaway, token burn,
+  context compaction, or session rollover — those are the desktop-parity track (R1–R3,
+  `docs/proposals/desktop-parity.md`). It improves the legibility of build authority; by itself it
+  is supporting work, **not** fulfillment of R1–R3.
 
 ## Confirmation
 
-Proven before merge, suite stays green:
+Tests pass before merge (functional proof on the owner's screen still PENDING — see PROJECT.md):
 - Unit (`authority-store.spec.js`, injectable clock): deadlines exposed when authorized / absent
   otherwise; `touchActivity` renews an authorized idle window, is a no-op that never grants for
   read_only/pending, is chat-scoped, and never beats the 2-hour hard cap under relentless activity.

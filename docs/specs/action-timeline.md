@@ -1,5 +1,9 @@
 # Live action timeline   (status: draft)
 
+Governed by ADR-0011 (Owner Cockpit + Live Worker Feed). This is the streaming-feed companion to
+`docs/specs/owner-cockpit.md`; the chosen visual treatment is `docs/mockups/feed-4-combo.html`
+(workbench file cards + newest-on-top time-lapse log, with a healthy/looks-stuck banner).
+
 ## Objective
 Let the owner see what the worker is actually DOING during a turn — "Read main.js", "Ran git
 status", "Edited 2 files", "Test failed" — as it happens, instead of staring at one static

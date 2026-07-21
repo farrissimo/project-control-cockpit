@@ -1,0 +1,121 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Live Worker Feed — Your Combo (Stream + Workbench)</title>
+<link rel="stylesheet" href="_cockpit.css">
+<style>
+.wrap{max-width:900px;margin:26px auto;padding:0 18px}
+h1{font-size:16px;color:#e2e8f0;margin:0 0 3px} .sub{color:var(--muted);font-size:12.5px;margin:0 0 16px}
+.bench{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.ptitle{padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.pin{padding:14px}
+/* ---- LEFT: workbench file cards (idea 3: blue read -> amber edit -> green done) ---- */
+.now{display:flex;align-items:center;gap:9px;font-size:13px;color:#e2e8f0;margin-bottom:12px}
+.now .ic{width:26px;height:26px;border-radius:7px;background:#0e1626;display:flex;align-items:center;justify-content:center}
+.now .ic svg{width:14px;height:14px}
+.files{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fc{border:1px solid var(--border);border-radius:11px;padding:11px 12px;background:#0e1626;transition:all .25s;position:relative;overflow:hidden}
+.fc .fn{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:var(--text)}
+.fc .fp{font-size:11px;color:var(--muted);margin:2px 0 8px}
+.fc .fs{font-size:11.5px;color:var(--dim)}
+.fc .badge{position:absolute;top:9px;right:10px;font-size:10px;color:var(--muted);border:1px solid var(--border2);border-radius:6px;padding:1px 6px}
+.fc.read{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue),0 0 18px rgba(56,189,248,.22)}
+.fc.read .fn,.fc.read .fs,.fc.read .badge{color:var(--blue)} .fc.read .badge{border-color:var(--blue)}
+.fc.edit{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber),0 0 20px rgba(245,158,11,.26)}
+.fc.edit .fn,.fc.edit .fs,.fc.edit .badge{color:var(--amber)} .fc.edit .badge{border-color:var(--amber)}
+.fc.done{border-color:rgba(34,197,94,.45)} .fc.done .fs,.fc.done .badge{color:var(--green)} .fc.done .badge{border-color:rgba(34,197,94,.45)}
+.shimmer{position:absolute;left:0;bottom:0;height:2px;width:40%;background:linear-gradient(90deg,transparent,var(--amber),transparent);animation:sh 1.1s linear infinite;display:none}
+.fc.edit .shimmer{display:block} @keyframes sh{from{left:-40%}to{left:100%}}
+/* ---- RIGHT: stream log (idea 1: newest on top, aging times, health banner) ---- */
+.rhead{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border)}
+.live{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--green);font-weight:600}
+.live .d{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.stats{margin-left:auto;text-align:right;font-size:11px;color:var(--muted)}
+.stats b{color:#e2e8f0;font-variant-numeric:tabular-nums}
+.health{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--border);font-size:12.5px;font-weight:600}
+.health.ok{color:var(--green)} .health.stuck{color:var(--amber)}
+.health .ring{width:9px;height:9px;border-radius:50%;background:currentColor}
+.feed{list-style:none;margin:0;padding:4px 0;max-height:360px;overflow:auto}
+.row{display:flex;align-items:flex-start;gap:11px;padding:9px 14px;animation:slidein .34s ease}
+@keyframes slidein{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.row .ic{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;background:#0e1626}
+.row .ic svg{width:14px;height:14px}
+.row .verb{font-weight:600;color:#e2e8f0;font-size:12.5px} .row .tgt{font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.row .note{color:var(--muted);font-size:11.5px;margin-top:2px}
+.row .ago{margin-left:auto;color:var(--muted);font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.row.newest .ic{box-shadow:0 0 0 2px rgba(56,189,248,.5)}
+.foot{color:var(--muted);font-size:11.5px;margin-top:10px}
+@media (prefers-reduced-motion:reduce){.shimmer,.row{animation:none}}
+</style></head>
+<body>
+<script src="_icons.js"></script><script src="_feed.js"></script>
+<div class="wrap">
+  <h1>Live worker feed — <span class="s-green">your combo</span> (Workbench + Stream)</h1>
+  <p class="sub">Left: which files it’s in, going <b class="s-blue">reading</b> → <b class="s-amber">editing</b> → <b class="s-green">done</b>. Right: the time-lapse log, newest on top. Watch ~15s for the “looks stuck” pause, then recovery.</p>
+  <div class="bench">
+    <!-- LEFT -->
+    <div class="panel">
+      <div class="ptitle">Where it’s working</div>
+      <div class="pin">
+        <div class="now"><span class="ic" id="nowic"><svg><use href="#i-brain"/></svg></span><span id="nowtext">Getting started…</span></div>
+        <div class="files">
+          <div class="fc" data-file="auth-flow.js"><span class="badge" data-b>idle</span><div class="fn">auth-flow.js</div><div class="fp">the sign-in logic</div><div class="fs" data-s>waiting</div><div class="shimmer"></div></div>
+          <div class="fc" data-file="app-routes.js"><span class="badge" data-b>idle</span><div class="fn">app-routes.js</div><div class="fp">wires in the screen</div><div class="fs" data-s>waiting</div><div class="shimmer"></div></div>
+          <div class="fc" data-file="auth-flow.test.js"><span class="badge" data-b>idle</span><div class="fn">auth-flow.test.js</div><div class="fp">the automatic checks</div><div class="fs" data-s>waiting</div><div class="shimmer"></div></div>
+          <div class="fc" data-file="auth-flow.md"><span class="badge" data-b>ref</span><div class="fn">auth-flow.md</div><div class="fp">the checklist</div><div class="fs" data-s>reference</div><div class="shimmer"></div></div>
+        </div>
+      </div>
+    </div>
+    <!-- RIGHT -->
+    <div class="panel">
+      <div class="rhead"><span class="live"><span class="d pulse"></span>LIVE</span>
+        <div class="stats">working <b id="elapsed">00:00</b><br>last action <b id="ago">—</b></div></div>
+      <div class="health ok" id="health"><span class="ring pulse"></span><span id="htext">Working normally</span></div>
+      <ul class="feed" id="feed"></ul>
+    </div>
+  </div>
+  <div class="foot">Simulated for the mockup. The real feed streams the worker’s actual actions; a long silence flips the banner to “looks stuck.”</div>
+</div>
+<script>
+var feed=document.getElementById('feed');
+function fileFor(t){return (t.match(/[\w.-]+\.(js|md)/)||[])[0]||'';}
+function agoText(ms){var s=Math.round(ms/1000);return s<2?'just now':s+'s ago';}
+FEED.run(function(e){
+  var t=FEED.tools[e.tool];
+  // current-activity line (left)
+  document.getElementById('nowic').innerHTML='<svg style="color:'+t.color+'"><use href="#'+t.icon+'"/></svg>';
+  document.getElementById('nowtext').innerHTML='<b>'+t.verb+'</b> '+(e.note||e.target);
+  // stream row (right, newest on top, ages over time)
+  var li=document.createElement('li'); li.className='row newest'; li.dataset.t=Date.now();
+  li.innerHTML='<span class="ic" style="color:'+t.color+'"><svg><use href="#'+t.icon+'"/></svg></span>'
+    +'<div><div><span class="verb">'+t.verb+'</span> <span class="tgt" style="color:'+t.color+'">'+e.target.replace(/^.*\//,'')+'</span></div>'
+    +(e.note?'<div class="note">'+e.note+'</div>':'')+'</div><span class="ago">just now</span>';
+  var prev=feed.querySelector('.newest'); if(prev) prev.classList.remove('newest');
+  feed.insertBefore(li,feed.firstChild); while(feed.children.length>22) feed.removeChild(feed.lastChild);
+  // file cards (left): blue read -> amber edit -> green done
+  var f=fileFor(e.target);
+  document.querySelectorAll('.fc').forEach(function(el){
+    var active=el.getAttribute('data-file')===f;
+    if(active){
+      el.classList.remove('done'); el.classList.toggle('edit',e.tool==='Edit'); el.classList.toggle('read',e.tool!=='Edit');
+      el.querySelector('[data-b]').textContent=e.tool==='Edit'?'editing':'reading';
+      el.querySelector('[data-s]').textContent=(e.note||(t.verb+'…'));
+    } else if(el.classList.contains('edit')||el.classList.contains('read')){
+      var wasEdit=el.classList.contains('edit'); el.classList.remove('read','edit');
+      if(wasEdit){el.classList.add('done'); el.querySelector('[data-b]').textContent='changed'; el.querySelector('[data-s]').textContent='edited ✓';}
+      else {el.querySelector('[data-b]').textContent='seen'; el.querySelector('[data-s]').textContent='read ✓';}
+    }
+  });
+});
+setInterval(function(){
+  var now=Date.now();
+  document.getElementById('elapsed').textContent=FEED.mmss(now-FEED.startTime);
+  var ago=now-FEED.lastEventTime;
+  document.getElementById('ago').textContent=agoText(ago);
+  var stuck=ago>FEED.STUCK_MS, h=document.getElementById('health');
+  h.className='health '+(stuck?'stuck':'ok');
+  document.getElementById('htext').textContent=stuck?('Looks stuck — no new action for '+Math.round(ago/1000)+'s'):'Working normally';
+  feed.querySelectorAll('.row').forEach(function(r){ r.querySelector('.ago').textContent=agoText(now-(+r.dataset.t)); });
+},1000);
+</script>
+</body></html>

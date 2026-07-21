@@ -1,0 +1,145 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cockpit C — Calm Ribbon</title>
+<link rel="stylesheet" href="_cockpit.css">
+<style>
+/* ---- Mockup C: ultra-calm thin ribbon; everything lives in an on-demand drawer ---- */
+.ribbon{display:flex;align-items:center;gap:14px;height:40px;padding:0 16px;border-bottom:1px solid var(--border);
+  background:var(--panel2);cursor:pointer;font-size:12px}
+.ribbon .grp{display:flex;align-items:center;gap:9px}
+.ribbon .sep{width:1px;height:18px;background:var(--border)}
+.ic-dot{position:relative;display:inline-flex}
+.ic-dot .ic{width:16px;height:16px}
+.ic-dot::after{content:"";position:absolute;right:-3px;top:-2px;width:7px;height:7px;border-radius:50%;background:currentColor}
+.flowmini{display:flex;align-items:center;gap:3px}
+.flowmini i{width:9px;height:9px;border-radius:50%;background:var(--gray);display:inline-block}
+.flowmini i.done{background:var(--green)} .flowmini i.now{background:var(--blue);box-shadow:0 0 8px var(--blue)}
+.flowmini i.warn{background:var(--amber)}
+.grow{flex:1}
+.chevron{transition:transform .2s} .open .chevron{transform:rotate(180deg)}
+/* drawer */
+.drawer{max-height:0;overflow:hidden;transition:max-height .28s ease;border-bottom:1px solid var(--border);background:var(--panel2)}
+.drawer.open{max-height:340px}
+.dinner{padding:14px 16px;display:grid;grid-template-columns:1fr 1.4fr;gap:16px}
+.dcol h5{margin:0 0 8px;font-size:10.5px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.trow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+.trow small{color:var(--muted);margin-left:auto}
+.flowfull{display:flex;flex-wrap:wrap;gap:6px}
+.fstep{display:flex;align-items:center;gap:6px;padding:5px 9px;border:1px solid var(--border2);border-radius:8px;
+  font-size:11.5px;color:var(--muted);cursor:pointer}
+.fstep svg{width:13px;height:13px}
+.fstep.done{color:var(--green);border-color:rgba(34,197,94,.4)}
+.fstep.now{color:var(--blue);border-color:var(--blue);background:var(--bluebg)}
+.fstep.warn{color:var(--amber);border-color:var(--amber);background:var(--amberbg)}
+.attn{display:none;align-items:center;gap:10px;padding:8px 16px;background:var(--amberbg);border-bottom:1px solid var(--amber);color:#fde68a;font-size:12.5px}
+.attn.show{display:flex}
+</style></head>
+<body>
+<script src="_icons.js"></script>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><svg class="ic s-blue" style="width:20px;height:20px"><use href="#i-cockpit"/></svg> PCC Cockpit</div>
+    <div class="nav on"><svg class="ic"><use href="#i-chat"/></svg> Chat</div>
+    <div class="nav"><svg class="ic"><use href="#i-cockpit"/></svg> Cockpit</div>
+    <div class="nav"><svg class="ic"><use href="#i-evidence"/></svg> Evidence</div>
+    <div class="nav"><svg class="ic"><use href="#i-project"/></svg> Project</div>
+    <div class="grow"></div>
+    <div class="hint">Mockup C · Calm Ribbon<br>One thin row. Click it to open the drawer.<br><button class="link" onclick="toggleAttn()">toggle owner-attention demo</button></div>
+  </aside>
+
+  <div class="main">
+    <!-- one 40px ribbon: max chat space -->
+    <div class="ribbon" id="ribbon" onclick="toggleDrawer()">
+      <span class="grp s-green"><svg class="ic"><use href="#i-cockpit"/></svg><b style="color:#e2e8f0">Build</b></span>
+      <span class="sep"></span>
+      <span class="grp">
+        <span class="ic-dot s-blue" title="Authority: build active"><svg class="ic"><use href="#i-shield"/></svg></span>
+        <span class="ic-dot s-green" title="On track"><svg class="ic"><use href="#i-route"/></svg></span>
+        <span class="ic-dot s-green" title="Synced"><svg class="ic"><use href="#i-sync"/></svg></span>
+        <span class="ic-dot s-green" title="Verified fresh"><svg class="ic"><use href="#i-verify"/></svg></span>
+        <span class="ic-dot s-green" title="CI green"><svg class="ic"><use href="#i-cloud"/></svg></span>
+      </span>
+      <span class="sep"></span>
+      <span class="flowmini" title="proof chain">
+        <i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="now"></i><i class="warn"></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      </span>
+      <span class="grow"></span>
+      <span class="grp s-gray"><svg class="ic"><use href="#i-bell"/></svg> 0</span>
+      <svg class="ic chevron" style="width:15px;height:15px"><use href="#i-chevron"/></svg>
+    </div>
+
+    <!-- owner attention (only when needed) -->
+    <div class="attn" id="attn"><svg class="ic" style="width:16px;height:16px"><use href="#i-alert"/></svg>
+      <b>Approve build authority?</b> Worker is paused pending your decision.
+      <button class="link" style="margin-left:auto">Approve 2h</button><button class="link">Not now</button></div>
+
+    <!-- the drawer holds ALL detail; collapsed by default -->
+    <div class="drawer" id="drawer">
+      <div class="dinner">
+        <div class="dcol">
+          <h5>Truth — proven facts</h5>
+          <div class="trow" data-ev="authority"><svg class="ic s-blue"><use href="#i-shield"/></svg> Build session active <small>1h24 left</small></div>
+          <div class="trow"><svg class="ic s-green"><use href="#i-route"/></svg> On the rails <small>no drift</small></div>
+          <div class="trow"><svg class="ic s-green"><use href="#i-sync"/></svg> Backed up <small>2m ago</small></div>
+          <div class="trow" data-ev="verify"><svg class="ic s-green"><use href="#i-verify"/></svg> Verified · exact diff <small>Codex · 23m · def456</small></div>
+          <div class="trow"><svg class="ic s-green"><use href="#i-cloud"/></svg> CI green <small>def456</small></div>
+          <div class="trow"><svg class="ic s-green"><use href="#i-book"/></svg> Rules loaded <small>v18</small></div>
+        </div>
+        <div class="dcol">
+          <h5>Current task proof chain — click a stage</h5>
+          <div class="flowfull">
+            <span class="fstep done" data-ev="req"><svg><use href="#i-chat"/></svg>Request</span>
+            <span class="fstep done" data-ev="scope"><svg><use href="#i-target"/></svg>Scope</span>
+            <span class="fstep done" data-ev="authority"><svg><use href="#i-shield"/></svg>Authority</span>
+            <span class="fstep now" data-ev="worker"><svg><use href="#i-worker"/></svg>Worker</span>
+            <span class="fstep warn" data-ev="doctor"><svg><use href="#i-pulse"/></svg>Checks</span>
+            <span class="fstep" data-ev="tests"><svg><use href="#i-flask"/></svg>Tests</span>
+            <span class="fstep" data-ev="verify"><svg><use href="#i-verify"/></svg>Verify</span>
+            <span class="fstep" data-ev="gate"><svg><use href="#i-gate"/></svg>Gate</span>
+            <span class="fstep" data-ev="commit"><svg><use href="#i-commit"/></svg>Commit</span>
+            <span class="fstep" data-ev="ci"><svg><use href="#i-cloud"/></svg>CI</span>
+            <span class="fstep" data-ev="done"><svg><use href="#i-flag"/></svg>Done</span>
+          </div>
+          <div class="inferred" style="margin-top:12px;padding:8px 10px;font-size:12px">
+            <span class="tag">ESTIMATES · NOT PROOF</span> &nbsp; elapsed 00:02:14 (real) · stall risk low (inferred) · no ETA
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- chat gets nearly the whole screen -->
+    <div class="chat">
+      <div class="bubble you"><div class="who">You · 10:24</div>Approved. Implement auth flow 3.2.1 — follow the plan and acceptance criteria.</div>
+      <div class="bubble"><div class="who">Claude (Worker)</div>On it. I’ll ground on the spec, stay in scope, run checks, and report proof — not just claim done.</div>
+      <div class="bubble"><div class="who">Claude (Worker)</div>Scope confirmed: 3 files in <span class="mono">docs/specs/auth-flow.md</span>. Starting the change now.</div>
+      <div class="bubble you"><div class="who">You · 10:25</div>Sounds good. Keep the ribbon quiet unless something needs me.</div>
+    </div>
+    <div class="composer"><span>Message PCC…</span><span>+ @ &lt;/&gt; ⚡ ⎘ &nbsp; ▸ Send</span></div>
+  </div>
+</div>
+
+<div class="pop" id="pop"></div>
+<script>
+function toggleDrawer(){ document.getElementById('drawer').classList.toggle('open'); document.getElementById('ribbon').classList.toggle('open'); }
+function toggleAttn(){ document.getElementById('attn').classList.toggle('show'); }
+var EV={
+  authority:{t:'Authority',c:'s-blue',rows:[['State','Build session ACTIVE'],['Granted by','Owner · this chat'],['Expires','1h 24m / 2h cap'],['Source','authority-store.js']],np:'Does not prove a file was changed.'},
+  verify:{t:'Verification',c:'s-green',rows:[['State','Exact diff verified'],['Verifier','Codex'],['Age','23 min'],['Base','abc123'],['Head','def456']],np:'Uncommitted changes since HEAD are NOT covered.'},
+  worker:{t:'Worker · active',c:'s-blue',rows:[['What','task 3.2.1'],['Started','2m 14s ago'],['Applies to','uncommitted tree']],np:'Live file/output telemetry needs the Live Action Timeline; only elapsed is real.'},
+  doctor:{t:'Checks',c:'s-amber',rows:[['State','WARNING · 1 new app-error entry'],['Source','doctor.ps1']],np:'A signal, not a failure.'},
+  scope:{t:'Scope',c:'s-amber',rows:[['Means only','a spec with acceptance criteria EXISTS'],['File','docs/specs/auth-flow.md']],np:'Does not prove the scope is correct.'},
+  req:{t:'Request',c:'s-green',rows:[['Owner','“Implement auth flow 3.2.1”']],np:'—'},
+  tests:{t:'Tests',c:'s-gray',rows:[['State','not started']],np:'No run recorded.'},
+  gate:{t:'Gate',c:'s-gray',rows:[['State','not started']],np:'No receipt for this diff.'},
+  commit:{t:'Commit',c:'s-gray',rows:[['State','not started']],np:'Tree uncommitted.'},
+  ci:{t:'CI',c:'s-gray',rows:[['State','unknown until pushed']],np:'Per-SHA; nothing pushed.'},
+  done:{t:'Done',c:'s-gray',rows:[['Means','proof matched stakes (+ owner acceptance)']],np:'Not “worker finished steps.”'}
+};
+var pop=document.getElementById('pop');
+function showEv(k,x,y){var e=EV[k];if(!e)return;var rows=e.rows.map(function(r){return '<b>'+r[0]+'</b><span class="mono">'+r[1]+'</span>';}).join('');
+  pop.innerHTML='<h4><span class="'+e.c+'">'+e.t+'</span><button class="link" onclick="pop.classList.remove(\'show\')">close</button></h4><div class="kv">'+rows+'</div><div class="notproven"><b>Not proven:</b> '+e.np+'</div>';
+  pop.style.left=Math.min(x,innerWidth-340)+'px';pop.style.top=Math.min(y+10,innerHeight-240)+'px';pop.classList.add('show');}
+document.querySelectorAll('[data-ev]').forEach(function(el){el.addEventListener('click',function(ev){ev.stopPropagation();showEv(el.getAttribute('data-ev'),ev.clientX,ev.clientY);});});
+document.addEventListener('click',function(e){ if(!e.target.closest('.pop')) pop.classList.remove('show'); });
+</script>
+</body></html>

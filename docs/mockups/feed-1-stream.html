@@ -1,0 +1,71 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Live Worker Feed — 1 · Stream</title>
+<link rel="stylesheet" href="_cockpit.css">
+<style>
+.wrap{max-width:640px;margin:26px auto;padding:0 18px}
+h1{font-size:16px;color:#e2e8f0;margin:0 0 3px} .sub{color:var(--muted);font-size:12.5px;margin:0 0 16px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.phead{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--border)}
+.live{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--green);font-weight:600}
+.live .d{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.stats{display:flex;gap:22px;margin-left:auto;font-size:12px}
+.stat b{display:block;font-size:15px;color:#e2e8f0;font-variant-numeric:tabular-nums} .stat span{color:var(--muted)}
+.health{display:flex;align-items:center;gap:8px;padding:9px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600}
+.health.ok{color:var(--green)} .health.stuck{color:var(--amber)}
+.health .ring{width:10px;height:10px;border-radius:50%;background:currentColor}
+.feed{list-style:none;margin:0;padding:6px 0;max-height:440px;overflow:auto}
+.row{display:flex;align-items:flex-start;gap:12px;padding:10px 16px;animation:slidein .35s ease}
+@keyframes slidein{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.row .ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;background:#0e1626}
+.row .ic svg{width:15px;height:15px}
+.row .verb{font-weight:600;color:#e2e8f0} .row .tgt{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+.row .note{color:var(--muted);font-size:12px;margin-top:2px}
+.row .ago{margin-left:auto;color:var(--muted);font-size:11.5px;white-space:nowrap}
+.row.newest .ic{box-shadow:0 0 0 2px rgba(56,189,248,.5)}
+.foot{padding:10px 16px;color:var(--muted);font-size:11.5px;border-top:1px solid var(--border)}
+</style></head>
+<body>
+<script src="_icons.js"></script><script src="_feed.js"></script>
+<div class="wrap">
+  <h1>Live worker feed — idea 1 · “Stream”</h1>
+  <p class="sub">The readable one: a plain running log of what the worker is doing, newest on top. Auto-refreshing.</p>
+  <div class="panel">
+    <div class="phead">
+      <span class="live"><span class="d pulse"></span> LIVE</span>
+      <span style="color:#e2e8f0;font-weight:600">What Claude is doing</span>
+      <div class="stats">
+        <div class="stat"><b id="elapsed">00:00</b><span>working</span></div>
+        <div class="stat"><b id="ago">—</b><span>since last action</span></div>
+      </div>
+    </div>
+    <div class="health ok" id="health"><span class="ring pulse"></span><span id="htext">Working normally</span></div>
+    <ul class="feed" id="feed"></ul>
+    <div class="foot">Simulated data for the mockup. The real feed streams the worker’s actual actions; a long silence flips the banner to “looks stuck.”</div>
+  </div>
+</div>
+<script>
+var feed=document.getElementById('feed');
+function agoText(ms){var s=Math.round(ms/1000);return s<2?'just now':s+'s ago';}
+FEED.run(function(e){
+  var t=FEED.tools[e.tool];
+  var li=document.createElement('li'); li.className='row newest'; li.dataset.t=Date.now();
+  li.innerHTML='<span class="ic" style="color:'+t.color+'"><svg><use href="#'+t.icon+'"/></svg></span>'
+    +'<div><div><span class="verb">'+t.verb+'</span> <span class="tgt" style="color:'+t.color+'">'+e.target+'</span></div>'
+    +(e.note?'<div class="note">'+e.note+'</div>':'')+'</div><span class="ago">just now</span>';
+  var prev=feed.querySelector('.newest'); if(prev) prev.classList.remove('newest');
+  feed.insertBefore(li, feed.firstChild);
+  while(feed.children.length>24) feed.removeChild(feed.lastChild);
+});
+setInterval(function(){
+  var now=Date.now();
+  document.getElementById('elapsed').textContent=FEED.mmss(now-FEED.startTime);
+  var ago=now-FEED.lastEventTime;
+  document.getElementById('ago').textContent=Math.round(ago/1000)+'s';
+  var h=document.getElementById('health'), stuck=ago>FEED.STUCK_MS;
+  h.className='health '+(stuck?'stuck':'ok');
+  document.getElementById('htext').textContent=stuck?('Looks stuck — no new action for '+Math.round(ago/1000)+'s'):'Working normally';
+  feed.querySelectorAll('.row').forEach(function(r){ r.querySelector('.ago').textContent=agoText(now-(+r.dataset.t)); });
+},1000);
+</script>
+</body></html>

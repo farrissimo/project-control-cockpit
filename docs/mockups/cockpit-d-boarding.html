@@ -1,0 +1,127 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cockpit D — Side Timeline</title>
+<link rel="stylesheet" href="_cockpit.css">
+<style>
+/* ---- Mockup D: chat-left, vertical proof-chain "flight strip" docked right ---- */
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border)}
+.life{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.life .st.done{color:var(--green)} .life .st.now{color:#e2e8f0}
+.spacer{flex:1}
+.trustchips{display:flex;gap:7px;padding:8px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.body{flex:1;display:flex;min-height:0}
+.chatcol{flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--border)}
+/* right flight strip */
+.strip{width:270px;flex:0 0 auto;background:var(--panel2);display:flex;flex-direction:column;transition:width .25s}
+.strip.mini{width:58px}
+.strip .head{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--border);font-weight:600}
+.strip.mini .head span,.strip.mini .tl .lab,.strip.mini .tl small,.strip.mini .task .meta{display:none}
+.task{padding:12px 14px;border-bottom:1px solid var(--border)}
+.task .meta{font-size:12px;color:var(--muted);margin-top:6px;display:flex;flex-direction:column;gap:4px}
+.task .name{display:flex;align-items:center;gap:8px;color:#e2e8f0;font-weight:600}
+.tl{padding:8px 14px;overflow:auto;flex:1}
+.node2{position:relative;display:flex;align-items:center;gap:11px;padding:7px 0;cursor:pointer}
+.node2 .bullet{width:26px;height:26px;flex:0 0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--gray);color:var(--gray);background:var(--panel);z-index:2}
+.node2 .bullet svg{width:13px;height:13px}
+.node2::before{content:"";position:absolute;left:12px;top:-7px;bottom:-7px;width:2px;background:var(--border2)}
+.node2:first-child::before{top:14px}
+.node2:last-child::before{bottom:14px}
+.node2 .lab{font-size:12.5px}
+.node2 small{display:block;color:var(--muted);font-size:11px}
+.node2.done .bullet{border-color:var(--green);color:var(--green);background:var(--greenbg)}
+.node2.now .bullet{border-color:var(--blue);color:var(--blue);background:var(--bluebg)}
+.node2.warn .bullet{border-color:var(--amber);color:var(--amber);background:var(--amberbg)}
+.node2.now .lab{color:#e2e8f0}
+.strip .foot{padding:10px 14px;border-top:1px solid var(--border)}
+.strip.mini .foot{padding:10px 6px;text-align:center}
+</style></head>
+<body>
+<script src="_icons.js"></script>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><svg class="ic s-blue" style="width:20px;height:20px"><use href="#i-cockpit"/></svg> PCC Cockpit</div>
+    <div class="nav on"><svg class="ic"><use href="#i-chat"/></svg> Chat</div>
+    <div class="nav"><svg class="ic"><use href="#i-cockpit"/></svg> Cockpit</div>
+    <div class="nav"><svg class="ic"><use href="#i-evidence"/></svg> Evidence</div>
+    <div class="nav"><svg class="ic"><use href="#i-project"/></svg> Project</div>
+    <div class="spacer"></div>
+    <div class="hint">Mockup D · Side Timeline<br>Proof chain runs down the right.<br>Collapse it to widen chat.</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="life"><span class="st done">✓ Define</span>·<span class="st done">✓ Plan</span>·<span class="st now">◉ Build</span>·<span>Verify</span>·<span>Release</span>·<span>Operate</span></div>
+      <div class="spacer"></div><span class="hint">Build slice 3.2.1</span>
+    </div>
+    <div class="trustchips">
+      <span class="pill s-blue"><svg class="ic"><use href="#i-shield"/></svg> Build active</span>
+      <span class="pill s-green"><svg class="ic"><use href="#i-route"/></svg> On track</span>
+      <span class="pill s-green"><svg class="ic"><use href="#i-sync"/></svg> Synced</span>
+      <span class="pill s-green" data-ev="verify"><svg class="ic"><use href="#i-verify"/></svg> Fresh · def456</span>
+      <span class="pill s-green"><svg class="ic"><use href="#i-cloud"/></svg> CI green</span>
+      <span class="pill s-gray"><svg class="ic"><use href="#i-bell"/></svg> 0 needed</span>
+    </div>
+
+    <div class="body">
+      <div class="chatcol">
+        <div class="chat">
+          <div class="bubble you"><div class="who">You · 10:24</div>Approved. Implement auth flow 3.2.1 — follow the plan and acceptance criteria.</div>
+          <div class="bubble"><div class="who">Claude (Worker)</div>Starting 3.2.1. I’ll ground on the spec, stay in scope, run checks, and show proof.</div>
+          <div class="bubble"><div class="who">Claude (Worker)</div>Scope confirmed: 3 files. Implementing now — you can watch each stage light up on the right.</div>
+        </div>
+        <div class="composer"><span>Message PCC…</span><span>+ @ &lt;/&gt; ⚡ ⎘ &nbsp; ▸ Send</span></div>
+      </div>
+
+      <!-- vertical proof-chain -->
+      <div class="strip" id="strip">
+        <div class="head"><svg class="ic s-blue" style="width:16px;height:16px"><use href="#i-route"/></svg><span>Proof chain</span>
+          <button class="link" style="margin-left:auto;padding:2px 7px" onclick="document.getElementById('strip').classList.toggle('mini')">⇔</button></div>
+        <div class="task">
+          <div class="name"><svg class="ic s-purple"><use href="#i-worker"/></svg> Implement auth flow</div>
+          <div class="meta"><span>Claude active · 2m 14s</span><span>3 files · in scope</span><span>Next proof: Checks</span></div>
+        </div>
+        <div class="tl">
+          <div class="node2 done" data-ev="req"><div class="bullet"><svg><use href="#i-check"/></svg></div><div class="lab">Request<small>10:24</small></div></div>
+          <div class="node2 done" data-ev="scope"><div class="bullet"><svg><use href="#i-target"/></svg></div><div class="lab">Scope<small>spec exists · 5 criteria</small></div></div>
+          <div class="node2 done" data-ev="authority"><div class="bullet"><svg><use href="#i-shield"/></svg></div><div class="lab">Authority<small>granted · 1h24 left</small></div></div>
+          <div class="node2 now" data-ev="worker"><div class="bullet pulse"><svg><use href="#i-worker"/></svg></div><div class="lab">Worker<small>active · elapsed 2m14</small></div></div>
+          <div class="node2 warn" data-ev="doctor"><div class="bullet"><svg><use href="#i-pulse"/></svg></div><div class="lab">Checks<small>warning · 1 app-error</small></div></div>
+          <div class="node2" data-ev="tests"><div class="bullet"><svg><use href="#i-flask"/></svg></div><div class="lab">Tests<small>not started</small></div></div>
+          <div class="node2" data-ev="verify"><div class="bullet"><svg><use href="#i-verify"/></svg></div><div class="lab">Verify<small>not started</small></div></div>
+          <div class="node2" data-ev="gate"><div class="bullet"><svg><use href="#i-gate"/></svg></div><div class="lab">Gate<small>not started</small></div></div>
+          <div class="node2" data-ev="commit"><div class="bullet"><svg><use href="#i-commit"/></svg></div><div class="lab">Commit<small>not started</small></div></div>
+          <div class="node2" data-ev="ci"><div class="bullet"><svg><use href="#i-cloud"/></svg></div><div class="lab">CI<small>unknown</small></div></div>
+          <div class="node2" data-ev="done"><div class="bullet"><svg><use href="#i-flag"/></svg></div><div class="lab">Done<small>needs full proof</small></div></div>
+        </div>
+        <div class="foot inferred" style="border-radius:0">
+          <span class="tag">ESTIMATES · NOT PROOF</span><br><span style="font-size:11.5px">stall risk low · no ETA</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pop" id="pop"></div>
+<script>
+var EV={
+  authority:{t:'Authority',c:'s-blue',rows:[['State','Build session ACTIVE'],['Granted by','Owner · this chat'],['Expires','1h24 / 2h cap'],['Source','authority-store.js']],np:'Does not prove a file was changed.'},
+  worker:{t:'Worker · active',c:'s-blue',rows:[['What','task 3.2.1'],['Started','2m 14s ago'],['Applies to','uncommitted tree']],np:'Live file/output telemetry needs the Live Action Timeline; only elapsed is real.'},
+  doctor:{t:'Checks',c:'s-amber',rows:[['State','WARNING · 1 new app-error entry'],['Source','doctor.ps1']],np:'A signal, not a failure.'},
+  verify:{t:'Verification',c:'s-green',rows:[['State','Exact diff verified'],['Verifier','Codex'],['Age','23 min'],['Base','abc123'],['Head','def456']],np:'Uncommitted changes since HEAD are NOT covered.'},
+  scope:{t:'Scope',c:'s-amber',rows:[['Means only','a spec with acceptance criteria EXISTS'],['File','docs/specs/auth-flow.md'],['Criteria','5 (EARS)']],np:'Does not prove the scope is correct.'},
+  req:{t:'Request',c:'s-green',rows:[['Owner','“Implement auth flow 3.2.1”'],['At','10:24']],np:'—'},
+  tests:{t:'Tests',c:'s-gray',rows:[['State','not started']],np:'No run recorded.'},
+  gate:{t:'Gate',c:'s-gray',rows:[['State','not started']],np:'No receipt for this diff.'},
+  commit:{t:'Commit',c:'s-gray',rows:[['State','not started']],np:'Tree uncommitted.'},
+  ci:{t:'CI',c:'s-gray',rows:[['State','unknown until pushed']],np:'Per-SHA; nothing pushed.'},
+  done:{t:'Done',c:'s-gray',rows:[['Means','proof matched stakes (+ owner acceptance)']],np:'Not “worker finished steps.”'}
+};
+var pop=document.getElementById('pop');
+function showEv(k,x,y){var e=EV[k];if(!e)return;var rows=e.rows.map(function(r){return '<b>'+r[0]+'</b><span class="mono">'+r[1]+'</span>';}).join('');
+  pop.innerHTML='<h4><span class="'+e.c+'">'+e.t+'</span><button class="link" onclick="pop.classList.remove(\'show\')">close</button></h4><div class="kv">'+rows+'</div><div class="notproven"><b>Not proven:</b> '+e.np+'</div>';
+  pop.style.left=Math.min(x,innerWidth-340)+'px';pop.style.top=Math.min(y+10,innerHeight-240)+'px';pop.classList.add('show');}
+document.querySelectorAll('[data-ev]').forEach(function(el){el.addEventListener('click',function(ev){ev.stopPropagation();showEv(el.getAttribute('data-ev'),ev.clientX,ev.clientY);});});
+document.addEventListener('click',function(e){ if(!e.target.closest('.pop')) pop.classList.remove('show'); });
+</script>
+</body></html>

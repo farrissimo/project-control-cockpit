@@ -1,0 +1,186 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cockpit B — Instrument Cluster (plain language)</title>
+<link rel="stylesheet" href="_cockpit.css">
+<style>
+/* ---- Mockup B: cockpit gauges, PLAIN-LANGUAGE labels; jargon only on drill-down ---- */
+.topbar{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--border)}
+.life{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.life .st.done{color:var(--green)} .life .st.now{color:#e2e8f0}
+.spacer{flex:1}
+.cluster{padding:12px 16px 14px;border-bottom:1px solid var(--border);display:flex;gap:14px;align-items:stretch}
+.dials{display:flex;gap:12px}
+.dial{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px 8px;
+  width:132px;text-align:center;cursor:pointer}
+.dial svg{width:118px;height:64px;display:block;margin:0 auto}
+.dial .val{font-size:17px;font-weight:600;margin-top:-6px}
+.dial .cap{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.25}
+.stepwrap{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;flex-direction:column}
+.stepwrap .section-label{margin-bottom:9px}
+.steps{display:flex;align-items:center;flex-wrap:wrap;gap:6px 0;flex:1}
+.step{display:flex;align-items:center;gap:6px;cursor:pointer}
+.chip2{display:flex;align-items:center;gap:5px;padding:4px 9px;border-radius:8px;border:1px solid var(--border2);font-size:11.5px;color:var(--muted)}
+.chip2 svg{width:13px;height:13px}
+.step.done .chip2{color:var(--green);border-color:rgba(34,197,94,.4)}
+.step.now .chip2{color:var(--blue);border-color:var(--blue);background:var(--bluebg)}
+.step.warn .chip2{color:var(--amber);border-color:var(--amber);background:var(--amberbg)}
+.arw{color:var(--dim);margin:0 2px}
+.estrow{margin-left:auto;display:flex;gap:12px;align-items:center;padding:6px 10px}
+.estrow .cap{font-size:11px;color:var(--muted)}
+.trustrow{display:flex;gap:8px;padding:9px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center}
+.trustrow .section-label{width:74px}
+.plain{font-size:13px;line-height:1.4;color:#e2e8f0;margin-bottom:10px}
+.techlabel{font-size:10px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin:2px 0 4px}
+</style></head>
+<body>
+<script src="_icons.js"></script>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><svg class="ic s-blue" style="width:20px;height:20px"><use href="#i-cockpit"/></svg> PCC Cockpit</div>
+    <div class="nav"><svg class="ic"><use href="#i-chat"/></svg> Chat</div>
+    <div class="nav on"><svg class="ic"><use href="#i-cockpit"/></svg> Cockpit</div>
+    <div class="nav"><svg class="ic"><use href="#i-evidence"/></svg> Proof</div>
+    <div class="nav"><svg class="ic"><use href="#i-project"/></svg> Project</div>
+    <div class="spacer"></div>
+    <div class="hint">Mockup B · plain words on top,<br>the technical detail when you click in.</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="life"><span class="st done">Decide</span>·<span class="st done">Plan</span>·<span class="st now">◉ Build</span>·<span>Check</span>·<span>Ship</span>·<span>Run</span></div>
+      <div class="spacer"></div>
+      <button class="link" onclick="var c=document.getElementById('cluster');c.style.display=(c.style.display=='none'?'flex':'none')">hide the dashboard</button>
+    </div>
+
+    <div class="trustrow">
+      <span class="section-label">Right now</span>
+      <span class="pill s-blue" data-ev="authority"><svg class="ic"><use href="#i-shield"/></svg> Claude can make changes</span>
+      <span class="pill s-green" data-ev="rails"><svg class="ic"><use href="#i-route"/></svg> Still on your task</span>
+      <span class="pill s-green" data-ev="backup"><svg class="ic"><use href="#i-sync"/></svg> Backed up to GitHub</span>
+      <span class="pill s-green" data-ev="ci"><svg class="ic"><use href="#i-cloud"/></svg> All tests passed</span>
+      <span class="pill s-gray" data-ev="attn"><svg class="ic"><use href="#i-bell"/></svg> Nothing needs you</span>
+    </div>
+
+    <div class="cluster" id="cluster">
+      <div class="dials">
+        <div class="dial" data-ev="verify"><svg id="g1"></svg><div class="val s-green">23 min</div><div class="cap">since a 2nd AI<br>last checked the work</div></div>
+        <div class="dial" data-ev="ctx"><svg id="g2"></svg><div class="val s-blue">64%</div><div class="cap">of this chat’s<br>memory used</div></div>
+        <div class="dial" data-ev="scope"><svg id="g3"></svg><div class="val s-amber">3</div><div class="cap">files being<br>changed</div></div>
+        <div class="dial" data-ev="session"><svg id="g4"></svg><div class="val s-blue">1h 24m</div><div class="cap">before Claude must<br>ask you again</div></div>
+      </div>
+      <div class="stepwrap">
+        <span class="section-label">Where this job is — click any step for detail</span>
+        <div class="steps">
+          <div class="step done" data-ev="authority"><span class="chip2"><svg><use href="#i-shield"/></svg>You approved</span></div><span class="arw">›</span>
+          <div class="step now" data-ev="worker"><span class="chip2 pulse"><svg><use href="#i-worker"/></svg>Building it</span></div><span class="arw">›</span>
+          <div class="step warn" data-ev="doctor"><span class="chip2"><svg><use href="#i-pulse"/></svg>Health check</span></div><span class="arw">›</span>
+          <div class="step" data-ev="tests"><span class="chip2"><svg><use href="#i-flask"/></svg>Run tests</span></div><span class="arw">›</span>
+          <div class="step" data-ev="verify"><span class="chip2"><svg><use href="#i-verify"/></svg>2nd AI checks it</span></div><span class="arw">›</span>
+          <div class="step" data-ev="gate"><span class="chip2"><svg><use href="#i-gate"/></svg>Safety gate</span></div><span class="arw">›</span>
+          <div class="step" data-ev="commit"><span class="chip2"><svg><use href="#i-commit"/></svg>Save it</span></div><span class="arw">›</span>
+          <div class="step" data-ev="ci"><span class="chip2"><svg><use href="#i-cloud"/></svg>Re-test clean</span></div><span class="arw">›</span>
+          <div class="step" data-ev="done"><span class="chip2"><svg><use href="#i-flag"/></svg>Done</span></div>
+        </div>
+        <div class="estrow inferred">
+          <span class="tag">GUESSES · NOT FACTS</span>
+          <span class="cap">seems to be moving fine</span><span class="cap">no time estimate (can’t honestly guess)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat">
+      <div class="bubble you"><div class="who">You · 10:24</div>Approved. Build the sign-in feature — follow the plan and the checklist.</div>
+      <div class="bubble"><div class="who">Claude</div>On it. I’ll stick to the 3 files we agreed, run the checks, and show proof before I call it done.</div>
+    </div>
+    <div class="composer"><span>Message PCC…</span><span>+ @ &lt;/&gt; ⚡ ⎘ &nbsp; ▸ Send</span></div>
+  </div>
+</div>
+
+<div class="pop" id="pop"></div>
+<script>
+function drawGauge(id, value, color){
+  var s=document.getElementById(id); if(!s) return;
+  s.setAttribute('viewBox','0 0 120 66');
+  function pt(v){var a=Math.PI*(1-v);return [60+48*Math.cos(a),60-48*Math.sin(a)];}
+  var e=pt(value), large=value>0.5?1:0;
+  s.innerHTML='<path d="M12 60 A48 48 0 0 1 108 60" fill="none" stroke="#26324a" stroke-width="8" stroke-linecap="round"/>'
+   +'<path d="M12 60 A48 48 0 0 '+large+' 1 '+e[0].toFixed(1)+' '+e[1].toFixed(1)+'" fill="none" stroke="'+color+'" stroke-width="8" stroke-linecap="round"/>'
+   +'<line x1="60" y1="60" x2="'+e[0].toFixed(1)+'" y2="'+e[1].toFixed(1)+'" stroke="#e2e8f0" stroke-width="2"/>'
+   +'<circle cx="60" cy="60" r="3.5" fill="#e2e8f0"/>';
+}
+drawGauge('g1',0.28,'#22c55e');drawGauge('g2',0.64,'#38bdf8');drawGauge('g3',0.30,'#f59e0b');drawGauge('g4',0.70,'#38bdf8');
+
+/* Each card: PLAIN sentence first, then the technical detail you asked for. */
+var EV = {
+  authority:{t:'Claude can make changes',c:'s-blue',
+    plain:'You gave Claude permission to edit files and run things in this chat. It turns itself off after a while, so it can’t keep changing things unsupervised.',
+    rows:[['Turns off in','1h 24m of quiet, 2h hard limit'],['Granted by','you, in this chat'],['Where it’s stored','authority-store.js']],
+    np:'This only means it’s ALLOWED to change files — not that it actually changed anything correctly.'},
+  rails:{t:'Still on your task',c:'s-green',
+    plain:'The work hasn’t wandered off from what you asked, and the notes/docs haven’t fallen out of sync with the code.',
+    rows:[['Checks for','drifting off-task; stale docs'],['Result','no problems found']],
+    np:'It can tell the work LOOKS on-topic; it can’t judge whether the result is what you truly wanted.'},
+  backup:{t:'Backed up to GitHub',c:'s-green',
+    plain:'A safe copy of your work is saved off this computer, so nothing is lost if the machine dies.',
+    rows:[['Last saved','2 minutes ago'],['Where','GitHub (your private copy)']],
+    np:'Backed up ≠ finished or correct — it just means the current work is safely stored.'},
+  ci:{t:'All tests passed',c:'s-green',
+    plain:'The project’s automatic tests were run on a fresh, clean computer (not just this one) and every one passed. This is the strongest proof it actually works.',
+    rows:[['Ran on','a clean cloud machine'],['For the saved version','def456'],['Result','green — all passed']],
+    np:'It proves the SAVED version works. Anything changed since saving isn’t covered yet.'},
+  attn:{t:'Nothing needs you',c:'s-gray',
+    plain:'No decision is waiting on you right now. If that changes, this turns amber and tells you exactly what and why.',
+    rows:[['Open decisions','0']],np:'—'},
+  verify:{t:'Independent double-check',c:'s-green',
+    plain:'A SEPARATE AI (not the one doing the work) re-read the exact current changes and found no problems — 23 minutes ago. It’s a second opinion so you’re not trusting the builder to grade itself.',
+    rows:[['Second checker','Codex'],['When','23 min ago'],['Compared','abc123 → def456']],
+    np:'It checked the SAVED version. If the code changed since, this check is out of date.'},
+  ctx:{t:'Chat memory used',c:'s-blue',
+    plain:'How full this conversation’s memory is. Near 100%, the oldest messages start dropping off — a heads-up to start a fresh chat, not a problem yet.',
+    rows:[['Used','128k of 200k'],['Meaning','capacity, not quality']],np:'A fuller chat isn’t worse work — it just means less room before old messages fall away.'},
+  scope:{t:'Files being changed',c:'s-amber',
+    plain:'Right now this job is touching 3 files, and there’s a written checklist saying what it should and shouldn’t change.',
+    rows:[['Files touched','3'],['Checklist','docs/specs/auth-flow.md (5 items)']],
+    np:'We can confirm the checklist EXISTS and how many files changed — not that these are the RIGHT files.'},
+  session:{t:'Time left to make changes',c:'s-blue',
+    plain:'How long Claude can keep editing before it has to stop and ask you again. Keeps it from running unsupervised forever.',
+    rows:[['Left','1h 24m'],['Rule','whichever comes first: 30 min idle or 2h total']],np:'—'},
+  worker:{t:'Claude is building it',c:'s-blue',
+    plain:'Claude is actively making the changes you approved. It’s been working for 2m 14s.',
+    rows:[['Task','the sign-in feature'],['Running for','2m 14s'],['Applies to','the not-yet-saved version']],
+    np:'A live blow-by-blow of what it’s editing isn’t shown yet — that’s a separate feature. Only the elapsed time is real right now.'},
+  doctor:{t:'Health check',c:'s-amber',
+    plain:'A quick automatic self-check of the project. It flagged ONE thing worth a look — this is a heads-up, not a failure.',
+    rows:[['Found','1 new note in the app’s error log'],['Tool','the built-in checkup (doctor)']],
+    np:'A flag means “glance at this,” not “something broke.”'},
+  tests:{t:'Run the tests',c:'s-gray',
+    plain:'The project’s automatic tests haven’t been run for this change yet.',
+    rows:[['Status','not started']],np:'No test result exists for this work yet — so nothing is proven by tests.'},
+  gate:{t:'Safety gate',c:'s-gray',
+    plain:'A gate that blocks risky changes from being saved unless there’s proof they were checked. This job hasn’t reached it.',
+    rows:[['Status','not reached']],np:'—'},
+  commit:{t:'Save it',c:'s-gray',
+    plain:'The change hasn’t been saved as a permanent snapshot yet.',
+    rows:[['Status','not saved']],np:'—'},
+  cistep:{t:'Re-test on a clean machine',c:'s-gray',
+    plain:'After saving, the tests re-run on a fresh computer to prove it’s not just working here. Not there yet.',
+    rows:[['Status','waiting — nothing saved yet']],np:'—'},
+  done:{t:'Done',c:'s-gray',
+    plain:'“Done” means the proof matches what’s at stake — and, where it matters, that YOU signed off. Not just that Claude stopped typing.',
+    rows:[['Needs','tests + independent check + your OK']],np:'Claude finishing its steps is NOT the same as done.'}
+};
+/* the trust-strip "All tests passed" chip and the "Re-test clean" step tell different stories:
+   the chip = the last SAVED version; the step = this in-progress job. Keep them distinct. */
+var pop=document.getElementById('pop');
+function showEv(k,x,y){var e=EV[k];if(!e){pop.classList.remove('show');return;}
+  var rows=e.rows.map(function(r){return '<b>'+r[0]+'</b><span>'+r[1]+'</span>';}).join('');
+  pop.innerHTML='<h4><span class="'+e.c+'">'+e.t+'</span><button class="link" onclick="pop.classList.remove(\'show\')">close</button></h4>'
+    +'<div class="plain">'+e.plain+'</div>'
+    +'<div class="techlabel">the technical detail</div><div class="kv">'+rows+'</div>'
+    +'<div class="notproven"><b>Not proven:</b> '+e.np+'</div>';
+  pop.style.left=Math.min(x,innerWidth-340)+'px';pop.style.top=Math.min(y+10,innerHeight-320)+'px';pop.classList.add('show');}
+document.querySelectorAll('[data-ev]').forEach(function(el){el.addEventListener('click',function(ev){ev.stopPropagation();
+  var k=el.getAttribute('data-ev'); if(k==='ci' && el.classList.contains('step')) k='cistep'; showEv(k,ev.clientX,ev.clientY);});});
+document.addEventListener('click',function(e){ if(!e.target.closest('.pop')) pop.classList.remove('show'); });
+</script>
+</body></html>
