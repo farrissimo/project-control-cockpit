@@ -18,10 +18,10 @@ test('Project page leads with the Owner Overview (condition + honest proof)', as
   const cond = (await ov.locator('.ov-condition').textContent()).trim();
   expect(['Healthy', 'Needs proof', 'Needs attention', 'Blocked', 'Unknown']).toContain(cond);
 
-  // Honest proof language: a code review must never read as executed proof, and CI
-  // is not claimed as surfaced until the evidence-status step exists.
+  // Honest proof language: a code review must never read as executed proof. CI IS surfaced in the
+  // Verified chip (the old "not yet wired into PCC" claim was corrected — see overview-ci-claim.spec.js).
   await expect(ov).toContainText('Executed proof in app: not surfaced in the app yet');
-  await expect(ov).toContainText('live CI status is not yet wired into PCC');
+  await expect(ov).toContainText('surfaced in the "Verified" chip');
 
   // The two owner-answer cards exist.
   await expect(page.locator('.ov-card-title', { hasText: 'Needs you' })).toHaveCount(1);
