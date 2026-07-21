@@ -9,6 +9,14 @@ const fs = require('fs');
 let input = '';
 let done = false;
 
+// Test-only instrumentation (mirrors PCC_FAKE_CLAUDE_FIXTURE's env-var-driven design, stays
+// fully offline/deterministic): when set, record the exact args PCC invoked this fake with, so
+// a test can prove a specific flag (e.g. --max-budget-usd) was actually passed, not just that
+// the app didn't crash.
+if (process.env.PCC_FAKE_CLAUDE_ARGV_FILE) {
+  try { fs.writeFileSync(process.env.PCC_FAKE_CLAUDE_ARGV_FILE, JSON.stringify(process.argv.slice(2))); } catch (e) { /* best effort */ }
+}
+
 function replay() {
   if (done) return; done = true;
   const fx = process.env.PCC_FAKE_CLAUDE_FIXTURE;

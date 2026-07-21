@@ -6,6 +6,7 @@ const log = document.getElementById('log');
 const input = document.getElementById('input');
 const form = document.getElementById('composer');
 const sendBtn = document.getElementById('send');
+const stopBtn = document.getElementById('stop');
 const correctionsBar = document.getElementById('corrections');
 const recoveryBanner = document.getElementById('chat-recovery');
 
@@ -26,6 +27,7 @@ let chats = [];
 let activeId = null;
 let history = [];
 let busy = false;
+let inFlightChatId = null; // R2: which chat's turn Stop should target — set only while one is actually running
 let attachments = []; // composer attachments for the NEXT send: {kind:'image',mediaType,dataBase64,name} | {kind:'text',name,content}
 let sendQueue = []; // steering: messages composed while a turn is running, sent in order when it finishes
 // Canonical chat store (Phase 2A S5): chats.json (main-owned) is the AUTHORITY.
@@ -301,6 +303,23 @@ function renderWorkPacket(packet) {
 const BUILD_ENABLED_NOTICE = 'Build session enabled for this chat — it can now run commands and write files. Send your next message.';
 
 // Create + show a bubble in the log (NO persistence).
+// A live elapsed-time counter on the "Claude is working…" bubble, so a long turn reads as
+// "alive and progressing (40s)" rather than an ambiguous frozen line — the exact confusion of
+// 2026-07-20 ("it doesn't respond once it says Claude is thinking"). Pairs with the Stop button:
+// the owner can see how long it's taken and decide to stop. Cleared when the bubble is removed.
+function fmtElapsed(ms) {
+  const s = Math.floor(ms / 1000);
+  return s < 60 ? s + 's' : Math.floor(s / 60) + 'm ' + String(s % 60).padStart(2, '0') + 's';
+}
+function startThinkingTimer(el) {
+  if (!el) return;
+  const t0 = Date.now();
+  const tick = () => { if (el.isConnected) el.textContent = 'Claude is working… (' + fmtElapsed(Date.now() - t0) + ')'; };
+  tick();
+  el._pccTimer = setInterval(tick, 1000);
+}
+function stopThinkingTimer(el) { if (el && el._pccTimer) { clearInterval(el._pccTimer); el._pccTimer = null; } }
+
 function addBubbleUI(cls, text) {
   const el = document.createElement('div');
   el.className = 'bubble ' + cls;
@@ -411,7 +430,12 @@ async function runSend(item) {
   const chatId = item.chatId;
   if (!chats.find((c) => c.id === chatId)) { return; }
   busy = true; input.focus();
+  inFlightChatId = chatId; // R2: Stop targets exactly this turn
+  if (stopBtn) stopBtn.disabled = false; // Stop is always visible; ENABLE it while a turn runs
+  const steerHint = document.getElementById('steer-hint');
+  if (steerHint) steerHint.classList.remove('hidden'); // show the steer cue while working
   const thinking = addBubbleUI('assistant thinking', 'Claude is working…');
+  startThinkingTimer(thinking); // live elapsed time so a long turn reads as progressing, not frozen
   try {
     // Two IDs, kept separate on purpose: the WORKER session id is the re-minted id
     // from sessionIds (after a recovery re-mint) else the stable chatId — so a
@@ -422,17 +446,38 @@ async function runSend(item) {
     const isFirstTurn = !turnsStarted.has(chatId);
     const workerSession = sessionIds.get(chatId) || chatId;
     const res = await window.pcc.send(item.msg, getSelectedModel(), workerSession, isFirstTurn, chatId, item.outbound);
-    thinking.remove();
+    stopThinkingTimer(thinking); thinking.remove();
     if (res.ok) turnsStarted.add(chatId);
-    await appendMessage(res.ok ? 'assistant' : 'assistant error', res.text || '(no output)', chatId);
+    // R2/R3: an owner-initiated stop, an automatic budget-cap stop, or hitting the Claude PLAN usage
+    // limit are not PCC failures — a neutral 'assistant' bubble (its own text explains what happened),
+    // never the red error style a real bug gets.
+    const isProtectiveStop = res.stoppedByOwner || res.budgetExceeded || res.usageLimit || res.authError;
+    await appendMessage(res.ok || isProtectiveStop ? 'assistant' : 'assistant error', res.text || '(no output)', chatId);
     if (res.ok) { const cc = chats.find((c) => c.id === chatId); if (cc) persistTranscript(cc); }
     // A stale worker is holding this chat's session — offer a one-click way out.
     if (!res.ok && res.sessionInUse) addRecoveryAction();
+    // R3 slice 2 (desktop-parity, ADR-0015): this chat's cumulative cost crossed its cap — roll it
+    // over AUTOMATICALLY, zero owner action. Reuses the exact same mechanism manual "Recover this
+    // chat" already uses (a fresh underlying session, full visible history kept) — just triggered
+    // by real spend instead of a stale-lock error. Honest, not overclaiming: the model's own
+    // context resets with the new session; the chat's history in PCC does not.
+    if (res.costRollover) {
+      remintSession(chatId);
+      await appendMessage('assistant',
+        'This chat has used about $' + res.costRollover.totalUsd.toFixed(2) + ' so far — PCC automatically started a fresh worker ' +
+        'session to protect your Claude usage from growing unnoticed over a long chat. Your full history stays right here; the new ' +
+        'session starts with a clean context. Nothing more to do — just keep chatting.',
+        chatId);
+    }
   } catch (err) {
-    thinking.remove();
+    stopThinkingTimer(thinking); thinking.remove();
     await appendMessage('assistant error', 'Something went wrong: ' + err.message, chatId);
   } finally {
+    stopThinkingTimer(thinking); // belt-and-suspenders: never leak the interval
     busy = false; input.focus();
+    inFlightChatId = null;
+    if (stopBtn) stopBtn.disabled = true; // turn done — Stop stays visible but goes dim/disabled
+    { const sh = document.getElementById('steer-hint'); if (sh) sh.classList.add('hidden'); }
     // Finding C fix: a mid-turn resync (appendMessage's assistant-reply persist, above,
     // runs a refreshCanonical -> setRecoveryState while busy was still true) can leave
     // sendBtn.disabled=true as a stale snapshot -- nothing re-derived it after busy
@@ -659,11 +704,17 @@ async function initModels() {
 // worker doesn't free claude's session lock (a force-kill can't clean it up), so the
 // real fix is to give THIS chat a fresh worker session id — keeping its visible history
 // — or start a brand-new chat. Either escapes the stale lock.
+// Shared by manual recovery (above) and R3 slice 2's automatic cost-cap rollover below: give a
+// chat a brand-new underlying Claude session (decoupled from the chat's own stable id) while its
+// VISIBLE history is completely untouched — the chat object and its messages are never touched.
+function remintSession(chatId) {
+  sessionIds.set(chatId, uuid());
+  turnsStarted.delete(chatId); // next send opens the new session cleanly (isFirstTurn=true)
+}
 async function recoverThisChat() {
   const chat = activeChat();
   if (!chat) return;
-  sessionIds.set(chat.id, uuid()); // fresh claude session, decoupled from the chat's identity
-  turnsStarted.delete(chat.id);    // next send opens the new session cleanly (isFirstTurn=true)
+  remintSession(chat.id);
   await appendMessage('assistant', 'Fresh worker session started for this chat — your history is kept. Send your message again.', chat.id);
 }
 function addRecoveryAction() {
@@ -1254,6 +1305,18 @@ async function runChatSearch() {
 }
 
 form.addEventListener('submit', (e) => { e.preventDefault(); const t = input.value; input.value = ''; growComposer(); sendMessage(t); });
+// R2 (desktop-parity, ADR-0013): stop the running turn. Disabled immediately on click so a
+// slow-to-die process can't be "stopped" twice; chat-scoped so it can never kill a different
+// chat's turn than the one actually shown as "Claude is working…". Do NOT re-enable here:
+// the button's enabled state means "a turn is running", and runSend owns that (enables at turn
+// start, disables in its finally). Re-enabling in this handler would briefly show Stop as active
+// with no turn once the kill lands (Codex-caught). The killed turn ends -> runSend's finally
+// leaves Stop disabled, which is correct.
+if (stopBtn) stopBtn.addEventListener('click', async () => {
+  if (!inFlightChatId || stopBtn.disabled) return;
+  stopBtn.disabled = true; // prevent a double-stop; runSend's lifecycle owns re-enabling
+  try { await window.pcc.stopWorker(inFlightChatId); } catch (e) { /* the close handler still resolves the turn either way */ }
+});
 input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
 
 // Composer sizing (owner ask 2026-07-20). The chat box was a single fixed line —
@@ -1488,9 +1551,9 @@ function computeChatSignal() {
     items: repeatItems,
     observed,
     might_mean: notice
-      ? 'Long or looping chats tend to drift, lose the earlier thread, and make you repeat yourself. A fresh chat started from the handoff/brief often works better than pushing this one further.'
+      ? 'Long or looping chats tend to drift, lose the earlier thread, and make you repeat yourself. A fresh chat started from the handoff/brief often works better than pushing this one further. (Separately, PCC automatically protects your Claude usage from a chat quietly getting too expensive — see the "Usage" chip at the top of the window; you do not need to watch that here.)'
       : 'This chat is still short and shows no repeated messages - no reason to roll over yet.',
-    not_proven: 'Token usage and whether context has actually degraded are NOT measurable from here. Whether a fresh chat is warranted is a judgment; these are just observable counts. Messages from before this update have no timestamp, so the time span may undercount.',
+    not_proven: 'This is about conversation LENGTH and repetition, not cost — whether context has truly degraded is a judgment call, not something this counts. Real cost protection is a SEPARATE, automatic mechanism (a per-chat spending cap that rolls this chat over on its own if it gets expensive, no action needed from you) — this widget does not track that. Messages from before this update have no timestamp, so the time span may undercount.',
     what_to_do: notice
       ? 'If it feels like you are repeating yourself or the chat is drifting, hit the "New chat" button (top of the chat) - it starts a fresh thread and loads the handoff briefing for you to send. Otherwise keep going.'
       : 'Nothing needed.',
@@ -1824,8 +1887,64 @@ async function loadAuthorityBadge() {
     'PCC chat authority. Read-only means it can read, explain, and plan — it cannot run commands, change files, or launch anything. Reading context is never authorization to act.');
 }
 
+// Owner's real Claude usage stat (desktop-parity R1). Compact, single-number chip mirroring the
+// SAME measure as the Claude desktop app's own "Plan usage limits" panel — no token math, no
+// jargon. `stale` (the local cache hasn't refreshed recently) always shows as 'unknown' rather
+// than a reassuring color, because a color we can't currently vouch for is worse than none.
+function usageSeverity(pct) { return pct >= 90 ? 'bad' : pct >= 70 ? 'warn' : 'good'; }
+function fmtAge(ms) {
+  const min = Math.round(ms / 60000);
+  return min < 1 ? 'just now' : min === 1 ? '1 minute ago' : min + ' minutes ago';
+}
+function setUsageMeter(cls, fillPct, pctText, subText, title) {
+  const m = document.getElementById('usage-meter');
+  const fill = document.getElementById('um-fill');
+  const pct = document.getElementById('um-pct');
+  const sub = document.getElementById('um-sub');
+  if (!m || !fill || !pct) return;
+  m.className = cls;
+  fill.style.width = Math.max(0, Math.min(100, fillPct)) + '%';
+  pct.textContent = pctText;
+  if (sub) sub.textContent = subText || '';
+  m.title = title || '';
+}
+// Plain-language, self-explaining copy for the truly-unreadable state — so a future break (e.g. a
+// Claude desktop-app update moving/renaming its internal usage file) reads as an understandable
+// message, not a mysterious blank. Always makes clear PCC never shows a guessed number.
+function usageUnavailableCopy(reason) {
+  switch (reason) {
+    case 'no_file':
+      return { sub: 'source not found', title: 'PCC can’t find Claude’s usage data. A Claude desktop-app update most likely moved or renamed it — or the Claude app hasn’t run yet. PCC never shows a guessed number.' };
+    case 'malformed':
+      return { sub: 'unreadable format', title: 'Claude’s usage data is in a format PCC doesn’t recognize — most likely changed by a Claude app update. PCC never shows a guessed number.' };
+    case 'empty':
+      return { sub: 'no readings yet', title: 'Claude’s usage data has no readings yet (the Claude app may have just started). PCC never shows a guessed number.' };
+    default:
+      return { sub: 'not readable', title: 'Your real Claude usage isn’t readable right now' + (reason ? ' (' + reason + ')' : '') + '. PCC never shows a guessed number.' };
+  }
+}
+async function loadUsage() {
+  let u = null;
+  try { u = await window.pcc.usage(); } catch (e) { /* leave unknown */ }
+  if (!u || !u.available) {
+    const c = usageUnavailableCopy(u && u.reason);
+    setUsageMeter('unavailable', 0, 'unknown', c.sub, c.title);
+    return;
+  }
+  const ageTxt = fmtAge(u.ageMs);
+  if (u.stale) {
+    setUsageMeter('unknown', u.sessionPercent, '~' + u.sessionPercent + '%', 'stale · ' + ageTxt,
+      'Last known reading, ' + ageTxt + ' — too old to trust as current. Weekly: ' + u.weeklyPercent + '%.');
+    return;
+  }
+  setUsageMeter(usageSeverity(u.sessionPercent), u.sessionPercent, u.sessionPercent + '%', 'of 5-hr limit · wk ' + u.weeklyPercent + '%',
+    'Current session: ' + u.sessionPercent + '% of your 5-hour usage limit · Weekly: ' + u.weeklyPercent + '% · as of ' +
+    ageTxt + '. Source: the same local usage data the Claude desktop app’s Plan-usage panel reads.');
+}
+
 async function loadTrust() {
   loadAuthorityBadge();
+  loadUsage();
   let d = null, x = null, ci = null;
   try { d = await window.pcc.detections(); } catch (e) { /* leave unknown */ }
   try { x = await window.pcc.trustExtras(); } catch (e) { /* leave unknown */ }
@@ -2128,7 +2247,7 @@ async function loadOwnerOverview() {
     + '<div class="ov-card"><div class="ov-card-title">Proof</div>'
     + '<div class="ov-card-sub">Independent review: <b style="color:var(--text)">' + escapeHtml(m.proof.review) + '</b></div>'
     + '<div class="ov-card-sub">Executed proof in app: <b style="color:var(--text)">' + escapeHtml(m.proof.exec) + '</b></div>'
-    + '<div class="ov-card-sub">CI: runs on GitHub every push; live CI status is not yet wired into PCC.</div>'
+    + '<div class="ov-card-sub">CI: runs on GitHub every push; the live pass/fail for the current commit is surfaced in the "Verified" chip at the top of the window (green only on a real CI pass, never a stale or forged one).</div>'
     + '<div class="ov-card-sub">Real Claude/Codex boundary behavior: not proven yet.</div></div>';
 }
 
@@ -2598,3 +2717,22 @@ async function boot() {
 // wait on this flag instead of racing startup. Inert in production; nothing reads it there.
 // .finally covers every exit (early no-project return and thrown errors alike).
 boot().finally(() => { window.__pccBooted = true; });
+// The usage stat changes on the desktop app's own ~5-min cadence, independent of whether this
+// chat is active — a light standalone poll keeps it honestly current without waiting on a turn.
+setInterval(() => { try { loadUsage(); } catch (e) { /* best effort */ } }, 60000);
+
+// ADR-0016: the two-week trust proving window (owner-locked 2026-07-21 -> 2026-08-04). Pure date
+// math (app/renderer/proving-window.js), zero LLM, zero guessing — real days from the real clock.
+// Day-granularity only, so a coarse refresh is plenty; still live, never a static one-time note.
+function renderProvingWindow() {
+  const el = document.getElementById('pw-day');
+  const bar = document.getElementById('pw-bar');
+  if (!el || !bar) return;
+  const s = PCCProvingWindow.provingWindowStatus();
+  el.textContent = s.ended
+    ? 'Trust proving window ended (' + s.endDate + ')'
+    : 'Trust proving window — Day ' + s.dayNumber + ' of ' + s.windowDays + ' (' + s.remainingDays + ' day' + (s.remainingDays === 1 ? '' : 's') + ' left, ends ' + s.endDate + ')';
+  bar.textContent = s.bar;
+}
+renderProvingWindow();
+setInterval(renderProvingWindow, 10 * 60 * 1000);

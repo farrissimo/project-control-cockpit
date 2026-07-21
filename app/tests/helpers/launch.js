@@ -16,7 +16,9 @@ const FAKEBIN = path.join(__dirname, '..', 'fakebin');       // app/tests/fakebi
 
 async function launchApp(extraEnv = {}, opts = {}) {
   const sep = process.platform === 'win32' ? ';' : ':';
-  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-test-'));
+  // opts.userDataDir: reuse a caller-owned dir so state survives a close+relaunch (restart tests).
+  // The caller owns its cleanup, so closeApp must NOT delete it — flagged via _pccKeepUserDataDir.
+  const userDataDir = opts.userDataDir || fs.mkdtempSync(path.join(os.tmpdir(), 'pcc-test-'));
   // Normal launches PREPEND fakebin so any claude/codex the app spawns resolves to the
   // deterministic fakes. opts.rawPath REPLACES PATH entirely (no fakebin) — used only by the
   // preflight real-detection test, which needs a genuinely tool-less PATH so the real `where`
@@ -43,12 +45,13 @@ async function launchApp(extraEnv = {}, opts = {}) {
   const page = await app.firstWindow();
   await page.waitForLoadState('domcontentloaded');
   app._pccUserDataDir = userDataDir;
+  app._pccKeepUserDataDir = !!opts.userDataDir; // caller-owned dir: don't delete it on close
   return { app, page };
 }
 
 async function closeApp(app) {
   try { await app.close(); } catch (e) { /* already gone */ }
-  try { if (app && app._pccUserDataDir) fs.rmSync(app._pccUserDataDir, { recursive: true, force: true }); }
+  try { if (app && app._pccUserDataDir && !app._pccKeepUserDataDir) fs.rmSync(app._pccUserDataDir, { recursive: true, force: true }); }
   catch (e) { /* temp dir cleanup is best-effort */ }
 }
 

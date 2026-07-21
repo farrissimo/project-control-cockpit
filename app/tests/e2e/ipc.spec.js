@@ -40,7 +40,7 @@ test('bridge exposes exactly the expected channels', async () => {
     'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
     'listProjects', 'loadChatsBackup', 'metrics', 'newChat', 'persistChat', 'pickFolder', 'pull', 'recentDecisions', 'repoHead', 'requestJob',
     'runProduct', 'saveChatsBackup', 'saveMemory', 'searchChats', 'secondOpinion', 'send', 'setActiveProject', 'setPhaseKind',
-    'stakes', 'summarizeChat', 'syncStatus', 'toolStatus', 'touchActivity', 'trustExtras', 'verify', 'verifyProduct', 'visionPromises',
+    'stakes', 'stopWorker', 'summarizeChat', 'syncStatus', 'toolStatus', 'touchActivity', 'trustExtras', 'usage', 'verify', 'verifyProduct', 'visionPromises',
   ]);
 });
 

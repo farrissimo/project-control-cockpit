@@ -23,8 +23,13 @@ const { createMutex, runExclusiveBound } = require('./state/mutex'); // serializ
 const lifecycleMutex = createMutex();
 const { decideBackup } = require('./backup-policy');
 const { fetchCiChip } = require('./ci-status');
+const { readPlanUsage, applyLastGood } = require('./usage-meter'); // owner's real Claude usage stat (desktop-parity R1)
+const { loadUsageCache, saveUsageCache } = require('./usage-store'); // PCC's own durable mirror of that stat
+const { readUsageLimits, isBudgetExceeded, isUsageLimitError, isAuthError } = require('./usage-limits'); // per-turn hard cost cap (desktop-parity R3)
+const { parseTurnOutput } = require('./turn-output'); // parses --output-format json's real total_cost_usd (desktop-parity R3 slice 2)
+const { loadChatCosts, saveChatCosts } = require('./chat-cost-store'); // durable per-chat cost so rollover survives a restart (ADR-0015 residue)
 const { singleFlight } = require('./single-flight'); // coalesce concurrent detector refreshes (soak W3)
-const { parseStreamJson } = require('./stream-json');
+const { parseStreamJson, parseStreamCost } = require('./stream-json');
 const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
 const { logAppError } = require('./error-log'); // durable trace for otherwise-swallowed app failures
@@ -92,6 +97,12 @@ const chatsDir = () => process.env.PCC_TEST_MODE
   // in the throwaway userData instead of the real repo.
   ? path.join(app.getPath('userData'), 'chats', crypto.createHash('sha1').update(projectDir).digest('hex').slice(0, 16))
   : path.join(cockpitDir(), 'chats');
+// Where per-chat cost totals persist (ADR-0015 residue). Same isolation principle as chatsDir():
+// in tests a throwaway, per-project userData dir so the suite NEVER writes real project state; in
+// production the git-ignored .cockpit/evidence. Returns the EXACT dir chat-costs.json lives in.
+const costStoreDir = () => process.env.PCC_TEST_MODE
+  ? path.join(app.getPath('userData'), 'cost-store', crypto.createHash('sha1').update(projectDir).digest('hex').slice(0, 16))
+  : path.join(cockpitDir(), 'evidence');
 
 // The cross-project registry is machine/app-level (Electron userData), NOT
 // inside any repo — so it is independent of which project is active and there
@@ -202,6 +213,41 @@ let sessionId = null;
 // that OUTLIVES the app if not killed on a tree — orphaning it, which holds the
 // chat's session lock and bricks the chat ("session already in use") on next launch.
 const activeWorkers = new Set();
+// R2 (desktop-parity, ADR-0013): the owner-visible "Stop" button target. The chat UI runs one
+// turn at a time globally (the renderer's `busy` flag serializes sends across every chat), so a
+// single ref is enough — no per-chat map needed. Only askClaude's PRIMARY chat-turn spawn sets
+// this (not oneShotWorker's background auto-name/summary/recall calls, which the owner never
+// watches a "Claude is working…" bubble for).
+let currentTurn = null;
+
+// R3 slice 2 (desktop-parity, ADR-0015): a whole CHAT's cumulative cost, tracked from the REAL
+// per-turn total_cost_usd Claude Code reports (--output-format json) — not estimated from tokens.
+// This is what the per-turn cap (slice 1) cannot see: many small turns adding up over hours, the
+// actual 2026-07-20 mechanism. DURABLE across restarts (residue closed): the totals are persisted
+// to a git-ignored file (app/chat-cost-store.js) and reloaded here, so a long chat resumed after a
+// restart keeps its accumulated total instead of silently resetting to 0. The store is fail-safe:
+// a missing/corrupt file loads as empty, so this can only degrade to the old in-memory behavior,
+// never break. Loaded lazily on first use so cockpitDir()/projectDir is settled.
+let chatCostUsd = null;
+function chatCosts() {
+  if (chatCostUsd === null) chatCostUsd = new Map(Object.entries(loadChatCosts(costStoreDir())));
+  return chatCostUsd;
+}
+function recordChatCost(chatId, costUsd, opts) {
+  if (!chatId || typeof costUsd !== 'number' || !Number.isFinite(costUsd) || costUsd < 0) return null;
+  const costs = chatCosts();
+  const total = (costs.get(chatId) || 0) + costUsd;
+  const cap = readUsageLimits(path.join(cockpitDir(), 'state')).maxChatUsd;
+  // deferRollover (the failed-turn path): do NOT roll over / reset here. The error path resolves its
+  // own message and starts no new session, so rolling over now would only RESET the counter to 0
+  // without any protective rollover actually firing — silently eating the cap-crossing and defeating
+  // the cross-turn cap (a codex-caught fail-open). Instead we ACCUMULATE the real cost and let the
+  // next SUCCESSFUL turn cross the cap and roll over for real.
+  const rollNow = total >= cap && !(opts && opts.deferRollover);
+  costs.set(chatId, rollNow ? 0 : total); // a real rollover "pays down" the counter — the fresh session starts clean
+  saveChatCosts(costStoreDir(), Object.fromEntries(costs)); // best-effort durability; a failed write just keeps the run's in-memory total
+  return rollNow ? { totalUsd: total } : null;
+}
 function killWorker(child) {
   if (!child || child.killed || !child.pid) return;
   try {
@@ -692,6 +738,7 @@ ipcMain.handle('pcc:setActiveProject', (_e, dir) => {
   if (!w.ok) return { ok: false, error: 'Could not save the selection; not switching: ' + w.error };
   projectDir = dir;
   sessionId = null;                 // don't carry a worker session across projects
+  chatCostUsd = null;               // reload per-chat cost totals from the NEW project's store (not the old one's)
   return { ok: true, active: projectEntry(dir) };
 });
 
@@ -833,6 +880,11 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     const toolFlags = toolFlagsFor(isBuild);
     const args = ['-p', '--model', chosen, ...toolFlags, '--append-system-prompt', CHANNEL_PROMPT];
     if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
+    // R3 (desktop-parity ADR-0014): a real, Anthropic-enforced per-turn hard cost cap — Claude
+    // Code's OWN --max-budget-usd flag aborts THIS turn cleanly if its spend crosses the cap,
+    // rather than PCC trying to reinvent cost tracking. Caps a single-turn runaway; a whole
+    // chat's cumulative cost across many turns is the separate, still-open piece of R3.
+    args.push('--max-budget-usd', String(readUsageLimits(path.join(cockpitDir(), 'state')).maxTurnUsd));
     // Worker (Claude) session identity is SEPARATE from authority identity: the renderer
     // passes workerSessionId (the chat's own id, or a re-minted id after crash recovery) for
     // --session-id/--resume, while build authority above is keyed to the stable chatId. So
@@ -847,6 +899,12 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     // the authority/read-only spawn behavior, which is identical either way (same tool flags).
     const hasAttach = Array.isArray(attachments) && attachments.length > 0;
     if (hasAttach) args.push('--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose');
+    // R3 slice 2: non-streaming JSON output for the ordinary text path gives the real per-turn
+    // total_cost_usd (app/turn-output.js) — a single blob, not incremental parsing, so this is a
+    // small addition, not the larger always-streaming change. Backward-safe: parseTurnOutput
+    // returns text:null on anything that isn't this exact shape (e.g. the test fakebin's plain
+    // text), and the close handler below falls back to today's plain-text handling unchanged.
+    else args.push('--output-format', 'json');
     let out = '';
     let err = '';
     let child;
@@ -856,18 +914,61 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
       return resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message });
     }
     activeWorkers.add(child); // tracked so app-quit can kill it (F4)
+    // R2: this IS the owner-visible turn a Stop button targets. `opts.forceBuild` marks the New
+    // Project create-flow spawn, which already has its own Save/Cancel stop path (onSpawn below)
+    // and isn't the normal chat's "Claude is working…" bubble — excluded so Stop only ever targets
+    // an ordinary chat turn.
+    if (!(opts && opts.forceBuild)) currentTurn = { child: child, chatId: chatId || null, stoppedByOwner: false };
     if (opts && typeof opts.onSpawn === 'function') opts.onSpawn(child); // let the create-flow track its worker so Save/Cancel can stop it
-    child.on('error', (e) => { activeWorkers.delete(child); resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message }); });
+    child.on('error', (e) => {
+      activeWorkers.delete(child);
+      if (currentTurn && currentTurn.child === child) currentTurn = null;
+      resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message });
+    });
     child.stdout.on('data', (d) => { out += d.toString(); });
     child.stderr.on('data', (d) => { err += d.toString(); });
     child.on('close', (code) => {
       activeWorkers.delete(child);
-      if (code === 0) resolve({ ok: true, text: hasAttach ? parseStreamJson(out) : out.trim() });
-      else {
+      const wasStoppedByOwner = !!(currentTurn && currentTurn.child === child && currentTurn.stoppedByOwner);
+      if (currentTurn && currentTurn.child === child) currentTurn = null;
+      if (wasStoppedByOwner) {
+        // An owner-initiated stop is not an error — say so plainly, not a raw exit-code message.
+        if (isNewSession && !workerSessionId) sessionId = null;
+        resolve({ ok: false, stoppedByOwner: true, text: 'Stopped — you ended this turn before Claude finished. Nothing after this point was sent.' });
+        return;
+      }
+      if (code === 0) {
+        let text;
+        let rollover = null;
+        if (hasAttach) {
+          text = parseStreamJson(out);
+          // Attachment/image turns are the most token-expensive — count their real cost toward the
+          // per-chat cap too (parseStreamCost is null on the plain-text fake, so tests are unaffected).
+          const attachCost = parseStreamCost(out);
+          if (attachCost !== null) rollover = recordChatCost(chatId, attachCost);
+        } else {
+          const parsed = parseTurnOutput(out);
+          if (parsed.text !== null) {
+            text = parsed.text;
+            if (parsed.costUsd !== null) rollover = recordChatCost(chatId, parsed.costUsd);
+          } else {
+            text = out.trim(); // not JSON (the test fakebin, or any non-JSON stdout) — today's plain-text path, unchanged
+          }
+        }
+        const res = { ok: true, text: text };
+        if (rollover) res.costRollover = rollover; // R3 slice 2: this chat crossed its cumulative cap
+        resolve(res);
+      } else {
         // A failed FIRST turn means no session actually exists at that id. When
         // the renderer owns the id it tracks that (keeps the chat "not started"
         // so it retries with --session-id); for the local fallback, reset here.
         if (isNewSession && !workerSessionId) sessionId = null;
+        // Even an aborted turn can carry a real partial cost (e.g. the budget-cap abort itself
+        // still cost something) — count it so the cumulative total stays accurate. deferRollover:true
+        // so a cap-crossing on THIS failed turn ACCUMULATES (is not reset to 0) and is caught on the
+        // next successful turn — the old code reset it here, silently eating the crossing (codex-caught).
+        if (!hasAttach) { const p = parseTurnOutput(err || out); if (p.costUsd !== null) recordChatCost(chatId, p.costUsd, { deferRollover: true }); }
+        else { const c = parseStreamCost(err || out); if (c !== null) recordChatCost(chatId, c, { deferRollover: true }); } // accumulate partial cost; rolls over on the next successful turn
         const raw = (err || (hasAttach ? parseStreamJson(out) : out) || ('Claude exited with code ' + code)).trim();
         // Soak fix F4: a stale session lock (a worker orphaned by an earlier crash or
         // mid-turn quit) surfaces as the raw "Session ID ... is already in use". Turn
@@ -876,6 +977,22 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
         if (/session id .* is already in use/i.test(raw)) {
           resolve({ ok: false, sessionInUse: true,
             text: 'This chat’s worker session is locked — a worker was interrupted (a crash, or the app closed mid-reply) and left the session in use. Use “Recover this chat” below to give it a fresh worker session while keeping your history, or start a new chat.' });
+        } else if (isBudgetExceeded(raw) || (!hasAttach && parseTurnOutput(err || out).budgetExceeded)) {
+          // R3: Claude Code's own --max-budget-usd aborted this turn — an automatic protection
+          // firing as designed, not a failure. Say so plainly, never a scary raw budget error.
+          resolve({ ok: false, budgetExceeded: true,
+            text: 'Stopped automatically — this turn hit its per-turn spending cap before finishing. This is a safety limit protecting your Claude usage, not a bug. You can raise the cap in .cockpit/state/usage-limits.json, or just send it again (it will pick up where the plan left off).' });
+        } else if (isUsageLimitError(raw)) {
+          // The owner hit their actual Claude PLAN usage limit (Anthropic's, not PCC's). This is the
+          // most likely shock in heavy use — turn the scary raw CLI error into a plain, reassuring
+          // message: it's your plan limit resetting, not a PCC bug, and nothing was lost.
+          resolve({ ok: false, usageLimit: true,
+            text: 'You’ve reached your Claude usage limit. This is Anthropic’s limit on your plan (the same one the “Usage” chip at the top of the window tracks) — not a PCC problem, and nothing is broken. Your chat and full history are safe right here. It resets automatically after a while; just send your message again once it does.' });
+        } else if (isAuthError(raw)) {
+          // Claude Code sign-in expired / signed out — not a PCC bug, but it does need the owner to
+          // sign back in (auth is a browser flow PCC can't do for you). Say so plainly, not raw.
+          resolve({ ok: false, authError: true,
+            text: 'PCC can’t reach Claude because your Claude Code sign-in has expired or signed out — this isn’t a PCC bug. To fix it, sign back in to Claude Code (open a terminal and run “claude /login”, or reopen Claude Code and sign in), then send your message again. Your chat and full history are safe right here.' });
         } else {
           resolve({ ok: false, text: raw });
         }
@@ -1192,7 +1309,7 @@ ipcMain.handle('pcc:createFlowSave', async (_e, name, location) => {
   // Persist FIRST: only switch the session to the new project if it reached the
   // registry, so projectDir never diverges from the persisted active project.
   if (!w.ok) return { ok: false, error: 'Project created on disk, but could not save it to the registry (re-add it from "Open existing"): ' + w.error };
-  projectDir = target; sessionId = null;
+  projectDir = target; sessionId = null; chatCostUsd = null; // reload cost totals from the new project's store
   return { ok: true, project: projectEntry(target) };
 });
 
@@ -1248,6 +1365,49 @@ ipcMain.handle('pcc:ciStatus', async () => {
   } catch (e) {
     return { ok: true, available: false, reason: 'unreachable' };
   }
+});
+
+// The owner's real Claude usage stat (desktop-parity R1, docs/proposals/desktop-parity.md) —
+// reads the SAME local cache the Claude desktop app's own "Plan usage limits" panel is driven
+// from (see app/usage-meter.js for the honest boundaries: unavailable, not fabricated, on
+// missing/malformed/empty data; freshness always told straight via ageMs/stale). Synchronous
+// local file read, so no test-mode branch is needed — it degrades to unavailable on its own
+// when the file doesn't exist (e.g. a machine without the desktop app / in CI).
+// PCC's own durable mirror of the owner's last real usage reading (see usage-store.js). Seeded from
+// disk at startup (so even a failed cross-app read at launch shows a real, honestly-aged number) and
+// refreshed whenever a cross-app read SUCCEEDS. app.getPath('appData') is the OS-resolved Roaming dir
+// (immune to a missing APPDATA env var); readPlanUsage retries transient failures; applyLastGood then
+// serves this mirror if a read still fails — so no single failed read can ever blank the meter.
+let lastGoodUsage = null;
+function pollUsageIntoCache() {
+  try {
+    const fresh = readPlanUsage(Date.now(), app.getPath('appData'));
+    if (fresh && fresh.available) {
+      lastGoodUsage = { sessionPercent: fresh.sessionPercent, weeklyPercent: fresh.weeklyPercent, asOfMs: fresh.asOfMs };
+      try { saveUsageCache(app.getPath('userData'), lastGoodUsage); } catch (e) { /* best-effort mirror */ }
+    }
+    return fresh;
+  } catch (e) { return { ok: true, available: false, reason: 'malformed' }; }
+}
+ipcMain.handle('pcc:usage', () => {
+  const fresh = pollUsageIntoCache();
+  return applyLastGood(fresh, lastGoodUsage, Date.now());
+});
+
+// R2 (desktop-parity, ADR-0013): stop the currently in-flight chat turn — the fix for "PCC just
+// sits on 'Claude is working…' with no way out but closing the app." Chat-scoped: if the caller
+// passes a chatId that doesn't match the turn actually running, this is a no-op (never kills the
+// wrong chat's worker). Marks stoppedByOwner BEFORE killing so the close handler (above) resolves
+// a plain "you stopped this" message instead of a raw exit-code error.
+ipcMain.handle('pcc:stopWorker', (_e, chatId) => {
+  if (!currentTurn || !currentTurn.child) return { ok: true, stopped: false, reason: 'no_active_turn' };
+  // Strict match, no fallthrough: a missing/undefined/null chatId must NOT stop whatever happens
+  // to be running (Codex-caught: the earlier `chatId && ...` form silently allowed exactly that).
+  // The caller must name the turn it means to stop.
+  if (currentTurn.chatId !== chatId) return { ok: true, stopped: false, reason: 'chat_mismatch' };
+  currentTurn.stoppedByOwner = true;
+  killWorker(currentTurn.child);
+  return { ok: true, stopped: true };
 });
 
 ipcMain.handle('pcc:syncStatus', async () => {
@@ -1387,6 +1547,13 @@ app.whenReady().then(() => {
   // Load the persisted per-chat build authority (needs app.getPath, so do it here). Any
   // session already past its idle/hard deadline is dropped on load.
   try { authority.load(Date.now()); } catch (e) { /* start with an empty authority set */ }
+  // Seed the usage meter's durable mirror from disk (needs app.getPath) so a failed cross-app read at
+  // launch still shows a real, honestly-aged number; then keep it fresh with a light background poll
+  // (owner's design: "write the stats to a different file, poll the original every so often"). A
+  // failed read only skips an update — it never blanks the meter.
+  try { lastGoodUsage = loadUsageCache(app.getPath('userData')) || lastGoodUsage; } catch (e) { /* start empty */ }
+  try { pollUsageIntoCache(); } catch (e) { /* best effort */ }
+  try { setInterval(() => { try { pollUsageIntoCache(); } catch (e) { /* best effort */ } }, 25000); } catch (e) { /* best effort */ }
   // Restore the last-active project (registry needs app.getPath, so read it here).
   try {
     const reg = readRegistry();

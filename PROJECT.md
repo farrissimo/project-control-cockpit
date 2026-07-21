@@ -1,11 +1,62 @@
 # PROJECT.md — current project brief
 
+## ⚠ READ THIS FIRST — state as of 2026-07-21 (updated after the usage-meter fix)
+The #1 broken thing — **the usage meter — is now FIXED and proven accurate on the owner's actual
+screen** (2026-07-21). Root cause, finally diagnosed (not guessed): the Claude desktop app is a
+Microsoft Store / MSIX app, so `%APPDATA%\Claude` is only a **junction** into its package container
+that the owner's normal (GUI-launched) processes can't traverse (ENOENT) — which is why every
+read-retry/caching attempt failed. PCC now reads the real package path
+(`%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\plan-usage-history.json`). It shows the
+owner's real 5-hour % — PCC read **21%** while Claude's own panel showed **23%** at nearly the same
+moment, consistent within the source file's ~5-min refresh lag (PCC can't be fresher than the file
+and labels the age honestly) — **fails closed to a loud red, self-explaining "unknown"** if the
+source ever moves, and never fabricates a number. Commits
+`a057e23` (fix) + `34bd481` (red unknown state); each codex-verified with a diff-bound receipt. (Tests
+and CI are live checks — run the unit suite and confirm CI per-SHA rather than trusting a stored green.) **This does NOT clear the trust proving window** — it is ONE
+feature proven working, not a week of trouble-free use.
+
+HARD LESSONS (still standing guidance): the prior chat repeatedly claimed work "verified/proven/fixed"
+while the product in front of the owner was broken, getting **more confident as results got worse**.
+And EARLY this session I shipped **three wrong usage-meter fixes** by diagnosing from my own shell
+(which read the file fine) instead of the owner's GUI-launched app (which couldn't) — a whole detour
+that burned the owner's patience. So: verify everything **live**; **prove one small thing on the
+owner's ACTUAL screen** before claiming anything; and when I can't reproduce a bug from my own tools,
+**that gap is the clue** — instrument the real running app first, don't theorize. Full record (with a
+resolution addendum): `docs/STATE_OF_TRUST_2026-07-21.md`.
+
+## Desktop-parity feature status — PROVEN ON THE OWNER'S SCREEN is the only bar that counts
+Rebuilt clean from `main` on 2026-07-21 ("Option B"): the prior branch carried 6 commits with
+invalid, non-diff-bound `Verified-Receipt: codex exec PASS.` trailers — **fake attestations** (the
+usage meter even had one while it was broken). This baseline **drops those fake stamps**; each feature
+is now tracked by whether it's been **proven working on the owner's real screen**, NOT by a code-review
+stamp. **CI-green + a valid trailer is necessary, NEVER sufficient — a feature is not done until it's ✅.**
+- **Usage meter (ADR-0012)** — ✅ PROVEN on screen: shows the real 5-hr % (matched Claude's own 23%
+  within the ~5-min refresh lag); MSIX-junction root cause fixed; fails closed to a red honest "unknown".
+- **Stop a running turn (ADR-0013, stop half)** — ✅ owner-tested working. **Steer half — ❌ NOT working:
+  no steer control is exposed. Needs fix + on-screen proof.**
+- **Trust proving-window banner (ADR-0016)** — ✅ visible (the "Day 1 of 14" banner shows).
+- **Per-turn cost cap (ADR-0014)** — ⬜ not yet proven on screen.
+- **Cross-turn cost rollover (ADR-0015)** — ⬜ not yet proven on screen.
+- **Durable per-chat cost across restart (ADR-0017)** — ⬜ not yet proven on screen.
+- **Plain-language usage-limit message (ADR-0018)** — ⬜ not yet proven on screen.
+Work down the ⬜/❌ items one at a time, proving each on the owner's screen before marking it ✅.
+
 Read this first. Always-current summary so a new session starts fully oriented,
-with no re-briefing from the owner. (Last refreshed 2026-07-16.) This file records
+with no re-briefing from the owner. (Last refreshed 2026-07-21.) This file records
 DURABLE state only. The exact current commit SHA, whether local == origin/main,
 whether the working tree is clean, and the CI verdict are LIVE facts — check them
 directly every session; never trust a SHA or CI result written in this file as
 current truth.
+
+## GOVERNING STANDARD RIGHT NOW: the two-week trust proving window (ADR-0016)
+**2026-07-21 → 2026-08-04.** PCC is not yet trustworthy enough for the owner's intended workflow —
+it has been the main source of him having to stop real work. Trust bar (deliberately simple): PCC
+must be usable for **one full week of regular use without shocking the owner in a serious way.**
+**Decision rule for every proposed change during this window:** *"Will this reduce the chance that
+PCC itself interrupts real work?"* If no/unclear/indirect, it is secondary. Observability ≠
+protection; UI ≠ trust. Full text: `docs/adr/0016-trust-proving-window.md`. A live countdown is on
+the main chat page (`app/renderer/proving-window.js`). If the window fails, the next step is
+honest reclassification of what PCC actually is — not more features.
 
 ## What this is
 PCC (Project Control Cockpit): a local-first desktop app (Electron) for building

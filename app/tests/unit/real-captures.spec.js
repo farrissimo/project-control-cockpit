@@ -8,7 +8,7 @@
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
-const { parseStreamJson } = require('../../stream-json');
+const { parseStreamJson, parseStreamCost } = require('../../stream-json');
 const { parseVerification } = require('../../renderer/verification-parse');
 
 const REAL = (n) => fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'real', n), 'utf8');
@@ -51,6 +51,23 @@ test('parseStreamJson never leaks a thinking block or a signature into the reply
   const out = parseStreamJson(REAL('claude-streamjson-success.txt'));
   expect(out).not.toMatch(/signature|thinking/i);
   expect(out).toBe('PONG');
+});
+
+// desktop-parity R3: attachment/image turns (the stream-json path) must contribute their real cost
+// to the per-chat cap too — they're the most expensive turn type, so leaving them uncounted was the
+// one blind spot in the runaway protection.
+test('parseStreamCost extracts the REAL total_cost_usd from a real stream-json envelope', () => {
+  const raw = REAL('claude-streamjson-success.txt');
+  expect(raw).toContain('"total_cost_usd"');            // the real capture carries a cost
+  expect(parseStreamCost(raw)).toBeCloseTo(0.021595, 6); // the exact captured value, not invented
+});
+
+test('parseStreamCost returns null (never a fabricated cost) when there is no valid cost', () => {
+  expect(parseStreamCost('FAKE-CLAUDE-REPLY: plain text')).toBeNull(); // the test fakebin's output
+  expect(parseStreamCost('')).toBeNull();
+  expect(parseStreamCost('{"type":"result","total_cost_usd":-1}')).toBeNull();   // negative rejected
+  expect(parseStreamCost('{"type":"result","total_cost_usd":"5"}')).toBeNull();  // non-number rejected
+  expect(parseStreamCost('{"type":"result"}')).toBeNull();                        // missing field
 });
 
 test('parseVerification reads the verdict from a REAL codex envelope (preamble + duplicated body)', () => {

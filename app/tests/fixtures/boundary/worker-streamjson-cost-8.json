@@ -1,0 +1,1 @@
+{ "stdout": "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"IMG-REPLY\"}]}}\n{\"type\":\"result\",\"subtype\":\"success\",\"result\":\"IMG-REPLY\",\"total_cost_usd\":8}", "stderr": "", "exitCode": 0 }
