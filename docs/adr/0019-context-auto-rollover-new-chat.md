@@ -1,10 +1,34 @@
 ---
-status: Proposed
+status: Accepted
 date: 2026-07-21
 deciders: owner (product lead), Claude (worker), Codex (independent verifier)
 ---
 
 # ADR-0019: Context-triggered auto-rollover to a fresh chat + a truthful chat-health meter — desktop-parity R3
+
+## Amendment (2026-07-21, GROWTH revision — the shipped design)
+
+The first cut of this ADR metered **absolute** context tokens (`input_tokens + cache_read +
+cache_creation`) against a rollover threshold. That was **wrong and shipped a loop**: every turn PCC
+sends carries a large **FIXED baseline** — the system prompt + all tool definitions + CLAUDE.md/
+AGENTS.md — re-sent unchanged each turn (~252K tokens for the owner's setup). Counting that fixed
+overhead as "chat length" made a **fresh chat trip the threshold on turn one** and auto-roll into a
+new chat that had the **same** baseline — an infinite loop on the owner's real screen (13 chats deep).
+
+**Corrected decision (implemented):** the meter measures conversation **GROWTH past each chat's own
+first-turn baseline**: on a chat's first measured turn, record that turn's context tokens as the
+baseline (the fixed overhead) and freeze it; the gauge and the rollover trigger use
+`growth = max(0, currentContextTokens − baseline)`. A fresh chat reads ~0% and climbs only as the real
+back-and-forth accumulates; because each new chat records its **own** baseline, a rolled-over chat also
+starts at ~0% — **the turn-one loop is structurally impossible**. Growth is window-independent for the
+trigger; the estimated-window %/tokens remain only as secondary "approaching the hard wall" hover
+detail (and the meter now says so honestly when the raw total already exceeds the conservative window
+estimate — proof the real window is larger). Auto-rollover was briefly disabled behind an
+`AUTO_ROLLOVER_ENABLED` kill-switch (commit 1d474cd) to stop the live loop, then re-enabled once the
+growth trigger landed. Persisted per chat in `localStorage` (`pcc.chatContextBaseline`), same cache
+tier as the token map. Proven: unit suite (`app/tests/unit/chat-health.test.js`, incl. the loop-
+prevention case) + E2E (`context-meter.spec.js` fresh-chat-stays-calm-then-climbs;
+`context-rollover.spec.js` turn-one-baseline-does-NOT-roll, growth-does).
 
 ## Context and Problem
 

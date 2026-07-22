@@ -464,9 +464,10 @@ async function runSend(item) {
     // threshold (fired below once the send burst settles, so it never races a queued steer).
     if (res.ok) {
       if (typeof res.contextTokens === 'number') {
+        recordContextBaseline(chatId, res.contextTokens); // freeze this chat's fixed overhead on its FIRST reading
         recordContextTokens(chatId, res.contextTokens);
         staleContextChats.delete(chatId); // a fresh real reading — no longer stale
-        const rg = PCCChatHealth.computeGauge({ contextTokens: res.contextTokens, model: getSelectedModel() });
+        const rg = PCCChatHealth.computeGauge({ contextTokens: res.contextTokens, baselineTokens: chatContextBaseline.get(chatId), model: getSelectedModel() });
         // codex-caught: do NOT mark rolledOverChats here — that would fail-STUCK a chat whose rollover
         // then errors. It is marked only on a SUCCESSFUL rollover (in autoRolloverToNewChat).
         if (AUTO_ROLLOVER_ENABLED && rg.overRollover && !rolledOverChats.has(chatId) && !rolloverInFlight) { rolloverAfterTurn = { chatId: chatId, tokens: res.contextTokens }; }
@@ -789,13 +790,11 @@ const staleContextChats = new Set();// chats whose LATEST turn reported no token
 let rolloverAfterTurn = null;        // { chatId, pct } set by runSend when a turn crosses the threshold
 let rolloverInFlight = false;        // guard: never start a second rollover while one is running
 
-// TEMPORARY KILL-SWITCH (2026-07-21): ADR-0019's meter counts the large FIXED per-turn overhead
-// Claude Code re-sends every turn (system prompt + tool defs + CLAUDE.md/AGENTS.md, ~252K tokens)
-// as "chat length", so a fresh chat trips the rollover threshold on turn ONE and auto-rolls into a
-// new chat that has the SAME baseline — an infinite loop. Disable the AUTO-rollover trigger until the
-// meter is reworked to measure conversation GROWTH (current - this chat's first-turn baseline), which
-// makes the loop impossible. The meter still DISPLAYS; only the automatic new-chat rollover is off.
-const AUTO_ROLLOVER_ENABLED = false;
+// Auto-rollover is safe again (2026-07-21 growth revision): the meter now trips on conversation
+// GROWTH past each chat's own first-turn baseline (see recordContextBaseline + chat-health.js), not
+// on the large fixed per-turn overhead. A fresh/rolled-over chat starts at ~0% growth, so the
+// turn-one infinite loop that forced this kill-switch off is structurally impossible.
+const AUTO_ROLLOVER_ENABLED = true;
 
 // Flatten the structured summary into short seed text (best-effort; empty if no summary).
 function summaryToSeedText(s) {
@@ -1645,6 +1644,25 @@ function recordContextTokens(chatId, tokens) {
   try { localStorage.setItem(CTX_LS_KEY, JSON.stringify(Object.fromEntries(chatContextTokens))); } catch (e) { /* cache best-effort */ }
 }
 
+// ADR-0019 (growth revision, 2026-07-21): each chat's FIRST measured turn = its fixed baseline (the
+// large per-turn overhead Claude Code re-sends unchanged: system prompt + tool defs + CLAUDE.md/
+// AGENTS.md). The chat-health meter tracks growth PAST this baseline, so a fresh chat reads ~0% and
+// the auto-rollover can't loop. First reading wins and is frozen; persisted (same cache tier as the
+// token map) so a restart keeps a chat's baseline instead of re-baselining higher and reading falsely low.
+const CTX_BASE_LS_KEY = 'pcc.chatContextBaseline';
+const chatContextBaseline = (() => {
+  try {
+    const o = JSON.parse(localStorage.getItem(CTX_BASE_LS_KEY) || '{}');
+    return new Map(Object.entries(o).filter(([, v]) => typeof v === 'number' && Number.isFinite(v) && v >= 0));
+  } catch (e) { return new Map(); }
+})();
+function recordContextBaseline(chatId, tokens) {
+  if (!chatId || typeof tokens !== 'number' || !Number.isFinite(tokens) || tokens < 0) return;
+  if (chatContextBaseline.has(chatId)) return; // first reading wins — the baseline is frozen for this chat
+  chatContextBaseline.set(chatId, tokens);
+  try { localStorage.setItem(CTX_BASE_LS_KEY, JSON.stringify(Object.fromEntries(chatContextBaseline))); } catch (e) { /* cache best-effort */ }
+}
+
 function computeChatSignal() {
   const userMsgs = history.filter((m) => m.cls === 'user');
   const turns = userMsgs.length;
@@ -1668,9 +1686,11 @@ function computeChatSignal() {
   // chat-health.js from the CURRENT model). The gauge reads "how close to rollover", so it hits 100%
   // exactly when protection fires, not a calm-looking % of a huge window.
   const ctxTokens = activeId ? chatContextTokens.get(activeId) : null;
+  const ctxBaseline = activeId ? chatContextBaseline.get(activeId) : null;
   const g = PCCChatHealth.computeGauge({
     turns, spanHours,
     contextTokens: (typeof ctxTokens === 'number' ? ctxTokens : null),
+    baselineTokens: (typeof ctxBaseline === 'number' ? ctxBaseline : null),
     model: getSelectedModel(),
   });
 
@@ -1684,20 +1704,28 @@ function computeChatSignal() {
   const kTok = (n) => Math.round(n / 1000) + 'K';
   let observed = turns + ' message(s) sent in this chat';
   if (spanHours !== null) observed += ', spanning ~' + (spanHours < 1 ? '<1' : spanHours.toFixed(1)) + ' hour(s)';
-  if (g.contextMeasured) observed += ', context ~' + kTok(g.contextTokens) + ' tokens (~' + Math.round(g.pctOfWindow * 100) + '% of the estimated window)' + (contextStale ? ' as of an earlier turn' : '');
+  // GROWTH, not raw size: report how much the conversation has added past its fixed first-turn baseline.
+  if (g.contextMeasured) observed += ', conversation grown ~' + kTok(g.growthTokens) + ' tokens past its ~' + kTok(g.baselineTokens || 0) + ' startup baseline' + (contextStale ? ' as of an earlier turn' : '');
   observed += '.';
   if (repeats.length) observed += ' ' + repeats.length + ' message(s) were sent more than once.';
 
   // Hover breakdown (AC-4): plain-language "how this number is calculated" + which input drives it.
-  const staleNote = (g.contextMeasured && contextStale) ? ' — from an earlier turn (the last turn reported no tokens, so real context may be higher)' : '';
+  const staleNote = (g.contextMeasured && contextStale) ? ' — from an earlier turn (the last turn reported no tokens, so real growth may be higher)' : '';
+  // Secondary "approaching the hard wall" detail — kept, but honest that the window is an estimate and
+  // may be too small (raw total already over it => the real window is larger).
+  const wallNote = g.contextMeasured
+    ? (g.overWindowEstimate
+      ? ' Raw total ~' + kTok(g.contextTokens) + ' tokens already exceeds PCC’s conservative ~' + kTok(g.windowTokens) + ' window estimate, so your plan’s real window is larger — growth (above) is what the meter tracks, and it doesn’t depend on the window.'
+      : ' Raw total ~' + kTok(g.contextTokens) + ' tokens is ~' + Math.round(g.pctOfWindow * 100) + '% of the estimated ~' + kTok(g.windowTokens) + ' window.')
+    : '';
   const ctxLine = g.contextMeasured
-    ? ('Context: ~' + kTok(g.contextTokens) + ' tokens — ~' + Math.round(g.pctOfWindow * 100) + '% of the ~' + kTok(g.windowTokens) + ' window (estimated)' + staleNote)
-    : 'Context: not measured yet this session — shown when available, never guessed';
+    ? ('Conversation growth: ~' + kTok(g.growthTokens) + ' / ~' + kTok(g.rolloverTokens) + ' tokens before auto-rollover (measured past this chat’s fixed startup baseline, so the constant per-turn overhead never counts as chat length)' + staleNote)
+    : 'Conversation growth: not measured yet this session — shown when available, never guessed';
   const hover = 'Chat health = the highest (worst) of these three, so nothing hides a problem:\n'
     + '• Messages: ' + turns + ' / ' + ROLLOVER_TURNS + '\n'
     + '• Time: ' + (spanHours !== null ? (spanHours < 1 ? '<1' : spanHours.toFixed(1)) : '—') + ' / ' + ROLLOVER_HOURS + ' hr\n'
     + '• ' + ctxLine + '\n'
-    + 'Now driven by: ' + g.driver + '. Auto-rollover fires at ~' + kTok(g.rolloverTokens) + ' tokens (whichever comes first: a usage-burn floor, or 75% of the estimated window). Your plan-usage limit is the separate "Usage" chip up top.';
+    + 'Now driven by: ' + g.driver + '. Auto-rollover fires once the conversation GROWS ~' + kTok(g.rolloverTokens) + ' tokens past its startup baseline (whichever comes first: a usage-burn floor, or 75% of the estimated window).' + wallNote + ' Your plan-usage limit is the separate "Usage" chip up top.';
 
   return {
     detector: 'chat-rollover',
@@ -1710,8 +1738,8 @@ function computeChatSignal() {
       ? 'This chat is getting large (by messages, time, or real context size). Long chats drift, lose the earlier thread, and burn your Claude usage faster. PCC automatically rolls a too-full chat over into a fresh one, carrying a handoff + summary forward (ADR-0019).'
       : 'This chat is still comfortably within limits on messages, time, and context size — no reason to roll over yet.',
     not_proven: g.contextMeasured
-      ? 'The context token count is REAL (the latest turn’s actual prompt tokens). The WINDOW it’s compared against is ESTIMATED — headless Claude doesn’t report it and it depends on your model + plan, so PCC assumes the smaller window unless a bigger plan is confirmed (that only makes it roll over sooner, never later). The reading is taken at each turn’s END, so one very large turn can overshoot before it registers (Stop and the per-turn cap are the backstops). Attachment-only turns are not yet token-measured. Pre-update messages have no timestamp, so the time span may undercount.'
-      : 'Context size is not yet measured for this chat this session (an attachment-only turn, or no completed text turn), so this gauge currently reflects messages/time only — it is honest about that rather than showing a fake context reading. Pre-update messages have no timestamp, so the time span may undercount.',
+      ? 'The token counts are REAL (each turn’s actual prompt tokens). The gauge tracks GROWTH past this chat’s first measured turn (its fixed startup overhead — system prompt + tools + rules — which is re-sent every turn and is NOT chat length), so a fresh chat starts near 0 and only real back-and-forth moves it. The rollover threshold’s WINDOW half is ESTIMATED — headless Claude doesn’t report the window and it depends on your model + plan; PCC assumes the smaller one unless a bigger plan is confirmed (that only rolls over sooner, never later). Readings are taken at each turn’s END, so one very large turn can overshoot before it registers (Stop and the per-turn cap are the backstops). Attachment-only turns are not yet token-measured. Pre-update messages have no timestamp, so the time span may undercount.'
+      : 'Conversation growth is not yet measured for this chat this session (an attachment-only turn, or no completed text turn), so this gauge currently reflects messages/time only — it is honest about that rather than showing a fake reading. Pre-update messages have no timestamp, so the time span may undercount.',
     what_to_do: notice
       ? 'Nothing needed — PCC rolls a too-full chat over automatically. You can also hit “New chat” any time to start fresh from the handoff.'
       : 'Nothing needed.',

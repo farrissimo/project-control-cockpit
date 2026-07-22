@@ -55,22 +55,37 @@
     return Math.min(ABSOLUTE_ROLLOVER_TOKENS, Math.round(ROLLOVER_WINDOW_PCT * w));
   }
 
-  // Pure gauge. Inputs: { turns, spanHours (null=unknown), contextTokens (null=UNMEASURED), model,
-  // planWindowCap? }. The gauge reads "how close to a rollover" (worst-of messages / time /
-  // context-vs-rollover-threshold), so it hits 100% exactly when protection fires — NOT raw % of a
-  // huge window (which would look calm at a runaway). Raw context tokens and % of the estimated
-  // window are exposed for the hover. contextTokens null => context term dropped, never a false 0.
+  // Pure gauge. Inputs: { turns, spanHours (null=unknown), contextTokens (null=UNMEASURED),
+  // baselineTokens (null=none-yet), model, planWindowCap? }.
+  //
+  // GROWTH, not absolute size (2026-07-21 fix). Every turn PCC sends carries a large FIXED baseline —
+  // the system prompt + all tool definitions + CLAUDE.md/AGENTS.md — that is re-sent unchanged each
+  // turn and is NOT "chat length" (for the owner's setup it is ~252K tokens on turn one). Counting it
+  // made a fresh chat read ~full immediately and, with auto-rollover on, loop forever. So the gauge
+  // measures how much the CONVERSATION has GROWN past its own first-turn baseline:
+  //     growth = max(0, contextTokens - baselineTokens)
+  // The FIRST measured turn IS the baseline, so a fresh chat reads ~0% and climbs only as the real
+  // back-and-forth accumulates. Because each new chat records its OWN baseline, a rolled-over chat
+  // starts at ~0% too — the loop is structurally impossible. Growth is window-independent for the
+  // trigger; raw total tokens and % of the (estimated) window stay as secondary hover detail only.
+  // contextTokens null => context term dropped, never a false 0.
   function computeGauge(input) {
     const turns = finiteNonNeg(input && input.turns) || 0;
     const spanHours = (input && typeof input.spanHours === 'number' && Number.isFinite(input.spanHours) && input.spanHours >= 0) ? input.spanHours : null;
     const contextTokens = finiteNonNeg(input && input.contextTokens);
+    const baselineTokens = finiteNonNeg(input && input.baselineTokens);
     const win = contextWindowFor(input && input.model, input);
     const rolloverTokens = rolloverTokensFor(win.window);
 
+    // Conversation growth past the fixed baseline. No baseline recorded yet but a reading exists =>
+    // this reading IS the baseline => growth 0 (a fresh chat, never a false-high). null only when
+    // context is genuinely unmeasured.
+    const growthTokens = contextTokens === null ? null : (baselineTokens === null ? 0 : Math.max(0, contextTokens - baselineTokens));
+
     const pctTurns = turns / ROLLOVER_TURNS;
     const pctSpan = spanHours !== null ? spanHours / ROLLOVER_HOURS : 0;
-    const pctContext = contextTokens !== null ? contextTokens / rolloverTokens : null; // proximity to rollover
-    const pctOfWindow = contextTokens !== null ? contextTokens / win.window : null;      // for the hover
+    const pctContext = growthTokens !== null ? growthTokens / rolloverTokens : null;  // proximity to rollover (GROWTH)
+    const pctOfWindow = contextTokens !== null ? contextTokens / win.window : null;    // raw total vs window (hover only)
 
     let driver = 'messages', max = pctTurns;
     if (pctSpan > max) { max = pctSpan; driver = 'time'; }
@@ -79,13 +94,16 @@
     return {
       gaugePct: Math.min(100, Math.round(100 * Math.max(pctTurns, pctSpan, pctContext || 0))),
       pctTurns, pctSpan, pctContext, pctOfWindow,
-      contextTokens: contextTokens,     // null when unmeasured
+      contextTokens: contextTokens,     // raw total for THIS turn (null when unmeasured)
+      baselineTokens: baselineTokens,   // this chat's fixed first-turn overhead (null if not recorded)
+      growthTokens: growthTokens,       // conversation growth past the baseline (what the gauge tracks)
       windowTokens: win.window,
       windowEstimated: win.estimated,
       rolloverTokens,
       contextMeasured: pctContext !== null,
+      overWindowEstimate: contextTokens !== null && contextTokens > win.window, // raw total already exceeds the conservative window => real window is larger
       driver,
-      overRollover: contextTokens !== null && contextTokens >= rolloverTokens,
+      overRollover: growthTokens !== null && growthTokens >= rolloverTokens,
     };
   }
 

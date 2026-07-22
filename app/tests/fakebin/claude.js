@@ -24,6 +24,22 @@ function replay() {
     let f;
     try { f = JSON.parse(fs.readFileSync(fx, 'utf8')); }
     catch (e) { process.stderr.write('fixture load error: ' + e.message); return process.exit(1); }
+    // Sequence mode: a fixture with a `sequence` array returns a DIFFERENT element per invocation, so
+    // a test can drive multi-turn behavior (e.g. turn 1 = baseline tokens, turn 2 = baseline + growth).
+    // Each `claude` spawn is a fresh process, so the turn index is persisted in a sidecar counter file
+    // named by PCC_FAKE_CLAUDE_SEQ_STATE (required for sequence fixtures so parallel tests never collide).
+    if (Array.isArray(f.sequence) && f.sequence.length) {
+      const stateFile = process.env.PCC_FAKE_CLAUDE_SEQ_STATE;
+      let idx = 0;
+      if (stateFile) { try { idx = parseInt(fs.readFileSync(stateFile, 'utf8'), 10) || 0; } catch (e) { idx = 0; } }
+      const pick = f.sequence[Math.min(idx, f.sequence.length - 1)];
+      if (stateFile) { try { fs.writeFileSync(stateFile, String(idx + 1)); } catch (e) { /* best effort */ } }
+      if (pick && pick.stderr) process.stderr.write(pick.stderr);
+      return setTimeout(() => {
+        if (pick && pick.stdout) process.stdout.write(pick.stdout);
+        process.exit(pick && typeof pick.exitCode === 'number' ? pick.exitCode : 0);
+      }, (pick && pick.delayMs) || 0);
+    }
     if (f.stderr) process.stderr.write(f.stderr);
     return setTimeout(() => {
       if (f.stdout) process.stdout.write(f.stdout);
