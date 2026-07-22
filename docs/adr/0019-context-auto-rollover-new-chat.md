@@ -23,12 +23,21 @@ back-and-forth accumulates; because each new chat records its **own** baseline, 
 starts at ~0% — **the turn-one loop is structurally impossible**. Growth is window-independent for the
 trigger; the estimated-window %/tokens remain only as secondary "approaching the hard wall" hover
 detail (and the meter now says so honestly when the raw total already exceeds the conservative window
-estimate — proof the real window is larger). Auto-rollover was briefly disabled behind an
-`AUTO_ROLLOVER_ENABLED` kill-switch (commit 1d474cd) to stop the live loop, then re-enabled once the
-growth trigger landed. Persisted per chat in `localStorage` (`pcc.chatContextBaseline`), same cache
-tier as the token map. Proven: unit suite (`app/tests/unit/chat-health.test.js`, incl. the loop-
-prevention case) + E2E (`context-meter.spec.js` fresh-chat-stays-calm-then-climbs;
-`context-rollover.spec.js` turn-one-baseline-does-NOT-roll, growth-does).
+estimate — proof the real window is larger). Persisted per chat in `localStorage`
+(`pcc.chatContextBaseline`), same cache tier as the token map.
+
+**Survival-trial decision (2026-07-21, owner + Codex, during the ADR-0016 trust proving window):
+forced auto-rollover stays OFF for the window.** The window is a survival trial, not a feature sprint:
+PCC must not take control or surprise the owner during normal use. So even though the growth meter
+makes the loop structurally impossible, the meter is used as a **WARNING only** — it never switches
+chats automatically. Auto-rollover was disabled behind the `AUTO_ROLLOVER_ENABLED` kill-switch
+(commit 1d474cd) to stop the live loop, and is **kept off** (`AUTO_ROLLOVER_ENABLED = false`); the
+automatic switch is replaced by an **owner-controlled** action ("start a fresh chat" today; a
+one-click "continue in a fresh chat with handoff" once the owner approves that flow). This is the
+direct application of ADR-0016's decision rule (does this reduce the chance PCC itself interrupts real
+work?). Proven: unit suite (`app/tests/unit/chat-health.test.js`, incl. the loop-prevention case) +
+E2E (`context-meter.spec.js` fresh-chat-stays-calm-then-climbs; `context-rollover.spec.js` proves
+growth past the threshold does NOT auto-switch — no surprise — and the meter warns instead).
 
 ## Context and Problem
 

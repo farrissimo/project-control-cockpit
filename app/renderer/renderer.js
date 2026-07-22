@@ -790,11 +790,13 @@ const staleContextChats = new Set();// chats whose LATEST turn reported no token
 let rolloverAfterTurn = null;        // { chatId, pct } set by runSend when a turn crosses the threshold
 let rolloverInFlight = false;        // guard: never start a second rollover while one is running
 
-// Auto-rollover is safe again (2026-07-21 growth revision): the meter now trips on conversation
-// GROWTH past each chat's own first-turn baseline (see recordContextBaseline + chat-health.js), not
-// on the large fixed per-turn overhead. A fresh/rolled-over chat starts at ~0% growth, so the
-// turn-one infinite loop that forced this kill-switch off is structurally impossible.
-const AUTO_ROLLOVER_ENABLED = true;
+// SURVIVAL-TRIAL RULE (2026-07-21, owner + Codex directive during the ADR-0016 trust proving window):
+// PCC must NOT take control. No automatic behavior may interrupt, loop, switch chats, or surprise the
+// owner while he uses PCC in normal life. So forced auto-rollover stays OFF for the window — even though
+// the growth-based meter (below) makes the turn-one loop structurally impossible. The meter now WARNS
+// only; switching to a fresh chat is an OWNER-controlled action, never automatic. Re-enable only after
+// the owner explicitly approves a one-click "continue in a fresh chat with handoff" flow he controls.
+const AUTO_ROLLOVER_ENABLED = false;
 
 // Flatten the structured summary into short seed text (best-effort; empty if no summary).
 function summaryToSeedText(s) {
@@ -1719,13 +1721,13 @@ function computeChatSignal() {
       : ' Raw total ~' + kTok(g.contextTokens) + ' tokens is ~' + Math.round(g.pctOfWindow * 100) + '% of the estimated ~' + kTok(g.windowTokens) + ' window.')
     : '';
   const ctxLine = g.contextMeasured
-    ? ('Conversation growth: ~' + kTok(g.growthTokens) + ' / ~' + kTok(g.rolloverTokens) + ' tokens before auto-rollover (measured past this chat’s fixed startup baseline, so the constant per-turn overhead never counts as chat length)' + staleNote)
+    ? ('Conversation growth: ~' + kTok(g.growthTokens) + ' / ~' + kTok(g.rolloverTokens) + ' tokens before this warns (measured past this chat’s fixed startup baseline, so the constant per-turn overhead never counts as chat length)' + staleNote)
     : 'Conversation growth: not measured yet this session — shown when available, never guessed';
   const hover = 'Chat health = the highest (worst) of these three, so nothing hides a problem:\n'
     + '• Messages: ' + turns + ' / ' + ROLLOVER_TURNS + '\n'
     + '• Time: ' + (spanHours !== null ? (spanHours < 1 ? '<1' : spanHours.toFixed(1)) : '—') + ' / ' + ROLLOVER_HOURS + ' hr\n'
     + '• ' + ctxLine + '\n'
-    + 'Now driven by: ' + g.driver + '. Auto-rollover fires once the conversation GROWS ~' + kTok(g.rolloverTokens) + ' tokens past its startup baseline (whichever comes first: a usage-burn floor, or 75% of the estimated window).' + wallNote + ' Your plan-usage limit is the separate "Usage" chip up top.';
+    + 'Now driven by: ' + g.driver + '. This WARNS (it never switches chats on you) once the conversation GROWS ~' + kTok(g.rolloverTokens) + ' tokens past its startup baseline (whichever comes first: a usage-burn floor, or 75% of the estimated window).' + wallNote + ' Your plan-usage limit is the separate "Usage" chip up top.';
 
   return {
     detector: 'chat-rollover',
@@ -1735,13 +1737,13 @@ function computeChatSignal() {
     items: repeatItems,
     observed,
     might_mean: notice
-      ? 'This chat is getting large (by messages, time, or real context size). Long chats drift, lose the earlier thread, and burn your Claude usage faster. PCC automatically rolls a too-full chat over into a fresh one, carrying a handoff + summary forward (ADR-0019).'
-      : 'This chat is still comfortably within limits on messages, time, and context size — no reason to roll over yet.',
+      ? 'This chat is getting heavy (by messages, time, or real conversation growth). Long chats drift, lose the earlier thread, and burn your Claude usage faster. This is a WARNING only — PCC will NOT switch chats on you. When you are ready, start a fresh chat to keep things light; your current chat stays right here.'
+      : 'This chat is still comfortably within limits on messages, time, and conversation growth — nothing to do.',
     not_proven: g.contextMeasured
       ? 'The token counts are REAL (each turn’s actual prompt tokens). The gauge tracks GROWTH past this chat’s first measured turn (its fixed startup overhead — system prompt + tools + rules — which is re-sent every turn and is NOT chat length), so a fresh chat starts near 0 and only real back-and-forth moves it. The rollover threshold’s WINDOW half is ESTIMATED — headless Claude doesn’t report the window and it depends on your model + plan; PCC assumes the smaller one unless a bigger plan is confirmed (that only rolls over sooner, never later). Readings are taken at each turn’s END, so one very large turn can overshoot before it registers (Stop and the per-turn cap are the backstops). Attachment-only turns are not yet token-measured. Pre-update messages have no timestamp, so the time span may undercount.'
       : 'Conversation growth is not yet measured for this chat this session (an attachment-only turn, or no completed text turn), so this gauge currently reflects messages/time only — it is honest about that rather than showing a fake reading. Pre-update messages have no timestamp, so the time span may undercount.',
     what_to_do: notice
-      ? 'Nothing needed — PCC rolls a too-full chat over automatically. You can also hit “New chat” any time to start fresh from the handoff.'
+      ? 'Nothing is forced on you. When this chat feels heavy, hit “New chat” to start fresh — PCC will never switch on its own.'
       : 'Nothing needed.',
   };
 }
