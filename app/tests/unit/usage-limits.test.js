@@ -3,25 +3,56 @@
 // degrades to the safe default, never to "no cap" or a negative/zero/non-finite value.
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { normalizeLimits, isBudgetExceeded, isUsageLimitError, isAuthError, DEFAULT_MAX_TURN_USD, DEFAULT_MAX_CHAT_USD } = require('../../usage-limits.js');
+const { normalizeLimits, isBudgetExceeded, isMaxTurnsError, isUsageLimitError, isAuthError, DEFAULT_MAX_TURN_USD, DEFAULT_MAX_CHAT_USD, DEFAULT_MAX_TURNS } = require('../../usage-limits.js');
 
-test('well-formed positive caps (both fields) are used as-is', () => {
-  assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: 20 }), { maxTurnUsd: 5, maxChatUsd: 20 });
+test('well-formed positive caps (all fields) are used as-is', () => {
+  assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: 20, max_turns: 45 }), { maxTurnUsd: 5, maxChatUsd: 20, maxTurns: 45 });
 });
 
-test('missing/null/non-object config -> both safe defaults, never unbounded', () => {
-  const def = { maxTurnUsd: DEFAULT_MAX_TURN_USD, maxChatUsd: DEFAULT_MAX_CHAT_USD };
+test('missing/null/non-object config -> all safe defaults, never unbounded', () => {
+  const def = { maxTurnUsd: DEFAULT_MAX_TURN_USD, maxChatUsd: DEFAULT_MAX_CHAT_USD, maxTurns: DEFAULT_MAX_TURNS };
   assert.deepStrictEqual(normalizeLimits(null), def);
   assert.deepStrictEqual(normalizeLimits(undefined), def);
   assert.deepStrictEqual(normalizeLimits('not an object'), def);
   assert.deepStrictEqual(normalizeLimits({}), def);
 });
 
-test('zero, negative, or non-finite values are rejected per-field -> that field\'s safe default (never disables either cap)', () => {
+test('zero, negative, or non-finite values are rejected per-field -> that field\'s safe default (never disables any cap)', () => {
   for (const bad of [0, -1, -0.0001, NaN, Infinity, -Infinity]) {
-    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: bad, max_chat_usd: 20 }), { maxTurnUsd: DEFAULT_MAX_TURN_USD, maxChatUsd: 20 }, 'turn:' + bad);
-    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: bad }), { maxTurnUsd: 5, maxChatUsd: DEFAULT_MAX_CHAT_USD }, 'chat:' + bad);
+    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: bad, max_chat_usd: 20, max_turns: 45 }), { maxTurnUsd: DEFAULT_MAX_TURN_USD, maxChatUsd: 20, maxTurns: 45 }, 'turn:' + bad);
+    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: bad, max_turns: 45 }), { maxTurnUsd: 5, maxChatUsd: DEFAULT_MAX_CHAT_USD, maxTurns: 45 }, 'chat:' + bad);
+    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: 20, max_turns: bad }), { maxTurnUsd: 5, maxChatUsd: 20, maxTurns: DEFAULT_MAX_TURNS }, 'turns:' + bad);
   }
+});
+
+test('ADR-0020 T2: max_turns fails closed to the safe default for every malformed/hostile value (never "no cap")', () => {
+  // A missing, zero, negative, non-finite, fractional-below-1, or non-numeric max_turns can NEVER
+  // disable the turn cap — it always degrades to DEFAULT_MAX_TURNS, never to unbounded.
+  for (const bad of [undefined, 0, 0.5, -5, NaN, Infinity, -Infinity, '30', null, {}, [], true]) {
+    const cfg = { max_turn_usd: 3, max_chat_usd: 15 };
+    if (bad !== undefined) cfg.max_turns = bad;
+    assert.strictEqual(normalizeLimits(cfg).maxTurns, DEFAULT_MAX_TURNS, JSON.stringify(bad));
+  }
+});
+
+test('ADR-0020 T2: a valid max_turns integer is used as-is, and a fractional >=1 is floored to a whole turn count', () => {
+  assert.strictEqual(normalizeLimits({ max_turns: 1 }).maxTurns, 1);
+  assert.strictEqual(normalizeLimits({ max_turns: 50 }).maxTurns, 50);
+  assert.strictEqual(normalizeLimits({ max_turns: 30.9 }).maxTurns, 30); // floored — a turn count is a whole number
+  assert.strictEqual(DEFAULT_MAX_TURNS, 30); // the evidence-based, Codex-concurred default (guards against silent drift)
+});
+
+test('ADR-0020 T2: isMaxTurnsError recognizes the REAL cap signature (subtype + "maximum number of turns"), not the budget cap', () => {
+  assert.strictEqual(isMaxTurnsError('{"subtype":"error_max_turns","errors":["Reached maximum number of turns (1)"]}'), true);
+  assert.strictEqual(isMaxTurnsError('Reached maximum number of turns (30)'), true);
+  // MUST NOT fire on the per-turn BUDGET cap (a different limit with its own messaging).
+  assert.strictEqual(isMaxTurnsError('Error: Exceeded USD budget (3)'), false);
+  assert.strictEqual(isMaxTurnsError('Reached maximum budget ($0.0001)'), false);
+  // ordinary output / nullish -> never a false positive
+  assert.strictEqual(isMaxTurnsError('FAKE-CLAUDE-REPLY: received 12 chars.'), false);
+  assert.strictEqual(isMaxTurnsError(''), false);
+  assert.strictEqual(isMaxTurnsError(null), false);
+  assert.strictEqual(isMaxTurnsError(undefined), false);
 });
 
 test('non-numeric values (string, null, object) are rejected per-field -> that field\'s safe default', () => {

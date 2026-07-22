@@ -25,7 +25,7 @@ const { decideBackup } = require('./backup-policy');
 const { fetchCiChip } = require('./ci-status');
 const { readPlanUsage, applyLastGood } = require('./usage-meter'); // owner's real Claude usage stat (desktop-parity R1)
 const { loadUsageCache, saveUsageCache } = require('./usage-store'); // PCC's own durable mirror of that stat
-const { readUsageLimits, isBudgetExceeded, isUsageLimitError, isAuthError } = require('./usage-limits'); // per-turn hard cost cap (desktop-parity R3)
+const { readUsageLimits, isBudgetExceeded, isMaxTurnsError, isUsageLimitError, isAuthError } = require('./usage-limits'); // per-turn hard cost + turn caps (desktop-parity R3 / ADR-0020 T2)
 const { parseTurnOutput } = require('./turn-output'); // parses --output-format json's real total_cost_usd (desktop-parity R3 slice 2)
 const { loadChatCosts, saveChatCosts } = require('./chat-cost-store'); // durable per-chat cost so rollover survives a restart (ADR-0015 residue)
 const { singleFlight } = require('./single-flight'); // coalesce concurrent detector refreshes (soak W3)
@@ -888,7 +888,13 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     // Code's OWN --max-budget-usd flag aborts THIS turn cleanly if its spend crosses the cap,
     // rather than PCC trying to reinvent cost tracking. Caps a single-turn runaway; a whole
     // chat's cumulative cost across many turns is the separate, still-open piece of R3.
-    args.push('--max-budget-usd', String(readUsageLimits(path.join(cockpitDir(), 'state')).maxTurnUsd));
+    // ADR-0020 T2: alongside it, Claude Code's OWN --max-turns flag caps how many agentic turns
+    // (assistant<->tool iterations) one owner message may fan out into — the turn-count sibling of
+    // the cost cap, stopping the "one message -> hundreds of hidden model turns" burn. Both cap
+    // values come from the same fail-closed usage-limits config (read once here).
+    const limits = readUsageLimits(path.join(cockpitDir(), 'state'));
+    args.push('--max-budget-usd', String(limits.maxTurnUsd));
+    args.push('--max-turns', String(limits.maxTurns));
     // Worker (Claude) session identity is SEPARATE from authority identity: the renderer
     // passes workerSessionId (the chat's own id, or a re-minted id after crash recovery) for
     // --session-id/--resume, while build authority above is keyed to the stable chatId. So
@@ -995,6 +1001,21 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
           // firing as designed, not a failure. Say so plainly, never a scary raw budget error.
           resolve({ ok: false, budgetExceeded: true,
             text: 'Stopped automatically — this turn hit its per-turn spending cap before finishing. This is a safety limit protecting your Claude usage, not a bug. You can raise the cap in .cockpit/state/usage-limits.json, or just send it again (it will pick up where the plan left off).' });
+        } else if ((!hasAttach && parseTurnOutput(err || out).maxTurnsReached) || isMaxTurnsError(out)) {
+          // ADR-0020 T2: Claude Code's own --max-turns cap stopped this message before it could fan
+          // out into an unbounded run of hidden model turns — an automatic protection firing as
+          // designed, not a failure or crash. Unlike a clean turn, tool actions (reads, edits,
+          // commands) may ALREADY have run before the cap hit, so the owner is told to review partial
+          // state, never to blindly resend and pay to redo the same work. Structured subtype on the
+          // json path; a text signature catch on the stream-json (attachments) path.
+          const numTurns = hasAttach ? null : parseTurnOutput(err || out).numTurns; // the real count Claude reported (null if absent)
+          // The capped turn still spent tokens — retain its real usage + turn count in the ledger
+          // (the whole point of the usage-governance work is that no burn is invisible).
+          const u = usageLog.usageFromJson(out);
+          if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: 'chat-turn-max-turns', model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null, num_turns: numTurns }, u));
+          const turnsNote = numTurns !== null ? ' (it reached ' + numTurns + ' agentic turns)' : '';
+          resolve({ ok: false, maxTurnsReached: true, numTurns: numTurns,
+            text: 'Stopped automatically — this message hit its per-message turn limit' + turnsNote + ' before finishing. This is a safety limit that stops one message from quietly running for hundreds of hidden steps and burning your Claude usage — not a bug. Some work may already have happened (files read or changed, commands run), so glance at what changed before continuing rather than just resending. You can raise the limit in .cockpit/state/usage-limits.json (max_turns), or send a smaller next step.' });
         } else if (isUsageLimitError(raw)) {
           // The owner hit their actual Claude PLAN usage limit (Anthropic's, not PCC's). This is the
           // most likely shock in heavy use — turn the scary raw CLI error into a plain, reassuring

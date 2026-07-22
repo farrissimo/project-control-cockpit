@@ -32,15 +32,22 @@
     return inp + (nonNegNum(usage.cache_read_input_tokens) || 0) + (nonNegNum(usage.cache_creation_input_tokens) || 0);
   }
 
+  // The safe "nothing parseable" shape — every field null/false so a non-JSON or malformed body
+  // (the test fakebin's plain text, any raw edge case) can never fabricate a cost/text/flag.
+  const NULL_SHAPE = { text: null, costUsd: null, isError: null, budgetExceeded: false, maxTurnsReached: false, numTurns: null, contextTokens: null };
+
   function parseTurnOutput(raw) {
     let o;
-    try { o = JSON.parse(raw); } catch (e) { return { text: null, costUsd: null, isError: null, budgetExceeded: false, contextTokens: null }; }
-    if (!o || typeof o !== 'object') return { text: null, costUsd: null, isError: null, budgetExceeded: false, contextTokens: null };
+    try { o = JSON.parse(raw); } catch (e) { return Object.assign({}, NULL_SHAPE); }
+    if (!o || typeof o !== 'object') return Object.assign({}, NULL_SHAPE);
     return {
       text: typeof o.result === 'string' ? o.result : null,
       costUsd: typeof o.total_cost_usd === 'number' && Number.isFinite(o.total_cost_usd) && o.total_cost_usd >= 0 ? o.total_cost_usd : null,
       isError: typeof o.is_error === 'boolean' ? o.is_error : null,
       budgetExceeded: o.subtype === 'error_max_budget_usd',
+      // ADR-0020 T2: the native --max-turns cap fired — recognized by structured subtype, not prose.
+      maxTurnsReached: o.subtype === 'error_max_turns',
+      numTurns: nonNegNum(o.num_turns), // the real agentic-turn count Claude reports (null if absent — never fabricated)
       contextTokens: contextTokensFrom(o.usage),
     };
   }

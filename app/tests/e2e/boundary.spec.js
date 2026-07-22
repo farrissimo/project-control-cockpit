@@ -83,6 +83,43 @@ test('R3: send actually passes --max-budget-usd (the value from .cockpit/state/u
   require('fs').rmSync(argvFile, { force: true });
 });
 
+test('ADR-0020 T2: send passes exactly ONE native --max-turns (value from usage-limits.json), and the existing worker args are left intact', async () => {
+  const argvFile = path.join(require('os').tmpdir(), 'pcc-test-argv-mt-' + Date.now() + '.json');
+  await withApp({ PCC_FAKE_CLAUDE_ARGV_FILE: argvFile }, async (page) => {
+    const r = await callOn(page, 'send', 'hi', undefined, 'c1', true);
+    expect(r.ok).toBe(true); // the cap flag being present doesn't break a normal turn
+    const argv = JSON.parse(require('fs').readFileSync(argvFile, 'utf8'));
+    // Exactly one --max-turns pair, carrying the repo's real usage-limits.json default (30).
+    expect(argv.filter((a) => a === '--max-turns').length).toBe(1);
+    const i = argv.indexOf('--max-turns');
+    expect(Number(argv[i + 1])).toBe(30);
+    // No regression: the pre-existing critical args are all still assembled alongside the new cap.
+    expect(argv[0]).toBe('-p');
+    expect(argv.indexOf('--model')).toBeGreaterThanOrEqual(0);
+    expect(argv.indexOf('--max-budget-usd')).toBeGreaterThanOrEqual(0); // the cost cap still present
+    expect(argv.some((a) => a === '--session-id' || a === '--resume')).toBe(true); // worker session identity intact
+    expect(argv.indexOf('--allowedTools')).toBeGreaterThanOrEqual(0); // tool profile (authority) intact
+  });
+  require('fs').rmSync(argvFile, { force: true });
+});
+
+test('ADR-0020 T2: a native --max-turns cap surfaces as a PLAIN, neutral message with the real turn count — never the raw JSON envelope', async () => {
+  await withApp({ PCC_FAKE_CLAUDE_FIXTURE: FX('worker-max-turns.json') }, async (page) => {
+    const r = await callOn(page, 'send', 'a message that fans out past the turn cap', undefined, 'c1', true);
+    expect(r.ok).toBe(false);
+    expect(r.maxTurnsReached).toBe(true);
+    expect(r.numTurns).toBe(2);                       // the real reported count is retained
+    expect(r.text).toMatch(/per-message turn limit/i); // plain language, states what happened
+    expect(r.text).toMatch(/2 agentic turns/);         // reports the actual num_turns to the owner
+    expect(r.text).toMatch(/safety limit/i);           // framed as a protection, not a bug
+    expect(r.text).toMatch(/before continuing|glance at what changed/i); // tells the owner to review partial state
+    // The raw JSON envelope and its internals must NEVER reach the owner.
+    expect(r.text).not.toMatch(/error_max_turns/);
+    expect(r.text).not.toMatch(/is_error/);
+    expect(r.text).not.toContain('{');
+  });
+});
+
 test('verifier FAIL is reported as FAIL, not PASS', async () => {
   await withApp({ PCC_FAKE_CODEX_FIXTURE: FX('verifier-fail.json') }, async (page) => {
     const r = await callOn(page, 'verify');
