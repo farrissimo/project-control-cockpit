@@ -469,7 +469,7 @@ async function runSend(item) {
         const rg = PCCChatHealth.computeGauge({ contextTokens: res.contextTokens, model: getSelectedModel() });
         // codex-caught: do NOT mark rolledOverChats here — that would fail-STUCK a chat whose rollover
         // then errors. It is marked only on a SUCCESSFUL rollover (in autoRolloverToNewChat).
-        if (rg.overRollover && !rolledOverChats.has(chatId) && !rolloverInFlight) { rolloverAfterTurn = { chatId: chatId, tokens: res.contextTokens }; }
+        if (AUTO_ROLLOVER_ENABLED && rg.overRollover && !rolledOverChats.has(chatId) && !rolloverInFlight) { rolloverAfterTurn = { chatId: chatId, tokens: res.contextTokens }; }
       } else if (chatContextTokens.has(chatId)) {
         staleContextChats.add(chatId); // a measured chat had an UNMEASURED turn — the reading may now understate (AC-5)
       }
@@ -788,6 +788,14 @@ const rolledOverChats = new Set();  // source chats already SUCCESSFULLY rolled 
 const staleContextChats = new Set();// chats whose LATEST turn reported no tokens after a prior reading (AC-5)
 let rolloverAfterTurn = null;        // { chatId, pct } set by runSend when a turn crosses the threshold
 let rolloverInFlight = false;        // guard: never start a second rollover while one is running
+
+// TEMPORARY KILL-SWITCH (2026-07-21): ADR-0019's meter counts the large FIXED per-turn overhead
+// Claude Code re-sends every turn (system prompt + tool defs + CLAUDE.md/AGENTS.md, ~252K tokens)
+// as "chat length", so a fresh chat trips the rollover threshold on turn ONE and auto-rolls into a
+// new chat that has the SAME baseline — an infinite loop. Disable the AUTO-rollover trigger until the
+// meter is reworked to measure conversation GROWTH (current - this chat's first-turn baseline), which
+// makes the loop impossible. The meter still DISPLAYS; only the automatic new-chat rollover is off.
+const AUTO_ROLLOVER_ENABLED = false;
 
 // Flatten the structured summary into short seed text (best-effort; empty if no summary).
 function summaryToSeedText(s) {

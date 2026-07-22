@@ -8,7 +8,13 @@ const path = require('path');
 
 const FX = path.join(__dirname, '..', 'fixtures', 'boundary', 'worker-json-usage.json');
 
-test('a turn over the context threshold auto-rolls into a NEW chat, keeps the old one, carries a handoff', async () => {
+// TEMPORARILY SKIPPED (2026-07-21): the AUTO-rollover trigger is disabled behind the
+// AUTO_ROLLOVER_ENABLED kill-switch in renderer.js because ADR-0019's absolute-token threshold
+// counts Claude Code's large FIXED per-turn overhead (~252K tokens) as "chat length", tripping on
+// turn one and looping. This test asserts the auto-roll fires, which is deliberately off right now.
+// Re-enable (and rework the fixture to a GROWTH pattern: turn 1 = baseline, later turns = baseline +
+// real growth) when the growth-based meter lands and the kill-switch is turned back on.
+test.skip('a turn over the context threshold auto-rolls into a NEW chat, keeps the old one, carries a handoff', async () => {
   const { app, page } = await launchApp({ PCC_FAKE_CLAUDE_FIXTURE: FX });
   try {
     await expect(page.locator('.bubble.assistant.thinking')).toHaveCount(0, { timeout: 20000 });
