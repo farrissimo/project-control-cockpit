@@ -38,9 +38,59 @@ free/tight plan; may move the worker off Claude entirely).
 
 ## Decision
 
+> **⚠ AMENDED 2026-07-22 — read the Amendment section immediately below first.** The absolute
+> zero-required-spend rule disqualifies T3's warm-session mechanism as *required* architecture, and
+> the task ordering in the original decision is superseded. The original text is retained below as the
+> historical record.
+
+### Amendment — 2026-07-22 (owner decision): zero-required-spend rule; T3 Claude-SDK path disqualified
+
+**1. Absolute zero-required-spend architecture rule.** No PCC feature, architecture, workflow, spawned
+project, or *required* worker may DEPEND on: a paid API; a paid subscription; purchased credits; metered
+billing; a promotional allowance; or a paid fallback. Paid Claude or Codex access MAY be used *during
+development* while the owner happens to have it, but it is **not valid required product infrastructure**.
+Optional paid adapters may exist later, but PCC can never REQUIRE them.
+
+**2. T2 is COMPLETE.** The native per-message `--max-turns` cap shipped and merged (PR #53, commit
+`4e63983`; on-screen verified). It bounds one message's agentic fan-out — a guardrail, not the root-cause fix.
+
+**3. T3's Claude Agent SDK path is DISQUALIFIED as required core architecture.** Research (official Claude
+Code / Agent SDK docs) + independent Codex review established that the ONLY officially-supported warm
+multi-turn mechanism is the Claude Agent SDK (`@anthropic-ai/claude-agent-sdk` streaming input) — plain
+`claude -p` is one-shot even with `--input-format stream-json`. That SDK requires an API key / cloud-provider
+auth and is **not supported on a free `claude.ai` plan** (unproven/unsupported). Because it depends on
+proprietary paid-service access, it violates rule (1) and cannot be PCC's *required* warm-worker solution.
+No SDK was installed and no SDK-auth probe was run — the investigation was stopped at this finding.
+
+**4. T3 remains an UNMET, OPEN architectural requirement — inactive; NOT fixed, NOT completed, NOT merely
+postponed for convenience.** Honest state:
+- PCC's current Claude adapter still **cold-starts a `claude -p` process per message**.
+- The resulting **cache-rebuild usage burn (the root cause) REMAINS**.
+- T3 may be reconsidered ONLY when a genuinely **zero-required-spend** persistent-worker mechanism is
+  available AND proven.
+
+**5. Revised containment sequence (supersedes the ordering below).** These tasks REDUCE and BOUND the current
+cold-start adapter's burn on ANY plan/provider; they do **not** claim to reproduce a warm worker or fix the
+root cause:
+- **T6 — Eliminate invisible background LLM calls** (auto-name-on-leave, automatic summary/search). **First.**
+- **T7 — Hard-cap** attachments, evidence injection, queued sends, and other payload growth.
+- **T1 — Deterministic fresh-session compaction/handoff** — NO LLM summary, NO silent rollover, with explicit
+  protection against the previous rollover loop.
+- **T8 — Restart continuity.**
+- **T4 — Honest usage warnings and protection.**
+- **T9 — One logged gateway** + reconciliation of all calls.
+- (T5 auto model-switch stays optional/late, unchanged.)
+
+**6.** These containment tasks bound the burn; they **do not reproduce a warm worker**. The root-cause fix
+stays open under rule (1).
+
+### Original decision (2026-07-22 — superseded in part by the Amendment above)
+
 Fix the burn as a set of **bounded, independently-verified tasks**, in the order Codex verified
 (2026-07-22, verdict NEEDS-CHANGES → corrected order below; Codex is a standing advisor per the owner's
-directive). **The warm persistent worker session is the actual cure and is NOT deferred.**
+directive). **The warm persistent worker session is the actual cure and is NOT deferred.** *(Superseded: see
+Amendment §3–§4 — the only supported warm mechanism requires paid access, so it is disqualified as required
+architecture and T3 is now open/inactive.)*
 
 - **T2 — Cap agentic turns per message (`--max-turns`).** No message can fan out into hundreds of model
   turns. Immediate, small.
@@ -66,8 +116,10 @@ sites (the T9 gateway down-payment), and the forensic/measurement tools.
 
 ## Consequences
 
-- **Gain:** the exact 2026-07-20 failure mode — silent cache rebuild burning the owner's plan — is
-  structurally removed once T3 lands; the other tasks bound the remaining leaks and make spend visible.
+- **Gain:** the other tasks bound the remaining leaks and make spend visible. *(Superseded re: the root
+  cause — see Amendment §3–§6: the silent cache rebuild is NOT structurally removed, because the only
+  supported warm mechanism requires paid access and is disqualified. The containment tasks bound the burn;
+  they do not eliminate the per-message cold-start rebuild. That root-cause fix stays OPEN.)*
 - **Cost / risk:** T3 changes how the worker is invoked (a persistent session lifecycle vs one-shot
   `-p`), the largest change surface; GPT cautioned against leading with a full persistent-SDK rewrite, so
   T2 lands first and T3 is scoped tightly with crash/recovery handled. T1's context reset is inherently
