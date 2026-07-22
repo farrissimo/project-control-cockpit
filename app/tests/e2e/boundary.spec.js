@@ -24,6 +24,18 @@ test('worker non-zero exit surfaces as an error, not a reply', async () => {
   });
 });
 
+test('ADR-0020 T2: a message that fans out past the agentic-turn cap is stopped with a plain safety message, not left to run away', async () => {
+  // The fixture streams 65 assistant turns; the repo default cap is 60. PCC must count the turns off
+  // the stream and cut the message off with an honest safety message (never a raw error, never silent).
+  await withApp({ PCC_FAKE_CLAUDE_FIXTURE: FX('worker-turn-runaway.json') }, async (page) => {
+    const r = await callOn(page, 'send', 'do something that spirals', undefined, 'c1', true);
+    expect(r.ok).toBe(false);
+    expect(r.turnCapped).toBe(true);
+    expect(r.text).toMatch(/safety cap|agentic steps/i);
+    expect(r.text).not.toMatch(/RUNAWAY-DONE/); // the runaway's own output is NOT shown as if it succeeded
+  });
+});
+
 test('worker auth failure surfaces honestly, as a PLAIN sign-in message (ADR-0018) — not the raw credentials error', async () => {
   await withApp({ PCC_FAKE_CLAUDE_FIXTURE: FX('worker-auth.json') }, async (page) => {
     const r = await callOn(page, 'send', 'hi', undefined, 'c1', true);

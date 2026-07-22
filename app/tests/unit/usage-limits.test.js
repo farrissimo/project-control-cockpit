@@ -3,25 +3,36 @@
 // degrades to the safe default, never to "no cap" or a negative/zero/non-finite value.
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { normalizeLimits, isBudgetExceeded, isUsageLimitError, isAuthError, DEFAULT_MAX_TURN_USD, DEFAULT_MAX_CHAT_USD } = require('../../usage-limits.js');
+const { normalizeLimits, isBudgetExceeded, isUsageLimitError, isAuthError, DEFAULT_MAX_TURN_USD, DEFAULT_MAX_CHAT_USD, DEFAULT_MAX_TURNS } = require('../../usage-limits.js');
 
-test('well-formed positive caps (both fields) are used as-is', () => {
-  assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: 20 }), { maxTurnUsd: 5, maxChatUsd: 20 });
+test('well-formed positive caps (all fields) are used as-is', () => {
+  assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: 20, max_turns: 40 }), { maxTurnUsd: 5, maxChatUsd: 20, maxTurns: 40 });
 });
 
-test('missing/null/non-object config -> both safe defaults, never unbounded', () => {
-  const def = { maxTurnUsd: DEFAULT_MAX_TURN_USD, maxChatUsd: DEFAULT_MAX_CHAT_USD };
+test('missing/null/non-object config -> all safe defaults, never unbounded', () => {
+  const def = { maxTurnUsd: DEFAULT_MAX_TURN_USD, maxChatUsd: DEFAULT_MAX_CHAT_USD, maxTurns: DEFAULT_MAX_TURNS };
   assert.deepStrictEqual(normalizeLimits(null), def);
   assert.deepStrictEqual(normalizeLimits(undefined), def);
   assert.deepStrictEqual(normalizeLimits('not an object'), def);
   assert.deepStrictEqual(normalizeLimits({}), def);
 });
 
-test('zero, negative, or non-finite values are rejected per-field -> that field\'s safe default (never disables either cap)', () => {
+test('zero, negative, or non-finite values are rejected per-field -> that field\'s safe default (never disables any cap)', () => {
   for (const bad of [0, -1, -0.0001, NaN, Infinity, -Infinity]) {
-    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: bad, max_chat_usd: 20 }), { maxTurnUsd: DEFAULT_MAX_TURN_USD, maxChatUsd: 20 }, 'turn:' + bad);
-    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: bad }), { maxTurnUsd: 5, maxChatUsd: DEFAULT_MAX_CHAT_USD }, 'chat:' + bad);
+    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: bad, max_chat_usd: 20, max_turns: 40 }), { maxTurnUsd: DEFAULT_MAX_TURN_USD, maxChatUsd: 20, maxTurns: 40 }, 'turn:' + bad);
+    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: bad, max_turns: 40 }), { maxTurnUsd: 5, maxChatUsd: DEFAULT_MAX_CHAT_USD, maxTurns: 40 }, 'chat:' + bad);
+    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: 20, max_turns: bad }), { maxTurnUsd: 5, maxChatUsd: 20, maxTurns: DEFAULT_MAX_TURNS }, 'turns:' + bad);
   }
+});
+
+test('max_turns: sub-1 and fractional values fail closed to the safe default or floor (never "no cap")', () => {
+  // Below one whole turn is meaningless -> safe default, never disabled.
+  assert.strictEqual(normalizeLimits({ max_turns: 0.5 }).maxTurns, DEFAULT_MAX_TURNS);
+  assert.strictEqual(normalizeLimits({ max_turns: 0 }).maxTurns, DEFAULT_MAX_TURNS);
+  // A valid cap is floored to a whole number of turns.
+  assert.strictEqual(normalizeLimits({ max_turns: 40.9 }).maxTurns, 40);
+  // Non-numeric -> safe default.
+  for (const bad of ['40', null, {}, [], true]) assert.strictEqual(normalizeLimits({ max_turns: bad }).maxTurns, DEFAULT_MAX_TURNS, JSON.stringify(bad));
 });
 
 test('non-numeric values (string, null, object) are rejected per-field -> that field\'s safe default', () => {

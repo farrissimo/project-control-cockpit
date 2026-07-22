@@ -66,5 +66,25 @@
     return null;
   }
 
-  return { parseStreamJson: parseStreamJson, parseStreamCost: parseStreamCost, parseStreamUsage: parseStreamUsage };
+  // The result event's `subtype` (e.g. "success", "error_max_budget_usd"). The text path used to
+  // read this off the single --output-format json blob (turn-output.parseTurnOutput.budgetExceeded);
+  // now that the text path also streams (ADR-0020 T2), the budget-abort detection reads it from the
+  // stream's terminal result event instead. Null if no result event / not a string.
+  function parseStreamSubtype(raw) {
+    let subtype = null;
+    for (const line of String(raw).split('\n')) {
+      const l = line.trim();
+      if (!l) continue;
+      try {
+        const o = JSON.parse(l);
+        if (o && o.type === 'result' && typeof o.subtype === 'string') subtype = o.subtype;
+      } catch (e) { /* ignore non-JSON lines */ }
+    }
+    return subtype;
+  }
+
+  return {
+    parseStreamJson: parseStreamJson, parseStreamCost: parseStreamCost,
+    parseStreamUsage: parseStreamUsage, parseStreamSubtype: parseStreamSubtype,
+  };
 });

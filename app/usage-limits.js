@@ -26,14 +26,25 @@
   // hours — the actual 2026-07-20 mechanism, which the per-turn cap above does not cover).
   // Starting default, not empirically derived; generous for a real working session.
   const DEFAULT_MAX_CHAT_USD = 15;
+  // ADR-0020 T2: cap the number of AGENTIC turns a single owner message can fan out into.
+  // The 2026-07-20 forensics showed single messages ballooning to 300–1096 model turns; the
+  // installed Claude CLI (2.1.186) has NO --max-turns flag (verified against the full flag list),
+  // so PCC enforces this itself by counting the worker's streamed agentic turns and killing a
+  // runaway. Generous enough for a genuinely heavy real message (many tool calls), tight enough
+  // to stop a spiral. Owner-editable via .cockpit/state/usage-limits.json. A missing/malformed
+  // value MUST fall back to this default — never to "no cap" (fail closed toward protection).
+  const DEFAULT_MAX_TURNS = 60;
 
-  // Pure: never throws, never returns a non-finite/non-positive cap for either field.
+  // Pure: never throws, never returns a non-finite/non-positive cap for any field.
   function normalizeLimits(cfg) {
     const turn = cfg && typeof cfg.max_turn_usd === 'number' && Number.isFinite(cfg.max_turn_usd) && cfg.max_turn_usd > 0
       ? cfg.max_turn_usd : DEFAULT_MAX_TURN_USD;
     const chat = cfg && typeof cfg.max_chat_usd === 'number' && Number.isFinite(cfg.max_chat_usd) && cfg.max_chat_usd > 0
       ? cfg.max_chat_usd : DEFAULT_MAX_CHAT_USD;
-    return { maxTurnUsd: turn, maxChatUsd: chat };
+    // A cap of at least 1 turn; anything non-finite/<1 falls back to the safe default (never "no cap").
+    const turns = cfg && typeof cfg.max_turns === 'number' && Number.isFinite(cfg.max_turns) && cfg.max_turns >= 1
+      ? Math.floor(cfg.max_turns) : DEFAULT_MAX_TURNS;
+    return { maxTurnUsd: turn, maxChatUsd: chat, maxTurns: turns };
   }
 
   // Impure: read the owner-editable config from the ACTIVE project's .cockpit/state (mirrors
@@ -87,5 +98,6 @@
     normalizeLimits: normalizeLimits, readUsageLimits: readUsageLimits, isBudgetExceeded: isBudgetExceeded,
     isUsageLimitError: isUsageLimitError, isAuthError: isAuthError,
     DEFAULT_MAX_TURN_USD: DEFAULT_MAX_TURN_USD, DEFAULT_MAX_CHAT_USD: DEFAULT_MAX_CHAT_USD,
+    DEFAULT_MAX_TURNS: DEFAULT_MAX_TURNS,
   };
 });

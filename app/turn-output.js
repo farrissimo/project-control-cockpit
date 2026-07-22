@@ -45,5 +45,5 @@
     };
   }
 
-  return { parseTurnOutput: parseTurnOutput };
+  return { parseTurnOutput: parseTurnOutput, contextTokensFrom: contextTokensFrom };
 });

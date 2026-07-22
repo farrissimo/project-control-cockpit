@@ -26,10 +26,11 @@ const { fetchCiChip } = require('./ci-status');
 const { readPlanUsage, applyLastGood } = require('./usage-meter'); // owner's real Claude usage stat (desktop-parity R1)
 const { loadUsageCache, saveUsageCache } = require('./usage-store'); // PCC's own durable mirror of that stat
 const { readUsageLimits, isBudgetExceeded, isUsageLimitError, isAuthError } = require('./usage-limits'); // per-turn hard cost cap (desktop-parity R3)
-const { parseTurnOutput } = require('./turn-output'); // parses --output-format json's real total_cost_usd (desktop-parity R3 slice 2)
+const { contextTokensFrom } = require('./turn-output'); // real prompt (context) size from a turn's usage block, for the chat-health meter
+const { createTurnCounter, isBreached } = require('./turn-cap'); // ADR-0020 T2: live agentic-turn cap (kill a runaway message)
 const { loadChatCosts, saveChatCosts } = require('./chat-cost-store'); // durable per-chat cost so rollover survives a restart (ADR-0015 residue)
 const { singleFlight } = require('./single-flight'); // coalesce concurrent detector refreshes (soak W3)
-const { parseStreamJson, parseStreamCost, parseStreamUsage } = require('./stream-json');
+const { parseStreamJson, parseStreamCost, parseStreamUsage, parseStreamSubtype } = require('./stream-json');
 const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
 const { logAppError } = require('./error-log'); // durable trace for otherwise-swallowed app failures
@@ -888,7 +889,9 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     // Code's OWN --max-budget-usd flag aborts THIS turn cleanly if its spend crosses the cap,
     // rather than PCC trying to reinvent cost tracking. Caps a single-turn runaway; a whole
     // chat's cumulative cost across many turns is the separate, still-open piece of R3.
-    args.push('--max-budget-usd', String(readUsageLimits(path.join(cockpitDir(), 'state')).maxTurnUsd));
+    const limits = readUsageLimits(path.join(cockpitDir(), 'state'));
+    args.push('--max-budget-usd', String(limits.maxTurnUsd));
+    const maxTurns = limits.maxTurns; // ADR-0020 T2: cap agentic turns for THIS message (kill a runaway)
     // Worker (Claude) session identity is SEPARATE from authority identity: the renderer
     // passes workerSessionId (the chat's own id, or a re-minted id after crash recovery) for
     // --session-id/--resume, while build authority above is keyed to the stable chatId. So
@@ -902,16 +905,21 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     // worker sees it). Plain-text sends keep the original text path unchanged — no regression to
     // the authority/read-only spawn behavior, which is identical either way (same tool flags).
     const hasAttach = Array.isArray(attachments) && attachments.length > 0;
+    // ADR-0020 T2: BOTH paths now stream (--output-format stream-json) so PCC can count the worker's
+    // agentic turns as they arrive and kill a single message that spirals into hundreds of turns
+    // (the installed CLI 2.1.186 has NO --max-turns flag — verified against its full flag list).
+    // Attachments additionally need stream-json INPUT to carry image/file content blocks; a plain-text
+    // send streams output only. The stream's terminal `result` event still carries the same
+    // result/total_cost_usd/usage/subtype the old --output-format json blob did, so reply/cost/context/
+    // budget parsing is unchanged (parseStream*), and a non-JSON body (the test fakebin's plain text)
+    // still falls through to out.trim(). Verified live 2026-07-22 against CLI 2.1.186.
     if (hasAttach) args.push('--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose');
-    // R3 slice 2: non-streaming JSON output for the ordinary text path gives the real per-turn
-    // total_cost_usd (app/turn-output.js) — a single blob, not incremental parsing, so this is a
-    // small addition, not the larger always-streaming change. Backward-safe: parseTurnOutput
-    // returns text:null on anything that isn't this exact shape (e.g. the test fakebin's plain
-    // text), and the close handler below falls back to today's plain-text handling unchanged.
-    else args.push('--output-format', 'json');
+    else args.push('--output-format', 'stream-json', '--verbose');
     let out = '';
     let err = '';
     let child;
+    let turnCapped = false; // ADR-0020 T2: set true when this message's agentic turns cross the cap and we kill it
+    const turnCounter = createTurnCounter(); // counts assistant turns off the live stream
     try {
       child = spawn('claude', args, { cwd: scopedCwd, shell: true });
     } catch (e) {
@@ -929,7 +937,17 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
       if (currentTurn && currentTurn.child === child) currentTurn = null;
       resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message });
     });
-    child.stdout.on('data', (d) => { out += d.toString(); });
+    child.stdout.on('data', (d) => {
+      const s = d.toString();
+      out += s;
+      // ADR-0020 T2: kill a single message that spirals past the agentic-turn cap. killWorker
+      // tree-kills the shell + claude grandchild (the same Windows-safe path the Stop button uses);
+      // the close handler below sees turnCapped and returns a plain safety message, not a raw error.
+      if (!turnCapped && isBreached(turnCounter.feed(s), maxTurns)) {
+        turnCapped = true;
+        killWorker(child);
+      }
+    });
     child.stderr.on('data', (d) => { err += d.toString(); });
     child.on('close', (code) => {
       activeWorkers.delete(child);
@@ -941,32 +959,37 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
         resolve({ ok: false, stoppedByOwner: true, text: 'Stopped — you ended this turn before Claude finished. Nothing after this point was sent.' });
         return;
       }
+      if (turnCapped) {
+        // ADR-0020 T2: PCC killed this message because it crossed the agentic-turn cap — a safety
+        // limit firing as designed (like the budget cap), not an error. Reset a failed first-turn
+        // session id, record the REAL partial spend so the ledger stays honest, and say so plainly.
+        if (isNewSession && !workerSessionId) sessionId = null;
+        const c = parseStreamCost(out); if (c !== null) recordChatCost(chatId, c, { deferRollover: true });
+        const u = usageLog.usageFrom(parseStreamUsage(out));
+        if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: 'chat-turn-capped', model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null }, u));
+        resolve({ ok: false, turnCapped: true,
+          text: 'Stopped automatically — this message reached its safety cap of ' + maxTurns + ' agentic steps before finishing, to protect your Claude usage from a runaway loop. This is a safety limit, not a bug. Send it again to continue where it left off, or raise the cap in .cockpit/state/usage-limits.json.' });
+        return;
+      }
       if (code === 0) {
-        let text;
+        // ADR-0020 T2: both the text and attachment paths now stream, so both parse the reply, cost,
+        // usage and context size from the stream's terminal `result` event. A non-JSON body (the test
+        // fakebin's plain text) yields no stream events -> parseStreamJson returns '' and we fall back
+        // to out.trim(), today's plain-text path, unchanged. (Bonus: attachment turns now get their
+        // contextTokens too, closing the prior ADR-0019 residue where the stream path reported none.)
         let rollover = null;
         let contextTokens = null; // ADR-0019: this turn's CURRENT context size (prompt tokens), for the chat-health meter
-        if (hasAttach) {
-          text = parseStreamJson(out);
-          // Attachment/image turns are the most token-expensive — count their real cost toward the
-          // per-chat cap too (parseStreamCost is null on the plain-text fake, so tests are unaffected).
-          const attachCost = parseStreamCost(out);
-          if (attachCost !== null) rollover = recordChatCost(chatId, attachCost);
-          const u = usageLog.usageFrom(parseStreamUsage(out)); // diagnostic: real tokens of this attachment turn (was the one blind spot)
-          if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: 'chat-turn-attach', model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null }, u));
+        let text = parseStreamJson(out);
+        if (text) {
+          const cost = parseStreamCost(out);
+          if (cost !== null) rollover = recordChatCost(chatId, cost);
+          const usage = parseStreamUsage(out);
+          contextTokens = contextTokensFrom(usage); // real prompt size this turn (null if usage absent — never fabricated)
+          const u = usageLog.usageFrom(usage); // diagnostic: real token spend of THIS visible chat turn
+          if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: hasAttach ? 'chat-turn-attach' : 'chat-turn', model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null }, u));
         } else {
-          const parsed = parseTurnOutput(out);
-          if (parsed.text !== null) {
-            text = parsed.text;
-            contextTokens = parsed.contextTokens; // ADR-0019: real prompt size this turn (null if usage absent — never fabricated)
-            if (parsed.costUsd !== null) rollover = recordChatCost(chatId, parsed.costUsd);
-            const u = usageLog.usageFromJson(out); // diagnostic: real token spend of THIS visible chat turn
-            if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: 'chat-turn', model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null }, u));
-          } else {
-            text = out.trim(); // not JSON (the test fakebin, or any non-JSON stdout) — today's plain-text path, unchanged
-          }
+          text = out.trim(); // not stream-json (the test fakebin, or any non-JSON stdout) — plain-text path, unchanged
         }
-        // Attachment turns (stream-json path) do not yet extract token usage — a disclosed ADR-0019
-        // residue; contextTokens stays null there (meter marks it stale, never a fabricated reading).
         const res = { ok: true, text: text };
         if (rollover) res.costRollover = rollover; // R3 slice 2: this chat crossed its cumulative cap
         if (contextTokens !== null) res.contextTokens = contextTokens; // ADR-0019: feed the truthful chat-health meter
@@ -980,9 +1003,14 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
         // still cost something) — count it so the cumulative total stays accurate. deferRollover:true
         // so a cap-crossing on THIS failed turn ACCUMULATES (is not reset to 0) and is caught on the
         // next successful turn — the old code reset it here, silently eating the crossing (codex-caught).
-        if (!hasAttach) { const p = parseTurnOutput(err || out); if (p.costUsd !== null) recordChatCost(chatId, p.costUsd, { deferRollover: true }); }
-        else { const c = parseStreamCost(err || out); if (c !== null) recordChatCost(chatId, c, { deferRollover: true }); } // accumulate partial cost; rolls over on the next successful turn
-        const raw = (err || (hasAttach ? parseStreamJson(out) : out) || ('Claude exited with code ' + code)).trim();
+        // Both paths stream now (ADR-0020 T2): read any real partial cost from the stream so a
+        // cap-crossing on this failed turn ACCUMULATES (deferRollover) and is caught on the next
+        // successful turn, rather than being silently eaten (codex-caught in the old reset-here form).
+        { const c = parseStreamCost(err || out); if (c !== null) recordChatCost(chatId, c, { deferRollover: true }); }
+        // Prefer stderr, then the stream's reply/result text, then raw stdout (a plain-text error like
+        // "Error: Exceeded USD budget (3)" that isn't stream-json), then the exit code. The raw-stdout
+        // fallback is essential: budget/plain-text errors arrive as bare stdout, not stream events.
+        const raw = (err || parseStreamJson(out) || out || ('Claude exited with code ' + code)).trim();
         // Soak fix F4: a stale session lock (a worker orphaned by an earlier crash or
         // mid-turn quit) surfaces as the raw "Session ID ... is already in use". Turn
         // it into a plain-language message and flag it so the renderer can offer a
@@ -990,7 +1018,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
         if (/session id .* is already in use/i.test(raw)) {
           resolve({ ok: false, sessionInUse: true,
             text: 'This chat’s worker session is locked — a worker was interrupted (a crash, or the app closed mid-reply) and left the session in use. Use “Recover this chat” below to give it a fresh worker session while keeping your history, or start a new chat.' });
-        } else if (isBudgetExceeded(raw) || (!hasAttach && parseTurnOutput(err || out).budgetExceeded)) {
+        } else if (isBudgetExceeded(raw) || parseStreamSubtype(out) === 'error_max_budget_usd') {
           // R3: Claude Code's own --max-budget-usd aborted this turn — an automatic protection
           // firing as designed, not a failure. Say so plainly, never a scary raw budget error.
           resolve({ ok: false, budgetExceeded: true,
