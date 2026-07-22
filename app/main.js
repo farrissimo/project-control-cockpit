@@ -29,10 +29,11 @@ const { readUsageLimits, isBudgetExceeded, isUsageLimitError, isAuthError } = re
 const { parseTurnOutput } = require('./turn-output'); // parses --output-format json's real total_cost_usd (desktop-parity R3 slice 2)
 const { loadChatCosts, saveChatCosts } = require('./chat-cost-store'); // durable per-chat cost so rollover survives a restart (ADR-0015 residue)
 const { singleFlight } = require('./single-flight'); // coalesce concurrent detector refreshes (soak W3)
-const { parseStreamJson, parseStreamCost } = require('./stream-json');
+const { parseStreamJson, parseStreamCost, parseStreamUsage } = require('./stream-json');
 const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
 const { logAppError } = require('./error-log'); // durable trace for otherwise-swallowed app failures
+const usageLog = require('./usage-log'); // records REAL token usage of EVERY LLM call (visible + invisible), LLM-agnostic
 
 // This app is the single "home" cockpit. It opens PROJECTS (self-contained
 // folders each with their own .cockpit + engine scripts + CLAUDE.md, exactly
@@ -950,12 +951,16 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
           // per-chat cap too (parseStreamCost is null on the plain-text fake, so tests are unaffected).
           const attachCost = parseStreamCost(out);
           if (attachCost !== null) rollover = recordChatCost(chatId, attachCost);
+          const u = usageLog.usageFrom(parseStreamUsage(out)); // diagnostic: real tokens of this attachment turn (was the one blind spot)
+          if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: 'chat-turn-attach', model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null }, u));
         } else {
           const parsed = parseTurnOutput(out);
           if (parsed.text !== null) {
             text = parsed.text;
             contextTokens = parsed.contextTokens; // ADR-0019: real prompt size this turn (null if usage absent — never fabricated)
             if (parsed.costUsd !== null) rollover = recordChatCost(chatId, parsed.costUsd);
+            const u = usageLog.usageFromJson(out); // diagnostic: real token spend of THIS visible chat turn
+            if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: 'chat-turn', model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null }, u));
           } else {
             text = out.trim(); // not JSON (the test fakebin, or any non-JSON stdout) — today's plain-text path, unchanged
           }
@@ -1030,13 +1035,19 @@ ipcMain.handle('pcc:send', (_e, message, model, workerSessionId, isFirstTurn, ch
 // worker calls: a fresh random --session-id (so a chat's pinned session is never touched), the
 // read-only tool profile, plain text in/out. The summary is mirrored to git-ignored durable files
 // under .cockpit/chats/<id>/ (survives a cleared cache, is backed up, greppable for Phase-2 recall).
-function oneShotWorker(prompt) {
+// `trigger` labels which invisible background operation this is (auto-name / summary / recall-*),
+// so the usage diagnostic can attribute hidden token spend to the feature that caused it. Adding
+// --output-format json (a) makes the previously-unmeasurable background token spend visible, and
+// (b) is behavior-preserving for callers: the reply text is extracted from the json `result` field,
+// and a non-JSON body (the test fakebin's canned plain text) falls straight through to out.trim().
+function oneShotWorker(prompt, trigger) {
   return new Promise((resolve) => {
     const cfg = readModels();
     const args = ['-p', '--model', cfg.default,
       '--tools', 'Read Glob Grep', '--strict-mcp-config',
       '--allowedTools', 'Read Glob Grep',
       '--disallowedTools', 'AskUserQuestion Bash BashOutput KillBash PowerShell Edit Write NotebookEdit Agent Monitor Skill ToolSearch Task WebSearch WebFetch',
+      '--output-format', 'json',
       '--session-id', crypto.randomUUID()];
     if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
     let out = '', err = '', child;
@@ -1048,8 +1059,16 @@ function oneShotWorker(prompt) {
     child.stderr.on('data', (d) => { err += d.toString(); });
     child.on('close', (code) => {
       activeWorkers.delete(child);
-      if (code === 0) resolve({ ok: true, text: out.trim() });
-      else resolve({ ok: false, text: (err.trim() || ('Claude exited with code ' + code)) });
+      // Diagnostic: record this invisible call's REAL token spend, attributed to its trigger.
+      const u = usageLog.usageFromJson(out);
+      if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: trigger || 'one-shot', model: cfg.default, session: 'new' }, u));
+      if (code === 0) {
+        // Extract the reply from --output-format json's `result`; fall back to raw for non-JSON
+        // (the test fakebin's plain text) so existing callers/tests are unaffected.
+        let text = out.trim();
+        try { const o = JSON.parse(out); if (o && typeof o.result === 'string') text = o.result.trim(); } catch { /* plain text */ }
+        resolve({ ok: true, text: text });
+      } else resolve({ ok: false, text: (err.trim() || ('Claude exited with code ' + code)) });
     });
     child.stdin.write(prompt); child.stdin.end();
   });
@@ -1058,7 +1077,7 @@ function oneShotWorker(prompt) {
 // Auto-name: cheap, runs once after the first real exchange. Returns a title only.
 ipcMain.handle('pcc:autoNameChat', async (_e, messages) => {
   if (!Array.isArray(messages) || messages.length === 0) return { ok: false, text: 'No messages to name.' };
-  const r = await oneShotWorker(chatSummary.buildNamePrompt(messages));
+  const r = await oneShotWorker(chatSummary.buildNamePrompt(messages), 'auto-name');
   if (!r.ok) return { ok: false, text: r.text };
   const title = chatSummary.cleanTitle(r.text);
   return title ? { ok: true, title } : { ok: false, text: 'No usable title returned.' };
@@ -1067,7 +1086,7 @@ ipcMain.handle('pcc:autoNameChat', async (_e, messages) => {
 // Summarize: on-demand structured card + durable three-tier mirror on disk.
 ipcMain.handle('pcc:summarizeChat', async (_e, chatId, messages) => {
   if (!Array.isArray(messages) || messages.length === 0) return { ok: false, text: 'This chat has no messages yet.' };
-  const r = await oneShotWorker(chatSummary.buildSummaryPrompt(messages));
+  const r = await oneShotWorker(chatSummary.buildSummaryPrompt(messages), 'summary');
   if (!r.ok) return { ok: false, text: r.text };
   const parsed = chatSummary.safeJsonParse(r.text);
   if (!parsed) return { ok: false, text: 'The summarizer did not return usable JSON. Try refreshing.' };
@@ -1168,14 +1187,14 @@ ipcMain.handle('pcc:searchChats', async (_e, query, chats) => {
   const corpus = (Array.isArray(chats) ? chats : []).filter((c) => c && c.id && Array.isArray(c.messages) && c.messages.length);
   if (corpus.length === 0) return { ok: true, matches: [], terms: [] };
   // 1) expand (AI, cheap) — plain English -> keyword+synonym list.
-  const exp = await oneShotWorker(chatRecall.buildExpandPrompt(query));
+  const exp = await oneShotWorker(chatRecall.buildExpandPrompt(query), 'recall-expand');
   const terms = chatRecall.parseTerms(exp.ok ? exp.text : '', query);
   // 2) grep (local, free) + recall-safe candidate set.
   const hits = chatRecall.grep(terms, corpus);
   const byId = Object.fromEntries(corpus.map((c) => [c.id, c]));
   const candidateChats = chatRecall.selectCandidates(corpus, hits, chatRecall.CANDIDATE_CAP).map((id) => byId[id]);
   // 3) judge (AI) — return every genuine match, or none.
-  const jr = await oneShotWorker(chatRecall.buildJudgePrompt(query, candidateChats));
+  const jr = await oneShotWorker(chatRecall.buildJudgePrompt(query, candidateChats), 'recall-judge');
   if (!jr.ok) return { ok: false, text: jr.text };
   const matches = chatRecall.parseMatches(jr.text)
     .filter((m) => byId[m.chatId])

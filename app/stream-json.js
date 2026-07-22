@@ -50,5 +50,21 @@
     return null;
   }
 
-  return { parseStreamJson: parseStreamJson, parseStreamCost: parseStreamCost };
+  // The REAL token usage from a stream-json stream's `result` event — same `usage` shape as the
+  // plain --output-format json path. Attachment/image turns are the MOST token-expensive type yet
+  // were the one path reporting NO token usage (only cost); this closes that blind spot so the usage
+  // diagnostic sees every turn type. Returns the raw usage object (or null), for usage-log.usageFrom.
+  function parseStreamUsage(raw) {
+    for (const line of String(raw).split('\n')) {
+      const l = line.trim();
+      if (!l) continue;
+      try {
+        const o = JSON.parse(l);
+        if (o && o.type === 'result' && o.usage && typeof o.usage === 'object') return o.usage;
+      } catch (e) { /* ignore non-JSON lines */ }
+    }
+    return null;
+  }
+
+  return { parseStreamJson: parseStreamJson, parseStreamCost: parseStreamCost, parseStreamUsage: parseStreamUsage };
 });
