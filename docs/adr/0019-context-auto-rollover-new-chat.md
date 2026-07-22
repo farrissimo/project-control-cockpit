@@ -39,6 +39,23 @@ work?). Proven: unit suite (`app/tests/unit/chat-health.test.js`, incl. the loop
 E2E (`context-meter.spec.js` fresh-chat-stays-calm-then-climbs; `context-rollover.spec.js` proves
 growth past the threshold does NOT auto-switch — no surprise — and the meter warns instead).
 
+## Amendment (2026-07-21, owner approves the one-click continue-with-handoff flow)
+
+The owner approved the owner-controlled **"Continue in fresh chat"** action this ADR anticipated,
+after finding its first cut was theater: it only pre-filled the new chat when a summary already sat
+in memory, and otherwise opened an empty chat named "Continued chat" that carried nothing. That
+violated this ADR's required floor (points 3–4): a "continued" chat with no carried context is an
+empty room. **Implemented to the floor:** on click, `continueInFreshChat` builds the handoff FIRST
+via `window.pcc.handoff()` while the source chat is still active; the handoff is **required**, so if
+it cannot be built PCC **holds in the source chat** and never opens an empty one. On success the
+carried context (handoff + the in-memory summary when available) is placed **visibly in the new
+chat's composer** as editable text — no hidden seed — and **nothing is sent** until the owner presses
+Send. This stays inside the survival-trial rule (owner-initiated; PCC never takes control). Proven:
+`app/tests/e2e/continue-fresh-chat.spec.js` (4/4 green) — handoff lands in the composer before/after
+the chat is heavy, cached summary appended on top, old chat intact, no auto-send, and the
+**hold-path** (forced handoff failure → stays in source chat, no "Continued chat" created).
+Spec: `docs/specs/continue-fresh-chat.md`.
+
 ## Context and Problem
 
 The 2026-07-20 incident (the reason for the trust proving window, ADR-0016) was a **context

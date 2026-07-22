@@ -433,6 +433,9 @@ function runCmd(cmd, timeout) {
 // the owner never re-briefs a fresh chat by hand. Deterministic script; the app
 // only displays and copies it.
 ipcMain.handle('pcc:handoff', () => new Promise((resolve) => {
+  // Test seam: force the handoff to fail so the "Continue in fresh chat" hold-path
+  // (never open an empty chat when the context can't be carried) can be proven in E2E.
+  if (process.env.PCC_FAKE_HANDOFF_FAIL === '1') return resolve({ ok: false, text: 'Could not generate handoff (forced for test)' });
   exec('pwsh -NoProfile -File scripts/generate-handoff.ps1', { cwd: projectDir, maxBuffer: 4 * 1024 * 1024, timeout: 30000, windowsHide: true }, (err, stdout, stderr) => {
     const out = (stdout || '').trim();
     if (out) return resolve({ ok: true, text: out });

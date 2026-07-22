@@ -816,26 +816,46 @@ function summaryToSeedText(s) {
   return out.join('\n');
 }
 
-function continuationPrefillFromSummary(chat) {
-  const cached = chat && chatSummaries.get(chat.id);
-  const summaryText = summaryToSeedText((chat && chat.summary) || (cached && cached.summary));
-  if (!summaryText) return '';
-  return 'Continue from this summary. It is visible and editable, not hidden context:\n\n'
-    + summaryText
-    + '\n\nMy next instruction: ';
-}
-
+// Owner-controlled "continue in a fresh chat." This is the useful version of the pattern:
+// a fresh chat that ACTUALLY carries the thread forward. Fail-safe ORDER: build the carried
+// context FIRST, while the source chat is still active. The handoff is REQUIRED — without it a
+// "continued" chat is just an empty room — so if it can't be built we HOLD in the source chat and
+// never open an empty one. On success the carried context is dropped VISIBLY into the composer of
+// the new chat (editable, no hidden seed), and NOTHING is sent until the owner presses Send.
 async function continueInFreshChat() {
   if (busy) return;
   const source = activeChat();
-  const prefill = continuationPrefillFromSummary(source);
-  const newId = await startNewChat({ name: 'Continued chat', prefill });
-  if (!newId) return;
-  if (!prefill) {
+  const btn = document.getElementById('continue-fresh-chat');
+  const restoreBtn = () => { if (btn) { btn.disabled = false; btn.textContent = 'Continue in fresh chat'; } };
+  if (btn) { btn.disabled = true; btn.textContent = 'Carrying context…'; } // assembling the handoff can take a moment
+
+  let handoff = '';
+  try { const h = await window.pcc.handoff(); handoff = (h && h.ok && h.text) ? h.text : ''; } catch (e) { handoff = ''; }
+  if (!handoff) {
+    restoreBtn();
     await appendMessage('assistant',
-      'Fresh chat started. No saved summary was available, so PCC did not invent one or send hidden context. Your old chat is still in the list.',
-      newId);
+      'PCC could not build the handoff to carry your context forward, so it is staying in THIS chat rather than opening an empty one. Nothing was lost — try again, or keep going here.',
+      source && source.id);
+    return;
   }
+
+  // Best-effort summary ON TOP of the required handoff — only if one is already available, so this
+  // never blocks or hangs the button. The handoff itself is the continuity payload; the summary is bonus.
+  let summaryText = '';
+  try {
+    const cached = source && chatSummaries.get(source.id);
+    summaryText = summaryToSeedText((source && source.summary) || (cached && cached.summary));
+  } catch (e) { summaryText = ''; }
+
+  const carried = '=== Carried context from your previous chat ===\n'
+    + '(This is visible and editable. Nothing is sent until you press Send.)\n\n'
+    + handoff
+    + (summaryText ? ('\n\n=== Conversation summary ===\n' + summaryText) : '')
+    + '\n\n=== Continue from here ===\n';
+
+  // startNewChat drops `carried` into the composer (input.value) and focuses it — visible, not sent.
+  // If it fails to create the chat it surfaces its own error and the owner stays in the source chat.
+  await startNewChat({ name: 'Continued chat', prefill: carried });
 }
 
 // Carry a too-full chat forward into a fresh chat. Fail-safe ORDER (AC-10): build the carried
@@ -2273,7 +2293,6 @@ function renderChatHealth(d) {
     + gaugeSVG(withGauge.gauge.value, withGauge.gauge.label || '', withGauge.gauge.hover) + '</div>';
 
   const chatSignal = signals.find((s) => s && s.detector === 'chat-rollover');
-  const showContinue = chatSignal && chatSignal.signal === 'notice';
   const tiles = signals.map((s) => {
     const sig = (s && s.signal) || 'unknown';
     const cls = (sig === 'clear' || sig === 'notice') ? sig : 'unknown';
@@ -2283,8 +2302,8 @@ function renderChatHealth(d) {
       + '<span class="ch-status">' + escapeHtml(sig) + '</span></span>';
   }).join('');
 
-  const actionHtml = showContinue
-    ? '<button class="ch-action" id="continue-fresh-chat" type="button" title="Owner-controlled: open a fresh chat. Nothing is sent to Claude until you press Send.">Continue in fresh chat</button>'
+  const actionHtml = chatSignal
+    ? '<button class="ch-action ' + (chatSignal.signal === 'notice' ? 'notice' : 'clear') + '" id="continue-fresh-chat" type="button" title="Owner-controlled: open a fresh chat with your context carried forward into the composer. Nothing is sent to Claude until you press Send.">Continue in fresh chat</button>'
     : '';
   el.innerHTML = gaugeHtml + '<div class="ch-tiles">' + tiles + '</div>' + actionHtml;
   el.querySelectorAll('[data-open], .ch-gauge').forEach((t) => t.addEventListener('click', openSignals));
