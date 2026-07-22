@@ -133,7 +133,7 @@ const CORRECTIONS = [
 ];
 
 function scrollDown() { log.scrollTop = log.scrollHeight; }
-function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 // In-app replacement for window.prompt(). Electron does NOT support prompt() —
 // it throws "prompt() is not supported.", which silently killed the New-project
@@ -562,6 +562,7 @@ async function reconsiderChatName(chat) {
 // The summary card slide-over. Opens on the 📋 button next to a chat's name; shows the last
 // generated card instantly (cached on the chat) with a ↻ to regenerate, else builds one now.
 let summaryChatId = null;
+const chatSummaries = new Map(); // renderer-local cache: survives canonical refreshes during this app session
 function openSummaryDrawer() {
   document.getElementById('summary-backdrop').classList.remove('hidden');
   document.getElementById('summary-drawer').classList.remove('hidden');
@@ -596,6 +597,7 @@ async function generateSummary(chat) {
     const r = await window.pcc.summarizeChat(chat.id, chat.messages);
     if (r && r.ok) {
       chat.summary = r.summary; chat.summaryAt = r.at; // in-memory drawer cache (disk copy is authoritative)
+      chatSummaries.set(chat.id, { summary: r.summary, at: r.at });
       // A summary is a full read of the chat — adopt its title as the name (unless locked).
       if (r.summary && r.summary.title && !chat.nameLocked) {
         await chatCmd('chatsRename', { chatId: chat.id, name: String(r.summary.title).slice(0, 60), lock: false });
@@ -620,7 +622,9 @@ function showSummary(id) {
     document.getElementById('summary-body').innerHTML = '<div class="sum-loading">This chat has no messages yet.</div>';
     return;
   }
+  const cached = chatSummaries.get(chat.id);
   if (chat.summary) renderSummaryCard(chat, chat.summary, chat.summaryAt); // show cached instantly
+  else if (cached) renderSummaryCard(chat, cached.summary, cached.at);
   else generateSummary(chat);                                             // first time: build it
 }
 {
@@ -765,19 +769,22 @@ function addRecoveryAction() {
   log.scrollTop = log.scrollHeight;
 }
 
-async function startNewChat() {
+async function startNewChat(opts) {
   if (busy) return;
+  opts = opts || {};
   const leaving = activeChat();            // name the chat you're leaving behind, from its full arc
   const newId = uuid();
-  const cr = await chatCmd('chatsCreate', { id: newId, name: 'New chat' });
+  const cr = await chatCmd('chatsCreate', { id: newId, name: opts.name || 'New chat' });
   if (!cr.ok) { addBubbleUI('assistant error', 'Could not start a new chat: ' + (cr.error || 'unknown')); return; }
   await chatCmd('chatsSetActive', { chatId: newId }); // refresh adopts the new active chat
   renderActiveChat();
   renderChatList();
   loadTrust();
-  input.value = '';
+  input.value = opts.prefill || '';
+  growComposer();
   input.focus();
   if (leaving && leaving.id !== newId) { persistTranscript(leaving); reconsiderChatName(leaving); } // fire-and-forget
+  return newId;
 }
 document.getElementById('new-chat').addEventListener('click', startNewChat);
 
@@ -807,6 +814,28 @@ function summaryToSeedText(s) {
   const list = (label, arr) => { if (Array.isArray(arr) && arr.length) out.push(label + ':\n' + arr.map((x) => '- ' + x).join('\n')); };
   list('Decided', s.decided); list('Open ideas', s.openIdeas); list('Important events', s.importantEvents);
   return out.join('\n');
+}
+
+function continuationPrefillFromSummary(chat) {
+  const cached = chat && chatSummaries.get(chat.id);
+  const summaryText = summaryToSeedText((chat && chat.summary) || (cached && cached.summary));
+  if (!summaryText) return '';
+  return 'Continue from this summary. It is visible and editable, not hidden context:\n\n'
+    + summaryText
+    + '\n\nMy next instruction: ';
+}
+
+async function continueInFreshChat() {
+  if (busy) return;
+  const source = activeChat();
+  const prefill = continuationPrefillFromSummary(source);
+  const newId = await startNewChat({ name: 'Continued chat', prefill });
+  if (!newId) return;
+  if (!prefill) {
+    await appendMessage('assistant',
+      'Fresh chat started. No saved summary was available, so PCC did not invent one or send hidden context. Your old chat is still in the list.',
+      newId);
+  }
 }
 
 // Carry a too-full chat forward into a fresh chat. Fail-safe ORDER (AC-10): build the carried
@@ -2243,6 +2272,8 @@ function renderChatHealth(d) {
   if (withGauge) gaugeHtml = '<div class="ch-gauge" title="Click for detail in the Signals tab.">'
     + gaugeSVG(withGauge.gauge.value, withGauge.gauge.label || '', withGauge.gauge.hover) + '</div>';
 
+  const chatSignal = signals.find((s) => s && s.detector === 'chat-rollover');
+  const showContinue = chatSignal && chatSignal.signal === 'notice';
   const tiles = signals.map((s) => {
     const sig = (s && s.signal) || 'unknown';
     const cls = (sig === 'clear' || sig === 'notice') ? sig : 'unknown';
@@ -2252,8 +2283,13 @@ function renderChatHealth(d) {
       + '<span class="ch-status">' + escapeHtml(sig) + '</span></span>';
   }).join('');
 
-  el.innerHTML = gaugeHtml + '<div class="ch-tiles">' + tiles + '</div>';
+  const actionHtml = showContinue
+    ? '<button class="ch-action" id="continue-fresh-chat" type="button" title="Owner-controlled: open a fresh chat. Nothing is sent to Claude until you press Send.">Continue in fresh chat</button>'
+    : '';
+  el.innerHTML = gaugeHtml + '<div class="ch-tiles">' + tiles + '</div>' + actionHtml;
   el.querySelectorAll('[data-open], .ch-gauge').forEach((t) => t.addEventListener('click', openSignals));
+  const cont = document.getElementById('continue-fresh-chat');
+  if (cont) cont.addEventListener('click', (e) => { e.stopPropagation(); continueInFreshChat(); });
 }
 
 // ---- project view ----

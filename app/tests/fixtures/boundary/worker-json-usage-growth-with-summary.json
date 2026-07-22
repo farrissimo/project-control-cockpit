@@ -1,0 +1,7 @@
+{
+  "sequence": [
+    { "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"result\":\"USAGE-REPLY-BASELINE\",\"total_cost_usd\":0.3,\"session_id\":\"x\",\"usage\":{\"input_tokens\":242000,\"cache_read_input_tokens\":10000,\"cache_creation_input_tokens\":0,\"output_tokens\":400}}", "stderr": "", "exitCode": 0 },
+    { "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"result\":\"USAGE-REPLY-GROWN\",\"total_cost_usd\":0.6,\"session_id\":\"x\",\"usage\":{\"input_tokens\":402000,\"cache_read_input_tokens\":10000,\"cache_creation_input_tokens\":0,\"output_tokens\":600}}", "stderr": "", "exitCode": 0 },
+    { "stdout": "{\"title\":\"Token Growth Plan\",\"gist\":\"The chat crossed the warning threshold while preserving owner control.\",\"decided\":[\"Use a manual fresh-chat action\"],\"wentRight\":[],\"wentWrong\":[],\"openIdeas\":[\"Verify owner experience on screen\"],\"importantEvents\":[\"Chat Health showed notice\"]}", "stderr": "", "exitCode": 0 }
+  ]
+}
