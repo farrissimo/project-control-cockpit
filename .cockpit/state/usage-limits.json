@@ -1,0 +1,10 @@
+{
+  "config_id": "usage-limits-v1",
+  "plain_language": {
+    "what_this_is": "Two hard, automatic spending caps. max_turn_usd caps ONE turn (passed to Claude Code's own --max-budget-usd flag, which cleanly stops a turn the instant its cost crosses this number -- an Anthropic-enforced safety net against a single turn spiraling). max_chat_usd caps a WHOLE chat's running total across many turns -- when it's crossed, PCC automatically gives that chat a fresh worker session (keeping all its visible history) so the underlying context can't keep growing unnoticed for hours, the way it did on 2026-07-20. Both are separate from your overall 5-hour/weekly usage limit shown in the app's usage meter.",
+    "how_to_update": "Raise max_turn_usd if a normal heavy turn (lots of tool calls, a big build) is hitting the cap and getting cut off before finishing. Raise max_chat_usd if you want longer chats before an automatic rollover. Lower either for tighter protection. This file being missing, deleted, or broken NEVER disables either cap -- PCC falls back to safe defaults (3 dollars / 15 dollars) rather than running with no limit."
+  },
+  "max_turn_usd": 3,
+  "max_chat_usd": 15,
+  "updated_at": "2026-07-20T00:00:00-06:00"
+}

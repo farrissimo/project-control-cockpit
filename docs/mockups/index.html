@@ -1,0 +1,96 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PCC Cockpit — Mockups</title>
+<link rel="stylesheet" href="_cockpit.css">
+<style>
+.wrap{max-width:1040px;margin:0 auto;padding:34px 22px}
+h1{margin:0 0 6px;font-size:24px;color:#e2e8f0}
+h2{margin:30px 0 12px;font-size:15px;color:#e2e8f0;letter-spacing:.02em}
+.lead{color:var(--muted);margin:0 0 8px;max-width:780px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+a.card{display:block;padding:18px;text-decoration:none;color:inherit;transition:border-color .15s}
+a.card:hover{border-color:var(--blue)}
+a.card h3{margin:0 0 4px;font-size:16px;color:#e2e8f0;display:flex;align-items:center;gap:9px}
+a.card .k{font-size:11px;letter-spacing:.12em;color:var(--blue);text-transform:uppercase}
+a.card p{color:var(--muted);margin:8px 0 0;font-size:13px}
+.reco{border-color:var(--green)!important;box-shadow:0 0 0 1px rgba(34,197,94,.3)}
+.tagreco{font-size:10px;color:var(--green);border:1px solid var(--green);border-radius:5px;padding:1px 6px;margin-left:auto}
+.tag2{display:inline-block;font-size:10px;letter-spacing:.08em;color:var(--amber);border:1px solid var(--amber);border-radius:5px;padding:1px 5px;margin-left:6px}
+.contract{margin-top:14px;padding:16px 18px}
+.contract h4{margin:0 0 10px;font-size:12px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.contract li{margin:5px 0;font-size:13px}
+.doc{display:inline-flex;align-items:center;gap:8px;color:var(--blue);text-decoration:none;font-size:13px}
+</style></head>
+<body>
+<script src="_icons.js"></script>
+<div class="wrap">
+  <h1>PCC Owner Cockpit — mockups</h1>
+  <p class="lead">All clickable. Chosen direction is <b style="color:var(--green)">E · Synthesis</b>. The headline
+  feature — the <b>live worker feed</b> — has its own three animated treatments below. Formal write-up:
+  <a class="doc" href="../proposals/owner-cockpit.md">docs/proposals/owner-cockpit.md ›</a></p>
+
+  <h2>The cockpit — chosen direction</h2>
+  <div class="grid">
+    <a class="card reco" href="cockpit-e-synthesis.html">
+      <span class="k">Mockup E · recommended</span>
+      <h3>Synthesis <span class="tagreco">CHOSEN</span></h3>
+      <p>Research-backed: plain word + value + color, 3 tiers of drill-down (glance → click → slide-out),
+      every bar explains itself. Click “Building it,” “Health check,” “Scope set,” “2nd AI” for the deep detail.</p>
+    </a>
+    <a class="card" href="cockpit-b-instrument.html">
+      <span class="k">Mockup B</span>
+      <h3>Instrument Cluster</h3>
+      <p>The cockpit gauges (real metrics only) that you liked visually. Kept for reference.</p>
+    </a>
+  </div>
+  <p class="lead" style="margin-top:10px">Earlier explorations (kept for reference):
+    <a class="doc" href="cockpit-a-metro.html">A · Transit Rail</a> ·
+    <a class="doc" href="cockpit-c-ribbon.html">C · Calm Ribbon</a> ·
+    <a class="doc" href="cockpit-d-boarding.html">D · Side Timeline</a></p>
+
+  <h2>Live worker feed ✦ animates</h2>
+  <p class="lead">Refined into a <b style="color:var(--green)">guided</b>, one-step-at-a-time view — calm when
+  normal, loud when there’s a problem. Try the amber (needs proof) and red (STOP) buttons.</p>
+  <div class="grid" style="margin-bottom:18px">
+    <a class="card reco" href="feed-6-guided.html">
+      <span class="k">Chosen feed · Guided</span>
+      <h3>Guided — one step at a time <span class="tagreco">CHOSEN</span></h3>
+      <p>LIVE bar + a done/current/next stepper + one active-step card connecting the plan to the live action.
+      Normal is tiny; a soft issue goes amber, a hard problem replaces the card with a red STOP + “Pause worker.”</p>
+    </a>
+    <a class="card" href="feed-5-plan-vs-actual.html">
+      <span class="k">Feed 5 · earlier</span>
+      <h3>Plan vs Actual (two columns)</h3>
+      <p>The two-column step toward the guided view — still useful to see the full comparison. Kept for reference.</p>
+    </a>
+  </div>
+  <p class="lead" style="margin-top:0">Earlier feed explorations (reference) — feed-4 combo + the three ingredients:</p>
+  <div class="grid3">
+    <a class="card" href="feed-1-stream.html">
+      <span class="k">Feed 1</span><h3><svg class="ic s-blue" style="width:17px;height:17px"><use href="#i-terminal"/></svg> Stream</h3>
+      <p>The readable one — a plain running log, newest on top, with elapsed time and a health banner.</p>
+    </a>
+    <a class="card" href="feed-2-pulse.html">
+      <span class="k">Feed 2</span><h3><svg class="ic s-purple" style="width:17px;height:17px"><use href="#i-pulse"/></svg> Pulse</h3>
+      <p>The visual one — a heartbeat that beats on every action, actions rising off the worker, files lighting up.</p>
+    </a>
+    <a class="card" href="feed-3-workbench.html">
+      <span class="k">Feed 3</span><h3><svg class="ic s-amber" style="width:17px;height:17px"><use href="#i-pencil"/></svg> Workbench</h3>
+      <p>The spatial one — see <b>which files</b> it’s in right now (reading / editing / done) with a live log beside.</p>
+    </a>
+  </div>
+
+  <div class="card contract">
+    <h4>Shared honesty contract (everything obeys it)</h4>
+    <ul>
+      <li>Chat owns the screen; status <b>collapses to reclaim space</b>; preferences persist per project.</li>
+      <li><b>Proven ≠ inferred.</b> Estimates live in a dashed “guesses, not facts” area and can never turn a tile green
+        <span class="tag2">no ETA · no fake progress</span></li>
+      <li>Unknown = gray, never green. Every state carries an icon + word, not color alone.</li>
+      <li>Evidence is bound to the <b>exact saved version + time</b>; “Done” = proof-matched-stakes (+ your OK), not “worker stopped.”</li>
+      <li>The live feed is honestly labelled where it isn’t wired yet — no faked progress bar.</li>
+    </ul>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,1 @@
+{ "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"result\":\"FAKE-JSON-REPLY\",\"total_cost_usd\":6,\"session_id\":\"x\"}", "stderr": "", "exitCode": 0 }

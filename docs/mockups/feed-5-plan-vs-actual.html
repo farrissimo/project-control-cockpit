@@ -1,0 +1,139 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Live Worker Feed — Plan vs Actual</title>
+<link rel="stylesheet" href="_cockpit.css">
+<style>
+.wrap{max-width:960px;margin:24px auto;padding:0 18px}
+h1{font-size:16px;color:#e2e8f0;margin:0 0 3px} .sub{color:var(--muted);font-size:12.5px;margin:0 0 14px}
+.statusbar{display:flex;align-items:center;gap:12px;padding:11px 15px;border-radius:12px;border:1px solid var(--border);background:var(--panel);margin-bottom:12px}
+.statusbar.ok{border-color:rgba(56,189,248,.4)} .statusbar.quiet{border-color:var(--amber)} .statusbar.stop{border-color:var(--red);background:var(--redbg)}
+.live{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--green);font-weight:600}
+.live .d{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.bigstate{font-size:14px;font-weight:700} .statusbar.ok .bigstate{color:var(--blue)} .statusbar.quiet .bigstate{color:var(--amber)} .statusbar.stop .bigstate{color:var(--red)}
+.stats{margin-left:auto;font-size:11.5px;color:var(--muted)} .stats b{color:#e2e8f0;font-variant-numeric:tabular-nums}
+.explain{padding:9px 15px;border:1px solid var(--red);background:var(--redbg);color:#fecaca;border-radius:10px;margin-bottom:12px;font-size:12.5px;display:none}
+.explain.show{display:block}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.ptitle{padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:#e2e8f0;font-weight:600;display:flex;align-items:center;gap:8px}
+.ptitle .sm{font-weight:400;color:var(--muted);font-size:11px}
+/* plan rows */
+.plan{list-style:none;margin:0;padding:4px 0}
+.prow{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border)}
+.prow .lab{font-size:12.5px}
+.prow .st{margin-left:auto;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid var(--border2);white-space:nowrap}
+.st.ok{color:var(--green);border-color:rgba(34,197,94,.5)} .st.wait{color:var(--muted)}
+.st.warn{color:var(--amber);border-color:var(--amber)} .st.stop{color:var(--red);border-color:var(--red);background:var(--redbg)}
+.prow.stoprow{background:var(--redbg)}
+/* actual stream */
+.feed{list-style:none;margin:0;padding:4px 0;max-height:360px;overflow:auto}
+.now{display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:1px solid var(--border);font-size:12.5px;color:#e2e8f0}
+.now .ic{width:24px;height:24px;border-radius:7px;background:#0e1626;display:flex;align-items:center;justify-content:center}
+.now .ic svg{width:13px;height:13px}
+.row{display:flex;align-items:flex-start;gap:11px;padding:9px 14px;animation:slidein .34s ease}
+@keyframes slidein{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.row .ic{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;background:#0e1626}
+.row .ic svg{width:13px;height:13px}
+.row .verb{font-weight:600;color:#e2e8f0;font-size:12.5px} .row .tgt{font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.row .note{color:var(--muted);font-size:11.5px;margin-top:2px}
+.row .ago{margin-left:auto;color:var(--muted);font-size:11px;white-space:nowrap}
+.row.bad{background:var(--redbg)} .row.bad .verb{color:var(--red)}
+.btns{display:flex;gap:8px;margin-bottom:12px}
+.foot{color:var(--muted);font-size:11.5px;margin-top:12px}
+@media (prefers-reduced-motion:reduce){.row{animation:none}}
+</style></head>
+<body>
+<script src="_icons.js"></script><script src="_feed.js"></script>
+<div class="wrap">
+  <h1>Live worker feed — <span class="s-green">Plan vs Actual</span></h1>
+  <p class="sub">The comparison is done <b>for you</b>: what the worker was approved to do, beside what it’s actually doing — with anything <b class="s-red">outside the plan</b> called out loudly. Watch ~15s, then press the red button.</p>
+
+  <div class="statusbar ok" id="statusbar">
+    <span class="live"><span class="d pulse"></span>LIVE</span>
+    <span class="bigstate" id="bigstate">Working — on plan so far</span>
+    <span class="stats">working <b id="elapsed">00:00</b> · last action <b id="ago">—</b></span>
+  </div>
+  <div class="explain" id="explain"></div>
+  <div class="btns">
+    <button class="link" onclick="forbid()" style="border-color:var(--red);color:#fecaca">⚠ Simulate an out-of-plan action</button>
+    <button class="link" onclick="clearForbid()">reset</button>
+  </div>
+
+  <div class="cols">
+    <!-- SUPPOSED -->
+    <div class="panel">
+      <div class="ptitle">Supposed to be doing <span class="sm">· from the approved task</span></div>
+      <ul class="plan" id="plan">
+        <li class="prow" data-k="read"><span class="lab">Read the approved files first</span><span class="st wait">waiting</span></li>
+        <li class="prow" data-k="scoped"><span class="lab">Change only the 3 agreed files</span><span class="st wait">waiting</span></li>
+        <li class="prow" data-k="norules"><span class="lab">Don’t touch the rules / authority</span><span class="st ok">on plan</span></li>
+        <li class="prow" data-k="checks"><span class="lab">Run the checks before done</span><span class="st wait">waiting</span></li>
+        <li class="prow" data-k="secondai"><span class="lab">Get a second-AI review</span><span class="st wait">waiting</span></li>
+        <li class="prow" data-k="proof"><span class="lab">Only claim done after proof</span><span class="st ok">on plan</span></li>
+      </ul>
+    </div>
+    <!-- ACTUAL -->
+    <div class="panel">
+      <div class="ptitle">Actually doing <span class="sm">· live</span></div>
+      <div class="now"><span class="ic" id="nowic"><svg><use href="#i-brain"/></svg></span><span id="nowtext">Getting started…</span></div>
+      <ul class="feed" id="feed"></ul>
+    </div>
+  </div>
+  <div class="foot">Simulated for the mockup. Real version compares live worker actions against the approved plan; where a task declares no plan, it shows “no plan to compare against” — never a fake “on plan.” Silence shows “looks quiet,” not “stuck.”</div>
+</div>
+<script>
+var SCOPED={'auth-flow.js':1,'app-routes.js':1,'auth-flow.test.js':1,'auth-flow.md':1};
+var seen={read:false,scoped:false,checks:false,secondai:false}, forbidden=false;
+function setSt(k,cls,txt){var el=document.querySelector('.prow[data-k="'+k+'"]');if(!el)return;
+  var s=el.querySelector('.st'); s.className='st '+cls; s.textContent=txt; el.classList.toggle('stoprow',cls==='stop');}
+function recompute(){
+  setSt('read', seen.read?'ok':'wait', seen.read?'on plan':'waiting');
+  setSt('scoped', forbidden?'stop':(seen.scoped?'ok':'wait'), forbidden?'STOP':(seen.scoped?'on plan':'waiting'));
+  setSt('norules', forbidden?'stop':'ok', forbidden?'STOP':'on plan');
+  setSt('checks', seen.checks?'ok':'wait', seen.checks?'on plan':'waiting');
+  setSt('secondai', seen.secondai?'ok':'wait', seen.secondai?'on plan':'not yet');
+  setSt('proof','ok','on plan');
+}
+function fileFor(t){return (t.match(/[\w.-]+\.(js|md)/)||[])[0]||'';}
+var feed=document.getElementById('feed');
+function agoText(ms){var s=Math.round(ms/1000);return s<2?'just now':s+'s ago';}
+FEED.run(function(e){
+  var t=FEED.tools[e.tool];
+  document.getElementById('nowic').innerHTML='<svg style="color:'+t.color+'"><use href="#'+t.icon+'"/></svg>';
+  document.getElementById('nowtext').innerHTML='<b>'+t.verb+'</b> '+(e.note||e.target);
+  var li=document.createElement('li'); li.className='row'; li.dataset.t=Date.now();
+  li.innerHTML='<span class="ic" style="color:'+t.color+'"><svg><use href="#'+t.icon+'"/></svg></span>'
+    +'<div><div><span class="verb">'+t.verb+'</span> <span class="tgt" style="color:'+t.color+'">'+e.target.replace(/^.*\//,'')+'</span></div>'
+    +(e.note?'<div class="note">'+e.note+'</div>':'')+'</div><span class="ago">just now</span>';
+  feed.insertBefore(li,feed.firstChild); while(feed.children.length>20) feed.removeChild(feed.lastChild);
+  if(e.tool==='Read') seen.read=true;
+  if(e.tool==='Edit'&&SCOPED[fileFor(e.target)]) seen.scoped=true;
+  if(e.tool==='Run'||e.tool==='Test') seen.checks=true;
+  recompute();
+});
+function forbid(){
+  forbidden=true;
+  var li=document.createElement('li'); li.className='row bad'; li.dataset.t=Date.now();
+  li.innerHTML='<span class="ic" style="color:var(--red)"><svg><use href="#i-pencil"/></svg></span>'
+    +'<div><div><span class="verb">Tried to change</span> <span class="tgt" style="color:var(--red)">authority-tool-profile.js</span></div>'
+    +'<div class="note">a file this task did not allow</div></div><span class="ago">just now</span>';
+  feed.insertBefore(li,feed.firstChild);
+  document.getElementById('explain').className='explain show';
+  document.getElementById('explain').innerHTML='<b>STOP — outside the plan.</b> The worker is touching a file this task did not allow (the authority / rules file). Pause and verify before continuing.';
+  recompute();
+}
+function clearForbid(){forbidden=false;document.getElementById('explain').className='explain';recompute();}
+setInterval(function(){
+  var now=Date.now();
+  document.getElementById('elapsed').textContent=FEED.mmss(now-FEED.startTime);
+  var ago=now-FEED.lastEventTime;
+  document.getElementById('ago').textContent=agoText(ago);
+  var sb=document.getElementById('statusbar'), bs=document.getElementById('bigstate'), quiet=ago>FEED.STUCK_MS;
+  if(forbidden){ sb.className='statusbar stop'; bs.textContent='STOP — outside the plan'; }
+  else if(quiet){ sb.className='statusbar quiet'; bs.textContent='Looks quiet — no visible progress for '+Math.round(ago/1000)+'s'; }
+  else { sb.className='statusbar ok'; bs.textContent='Working — on plan so far'; }
+  feed.querySelectorAll('.row').forEach(function(r){ r.querySelector('.ago').textContent=agoText(now-(+r.dataset.t)); });
+},1000);
+recompute();
+</script>
+</body></html>

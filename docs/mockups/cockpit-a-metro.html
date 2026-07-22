@@ -1,0 +1,162 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cockpit A — Transit Rail</title>
+<link rel="stylesheet" href="_cockpit.css">
+<style>
+/* ---- Mockup A: horizontal "governed transit line" ---- */
+.topbar{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--border)}
+.life{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
+.life .st{display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:7px}
+.life .st.done{color:var(--green)} .life .st.now{color:#e2e8f0;background:#182034}
+.life .sep{color:var(--dim)}
+.bar{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--border)}
+.bar .section-label{width:74px;flex:0 0 auto}
+.chips{display:flex;gap:8px;flex-wrap:wrap;flex:1}
+.spacer{flex:1}
+/* metro rail */
+.rail{display:flex;align-items:center;padding:14px 16px 18px;border-bottom:1px solid var(--border);position:relative}
+.rail .section-label{position:absolute;top:6px;left:16px}
+.line{display:flex;align-items:center;flex:1;margin-top:10px}
+.stn{display:flex;flex-direction:column;align-items:center;position:relative;cursor:pointer}
+.node{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:var(--panel);border:2px solid var(--gray);color:var(--gray);z-index:2}
+.node svg{width:15px;height:15px}
+.seg{height:3px;flex:1;background:var(--gray);min-width:14px}
+.stn.done .node{border-color:var(--green);color:var(--green);background:var(--greenbg)}
+.stn.done+.seg,.seg.done{background:var(--green)}
+.stn.now .node{border-color:var(--blue);color:var(--blue);background:var(--bluebg)}
+.stn.warn .node{border-color:var(--amber);color:var(--amber);background:var(--amberbg)}
+.stn .lab{font-size:10.5px;margin-top:6px;color:var(--muted);white-space:nowrap}
+.stn.now .lab,.stn.warn .lab{color:#e2e8f0}
+.stn .lab.q{visibility:hidden}
+.rail.exp .stn .lab{visibility:visible}
+.rail.exp .line{flex-wrap:wrap;gap:8px 0}
+.telemetry{margin:10px 16px 0;padding:10px 12px;display:none;gap:16px;align-items:center}
+.rail.exp .telemetry{display:flex}
+.gauge-mini{display:flex;flex-direction:column;gap:2px}
+.gauge-mini b{color:var(--muted);font-weight:500;font-size:11px}
+</style></head>
+<body>
+<script src="_icons.js"></script>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><svg class="ic s-blue" style="width:20px;height:20px"><use href="#i-cockpit"/></svg> PCC Cockpit</div>
+    <div class="nav on"><svg class="ic"><use href="#i-chat"/></svg> Chat</div>
+    <div class="nav"><svg class="ic"><use href="#i-cockpit"/></svg> Cockpit</div>
+    <div class="nav"><svg class="ic"><use href="#i-evidence"/></svg> Evidence</div>
+    <div class="nav"><svg class="ic"><use href="#i-project"/></svg> Project</div>
+    <div class="spacer"></div>
+    <div class="hint">Mockup A · Transit Rail<br>Click a station for evidence.</div>
+  </aside>
+
+  <div class="main">
+    <!-- lifecycle: always-visible, tiny -->
+    <div class="topbar">
+      <div class="life">
+        <span class="st done"><svg class="ic"><use href="#i-check"/></svg>Define</span><span class="sep">—</span>
+        <span class="st done"><svg class="ic"><use href="#i-check"/></svg>Plan</span><span class="sep">—</span>
+        <span class="st now"><svg class="ic"><use href="#i-dot"/></svg>Build</span><span class="sep">—</span>
+        <span class="st">Verify</span><span class="sep">—</span><span class="st">Release</span><span class="sep">—</span><span class="st">Operate</span>
+      </div>
+      <div class="spacer"></div>
+      <button class="link" onclick="conflict()">⚡ Simulate truth conflict</button>
+    </div>
+
+    <!-- truth conflict banner (hidden until triggered) -->
+    <div id="cban" class="conflict-banner" style="margin:10px 16px 0">
+      <svg class="ic" style="width:18px;height:18px"><use href="#i-alert"/></svg>
+      Truth conflict — “Verified” is stale: the diff changed since the last PASS. Re-verify before trusting green.
+      <button class="link" style="margin-left:auto" onclick="conflict()">Dismiss</button>
+    </div>
+
+    <!-- collapsed trust bar (icon row) -->
+    <div class="bar">
+      <span class="section-label">Truth</span>
+      <div class="chips">
+        <span class="pill s-blue" data-ev="authority"><svg class="ic"><use href="#i-shield"/></svg> Build active</span>
+        <span class="pill s-green"><svg class="ic"><use href="#i-route"/></svg> On track</span>
+        <span class="pill s-green"><svg class="ic"><use href="#i-sync"/></svg> Synced</span>
+        <span class="pill s-green" id="tverify" data-ev="verify"><svg class="ic"><use href="#i-verify"/></svg> Fresh</span>
+        <span class="pill s-green"><svg class="ic"><use href="#i-cloud"/></svg> CI green</span>
+        <span class="pill s-gray"><svg class="ic"><use href="#i-bell"/></svg> 0 needed</span>
+      </div>
+    </div>
+
+    <!-- live work flow: metro rail -->
+    <div class="rail" id="rail">
+      <span class="section-label">Current task proof chain · Implement auth flow 3.2.1</span>
+      <div class="line">
+        <div class="stn done" data-ev="req"><div class="node"><svg><use href="#i-chat"/></svg></div><span class="lab">Request</span></div><div class="seg done"></div>
+        <div class="stn done" data-ev="ground"><div class="node"><svg><use href="#i-route"/></svg></div><span class="lab q">Ground</span></div><div class="seg done"></div>
+        <div class="stn done" data-ev="scope"><div class="node"><svg><use href="#i-target"/></svg></div><span class="lab q">Scope</span></div><div class="seg done"></div>
+        <div class="stn done" data-ev="authority"><div class="node"><svg><use href="#i-shield"/></svg></div><span class="lab q">Authority</span></div><div class="seg done"></div>
+        <div class="stn now" data-ev="worker"><div class="node glow pulse"><svg><use href="#i-worker"/></svg></div><span class="lab">Worker</span></div><div class="seg"></div>
+        <div class="stn warn" data-ev="doctor"><div class="node"><svg><use href="#i-pulse"/></svg></div><span class="lab">Checks</span></div><div class="seg"></div>
+        <div class="stn" data-ev="tests"><div class="node"><svg><use href="#i-flask"/></svg></div><span class="lab q">Tests</span></div><div class="seg"></div>
+        <div class="stn" data-ev="verify"><div class="node"><svg><use href="#i-verify"/></svg></div><span class="lab q">Verify</span></div><div class="seg"></div>
+        <div class="stn" data-ev="gate"><div class="node"><svg><use href="#i-gate"/></svg></div><span class="lab q">Gate</span></div><div class="seg"></div>
+        <div class="stn" data-ev="commit"><div class="node"><svg><use href="#i-commit"/></svg></div><span class="lab q">Commit</span></div><div class="seg"></div>
+        <div class="stn" data-ev="ci"><div class="node"><svg><use href="#i-cloud"/></svg></div><span class="lab q">CI</span></div><div class="seg"></div>
+        <div class="stn" data-ev="done"><div class="node"><svg><use href="#i-flag"/></svg></div><span class="lab q">Done</span></div>
+      </div>
+      <button class="link" style="margin-left:12px" onclick="toggleRail()"><svg class="ic" style="width:13px;height:13px"><use href="#i-expand"/></svg></button>
+      <!-- demoted, honest "estimates" strip only shown when expanded -->
+      <div class="telemetry inferred">
+        <span class="tag">ESTIMATES · NOT PROOF</span>
+        <div class="gauge-mini"><b>Elapsed (real)</b><span class="mono">00:02:14</span></div>
+        <div class="gauge-mini"><b>Stall risk (inferred)</b><span>low · no output 12s</span></div>
+        <span class="hint">These never turn a station green.</span>
+      </div>
+    </div>
+
+    <!-- chat owns the rest -->
+    <div class="chat">
+      <div class="bubble you"><div class="who">You · 10:24</div>Approved. Implement the auth flow slice 3.2.1 — follow the plan and acceptance criteria.</div>
+      <div class="bubble"><div class="who">Claude (Worker)</div>Got it — starting slice 3.2.1. I’ll ground on the spec, keep in scope, and run checks as I go.</div>
+      <div class="bubble" style="background:transparent;border:1px dashed var(--border2)"><div class="who">System</div>Task authorized · workflow set to the Build proof chain · authority: read-only writes gated to this chat.</div>
+    </div>
+    <div class="composer"><span>Message PCC…</span><span>+ @ &lt;/&gt; ⚡ ⎘ &nbsp; ▸ Send</span></div>
+  </div>
+</div>
+
+<!-- evidence popover -->
+<div class="pop" id="pop"></div>
+
+<script>
+var EV = {
+  authority:{t:'Authority',c:'s-blue',rows:[['State','Build session ACTIVE'],['Granted by','Owner · this chat'],['Expires','1h 24m (idle) / 2h cap'],['Source','authority-store.js']],np:'Authority is real, but does not prove any file was actually changed.'},
+  worker:{t:'Worker · active',c:'s-blue',rows:[['What','Implementing approved task 3.2.1'],['Source','Claude CLI bridge'],['Started','2m 14s ago'],['Applies to','uncommitted working tree']],np:'“Files changing / output streaming” is NOT shown live — needs the Live Action Timeline. Only elapsed is real.'},
+  doctor:{t:'Checks',c:'s-amber',rows:[['State','WARNING'],['Observed','App-error log has 1 new entry'],['Source','scripts/doctor.ps1'],['Ran','just now']],np:'A warning is a signal, not a failure. See Evidence tab for the entry.'},
+  verify:{t:'Verification',c:'s-green',rows:[['State','Exact diff verified'],['Verifier','Codex'],['Age','23 min'],['Base','abc123'],['Head','def456'],['Covers','the committed HEAD only']],np:'Uncommitted changes since HEAD are NOT covered by this PASS.'},
+  scope:{t:'Scope',c:'s-amber',rows:[['Means only','a spec with acceptance criteria EXISTS'],['File','docs/specs/auth-flow.md'],['Criteria','5 (EARS form)']],np:'Does NOT prove the scope is correct or complete — only that an artifact exists.'},
+  req:{t:'Request',c:'s-green',rows:[['Owner message','“Implement auth flow 3.2.1”'],['At','10:24']],np:'—'},
+  ground:{t:'Ground',c:'s-green',rows:[['Read','PROJECT.md, spec, ADRs'],['Source','worker transcript']],np:'Grounding is inferred from the worker’s own text — advisory.'},
+  tests:{t:'Tests',c:'s-gray',rows:[['State','not started']],np:'No test run recorded for this task yet.'},
+  gate:{t:'Gate',c:'s-gray',rows:[['State','not started']],np:'Governance receipt not written for this diff yet.'},
+  commit:{t:'Commit',c:'s-gray',rows:[['State','not started']],np:'Working tree not committed.'},
+  ci:{t:'CI',c:'s-gray',rows:[['State','unknown until pushed']],np:'CI status is per-SHA; nothing pushed yet.'},
+  done:{t:'Done',c:'s-gray',rows:[['Means','proof matched stakes (+ owner acceptance)']],np:'“Done” is NOT “worker finished steps.” It needs the real completion contract.'}
+};
+var pop = document.getElementById('pop');
+function showEv(key, x, y){
+  var e = EV[key]; if(!e){pop.classList.remove('show');return;}
+  var rows = e.rows.map(function(r){return '<b>'+r[0]+'</b><span class="mono">'+r[1]+'</span>';}).join('');
+  pop.innerHTML = '<h4><span class="'+e.c+'">'+e.t+'</span><button class="link" onclick="pop.classList.remove(\'show\')">close</button></h4>'
+    + '<div class="kv">'+rows+'</div><div class="notproven"><b>Not proven:</b> '+e.np+'</div>';
+  pop.style.left = Math.min(x, innerWidth-340)+'px';
+  pop.style.top = Math.min(y+10, innerHeight-260)+'px';
+  pop.classList.add('show');
+}
+document.querySelectorAll('[data-ev]').forEach(function(el){
+  el.addEventListener('click', function(ev){ ev.stopPropagation(); showEv(el.getAttribute('data-ev'), ev.clientX, ev.clientY); });
+});
+document.addEventListener('click', function(){ pop.classList.remove('show'); });
+function toggleRail(){ document.getElementById('rail').classList.toggle('exp'); }
+function conflict(){
+  var on = document.getElementById('cban').classList.toggle('show');
+  var v = document.getElementById('tverify');
+  v.className = 'pill ' + (on?'s-red':'s-green'); v.setAttribute('data-ev','verify');
+  v.innerHTML = '<svg class="ic"><use href="#i-verify"/></svg> '+(on?'Stale!':'Fresh');
+}
+</script>
+</body></html>

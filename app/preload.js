@@ -56,6 +56,8 @@ contextBridge.exposeInMainWorld('pcc', {
   createFlowPickLocation: () => ipcRenderer.invoke('pcc:createFlowPickLocation'),
   createFlowSave: (name, location) => ipcRenderer.invoke('pcc:createFlowSave', name, location),
   ciStatus: () => ipcRenderer.invoke('pcc:ciStatus'),
+  usage: () => ipcRenderer.invoke('pcc:usage'),
+  stopWorker: (chatId) => ipcRenderer.invoke('pcc:stopWorker', chatId),
   syncStatus: () => ipcRenderer.invoke('pcc:syncStatus'),
   backup: (message) => ipcRenderer.invoke('pcc:backup', message),
   pull: () => ipcRenderer.invoke('pcc:pull'),

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PCC Codex Session Workflow Map</title>
+<style>
+  :root {
+    --ink: #17201b;
+    --muted: #5f6f65;
+    --paper: #f7f1e4;
+    --paper-2: #fffaf0;
+    --line: #d9c9aa;
+    --green: #28614b;
+    --green-soft: #dcebdd;
+    --gold: #a96f20;
+    --gold-soft: #f5e2bd;
+    --red: #8b3328;
+    --red-soft: #f2d3ca;
+    --blue: #2f5772;
+    --blue-soft: #d7e6ef;
+    --shadow: 0 22px 70px rgba(42, 33, 18, 0.16);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 8% 8%, rgba(169, 111, 32, 0.2), transparent 28rem),
+      radial-gradient(circle at 92% 4%, rgba(47, 87, 114, 0.18), transparent 26rem),
+      linear-gradient(135deg, #fbf5e8 0%, #efe0c0 100%);
+    font-family: Georgia, "Times New Roman", serif;
+    line-height: 1.45;
+  }
+
+  main {
+    width: min(1180px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 42px 0 64px;
+  }
+
+  header {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(23, 32, 27, 0.14);
+    border-radius: 30px;
+    padding: clamp(28px, 5vw, 62px);
+    background:
+      linear-gradient(145deg, rgba(255, 250, 240, 0.96), rgba(247, 241, 228, 0.86)),
+      repeating-linear-gradient(90deg, transparent 0 28px, rgba(40, 97, 75, 0.04) 28px 29px);
+    box-shadow: var(--shadow);
+  }
+
+  header::after {
+    content: "";
+    position: absolute;
+    right: -80px;
+    top: -90px;
+    width: 260px;
+    height: 260px;
+    border-radius: 50%;
+    border: 34px solid rgba(40, 97, 75, 0.1);
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    margin: 0 0 18px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: var(--green-soft);
+    color: var(--green);
+    font: 700 0.78rem/1.1 "Trebuchet MS", sans-serif;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  h1, h2, h3 {
+    margin: 0;
+    line-height: 1.05;
+  }
+
+  h1 {
+    max-width: 780px;
+    font-size: clamp(2.3rem, 6vw, 5.4rem);
+    letter-spacing: -0.06em;
+  }
+
+  h2 {
+    font-size: clamp(1.5rem, 3vw, 2.3rem);
+    letter-spacing: -0.04em;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .lede {
+    max-width: 760px;
+    margin-top: 20px;
+    color: var(--muted);
+    font-size: 1.15rem;
+  }
+
+  .source-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 30px;
+  }
+
+  .source-strip span {
+    padding: 8px 11px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(255, 250, 240, 0.7);
+    color: #4d4231;
+    font: 700 0.8rem/1.1 "Trebuchet MS", sans-serif;
+  }
+
+  section {
+    margin-top: 26px;
+    border: 1px solid rgba(23, 32, 27, 0.13);
+    border-radius: 26px;
+    background: rgba(255, 250, 240, 0.82);
+    box-shadow: 0 16px 42px rgba(42, 33, 18, 0.09);
+  }
+
+  .section-pad {
+    padding: clamp(22px, 4vw, 36px);
+  }
+
+  .section-intro {
+    max-width: 780px;
+    margin-top: 10px;
+    color: var(--muted);
+  }
+
+  .lane-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 22px;
+  }
+
+  .lane {
+    min-height: 230px;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: linear-gradient(160deg, var(--paper-2), rgba(255, 250, 240, 0.62));
+  }
+
+  .lane strong {
+    display: block;
+    margin-bottom: 10px;
+    font: 800 0.88rem/1.1 "Trebuchet MS", sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .lane ul, .checklist, .inventory {
+    padding-left: 1.1rem;
+    margin: 12px 0 0;
+  }
+
+  li {
+    margin: 7px 0;
+  }
+
+  .map {
+    margin-top: 24px;
+    padding: 24px;
+    border-radius: 24px;
+    background:
+      linear-gradient(180deg, rgba(215, 230, 239, 0.78), rgba(255, 250, 240, 0.92));
+    overflow-x: auto;
+  }
+
+  .flow {
+    min-width: 960px;
+    display: grid;
+    grid-template-columns: 1.1fr 0.85fr 1fr 1fr 1fr 1fr;
+    gap: 14px;
+    align-items: stretch;
+  }
+
+  .node {
+    position: relative;
+    padding: 15px;
+    border: 1px solid rgba(23, 32, 27, 0.16);
+    border-radius: 17px;
+    background: var(--paper-2);
+    min-height: 94px;
+  }
+
+  .node::after {
+    content: "→";
+    position: absolute;
+    right: -18px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gold);
+    font: 900 1.5rem/1 "Trebuchet MS", sans-serif;
+  }
+
+  .node:last-child::after {
+    content: "";
+  }
+
+  .node .label {
+    display: block;
+    color: var(--muted);
+    font: 700 0.72rem/1.1 "Trebuchet MS", sans-serif;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .node .title {
+    display: block;
+    margin-top: 7px;
+    font: 800 1rem/1.15 "Trebuchet MS", sans-serif;
+  }
+
+  .node .body {
+    display: block;
+    margin-top: 7px;
+    color: #5b5142;
+    font-size: 0.92rem;
+  }
+
+  .gate {
+    border-color: rgba(139, 51, 40, 0.26);
+    background: linear-gradient(160deg, var(--red-soft), var(--paper-2));
+  }
+
+  .fact {
+    border-color: rgba(40, 97, 75, 0.3);
+    background: linear-gradient(160deg, var(--green-soft), var(--paper-2));
+  }
+
+  .swimlane {
+    display: grid;
+    grid-template-columns: 190px 1fr;
+    gap: 0;
+    margin-top: 22px;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    overflow: hidden;
+  }
+
+  .swimlane > div {
+    padding: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .swimlane > div:nth-last-child(-n+2) {
+    border-bottom: 0;
+  }
+
+  .actor {
+    background: rgba(40, 97, 75, 0.09);
+    font: 800 0.86rem/1.2 "Trebuchet MS", sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .actions {
+    background: rgba(255, 250, 240, 0.72);
+  }
+
+  .pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .pill {
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: var(--blue-soft);
+    color: var(--blue);
+    font: 700 0.77rem/1 "Trebuchet MS", sans-serif;
+  }
+
+  .decision-table {
+    width: 100%;
+    margin-top: 22px;
+    border-collapse: collapse;
+    overflow: hidden;
+    border-radius: 18px;
+  }
+
+  .decision-table th, .decision-table td {
+    padding: 14px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .decision-table th {
+    width: 23%;
+    background: rgba(169, 111, 32, 0.13);
+    font: 800 0.82rem/1.2 "Trebuchet MS", sans-serif;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .decision-table tr:last-child th, .decision-table tr:last-child td {
+    border-bottom: 0;
+  }
+
+  code {
+    padding: 2px 5px;
+    border-radius: 5px;
+    background: rgba(23, 32, 27, 0.08);
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.92em;
+  }
+
+  .warning-card {
+    margin-top: 20px;
+    padding: 18px;
+    border: 1px solid rgba(139, 51, 40, 0.24);
+    border-radius: 20px;
+    background: var(--red-soft);
+  }
+
+  footer {
+    margin-top: 28px;
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
+  @media (max-width: 900px) {
+    .lane-grid, .swimlane {
+      grid-template-columns: 1fr;
+    }
+
+    .actor {
+      border-bottom: 0;
+    }
+
+    .flow {
+      min-width: 0;
+      grid-template-columns: 1fr;
+    }
+
+    .node::after {
+      content: "↓";
+      right: 18px;
+      top: auto;
+      bottom: -20px;
+      transform: none;
+    }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">PCC governed workflow map</p>
+    <h1>What happens after you say something in a Codex session</h1>
+    <p class="lede">This page maps owner language to PCC action. The goal is to make the invisible machinery visible: when we stay in discussion, when work becomes official, when Claude is allowed into the lane, when verification takes over, and what evidence must exist before anyone says done.</p>
+    <div class="source-strip" aria-label="Repo truth sources">
+      <span>AGENTS.md</span>
+      <span>PROJECT.md</span>
+      <span>docs/adr/</span>
+      <span>docs/specs/</span>
+      <span>.cockpit/ state</span>
+      <span>scripts/doctor.ps1</span>
+      <span>governance gate</span>
+      <span>Codex verifier</span>
+    </div>
+  </header>
+
+  <section class="section-pad">
+    <h2>The Three Lanes Are Categories, Not The Whole List</h2>
+    <p class="section-intro">Almost every owner message falls into one of these lanes. The lane controls how much machinery turns on.</p>
+    <div class="lane-grid">
+      <article class="lane">
+        <strong>1. Thinking lane</strong>
+        <p>You are exploring, questioning, proposing, worrying, or pressure-testing. This is where ideas stay cheap.</p>
+        <ul>
+          <li>"I have an idea."</li>
+          <li>"Is this dumb?"</li>
+          <li>"What could go wrong?"</li>
+          <li>"Should we use an existing tool?"</li>
+        </ul>
+      </article>
+      <article class="lane">
+        <strong>2. Task lane</strong>
+        <p>You want something moved into official work. Scope, authority, and proof requirements become explicit.</p>
+        <ul>
+          <li>"Make this a task."</li>
+          <li>"Approved."</li>
+          <li>"Implement it."</li>
+          <li>"Fix this."</li>
+        </ul>
+      </article>
+      <article class="lane">
+        <strong>3. Verification lane</strong>
+        <p>You want evidence, a second set of eyes, or a check that the worker is not inventing a green light.</p>
+        <ul>
+          <li>"Verify this."</li>
+          <li>"Run doctor."</li>
+          <li>"Is Claude lying?"</li>
+          <li>"Where do we stand?"</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="section-pad">
+    <h2>General Work Map</h2>
+    <p class="section-intro">This is the default Codex-session path when your message becomes real work. Small, reversible tasks may skip spec/ADR, but they do not skip repo truth or honest reporting.</p>
+    <div class="map" role="img" aria-label="Workflow from owner message through done">
+      <div class="flow">
+        <div class="node">
+          <span class="label">Start</span>
+          <span class="title">Owner message</span>
+          <span class="body">Idea, bug, approval, verification request, or operational check.</span>
+        </div>
+        <div class="node fact">
+          <span class="label">Ground</span>
+          <span class="title">Read repo truth</span>
+          <span class="body"><code>git status</code>, AGENTS, PROJECT, ADRs, specs, and live <code>.cockpit</code> state.</span>
+        </div>
+        <div class="node gate">
+          <span class="label">Classify</span>
+          <span class="title">Choose lane</span>
+          <span class="body">Thinking, task, or verification. If consequences are unclear, pause before acting.</span>
+        </div>
+        <div class="node gate">
+          <span class="label">Bound</span>
+          <span class="title">Scope the work</span>
+          <span class="body">Objective, allowed scope, forbidden scope, acceptance criteria, proof needed.</span>
+        </div>
+        <div class="node">
+          <span class="label">Execute</span>
+          <span class="title">Do the smallest safe thing</span>
+          <span class="body">Edit, inspect, test, or hand off to worker depending on the lane.</span>
+        </div>
+        <div class="node fact">
+          <span class="label">Done?</span>
+          <span class="title">Evidence decides</span>
+          <span class="body">Tests, doctor, verifier verdict, CI exact SHA, and owner acceptance where needed.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-pad">
+    <h2>Detailed Behind-The-Scenes Path</h2>
+    <div class="swimlane">
+      <div class="actor">Owner</div>
+      <div class="actions">Says the thing: idea, approval, bug, suspicion, verification ask, commit/push ask, rollback ask, or release-readiness ask.</div>
+
+      <div class="actor">Codex</div>
+      <div class="actions">Checks the live repo before acting: current branch, dirty tree, existing instructions, current PCC task state, relevant docs, and whether the request is discussion-only or action-authorized.</div>
+
+      <div class="actor">Decision policy</div>
+      <div class="actions">If the choice affects architecture, scope, workflow, verification, or owner expectations, check <code>docs/adr/</code>. If it is a new significant decision, draft an ADR instead of silently deciding.</div>
+
+      <div class="actor">Spec policy</div>
+      <div class="actions">For a non-trivial feature or behavior change, write a one-screen spec under <code>docs/specs/</code>. Acceptance criteria need tests, not just prose.</div>
+
+      <div class="actor">PCC state</div>
+      <div class="actions">Official task work should be represented in canonical state and handoff artifacts: <code>.cockpit/state/task-state.json</code>, <code>.cockpit/handoff/worker-directive.md</code>, result files, and verification files.</div>
+
+      <div class="actor">Claude worker</div>
+      <div class="actions">When Claude is the worker, PCC drives it through supported non-interactive <code>claude -p</code> mode, not by wrapping the interactive terminal. Claude reads the directive and returns worker evidence. Worker claims are not final truth.</div>
+
+      <div class="actor">Local checks</div>
+      <div class="actions">Run the lightest sufficient checks first: focused tests, lint, script-contract checks, and <code>scripts/doctor.ps1</code>. Doctor is a health report, not a completion certificate.</div>
+
+      <div class="actor">Verifier</div>
+      <div class="actions">For non-trivial work, an independent verifier checks the exact diff/claim. PCC's primary verifier path is Codex CLI <code>codex exec</code> in read-only mode via verification scripts. Verdicts must say PASS, FAIL, INSUFFICIENT, BLOCKED, or OUT_OF_SCOPE.</div>
+
+      <div class="actor">Git gate</div>
+      <div class="actions">At commit time, staged changes are classified by stakes. T0/T1 changes require a valid diff-bound verification receipt or explicit bypass. The commit-msg hook can write a durable <code>Verified-Receipt:</code> trailer.</div>
+
+      <div class="actor">Push / CI</div>
+      <div class="actions">After push or PR, CI is the clean-machine fact. PCC should check CI for the exact SHA, not a stale stored claim. Release readiness uses the fresh release gate, not memory.</div>
+    </div>
+  </section>
+
+  <section class="section-pad">
+    <h2>Full Utterance Inventory</h2>
+    <p class="section-intro">These are the common things you can say and what they should trigger.</p>
+    <table class="decision-table">
+      <tr>
+        <th>You say</th>
+        <th>Codex should do</th>
+        <th>Do not do</th>
+      </tr>
+      <tr>
+        <th>Idea</th>
+        <td>Ground it in the roadmap, ADRs, current phase, and existing backlog. Keep it lightweight unless you ask to promote it.</td>
+        <td>Do not start coding just because the idea is interesting.</td>
+      </tr>
+      <tr>
+        <th>Concern / suspicion</th>
+        <td>Inspect the live files, state, or behavior that would prove or disprove it. Report uncertainty plainly.</td>
+        <td>Do not soothe, assume, or declare "all good" without evidence.</td>
+      </tr>
+      <tr>
+        <th>Approved</th>
+        <td>Convert the idea into bounded work: scope, acceptance criteria, allowed/forbidden areas, evidence, and task state/handoff if using PCC's worker lane.</td>
+        <td>Do not let approval become a blank check.</td>
+      </tr>
+      <tr>
+        <th>Implement / fix</th>
+        <td>Check repo truth, make scoped edits, protect unrelated dirty files, run relevant checks, and report proof plus residual risk.</td>
+        <td>Do not self-certify non-trivial done.</td>
+      </tr>
+      <tr>
+        <th>Monitor Claude</th>
+        <td>Inspect task state, directive, worker result, verifier result, git status, and doctor output. Look for role blur, stale handoff, fake-green, or drift.</td>
+        <td>Do not trust Claude's prose over canonical files.</td>
+      </tr>
+      <tr>
+        <th>Check bridge</th>
+        <td>Confirm app bridge code and tool status. If needed, run a tiny controlled <code>claude -p</code> probe, but only when bridge validation itself is the task.</td>
+        <td>Do not casually burn model runs or treat a chat transcript as proof.</td>
+      </tr>
+      <tr>
+        <th>Run doctor</th>
+        <td>Run <code>scripts/doctor.ps1</code>, summarize issues/warnings, and separate advisory warnings from blockers.</td>
+        <td>Do not call doctor a release gate.</td>
+      </tr>
+      <tr>
+        <th>Verify</th>
+        <td>Switch to evidence mode: inspect exact changes, run checks, judge claims, and return a verdict with "not proven."</td>
+        <td>Do not fix during verification unless you explicitly ask for a repair pass.</td>
+      </tr>
+      <tr>
+        <th>Commit</th>
+        <td>Review staged scope, run required checks, satisfy governance gate, commit with durable verification where required.</td>
+        <td>Do not use <code>--no-verify</code> or bury unrelated changes.</td>
+      </tr>
+      <tr>
+        <th>Push / PR</th>
+        <td>Push the intended branch, open/update PR if requested, then check exact-SHA CI truth.</td>
+        <td>Do not claim remote green from stale local memory.</td>
+      </tr>
+      <tr>
+        <th>Release readiness</th>
+        <td>Run the release gate fresh and treat PASS/FAIL/UNKNOWN honestly.</td>
+        <td>Do not reuse yesterday's green.</td>
+      </tr>
+      <tr>
+        <th>Rollback / restore</th>
+        <td>Pause, identify the exact target, prefer protected backups and non-destructive recovery, and ask before destructive moves.</td>
+        <td>Do not reset or delete casually.</td>
+      </tr>
+    </table>
+  </section>
+
+  <section class="section-pad">
+    <h2>Bridge And Proof Boundaries</h2>
+    <ul class="checklist">
+      <li>Claude communication in the app is via supported <code>claude -p</code> non-interactive mode with session continuity.</li>
+      <li>The file bridge is the truth surface: directives, results, task state, verification result, and evidence files.</li>
+      <li>Claude worker output is a claim. Verification decides whether the claim is supported.</li>
+      <li>Codex verification should be read-only and evidence-driven.</li>
+      <li>Doctor can reveal health problems but does not prove completion.</li>
+      <li>CI proves the exact pushed commit on a clean machine; it does not prove the owner wanted the right thing.</li>
+      <li>The owner remains the authority on "was this the right outcome?" even when tests prove "it was built as specified."</li>
+    </ul>
+    <div class="warning-card">
+      <h3>The anti-shitshow rule</h3>
+      <p>If an automated owner-simulator or E2E run finds bugs, its job is to document and keep going when possible. It should not start fixing in place. Fixing turns the simulator into a worker, blurs the role, and risks losing the original goal.</p>
+    </div>
+  </section>
+
+  <section class="section-pad">
+    <h2>Quick Status Banner Template</h2>
+    <p class="section-intro">This is the compact "where are we?" banner Codex can use before starting meaningful work.</p>
+    <div class="map">
+      <code>Lane: Thinking | Task | Verification</code><br>
+      <code>Authority: Read-only | Approved bounded work | Blocked</code><br>
+      <code>Repo truth: branch + git status checked</code><br>
+      <code>Gates: ADR? spec? doctor? tests? verifier? governance receipt? CI?</code><br>
+      <code>Current step: Grounding | Scoping | Editing | Checking | Verifying | Committing | Watching CI</code>
+    </div>
+  </section>
+
+  <footer>
+    Static artifact. Generated from repo-governed PCC workflow rules on 2026-07-20. This page is explanatory only; canonical truth remains in live files and scripts.
+  </footer>
+</main>
+</body>
+</html>

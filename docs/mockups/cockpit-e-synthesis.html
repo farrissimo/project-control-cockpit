@@ -1,0 +1,287 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cockpit E — Research-backed synthesis</title>
+<link rel="stylesheet" href="_cockpit.css">
+<style>
+/* ---- Mockup E: proven layout + plain-language formula + 3 tiers of drill-down ----
+   Tier 1 = the tile (plain word + value + color).
+   Tier 2 = click -> popover (plain sentence + the technical detail + not-proven).
+   Tier 3 = "See more" -> slide-out drawer (the FULL breakdown, e.g. the actual files). */
+.bandhead{display:flex;align-items:center;gap:8px;padding:8px 16px 0;font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted)}
+.bandhead .q{width:16px;height:16px;border-radius:50%;border:1px solid var(--border2);color:var(--muted);
+  font-size:10px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;background:none}
+.bandhead .q:hover{border-color:var(--blue);color:var(--blue)}
+.bandhead .tie{font-size:10px;color:var(--blue);text-transform:none;letter-spacing:0}
+.lifebar{display:flex;align-items:center;gap:0;padding:6px 16px 10px;border-bottom:1px solid var(--border)}
+.lstep{display:flex;align-items:center;gap:8px;padding:7px 13px;border-radius:9px;font-size:13px;color:var(--muted)}
+.lstep .num{width:19px;height:19px;border-radius:50%;border:1.5px solid var(--gray);display:flex;align-items:center;justify-content:center;font-size:11px}
+.lstep.done{color:var(--green)} .lstep.done .num{border-color:var(--green);color:var(--green)}
+.lstep.now{color:#e2e8f0;background:#16233c} .lstep.now .num{border-color:var(--blue);color:var(--blue)}
+.lsep{flex:1;height:1.5px;background:var(--border);min-width:8px;max-width:30px}
+.spacer{flex:1}
+.kpirow{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;padding:8px 16px 11px;border-bottom:1px solid var(--border)}
+.kpi{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:9px 11px;cursor:pointer;transition:border-color .15s}
+.kpi:hover{border-color:var(--blue)}
+.kpi .ico{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.kpi .ico svg{width:16px;height:16px}
+.kpi .lab{font-size:11px;color:var(--muted)}
+.kpi .val{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.kpi .val .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.g .ico{background:var(--greenbg);color:var(--green)} .g .val{color:var(--green)}
+.b .ico{background:var(--bluebg);color:var(--blue)} .b .val{color:var(--blue)}
+.a .ico{background:var(--amberbg);color:var(--amber)} .a .val{color:var(--amber)}
+.n .ico{background:#182034;color:var(--muted)} .n .val{color:var(--text)}
+.flowbar{padding:4px 16px 14px;border-bottom:1px solid var(--border)}
+.line{display:flex;align-items:center;margin-top:6px}
+.stn{display:flex;flex-direction:column;align-items:center;cursor:pointer;min-width:0}
+.node{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--panel);border:2px solid var(--gray);color:var(--gray);z-index:2}
+.node svg{width:14px;height:14px}
+.seg{height:3px;flex:1;background:var(--gray);min-width:10px}
+.stn.done .node{border-color:var(--green);color:var(--green);background:var(--greenbg)}
+.seg.done{background:var(--green)}
+.stn.now .node{border-color:var(--blue);color:var(--blue);background:var(--bluebg)}
+.stn .lab{font-size:10.5px;margin-top:5px;color:var(--muted);white-space:nowrap}
+.stn.now .lab{color:#e2e8f0;font-weight:600}
+.content{flex:1;display:flex;min-height:0}
+.chatcol{flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--border)}
+.rail{width:290px;flex:0 0 auto;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:12px;background:var(--panel2)}
+.attn{border:1px solid rgba(34,197,94,.35);border-radius:12px;padding:16px;text-align:center;background:var(--panel)}
+.attn .big{width:44px;height:44px;border-radius:50%;background:var(--greenbg);color:var(--green);display:flex;align-items:center;justify-content:center;margin:0 auto 9px}
+.attn h4{margin:0 0 3px;font-size:14px;color:#e2e8f0} .attn p{color:var(--muted);font-size:12px}
+.railsec h5{margin:0 0 8px;font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.evgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.evtile{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:9px 11px;cursor:pointer}
+.evtile:hover{border-color:var(--blue)}
+.evtile .v{font-size:16px;font-weight:600} .evtile .l{font-size:11px;color:var(--muted)}
+.act{display:flex;gap:10px;font-size:12px;padding:5px 0;align-items:center}
+.act .time{color:var(--muted);font-variant-numeric:tabular-nums;width:42px}
+.act svg{width:14px;height:14px;color:var(--muted)}
+.statusbar{display:flex;gap:18px;padding:7px 16px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted)}
+.seemore{margin-top:10px;width:100%;justify-content:center;display:flex;gap:6px;align-items:center}
+/* slide-out drawer (tier 3) */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s;z-index:60}
+.scrim.show{opacity:1;pointer-events:auto}
+.slide{position:fixed;top:0;right:0;height:100vh;width:400px;background:#0e1626;border-left:1px solid var(--border2);
+  box-shadow:-20px 0 60px rgba(0,0,0,.5);transform:translateX(100%);transition:transform .26s ease;z-index:61;
+  display:flex;flex-direction:column}
+.slide.show{transform:translateX(0)}
+.slide .shead{display:flex;align-items:center;gap:10px;padding:15px 17px;border-bottom:1px solid var(--border)}
+.slide .shead h3{margin:0;font-size:15px;color:#e2e8f0}
+.slide .sbody{padding:16px 17px;overflow:auto;font-size:13px;line-height:1.5}
+.slide .sbody p{margin:0 0 12px;color:var(--text)}
+.slide .sbody .muted{color:var(--muted)}
+.filelist{list-style:none;margin:0 0 12px;padding:0}
+.filelist li{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border)}
+.filelist .fn{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--blue)}
+.filelist .fd{font-size:12px;color:var(--muted)}
+.badge{display:inline-block;font-size:10px;letter-spacing:.06em;padding:2px 7px;border-radius:6px;border:1px solid var(--border2);color:var(--muted);text-transform:uppercase}
+.connect{border:1px solid var(--border2);border-radius:10px;padding:11px 13px;background:var(--panel);font-size:12.5px}
+.connect b{color:var(--blue)}
+</style></head>
+<body>
+<script src="_icons.js"></script>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><svg class="ic s-blue" style="width:20px;height:20px"><use href="#i-cockpit"/></svg> PCC Cockpit</div>
+    <div class="nav on"><svg class="ic"><use href="#i-chat"/></svg> Chat</div>
+    <div class="nav"><svg class="ic"><use href="#i-project"/></svg> Project</div>
+    <div class="nav"><svg class="ic"><use href="#i-book"/></svg> Rules</div>
+    <div class="nav"><svg class="ic"><use href="#i-cockpit"/></svg> Memory</div>
+    <div class="nav"><svg class="ic"><use href="#i-route"/></svg> Lifecycle</div>
+    <div class="nav"><svg class="ic"><use href="#i-pulse"/></svg> Signals</div>
+    <div class="nav"><svg class="ic"><use href="#i-verify"/></svg> Proof</div>
+    <div class="spacer"></div>
+    <div class="hint">Mockup E · click a tile for a summary,<br>then “See more →” for the full detail.<br>Click any <b>?</b> to learn what a bar is.</div>
+  </aside>
+
+  <div class="main">
+    <!-- BAND 1: project journey (macro) -->
+    <div class="bandhead">Project journey — the 6 big phases <button class="q" data-explain="lifecycle">?</button></div>
+    <div class="lifebar">
+      <div class="lstep done"><span class="num"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg></span>Decide</div><div class="lsep"></div>
+      <div class="lstep done"><span class="num"><svg class="ic" style="width:11px;height:11px"><use href="#i-check"/></svg></span>Plan</div><div class="lsep"></div>
+      <div class="lstep now"><span class="num">3</span>Build it</div><div class="lsep"></div>
+      <div class="lstep"><span class="num">4</span>Check it works</div><div class="lsep"></div>
+      <div class="lstep"><span class="num">5</span>Ship it</div><div class="lsep"></div>
+      <div class="lstep"><span class="num">6</span>Run it</div>
+      <div class="spacer"></div>
+      <div class="hint">Building: “Add sign-in”</div>
+    </div>
+
+    <!-- BAND 2: vital signs (separate) -->
+    <div class="bandhead">Safe &amp; on track — right now <button class="q" data-explain="vitals">?</button>
+      <span class="tie">· dashboard warning-lights, not a sequence</span></div>
+    <div class="kpirow">
+      <div class="kpi n" data-ev="attn"><span class="ico"><svg><use href="#i-bell"/></svg></span><div><div class="lab">Needs you</div><div class="val"><span class="dot"></span>Nothing</div></div></div>
+      <div class="kpi b" data-ev="authority"><span class="ico"><svg><use href="#i-shield"/></svg></span><div><div class="lab">Claude can edit</div><div class="val"><span class="dot"></span>Yes · 1h24</div></div></div>
+      <div class="kpi g" data-ev="rails"><span class="ico"><svg><use href="#i-route"/></svg></span><div><div class="lab">On your task</div><div class="val"><span class="dot"></span>Yes</div></div></div>
+      <div class="kpi g" data-ev="verify"><span class="ico"><svg><use href="#i-verify"/></svg></span><div><div class="lab">2nd AI checked</div><div class="val"><span class="dot"></span>23m ago</div></div></div>
+      <div class="kpi g" data-ev="ci"><span class="ico"><svg><use href="#i-cloud"/></svg></span><div><div class="lab">Tests</div><div class="val"><span class="dot"></span>Passing</div></div></div>
+      <div class="kpi g" data-ev="backup"><span class="ico"><svg><use href="#i-sync"/></svg></span><div><div class="lab">Backed up</div><div class="val"><span class="dot"></span>2m ago</div></div></div>
+      <div class="kpi g" data-ev="rules"><span class="ico"><svg><use href="#i-book"/></svg></span><div><div class="lab">Your rules</div><div class="val"><span class="dot"></span>On</div></div></div>
+    </div>
+
+    <!-- BAND 3: this task step-by-step (micro; child of Build it) -->
+    <div class="bandhead">This task, step by step <button class="q" data-explain="taskflow">?</button>
+      <span class="tie">· a close-up of ▸ “Build it” above</span>
+      <span class="spacer"></span>
+      <span class="pill b" style="text-transform:none;letter-spacing:0"><svg class="ic"><use href="#i-worker"/></svg> Building now</span>
+      <span class="pill" style="color:var(--muted);text-transform:none;letter-spacing:0"><svg class="ic"><use href="#i-pulse"/></svg> Next: Health check</span>
+    </div>
+    <div class="flowbar">
+      <div class="line">
+        <div class="stn done" data-ev="asked"><div class="node"><svg><use href="#i-check"/></svg></div><span class="lab">You asked</span></div><div class="seg done"></div>
+        <div class="stn done" data-ev="ground"><div class="node"><svg><use href="#i-check"/></svg></div><span class="lab">Background</span></div><div class="seg done"></div>
+        <div class="stn done" data-ev="scope"><div class="node"><svg><use href="#i-check"/></svg></div><span class="lab">Scope set</span></div><div class="seg done"></div>
+        <div class="stn done" data-ev="authority"><div class="node"><svg><use href="#i-check"/></svg></div><span class="lab">You approved</span></div><div class="seg"></div>
+        <div class="stn now" data-ev="worker"><div class="node glow pulse"><svg><use href="#i-worker"/></svg></div><span class="lab">Building it</span></div><div class="seg"></div>
+        <div class="stn" data-ev="doctor"><div class="node"><svg><use href="#i-pulse"/></svg></div><span class="lab">Health check</span></div><div class="seg"></div>
+        <div class="stn" data-ev="tests"><div class="node"><svg><use href="#i-flask"/></svg></div><span class="lab">Tests</span></div><div class="seg"></div>
+        <div class="stn" data-ev="verifystep"><div class="node"><svg><use href="#i-verify"/></svg></div><span class="lab">2nd AI</span></div><div class="seg"></div>
+        <div class="stn" data-ev="gate"><div class="node"><svg><use href="#i-gate"/></svg></div><span class="lab">Safety gate</span></div><div class="seg"></div>
+        <div class="stn" data-ev="commit"><div class="node"><svg><use href="#i-commit"/></svg></div><span class="lab">Save</span></div><div class="seg"></div>
+        <div class="stn" data-ev="cistep"><div class="node"><svg><use href="#i-cloud"/></svg></div><span class="lab">Re-test</span></div><div class="seg"></div>
+        <div class="stn" data-ev="done"><div class="node"><svg><use href="#i-flag"/></svg></div><span class="lab">Done</span></div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="chatcol">
+        <div class="chat">
+          <div class="bubble you"><div class="who">You · 10:24</div>Approved — build the sign-in feature. Follow the plan and the checklist.</div>
+          <div class="bubble"><div class="who">Claude</div>On it. I’ll stick to the 3 files we agreed, run the checks, and show proof before I call it done.</div>
+          <div class="bubble" style="background:transparent;border:1px dashed var(--border2)"><div class="who">System</div>You approved changes for this chat. Claude can edit for the next 1h 24m.</div>
+        </div>
+        <div class="composer"><span>Message PCC…</span><span>+ @ &lt;/&gt; ⚡ ⎘ &nbsp; ▸ Send</span></div>
+      </div>
+
+      <aside class="rail">
+        <div class="attn"><div class="big"><svg class="ic" style="width:22px;height:22px"><use href="#i-check"/></svg></div>
+          <h4>Nothing needs you right now</h4><p>I’ll pop up the moment a decision is yours to make.</p></div>
+        <div class="railsec"><h5>Quick proof</h5>
+          <div class="evgrid">
+            <div class="evtile" data-ev="scope"><div class="v s-amber">3</div><div class="l">files changing</div></div>
+            <div class="evtile" data-ev="tests"><div class="v" style="color:var(--muted)">0</div><div class="l">tests run yet</div></div>
+            <div class="evtile" data-ev="ci"><div class="v s-green">Pass</div><div class="l">clean-machine tests</div></div>
+            <div class="evtile" data-ev="ctx"><div class="v s-blue">64%</div><div class="l">chat memory used</div></div>
+          </div>
+        </div>
+        <div class="railsec"><h5>Recent activity</h5>
+          <div class="act"><span class="time">10:25</span><svg><use href="#i-worker"/></svg>Claude started building</div>
+          <div class="act"><span class="time">10:24</span><svg><use href="#i-target"/></svg>Scope agreed (3 files)</div>
+          <div class="act"><span class="time">10:23</span><svg><use href="#i-book"/></svg>Read the background</div>
+          <div class="act"><span class="time">10:21</span><svg><use href="#i-chat"/></svg>You asked for it</div>
+          <div class="hint" style="margin-top:6px">See all activity ›</div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="statusbar">
+      <span>Backed up 2m ago</span><span>Saved work: clean</span><span>Chat memory: 64%</span><span class="spacer"></span><span class="s-green">● Connected</span>
+    </div>
+  </div>
+</div>
+
+<div class="pop" id="pop"></div>
+<div class="scrim" id="scrim" onclick="closeSlide()"></div>
+<aside class="slide" id="slide"><div class="shead"><h3 id="stitle"></h3><button class="link" style="margin-left:auto" onclick="closeSlide()">close</button></div><div class="sbody" id="sbody"></div></aside>
+
+<script>
+/* Tier 2 (popover) data + Tier 3 (slide-out 'more') for each item. Plain language everywhere. */
+var EV = {
+  attn:{t:'Needs you',c:'s-gray',plain:'No decision is waiting on you. When one is, this turns amber and says exactly what it needs and why work paused.',rows:[['Open decisions','0']],np:'—'},
+  authority:{t:'Claude can edit',c:'s-blue',plain:'You gave Claude permission to change files in this chat. It switches off on its own so it can’t keep editing unsupervised.',rows:[['Turns off in','1h 24m quiet, 2h hard limit'],['Granted by','you, in this chat']],np:'Means it’s ALLOWED to edit — not that it edited anything correctly.',
+    more:'<p>Think of this like handing Claude the car keys for a set time.</p><p><b>Why it exists:</b> so an AI can’t quietly keep changing your project forever. You turn it on deliberately; it turns itself off.</p><p><b>Two limits, whichever hits first:</b></p><ul class="filelist"><li><span class="fd"><b>Quiet timer</b> — if nothing happens for 30 minutes, it ends.</span></li><li><span class="fd"><b>Hard limit</b> — 2 hours total, no matter what.</span></li></ul><p class="muted">Right now: 1h 24m left on the hard limit. When it ends, Claude drops back to read-only (it can still read and plan, just not change files) until you approve again.</p>'},
+  rails:{t:'On your task',c:'s-green',plain:'The work hasn’t drifted from what you asked, and the notes match the code.',rows:[['Watches for','off-task drift; stale docs'],['Result','no problems']],np:'It can tell the work LOOKS on-topic — not whether the result is truly what you wanted.'},
+  verify:{t:'A 2nd AI checked it',c:'s-green',plain:'A separate AI (not the builder) re-read the exact current changes and found no problems, 23 minutes ago — so the builder isn’t grading its own work.',rows:[['Checker','Codex'],['When','23 min ago'],['Compared','abc123 → def456']],np:'It checked the SAVED version. If code changed since, this is out of date.',
+    more:'<p>The AI that <i>builds</i> and the AI that <i>checks</i> are deliberately different, so nobody grades their own homework.</p><p><b>What the checker did:</b> it re-read the 3 changed files line by line, the way a second engineer reviews a colleague’s work before it ships. It read for mistakes — it did not run the code (that’s the separate “Tests” step).</p><p><b>Its verdict:</b> no problems found.</p>'
+      +'<p style="margin-top:12px"><b>What the “2nd AI” actually is (the Codex bridge):</b> a completely separate program called <span class="fn">Codex</span> — a different company’s AI model — run in a locked, <b>read-only</b> mode so it can look but never touch your files.</p>'
+      +'<p><b>How the hand-off works:</b> PCC gives Codex the exact before/after of your changes and asks “any problems?” Codex reads it like a senior engineer reviewing a pull request and returns one of three plain verdicts — <b>PASS</b>, <b>FAIL</b>, or “not enough to tell.”</p>'
+      +'<p><b>Why it’s used:</b> the AI that built something will always think it’s fine. A different AI with no stake in the work is the real defense against a fake “it’s done.”</p>'
+      +'<div class="connect">How this connects: this only covers the <b>saved</b> version. The moment Claude changes another line, this check is out of date — and PCC will say so instead of pretending it’s still fresh.</div>'},
+  verifystep:{t:'2nd AI double-check — not yet',c:'s-gray',plain:'For THIS job the independent check hasn’t run yet — it happens after the tests pass. That’s expected at this stage, not a problem.',rows:[['Status','waiting — runs after Tests'],['Who','Codex, read-only']],np:'Nothing is proven here yet for this task.',
+    more:'<p><b>What will happen here:</b> once Claude finishes and the tests pass, PCC hands the exact changes to a separate AI (<span class="fn">Codex</span>) for a fresh review — eyes that had nothing to do with building it.</p>'
+      +'<p><b>How the hand-off works:</b> PCC runs Codex in a locked, read-only mode and gives it the precise before/after. Codex reads it like a reviewer and returns <b>PASS / FAIL / “not enough to tell.”</b> It can look, never change.</p>'
+      +'<p><b>Why it’s worth it:</b> the AI that built something will always think it’s fine. An independent one is the real check against fake “done.”</p>'
+      +'<div class="connect">The green “2nd AI checked” light up top is about the last <b>saved</b> version (23m ago). This step is about the <b>new</b> work — separate things, kept separate on purpose.</div>'},
+  ci:{t:'Tests',c:'s-green',plain:'The project’s automatic tests ran on a fresh, clean computer — not just this one — and all passed. The strongest proof it works.',rows:[['Ran on','a clean cloud machine'],['For version','def456']],np:'Proves the SAVED version. Unsaved changes aren’t covered.',
+    more:'<p>“Works on my machine” isn’t good enough, so PCC re-runs everything on a brand-new, empty computer in the cloud.</p><p><b>What happens:</b> it installs the whole project from scratch and runs every automatic test. If even one fails, this goes red.</p><p><span class="badge">result</span> &nbsp; all tests passed for saved version <span class="fn">def456</span>.</p><p class="muted">This is the strongest proof PCC has — it can’t be faked by editing a file on your computer.</p>'},
+  backup:{t:'Backed up',c:'s-green',plain:'A safe copy is stored off this computer, so nothing is lost if the machine dies.',rows:[['Last saved','2 min ago'],['Where','GitHub, your private copy']],np:'Backed up ≠ finished or correct.'},
+  rules:{t:'Your rules',c:'s-green',plain:'Your standing rules are loaded and in effect for every message.',rows:[['Version','v18 (CLAUDE.md)']],np:'Proves the rules loaded — not that they were perfectly obeyed.'},
+  ctx:{t:'Chat memory used',c:'s-blue',plain:'How full this chat is. Near 100%, the oldest messages drop off — a nudge to start fresh, not a problem.',rows:[['Used','128k of 200k']],np:'Fuller ≠ worse; just less room before old messages fade.'},
+  asked:{t:'You asked',c:'s-green',plain:'Your request that started this whole job — everything to the right is working toward it.',rows:[['At','10:24'],['In chat','“AI SaaS Starter”']],np:'—',
+    more:'<p><b>Your exact words (10:24):</b></p><p style="border-left:2px solid var(--blue);padding-left:11px">“Approved — build the sign-in feature. Follow the plan and the checklist.”</p><div class="connect">How this connects: this is the <b>start</b> of the step-by-step bar. Every step after it — Background, Scope, Building, checks — exists to deliver <b>this</b> request and prove it was done right.</div>'},
+  ground:{t:'Read the background',c:'s-green',plain:'Claude read the plan, rules and related notes before starting, so it isn’t working blind.',rows:[['Source','worker transcript']],np:'Inferred from Claude’s own account — advisory.'},
+  scope:{t:'Files being changed',c:'s-amber',plain:'This job is touching 3 files, and there’s a written checklist of what it should and shouldn’t change.',rows:[['Files','3'],['Checklist','5 items (spec)']],np:'The checklist EXISTS and the count is real — not that these are the RIGHT files.',
+    more:'<p><b>The 3 files being changed right now:</b></p><ul class="filelist">'
+      +'<li><div><div class="fn">auth-flow.js</div><div class="fd">The actual sign-in logic — the main change.</div></div></li>'
+      +'<li><div><div class="fn">app-routes.js</div><div class="fd">Hooks the new sign-in screen into the rest of the app.</div></div></li>'
+      +'<li><div><div class="fn">auth-flow.test.js</div><div class="fd">The automatic checks that prove sign-in works.</div></div></li></ul>'
+      +'<div class="connect"><b>What’s allowed:</b> only these 3, per the checklist you approved. If Claude touched anything else, the “On your task” light would flip to amber and tell you.</div>'
+      +'<p style="margin-top:14px"><b>The full agreed scope</b> — what “done right” means for this job:</p>'
+      +'<ul class="filelist">'
+      +'<li><span class="fd">✓ A user can sign in with email + password</span></li>'
+      +'<li><span class="fd">✓ A wrong password shows a clear error, no crash</span></li>'
+      +'<li><span class="fd">✓ Being signed in survives a page refresh</span></li>'
+      +'<li><span class="fd" style="color:var(--muted)">✗ Not in scope: “forgot password” email (a later job)</span></li>'
+      +'<li><span class="fd" style="color:var(--muted)">✗ Not in scope: Google / social login (a later job)</span></li></ul>'
+      +'<p class="muted">Each ✓ becomes a test that must pass before this can be called done.</p>'
+      +'<p class="muted" style="margin-top:10px">We can prove the count (3) and that this checklist exists. We can’t prove these are the <i>perfectly right</i> files — that’s your call to accept.</p>'},
+  worker:{t:'Claude is building it',c:'s-blue',plain:'Claude is actively making the approved changes. This is where you dive in to see what it’s doing or whether it’s stuck.',rows:[['Task','sign-in feature'],['Running','2m 14s'],['Last action','12s ago'],['Health','looks healthy']],np:'The live blow-by-blow below isn’t wired yet — it’s the plan, shown so you can see the value. Only elapsed time is real today.',
+    more:'<p><b>This is your troubleshooting window.</b></p>'
+      +'<p><b>Working for:</b> 2m 14s &nbsp;·&nbsp; <b>Last action:</b> 12s ago &nbsp;·&nbsp; <span class="badge" style="color:var(--green);border-color:var(--green)">looks healthy</span></p>'
+      +'<p class="muted">“Looks stuck” would show here instead if there had been no new action for a while, or the same step kept repeating with no progress.</p>'
+      +'<p style="margin-top:12px"><b>What it’s doing (the live feed we’d build):</b></p>'
+      +'<ul class="filelist">'
+      +'<li><div><div class="fn">Edit · app-routes.js</div><div class="fd">now — wiring in the sign-in screen</div></div></li>'
+      +'<li><div><div class="fn">Read · auth-flow.js</div><div class="fd">18s ago</div></div></li>'
+      +'<li><div><div class="fn">Read · docs/specs/auth-flow.md</div><div class="fd">40s ago — re-checking the checklist</div></div></li></ul>'
+      +'<p class="muted">Today PCC can prove it’s running and for how long, but this line-by-line feed isn’t built yet — so it’s labelled as the plan, not faked as live.</p>'
+      +'<div class="connect"><b>The technology, plainly:</b> the “worker” is Claude Code running in the background through your normal claude.ai login (not a paid API key). It keeps its own private conversation so other windows can’t hijack it, and PCC shuts it down if you close the app.</div>'
+      +'<p style="margin-top:12px"><b>Tools it’s allowed right now:</b> read files, edit files, and run commands — because you approved a build session. In read-only mode it physically can’t run commands or change files, only read and plan.</p>'},
+  doctor:{t:'Health check',c:'s-gray',plain:'PCC’s own built-in checkup of the project. This task hasn’t reached it yet — here’s exactly what it runs and how it looked last time.',rows:[['This task','not reached yet'],['Last run','all clear · 1 note'],['Runs','scripts/doctor.ps1']],np:'No health check has run for THIS change yet.',
+    more:'<p>A “health check” is PCC running its own checkup script and reading the result — no AI opinion, just fixed yes/no checks.</p>'
+      +'<p><b>What it actually runs:</b> <span class="fn">scripts/doctor.ps1</span>, about nine deterministic checks:</p>'
+      +'<ul class="filelist">'
+      +'<li><span class="fd">Your saved project + task files are valid and agree with each other</span></li>'
+      +'<li><span class="fd">Decision records are properly formatted</span></li>'
+      +'<li><span class="fd">Git is sane — right branch, no surprises in the working copy</span></li>'
+      +'<li><span class="fd">All the project’s folders and files are present, nothing stray</span></li>'
+      +'<li><span class="fd">No new hidden app errors have been logged</span></li></ul>'
+      +'<p><b>Status of the last run:</b> all clear except one note — a new entry in the app’s error log. Worth a glance, not a failure.</p>'
+      +'<div class="connect">Important: the health check only <b>reports</b>. It never blocks work — stopping risky work is a different, deliberate gate (the “Safety gate” step).</div>'},
+  tests:{t:'Run the tests',c:'s-gray',plain:'The project’s tests haven’t run for this change yet.',rows:[['Status','0 run']],np:'Nothing proven by tests yet.'},
+  gate:{t:'Safety gate',c:'s-gray',plain:'Blocks risky changes from being saved without proof they were checked. Not reached.',rows:[['Status','not reached']],np:'—'},
+  commit:{t:'Save it',c:'s-gray',plain:'The change hasn’t been saved as a snapshot yet.',rows:[['Status','not saved']],np:'—'},
+  cistep:{t:'Re-test on a clean machine',c:'s-gray',plain:'After saving, tests re-run on a fresh computer to prove it’s not just working here. Not yet.',rows:[['Status','waiting']],np:'—'},
+  done:{t:'Done',c:'s-gray',plain:'“Done” = the proof matches what’s at stake, and where it matters, YOU signed off. Not just that Claude stopped.',rows:[['Needs','tests + 2nd-AI check + your OK']],np:'Claude finishing steps is NOT done.'}
+};
+/* Band explanations — answer "what is this bar and how does it relate to the others". */
+var EXPLAIN = {
+  lifecycle:{t:'Project journey — the top bar',html:'<p>The whole project’s <b>6 big phases</b>, start to finish:</p><p><b>Decide</b> what to build → <b>Plan</b> it → <b>Build</b> it → <b>Check</b> it works → <b>Ship</b> it → <b>Run</b> &amp; maintain it.</p><p>This moves <b>slowly</b> — days or weeks. You’re in phase 3, <b>Build it</b>.</p><div class="connect">How it connects: the bottom bar (“This task, step by step”) is a <b>close-up of whichever phase you’re in</b>. Right now it’s the inside of “Build it.” Same journey — this is zoomed out, that’s zoomed in.</div>'},
+  vitals:{t:'Safe & on track — the middle row',html:'<p>Seven live <b>vital signs</b>, like the warning lights on a car dashboard. Each is simply OK or not, <b>no matter what step</b> the work is on.</p><p><span class="badge" style="color:var(--green);border-color:var(--green)">green</span> fine &nbsp; <span class="badge" style="color:var(--amber);border-color:var(--amber)">amber</span> take a look &nbsp; <span class="badge" style="color:var(--red);border-color:var(--red)">red</span> stop</p><div class="connect">How it connects: these are <b>separate</b> from the two journey bars on purpose. The journey bars answer “<i>where are we?</i>” — these answer “<i>is it safe?</i>” You can be mid-build (journey) while everything is green (safe).</div>'},
+  taskflow:{t:'This task, step by step — the bottom bar',html:'<p>The current job broken into its <b>steps, left to right</b>, so you can watch it move. Fast — minutes, not days.</p><p>Only the <b>live</b> step and <b>what’s next</b> are highlighted; finished steps are just green checkmarks.</p><div class="connect">How it connects: this is the <b>close-up of the phase you’re in on the top bar</b> (“Build it”). Top bar = the 6-phase journey; this bar = the inside of the one phase happening now.</div>'}
+};
+var pop=document.getElementById('pop'), slide=document.getElementById('slide'), scrim=document.getElementById('scrim');
+function showEv(k,x,y){var e=EV[k];if(!e){pop.classList.remove('show');return;}
+  var rows=e.rows.map(function(r){return '<b>'+r[0]+'</b><span>'+r[1]+'</span>';}).join('');
+  var more=e.more?'<button class="link seemore" onclick="openSlide(\''+k+'\')"><svg class="ic" style="width:13px;height:13px"><use href="#i-expand"/></svg> See more detail</button>':'';
+  pop.innerHTML='<h4><span class="'+e.c+'">'+e.t+'</span><button class="link" onclick="pop.classList.remove(\'show\')">close</button></h4>'
+    +'<div style="font-size:13px;line-height:1.4;color:#e2e8f0;margin-bottom:10px">'+e.plain+'</div>'
+    +'<div style="font-size:10px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:4px">the technical detail</div>'
+    +'<div class="kv">'+rows+'</div><div class="notproven"><b>Not proven:</b> '+e.np+'</div>'+more;
+  pop.style.left=Math.min(x,innerWidth-340)+'px';pop.style.top=Math.min(y+10,innerHeight-360)+'px';pop.classList.add('show');}
+function openSlide(k){var e=EV[k];if(!e||!e.more)return;pop.classList.remove('show');
+  document.getElementById('stitle').textContent=e.t;document.getElementById('sbody').innerHTML=e.more;
+  slide.classList.add('show');scrim.classList.add('show');}
+function openExplain(id){var e=EXPLAIN[id];if(!e)return;
+  document.getElementById('stitle').textContent=e.t;document.getElementById('sbody').innerHTML=e.html;
+  slide.classList.add('show');scrim.classList.add('show');}
+function closeSlide(){slide.classList.remove('show');scrim.classList.remove('show');}
+document.querySelectorAll('[data-ev]').forEach(function(el){el.addEventListener('click',function(ev){ev.stopPropagation();showEv(el.getAttribute('data-ev'),ev.clientX,ev.clientY);});});
+document.querySelectorAll('[data-explain]').forEach(function(el){el.addEventListener('click',function(ev){ev.stopPropagation();openExplain(el.getAttribute('data-explain'));});});
+document.addEventListener('click',function(e){ if(!e.target.closest('.pop')) pop.classList.remove('show'); });
+document.addEventListener('keydown',function(e){ if(e.key==='Escape'){closeSlide();pop.classList.remove('show');} });
+</script>
+</body></html>

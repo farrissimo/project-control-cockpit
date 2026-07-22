@@ -30,5 +30,41 @@
     return text.trim();
   }
 
-  return { parseStreamJson: parseStreamJson };
+  // The REAL per-turn cost from a stream-json stream's `result` event (same total_cost_usd field
+  // as --output-format json). Lets attachment/image turns — which use this path, and are the MOST
+  // token-expensive turn type — count toward the per-chat cost cap too, so the most expensive turns
+  // are not the one blind spot in the runaway protection (desktop-parity R3). Honest, like
+  // turn-output.js: only a finite, non-negative number is a real cost; anything else is null and
+  // the caller simply doesn't advance the total (never a fabricated cost).
+  function parseStreamCost(raw) {
+    for (const line of String(raw).split('\n')) {
+      const l = line.trim();
+      if (!l) continue;
+      try {
+        const o = JSON.parse(l);
+        if (o && o.type === 'result' && typeof o.total_cost_usd === 'number' && Number.isFinite(o.total_cost_usd) && o.total_cost_usd >= 0) {
+          return o.total_cost_usd;
+        }
+      } catch (e) { /* ignore non-JSON lines */ }
+    }
+    return null;
+  }
+
+  // The REAL token usage from a stream-json stream's `result` event — same `usage` shape as the
+  // plain --output-format json path. Attachment/image turns are the MOST token-expensive type yet
+  // were the one path reporting NO token usage (only cost); this closes that blind spot so the usage
+  // diagnostic sees every turn type. Returns the raw usage object (or null), for usage-log.usageFrom.
+  function parseStreamUsage(raw) {
+    for (const line of String(raw).split('\n')) {
+      const l = line.trim();
+      if (!l) continue;
+      try {
+        const o = JSON.parse(l);
+        if (o && o.type === 'result' && o.usage && typeof o.usage === 'object') return o.usage;
+      } catch (e) { /* ignore non-JSON lines */ }
+    }
+    return null;
+  }
+
+  return { parseStreamJson: parseStreamJson, parseStreamCost: parseStreamCost, parseStreamUsage: parseStreamUsage };
 });

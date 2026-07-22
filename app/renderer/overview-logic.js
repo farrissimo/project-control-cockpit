@@ -171,7 +171,8 @@
       };
     }
 
-    // ---- PROOF CARD (honest: CI not surfaced yet) ----
+    // ---- PROOF CARD ---- (live CI IS surfaced: the exec line below reports a CI pass for the
+    // current commit, and the trust-strip "Verified" chip is bound to the same live CI truth.)
     const proofView = {
       review: proof.kind === 'review_only' ? (proof.fresh ? 'available (matches current code)' : 'stale')
         : proof.kind === 'failing' ? ('last verdict was ' + proof.verdict)

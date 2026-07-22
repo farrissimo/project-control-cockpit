@@ -1,0 +1,67 @@
+/* Shared cockpit mockup design system — dark, honest, icon-first.
+   Used by cockpit-a/b/c/d.html. Mockups are static; sample data only. */
+:root{
+  --bg:#0b0f17; --panel:#121826; --panel2:#0f1420; --border:#1f2937; --border2:#26324a;
+  --text:#cbd5e1; --muted:#6b7688; --dim:#3a4658;
+  --green:#22c55e; --greenbg:rgba(34,197,94,.12);
+  --blue:#38bdf8; --bluebg:rgba(56,189,248,.12);
+  --amber:#f59e0b; --amberbg:rgba(245,158,11,.12);
+  --red:#ef4444; --redbg:rgba(239,68,68,.13);
+  --gray:#475569; --purple:#a78bfa; --purplebg:rgba(167,139,250,.14);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.app{display:flex;height:100vh}
+.side{width:210px;flex:0 0 auto;background:var(--panel2);border-right:1px solid var(--border);
+  padding:14px 12px;display:flex;flex-direction:column;gap:4px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:14px;color:#e2e8f0}
+.nav{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
+.nav.on{background:#182034;color:#e2e8f0}
+.nav svg{width:16px;height:16px}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.stack{display:flex;flex-direction:column;gap:8px;padding:12px 16px}
+.chat{flex:1;overflow:auto;padding:6px 16px 16px;display:flex;flex-direction:column;gap:10px}
+.bubble{max-width:70%;padding:10px 13px;border-radius:12px;background:var(--panel)}
+.bubble.you{align-self:flex-end;background:#1a2540}
+.bubble .who{font-size:11px;color:var(--muted);margin-bottom:3px}
+.composer{margin:0 16px 14px;border:1px solid var(--border);border-radius:12px;background:var(--panel);
+  padding:11px 13px;color:var(--muted);display:flex;justify-content:space-between}
+.hint{color:var(--muted);font-size:12px}
+/* icon sprite refs */
+.ic{width:16px;height:16px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
+.ic.fill{fill:currentColor;stroke:none}
+/* state colors */
+.s-green{color:var(--green)} .s-blue{color:var(--blue)} .s-amber{color:var(--amber)}
+.s-red{color:var(--red)} .s-gray{color:var(--gray)} .s-purple{color:var(--purple)}
+/* panels */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px}
+.section-label{font-size:10.5px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;
+  border:1px solid var(--border2);font-size:12px}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.pulse{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.glow{box-shadow:0 0 0 3px rgba(56,189,248,.18),0 0 22px rgba(56,189,248,.35)}
+button.link{background:none;border:1px solid var(--border2);color:var(--text);border-radius:8px;
+  padding:5px 10px;cursor:pointer;font-size:12px}
+button.link:hover{border-color:var(--blue)}
+/* inferred / not-proof styling: visibly softer, dashed, muted, never green */
+.inferred{border:1px dashed var(--dim);border-radius:10px;background:repeating-linear-gradient(
+  45deg,transparent,transparent 6px,rgba(255,255,255,.015) 6px,rgba(255,255,255,.015) 12px);
+  color:var(--muted);opacity:.85}
+.inferred .tag{font-size:10px;color:var(--amber);letter-spacing:.08em}
+@media (prefers-reduced-motion:reduce){.pulse,.glow{animation:none}}
+/* evidence popover */
+.pop{position:fixed;z-index:50;width:320px;background:#0e1626;border:1px solid var(--border2);
+  border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.6);padding:14px;display:none}
+.pop.show{display:block}
+.pop h4{margin:0 0 8px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.kv{display:grid;grid-template-columns:84px 1fr;gap:3px 10px;font-size:12px;margin-bottom:8px}
+.kv b{color:var(--muted);font-weight:500}
+.notproven{border-top:1px solid var(--border);padding-top:8px;font-size:12px;color:var(--amber)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+.conflict-banner{display:none;align-items:center;gap:9px;background:var(--redbg);
+  border:1px solid var(--red);color:#fecaca;border-radius:10px;padding:9px 13px;font-weight:600}
+.conflict-banner.show{display:flex}

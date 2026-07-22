@@ -1,0 +1,99 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Live Worker Feed — 2 · Pulse</title>
+<link rel="stylesheet" href="_cockpit.css">
+<style>
+.wrap{max-width:720px;margin:26px auto;padding:0 18px}
+h1{font-size:16px;color:#e2e8f0;margin:0 0 3px} .sub{color:var(--muted);font-size:12.5px;margin:0 0 16px}
+.stage{position:relative;background:radial-gradient(circle at 50% 40%,#111a2e,#0b0f17);border:1px solid var(--border);
+  border-radius:16px;height:360px;overflow:hidden}
+.clock{position:absolute;top:14px;left:18px;font-variant-numeric:tabular-nums}
+.clock b{font-size:26px;color:#e2e8f0} .clock span{display:block;font-size:11px;color:var(--muted);letter-spacing:.1em}
+.hstate{position:absolute;top:14px;right:18px;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600}
+.hstate .r{width:9px;height:9px;border-radius:50%}
+.hstate.ok{color:var(--green)} .hstate.ok .r{background:var(--green)}
+.hstate.stuck{color:var(--amber)} .hstate.stuck .r{background:var(--amber)}
+/* central worker orb */
+.orb{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);width:96px;height:96px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 40%,rgba(56,189,248,.35),rgba(56,189,248,.05));
+  border:2px solid var(--blue);box-shadow:0 0 40px rgba(56,189,248,.4)}
+.orb svg{width:38px;height:38px;color:#dbeafe}
+.orb.stuck{border-color:var(--amber);box-shadow:0 0 40px rgba(245,158,11,.45)}
+.ripple{position:absolute;left:50%;top:47%;width:96px;height:96px;border-radius:50%;transform:translate(-50%,-50%);
+  border:2px solid rgba(56,189,248,.5);animation:ripple 1.8s ease-out infinite}
+@keyframes ripple{0%{width:96px;height:96px;opacity:.7}100%{width:230px;height:230px;opacity:0}}
+/* heartbeat line */
+.ekg{position:absolute;left:0;right:0;bottom:96px;height:60px;overflow:hidden;opacity:.9}
+.ekg svg{position:absolute;left:0;height:60px;width:1600px;animation:scroll 6s linear infinite}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-800px)}}
+.ekg path{fill:none;stroke:var(--blue);stroke-width:2;filter:drop-shadow(0 0 4px var(--blue))}
+.ekg.stuck path{stroke:var(--amber);filter:drop-shadow(0 0 4px var(--amber))}
+/* flying action chips */
+.chip{position:absolute;left:50%;top:44%;transform:translateX(-50%);display:flex;align-items:center;gap:7px;
+  padding:6px 11px;border-radius:999px;background:#0e1626;border:1px solid var(--border2);font-size:12px;white-space:nowrap;
+  animation:fly 2.6s ease-out forwards}
+.chip svg{width:14px;height:14px}
+@keyframes fly{0%{opacity:0;transform:translate(-50%,10px) scale(.9)}15%{opacity:1}100%{opacity:0;transform:translate(-50%,-120px) scale(1)}}
+/* file chips */
+.files{position:absolute;left:0;right:0;bottom:0;display:flex;gap:8px;justify-content:center;padding:14px}
+.fc{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border-radius:10px;background:#0e1626;border:1px solid var(--border);min-width:120px}
+.fc .fn{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--muted)}
+.fc .fs{font-size:10px;color:var(--dim)}
+.fc.hit{border-color:var(--amber);box-shadow:0 0 16px rgba(245,158,11,.35)} .fc.hit .fn{color:var(--amber)} .fc.hit .fs{color:var(--amber)}
+.fc.read{border-color:var(--blue);box-shadow:0 0 16px rgba(56,189,248,.3)} .fc.read .fn{color:var(--blue)} .fc.read .fs{color:var(--blue)}
+.foot{color:var(--muted);font-size:11.5px;margin-top:10px}
+@media (prefers-reduced-motion:reduce){.ripple,.ekg svg,.chip{animation:none}}
+</style></head>
+<body>
+<script src="_icons.js"></script><script src="_feed.js"></script>
+<div class="wrap">
+  <h1>Live worker feed — idea 2 · “Pulse”</h1>
+  <p class="sub">The visual one: a heartbeat that beats with every action, actions rising off the worker, files lighting up as they’re touched.</p>
+  <div class="stage" id="stage">
+    <div class="clock"><b id="elapsed">00:00</b><span>WORKING</span></div>
+    <div class="hstate ok" id="hstate"><span class="r"></span><span id="htext">Healthy</span></div>
+    <div class="ekg" id="ekg"><svg viewBox="0 0 1600 60" preserveAspectRatio="none"><path id="ekgpath" d=""/></svg></div>
+    <div class="ripple" id="ripple"></div>
+    <div class="orb" id="orb"><svg><use href="#i-worker"/></svg></div>
+    <div class="files">
+      <div class="fc" data-file="auth-flow.js"><span class="fn">auth-flow.js</span><span class="fs">sign-in logic</span></div>
+      <div class="fc" data-file="app-routes.js"><span class="fn">app-routes.js</span><span class="fs">screen wiring</span></div>
+      <div class="fc" data-file="auth-flow.test.js"><span class="fn">auth-flow.test.js</span><span class="fs">the checks</span></div>
+      <div class="fc" data-file="auth-flow.md"><span class="fn">auth-flow.md</span><span class="fs">the checklist</span></div>
+    </div>
+  </div>
+  <div class="foot">Simulated for the mockup — the real version pulses on the worker’s actual actions. Watch ~15s for the “looks stuck” pause, then recovery.</div>
+</div>
+<script>
+/* build a repeating EKG waveform path */
+(function(){var d='M0 30',x=0;while(x<1600){d+=' L'+(x+30)+' 30 L'+(x+40)+' 12 L'+(x+50)+' 48 L'+(x+60)+' 30 L'+(x+120)+' 30';x+=140;}
+  document.getElementById('ekgpath').setAttribute('d',d);})();
+var stage=document.getElementById('stage');
+function fileFor(t){return (t.match(/[\w.-]+\.(js|md)/)||[])[0]||'';}
+FEED.run(function(e){
+  var t=FEED.tools[e.tool];
+  // flying chip
+  var c=document.createElement('div'); c.className='chip';
+  c.innerHTML='<svg style="color:'+t.color+'"><use href="#'+t.icon+'"/></svg><b style="color:#e2e8f0">'+t.verb+'</b> <span style="color:'+t.color+';font-family:ui-monospace,Menlo,monospace">'+e.target.replace(/^.*\//,'')+'</span>';
+  stage.appendChild(c); setTimeout(function(){c.remove();},2600);
+  // beat the orb
+  var orb=document.getElementById('orb'); orb.style.transform='translate(-50%,-50%) scale(1.12)';
+  setTimeout(function(){orb.style.transform='translate(-50%,-50%) scale(1)';},180);
+  // light the file
+  var f=fileFor(e.target);
+  document.querySelectorAll('.fc').forEach(function(el){el.classList.remove('hit','read');});
+  if(f){var el=document.querySelector('.fc[data-file="'+f+'"]'); if(el) el.classList.add(e.tool==='Edit'?'hit':'read');}
+});
+setInterval(function(){
+  var now=Date.now();
+  document.getElementById('elapsed').textContent=FEED.mmss(now-FEED.startTime);
+  var stuck=(now-FEED.lastEventTime)>FEED.STUCK_MS;
+  document.getElementById('hstate').className='hstate '+(stuck?'stuck':'ok');
+  document.getElementById('htext').textContent=stuck?'Looks stuck':'Healthy';
+  document.getElementById('orb').className='orb'+(stuck?' stuck':'');
+  document.getElementById('ekg').className='ekg'+(stuck?' stuck':'');
+  document.getElementById('ekg').querySelector('svg').style.animationDuration=stuck?'2.4s':'6s';
+},700);
+</script>
+</body></html>
