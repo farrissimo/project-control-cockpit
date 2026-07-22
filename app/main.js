@@ -940,6 +940,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
       if (code === 0) {
         let text;
         let rollover = null;
+        let contextTokens = null; // ADR-0019: this turn's CURRENT context size (prompt tokens), for the chat-health meter
         if (hasAttach) {
           text = parseStreamJson(out);
           // Attachment/image turns are the most token-expensive — count their real cost toward the
@@ -950,13 +951,17 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
           const parsed = parseTurnOutput(out);
           if (parsed.text !== null) {
             text = parsed.text;
+            contextTokens = parsed.contextTokens; // ADR-0019: real prompt size this turn (null if usage absent — never fabricated)
             if (parsed.costUsd !== null) rollover = recordChatCost(chatId, parsed.costUsd);
           } else {
             text = out.trim(); // not JSON (the test fakebin, or any non-JSON stdout) — today's plain-text path, unchanged
           }
         }
+        // Attachment turns (stream-json path) do not yet extract token usage — a disclosed ADR-0019
+        // residue; contextTokens stays null there (meter marks it stale, never a fabricated reading).
         const res = { ok: true, text: text };
         if (rollover) res.costRollover = rollover; // R3 slice 2: this chat crossed its cumulative cap
+        if (contextTokens !== null) res.contextTokens = contextTokens; // ADR-0019: feed the truthful chat-health meter
         resolve(res);
       } else {
         // A failed FIRST turn means no session actually exists at that id. When

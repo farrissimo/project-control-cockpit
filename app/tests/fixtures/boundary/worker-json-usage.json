@@ -1,0 +1,1 @@
+{ "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"result\":\"USAGE-REPLY\",\"total_cost_usd\":0.5,\"session_id\":\"x\",\"usage\":{\"input_tokens\":150000,\"cache_read_input_tokens\":10000,\"cache_creation_input_tokens\":0,\"output_tokens\":500}}", "stderr": "", "exitCode": 0 }
