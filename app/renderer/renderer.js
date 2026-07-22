@@ -475,10 +475,10 @@ async function runSend(item) {
         staleContextChats.add(chatId); // a measured chat had an UNMEASURED turn — the reading may now understate (AC-5)
       }
     }
-    // R2/R3: an owner-initiated stop, an automatic budget-cap stop, or hitting the Claude PLAN usage
-    // limit are not PCC failures — a neutral 'assistant' bubble (its own text explains what happened),
-    // never the red error style a real bug gets.
-    const isProtectiveStop = res.stoppedByOwner || res.budgetExceeded || res.usageLimit || res.authError;
+    // R2/R3: an owner-initiated stop, an automatic budget-cap stop, the native per-message turn-cap
+    // stop (ADR-0020 T2), or hitting the Claude PLAN usage limit are not PCC failures — a neutral
+    // 'assistant' bubble (its own text explains what happened), never the red error style a real bug gets.
+    const isProtectiveStop = res.stoppedByOwner || res.budgetExceeded || res.maxTurnsReached || res.usageLimit || res.authError;
     await appendMessage(res.ok || isProtectiveStop ? 'assistant' : 'assistant error', res.text || '(no output)', chatId);
     if (res.ok) { const cc = chats.find((c) => c.id === chatId); if (cc) persistTranscript(cc); }
     // A stale worker is holding this chat's session — offer a one-click way out.

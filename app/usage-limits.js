@@ -27,13 +27,35 @@
   // Starting default, not empirically derived; generous for a real working session.
   const DEFAULT_MAX_CHAT_USD = 15;
 
-  // Pure: never throws, never returns a non-finite/non-positive cap for either field.
+  // ADR-0020 T2: cap the number of AGENTIC turns (assistant<->tool iterations) a SINGLE owner
+  // message may fan out into, passed to Claude Code's own native `--max-turns` flag (verified
+  // against the installed binary 2.1.186: `--max-turns N` aborts with subtype "error_max_turns",
+  // is_error:true, num_turns~N+1). This does NOT reinvent turn tracking; it only supplies the cap
+  // value PCC passes to that existing flag — the turn-count sibling of --max-budget-usd above.
+  //
+  // Value evidence (not an arbitrary round number): the 2026-07-20 forensic report measured the
+  // PCC chat at ~7 model turns per owner message (262 turns / 38 messages), while the burn to stop
+  // is explosive fan-out into hundreds of hidden turns. 30 is ~4x the measured average — enough
+  // headroom for a legitimately heavy build/scaffold turn (many reads/greps/edits) without clipping
+  // it, yet it fail-closes well before a runaway reaches burn territory. Independently concurred by
+  // Codex (2026-07-22: sound single default; not below 20, not above 40 without evidence). One value
+  // covers both read-only and build turns (build turns are the heaviest, so 30 protects those).
+  // Owner-editable via .cockpit/state/usage-limits.json; a missing/malformed/hostile config MUST
+  // fall back to this default (fail closed toward protection), never to "no cap".
+  const DEFAULT_MAX_TURNS = 30;
+
+  // Pure: never throws, never returns a non-finite/non-positive cap for any field.
   function normalizeLimits(cfg) {
     const turn = cfg && typeof cfg.max_turn_usd === 'number' && Number.isFinite(cfg.max_turn_usd) && cfg.max_turn_usd > 0
       ? cfg.max_turn_usd : DEFAULT_MAX_TURN_USD;
     const chat = cfg && typeof cfg.max_chat_usd === 'number' && Number.isFinite(cfg.max_chat_usd) && cfg.max_chat_usd > 0
       ? cfg.max_chat_usd : DEFAULT_MAX_CHAT_USD;
-    return { maxTurnUsd: turn, maxChatUsd: chat };
+    // max_turns must be a positive INTEGER (a turn count) — floor a valid fractional value, reject
+    // zero/negative/non-finite/non-numeric to the safe default so a broken config can never disable
+    // the cap (fail closed), mirroring the cost caps above.
+    const turns = cfg && typeof cfg.max_turns === 'number' && Number.isFinite(cfg.max_turns) && cfg.max_turns >= 1
+      ? Math.floor(cfg.max_turns) : DEFAULT_MAX_TURNS;
+    return { maxTurnUsd: turn, maxChatUsd: chat, maxTurns: turns };
   }
 
   // Impure: read the owner-editable config from the ACTIVE project's .cockpit/state (mirrors
@@ -51,6 +73,18 @@
 
   // A budget-aborted turn's plain-text stdout, verified live against the real CLI.
   function isBudgetExceeded(text) { return /exceeded usd budget/i.test(String(text || '')); }
+
+  // ADR-0020 T2: a turn stopped by the native --max-turns cap. Signature EXTRACTED from a real
+  // captured envelope (installed binary 2.1.186): subtype "error_max_turns" and the message
+  // "Reached maximum number of turns (N)". Text-level detector (mirrors isBudgetExceeded) so it
+  // catches the cap on BOTH the --output-format json path and the stream-json (attachments) path,
+  // where the structured subtype isn't singly-JSON-parseable. Deliberately does NOT match the
+  // per-turn "Exceeded USD budget" cap or "maximum budget" (a different, separately-handled limit).
+  function isMaxTurnsError(text) {
+    const s = String(text || '');
+    if (/exceeded usd budget|maximum budget/i.test(s)) return false; // the budget cap, not the turn cap
+    return /error_max_turns/i.test(s) || /maximum number of turns/i.test(s);
+  }
 
   // The owner hitting their actual Claude plan usage limit (the 5-hour/weekly limit) — the single
   // most likely shock during a week of heavy use. Patterns EXTRACTED from the installed claude-code
@@ -85,7 +119,8 @@
 
   return {
     normalizeLimits: normalizeLimits, readUsageLimits: readUsageLimits, isBudgetExceeded: isBudgetExceeded,
-    isUsageLimitError: isUsageLimitError, isAuthError: isAuthError,
+    isMaxTurnsError: isMaxTurnsError, isUsageLimitError: isUsageLimitError, isAuthError: isAuthError,
     DEFAULT_MAX_TURN_USD: DEFAULT_MAX_TURN_USD, DEFAULT_MAX_CHAT_USD: DEFAULT_MAX_CHAT_USD,
+    DEFAULT_MAX_TURNS: DEFAULT_MAX_TURNS,
   };
 });
