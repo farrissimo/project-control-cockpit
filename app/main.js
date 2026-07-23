@@ -217,8 +217,8 @@ const activeWorkers = new Set();
 // R2 (desktop-parity, ADR-0013): the owner-visible "Stop" button target. The chat UI runs one
 // turn at a time globally (the renderer's `busy` flag serializes sends across every chat), so a
 // single ref is enough — no per-chat map needed. Only askClaude's PRIMARY chat-turn spawn sets
-// this (not oneShotWorker's background auto-name/summary/recall calls, which the owner never
-// watches a "Claude is working…" bubble for).
+// this (not oneShotWorker's owner-initiated summary/recall calls, which the owner never
+// watches a "Claude is working…" bubble for; auto-naming is local — no worker call at all).
 let currentTurn = null;
 
 // R3 slice 2 (desktop-parity, ADR-0015): a whole CHAT's cumulative cost, tracked from the REAL
@@ -1050,13 +1050,15 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
 
 ipcMain.handle('pcc:send', (_e, message, model, workerSessionId, isFirstTurn, chatId, attachments) => askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachments));
 
-// ---- First-class chat history: AI names + structured summaries (docs/CHAT_RECALL_SPEC.md) ----
-// A chat is no longer a truncated first line. After the first real exchange we give it an AI
-// name; on demand we build a structured summary card. Both are STATELESS, READ-ONLY, one-shot
-// worker calls: a fresh random --session-id (so a chat's pinned session is never touched), the
-// read-only tool profile, plain text in/out. The summary is mirrored to git-ignored durable files
-// under .cockpit/chats/<id>/ (survives a cleared cache, is backed up, greppable for Phase-2 recall).
-// `trigger` labels which invisible background operation this is (auto-name / summary / recall-*),
+// ---- First-class chat history: LOCAL names + structured summaries (docs/CHAT_RECALL_SPEC.md) ----
+// A chat is no longer a truncated first line. Its NAME is derived LOCALLY and deterministically
+// (ADR-0020 T6: chatSummary.localTitle in pcc:autoNameChat above — zero tokens, NO worker call);
+// on demand we build a structured summary card, and chat-recall runs its expand/judge stages. Those
+// SUMMARY + RECALL calls are the STATELESS, READ-ONLY, one-shot worker calls below: a fresh random
+// --session-id (so a chat's pinned session is never touched), the read-only tool profile, plain text
+// in/out. The summary is mirrored to git-ignored durable files under .cockpit/chats/<id>/ (survives a
+// cleared cache, is backed up, greppable for Phase-2 recall).
+// `trigger` labels which owner-initiated operation this is (summary / recall-*),
 // so the usage diagnostic can attribute hidden token spend to the feature that caused it. Adding
 // --output-format json (a) makes the previously-unmeasurable background token spend visible, and
 // (b) is behavior-preserving for callers: the reply text is extracted from the json `result` field,
@@ -1095,13 +1097,14 @@ function oneShotWorker(prompt, trigger) {
   });
 }
 
-// Auto-name: cheap, runs once after the first real exchange. Returns a title only.
-ipcMain.handle('pcc:autoNameChat', async (_e, messages) => {
+// Auto-name (ADR-0020 T6): LOCAL + deterministic — derives the title from the chat's own first
+// user message with ZERO tokens and NO worker/LLM call. This channel is invoked on chat leave/
+// switch, so it must never spend usage (the pre-T6 version fired an invisible `claude` call on
+// every leave). No hidden replacement call: it is pure string work in-process.
+ipcMain.handle('pcc:autoNameChat', (_e, messages) => {
   if (!Array.isArray(messages) || messages.length === 0) return { ok: false, text: 'No messages to name.' };
-  const r = await oneShotWorker(chatSummary.buildNamePrompt(messages), 'auto-name');
-  if (!r.ok) return { ok: false, text: r.text };
-  const title = chatSummary.cleanTitle(r.text);
-  return title ? { ok: true, title } : { ok: false, text: 'No usable title returned.' };
+  const title = chatSummary.localTitle(messages);
+  return title ? { ok: true, title } : { ok: false, text: 'No usable title.' };
 });
 
 // Summarize: on-demand structured card + durable three-tier mirror on disk.

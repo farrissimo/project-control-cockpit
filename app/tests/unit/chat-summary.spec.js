@@ -38,6 +38,25 @@ test('cleanTitle strips quotes, Title: prefix, trailing period, and preamble lin
   expect(cs.cleanTitle('x'.repeat(200)).length).toBe(60);
 });
 
+// ADR-0020 T6: local, deterministic chat naming — the auto-name channel must derive a title from
+// the chat's OWN text with zero tokens and no LLM call, and never fabricate one.
+test('localTitle derives a title from the first user message (deterministic, quotes the chat)', () => {
+  expect(cs.localTitle(CHAT)).toBe('Should we build the chat into the tax app?');
+  // collapses internal whitespace/newlines and caps at 60 chars (same cleaning as AI titles)
+  expect(cs.localTitle([{ cls: 'user', text: 'line one\n\n  line   two' }])).toBe('line one line two');
+  expect(cs.localTitle([{ cls: 'user', text: 'x'.repeat(200) }]).length).toBe(60);
+  // uses the FIRST user message, ignoring later ones and any bot messages
+  expect(cs.localTitle([{ cls: 'bot', text: 'AI first' }, { cls: 'user', text: 'the real question' }])).toBe('the real question');
+});
+
+test('localTitle returns "" (never a fabricated title) when there is no usable user message', () => {
+  expect(cs.localTitle([])).toBe('');
+  expect(cs.localTitle(null)).toBe('');
+  expect(cs.localTitle([{ cls: 'bot', text: 'only a bot reply' }])).toBe('');
+  expect(cs.localTitle([{ cls: 'user', text: '' }])).toBe('');
+  expect(cs.localTitle([{ cls: 'user', text: '   ' }])).toBe('');
+});
+
 test('safeJsonParse handles clean JSON and JSON buried in prose/fences', () => {
   expect(cs.safeJsonParse('{"a":1}')).toEqual({ a: 1 });
   expect(cs.safeJsonParse('Sure! ```json\n{"a":2}\n``` done')).toEqual({ a: 2 });

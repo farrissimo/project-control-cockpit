@@ -50,8 +50,20 @@ function buildSummaryPrompt(messages) {
   ].join('\n');
 }
 
+// ADR-0020 T6: derive a chat title LOCALLY and deterministically from the chat's own text —
+// ZERO tokens, NO background LLM call (auto-naming must never fire a worker on chat leave/switch).
+// The first user message is the chat's subject anchor; we quote it (whitespace-collapsed, then
+// cleaned + capped by cleanTitle), inventing nothing. Returns '' when there is no real user
+// message yet (the caller treats '' as "no usable title", never fabricating one).
+function localTitle(messages) {
+  if (!Array.isArray(messages)) return '';
+  const firstUser = messages.find((m) => m && m.cls === 'user' && m.text);
+  if (!firstUser) return '';
+  return cleanTitle(String(firstUser.text).replace(/\s+/g, ' '));
+}
+
 // The worker sometimes wraps a title in quotes, prefixes "Title:", or adds a line
-// of preamble. Take the first real line and strip the cruft.
+// of preamble. Take the first real line and strip the cruft. (Shared by localTitle.)
 function cleanTitle(raw) {
   const lines = String(raw || '').split('\n').map((l) => l.trim()).filter(Boolean);
   // A real <=6-word title never ends in a colon, so drop lead-in lines like
@@ -128,6 +140,7 @@ module.exports = {
   buildNamePrompt,
   buildSummaryPrompt,
   cleanTitle,
+  localTitle,
   safeJsonParse,
   normalizeSummary,
   renderSummaryMd,

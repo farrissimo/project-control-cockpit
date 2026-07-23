@@ -158,15 +158,35 @@ test('send routes to the faked worker and returns its reply', async () => {
   expect(res.text).toContain('FAKE-CLAUDE-REPLY');
 });
 
-// First-class chat history (docs/CHAT_RECALL_SPEC.md): the auto-name channel turns a
-// transcript into a title via the (faked) worker; an empty transcript is refused.
-test('autoNameChat returns a title from a transcript and refuses an empty one', async () => {
+// First-class chat history (docs/CHAT_RECALL_SPEC.md): ADR-0020 T6 — the auto-name channel derives
+// a title LOCALLY and deterministically from the chat's own first user message (no worker/LLM call);
+// an empty transcript is refused (never a fabricated title).
+test('autoNameChat returns the exact local title from a transcript and refuses an empty one', async () => {
   const ok = await call('autoNameChat', [{ cls: 'user', text: 'hi' }, { cls: 'bot', text: 'hello' }]);
   expect(ok.ok).toBe(true);
-  expect(typeof ok.title).toBe('string');
-  expect(ok.title.length).toBeGreaterThan(0);
+  expect(ok.title).toBe('hi'); // the EXACT deterministic local title (first user message), not merely nonempty
   const empty = await call('autoNameChat', []);
   expect(empty.ok).toBe(false);
+});
+
+// ADR-0020 T6 REGRESSION (the test that actually pins the guarantee): auto-naming must produce the
+// EXACT deterministic local title AND spawn NO worker. The pre-T6 LLM version also returned a
+// nonempty title, so a nonempty check alone would pass both before and after — it could not stop the
+// hidden on-leave `claude` call from being reintroduced. Here we launch a fresh app with the
+// fake-worker argv recorder armed: if naming spawned `claude`, the fake would write that argv file.
+test('autoNameChat is local + deterministic and spawns NO worker (ADR-0020 T6)', async () => {
+  const argvFile = path.join(os.tmpdir(), 'pcc-t6-argv-' + Date.now() + '.json');
+  const { app: a, page: p } = await launchApp({ PCC_FAKE_CLAUDE_ARGV_FILE: argvFile });
+  try {
+    const r = await p.evaluate(([m, args]) => window.pcc[m](...args),
+      ['autoNameChat', [[{ cls: 'user', text: 'ship the widget' }, { cls: 'bot', text: 'ok' }]]]);
+    expect(r.ok).toBe(true);
+    expect(r.title).toBe('ship the widget');       // exact local title (the faked worker would return something else)
+    expect(fs.existsSync(argvFile)).toBe(false);   // NO `claude` worker was spawned by the naming call
+  } finally {
+    await closeApp(a);
+    fs.rmSync(argvFile, { force: true });
+  }
 });
 
 // summarizeChat refuses an empty chat, and reports honestly when the worker returns
