@@ -135,7 +135,7 @@ function extract(raw) {
   } catch { return null; }
 }
 
-(async () => {
+async function main() {
   fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
   const rows = [];
   let prevEndMs = null;
@@ -177,4 +177,11 @@ function extract(raw) {
     console.log(`Total notional cost this run: $${good.reduce((a, r) => a + r.costUsd, 0).toFixed(4)} (phantom — flat plan, not billed; a proxy for tokens=usage)`);
     console.log(`Log: ${LOG}`);
   }
-})();
+}
+
+// Require-safe (ADR-0020 Step 1 test hook): the measurement — which spawns a REAL `claude` per turn
+// and appends to the evidence log — runs ONLY when this file is executed directly as a CLI. Requiring
+// the module (e.g. from a unit test) exposes the PURE extract() with NO spawn and NO evidence write.
+if (require.main === module) main();
+
+module.exports = { extract };

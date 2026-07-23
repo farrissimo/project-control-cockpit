@@ -3,9 +3,17 @@
 Status: Proposed · 2026-07-23 · Owner-approved to build (reconciled plan, Step 1)
 
 ## Objective
-Make PCC's LLM usage **fully attributable and measurable from local data**, so the pre-T1 diagnostic
-and the later Gate 0 proof rest on trustworthy ground truth — **without** a full gateway redesign, and
-without any required paid access. Three gaps close this:
+Give PCC **measurement-complete telemetry for valid, completed, controlled runs**, plus a **structural
+hidden-spawn guard**, so the pre-T1 diagnostic and the later Gate 0 proof rest on trustworthy ground
+truth — **without** a full gateway redesign, and without any required paid access. Three gaps close this:
+
+**Accurate boundary (not overclaimed).** This is NOT universal, all-outcome accounting. Step 1 records
+telemetry only for turns that actually completed WITH parseable usage, and guarantees no *new* hidden
+spawn site can appear. Turns that **failed, were stopped, or reported no telemetry** are not
+comprehensively accounted here — the **Step 2 / Gate 0 protocol must declare such runs invalid** rather
+than trust partial numbers, and universal all-outcome reconciliation remains part of the later **full T9**
+work. `reconcile()` here checks the triggers of records that WERE logged; it does not claim every
+token-spending event produced a record.
 1. **`num_turns` is invisible on normal turns** — the usage log records the agentic-turn count only on
    the max-turns branch, so ordinary turns can't show how far one message fanned out.
 2. **"No unattributed `claude` calls" is asserted but never proven** — nothing fails if a new hidden
@@ -48,6 +56,10 @@ existing PCC arm measurement-complete (adds `num_turns`) so Step 2 only adds the
 6. WHEN `measure-usage.js` records a turn THE SYSTEM SHALL include `num_turns` (parsed count or `null`).
 7. WHEN `num_turns` recording fails for any reason THE SYSTEM SHALL NOT affect or slow the worker turn
    (usage logging is best-effort by contract).
+8. WHEN `measure-usage.js`'s `extract()` is given a result blob THE SYSTEM SHALL record a real
+   non-negative `num_turns`, and SHALL coerce an absent / malformed / negative / nonnumeric value to
+   `null` — proven by a unit test that requires the module (running no real `claude`) and writes no
+   owner evidence (the CLI measurement is guarded behind `require.main === module`; `extract()` is pure).
 
 ## Verification
 Affected unit tests (usage-log num_turns + reconciliation; harness against fake-claude) + the spawn-site
