@@ -32,6 +32,18 @@ test('app/main.js spawns `claude` from EXACTLY the two known, attributed sites',
     'every `claude` spawn must live in askClaude or oneShotWorker (the usage-logged sites), got: ' + sites.join(', '));
 });
 
+test('every `claude` spawn in main.js strips paid-API creds via workerEnv (DECISION-003)', () => {
+  // A spawn that omits `env: workerEnv()` would let the child `claude` grab ANTHROPIC_API_KEY and bill a
+  // PAID API — forbidden. Pin that every spawn call passes workerEnv in its options object.
+  const re = /spawn\((['"])claude\1[^;]*?\)/gs;
+  const calls = SRC.match(re) || [];
+  assert.ok(calls.length >= 2, 'expected the known claude spawns');
+  for (const call of calls) {
+    assert.ok(/env:\s*workerEnv\(\)/.test(call),
+      'a claude spawn is missing `env: workerEnv()` (paid-API leak risk): ' + call.replace(/\s+/g, ' ').slice(0, 120));
+  }
+});
+
 test('both spawn-site functions record the call to the usage log (attribution present)', () => {
   // A coarse but real guard: each known site function body must reference usageLog.logCall, so a spawn
   // there is attributed. Slices from each function decl to the next top-level `\nfunction ` boundary.

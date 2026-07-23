@@ -30,6 +30,7 @@ const { parseTurnOutput } = require('./turn-output'); // parses --output-format 
 const { loadChatCosts, saveChatCosts } = require('./chat-cost-store'); // durable per-chat cost so rollover survives a restart (ADR-0015 residue)
 const { singleFlight } = require('./single-flight'); // coalesce concurrent detector refreshes (soak W3)
 const { parseStreamJson, parseStreamCost, parseStreamUsage, parseStreamTurns } = require('./stream-json');
+const { workerEnv } = require('./worker-env'); // DECISION-003: strip paid-API creds from every claude spawn
 const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
 const { logAppError } = require('./error-log'); // durable trace for otherwise-swallowed app failures
@@ -940,7 +941,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     let err = '';
     let child;
     try {
-      child = spawn('claude', args, { cwd: scopedCwd, shell: true });
+      child = spawn('claude', args, { cwd: scopedCwd, shell: true, env: workerEnv() }); // DECISION-003: never a paid API
     } catch (e) {
       return resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message });
     }
@@ -1108,7 +1109,7 @@ function oneShotWorker(prompt, trigger) {
       '--session-id', crypto.randomUUID()];
     if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
     let out = '', err = '', child;
-    try { child = spawn('claude', args, { cwd: projectDir, shell: true }); }
+    try { child = spawn('claude', args, { cwd: projectDir, shell: true, env: workerEnv() }); } // DECISION-003: never a paid API
     catch (e) { return resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message }); }
     activeWorkers.add(child); // tracked so app-quit can kill it (F4)
     child.on('error', (e) => { activeWorkers.delete(child); resolve({ ok: false, text: e.message }); });
