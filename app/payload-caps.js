@@ -1,8 +1,12 @@
 // ADR-0020 T7 — hard, deterministic caps on how much INPUT a single owner message can push into the
 // Claude context. These are LLM-agnostic safety RAILS (token growth is the unit every model shares),
 // fail-closed and NOT owner-tunable (unlike usage-limits.json policy knobs). They bound the per-send
-// payload so one message can't balloon the context and burn the plan; when a cap trims content it
-// leaves a VISIBLE marker (never a silent drop) so the owner/worker can see it happened.
+// payload so one message can't balloon the context and burn the plan. When a cap trims content it leaves
+// a marker in the WORKER's payload so the worker knows its input was trimmed — but the OWNER is told
+// deterministically by PCC's own UI (main.js populates capNotices -> res.caps -> the renderer's cap-notice;
+// search returns questionTruncated), NOT by relying on the worker to echo that marker back (ADR-0020 T7
+// truncation-visibility correction). The functions here report WHAT they trimmed (truncated /
+// droppedForCount / droppedForBudget / textTruncated) so callers can surface it directly to the owner.
 //
 // Values: Codex-concurred 2026-07-22. Attachment TEXT total 200K (not "still huge"); queue 5 (beyond
 // that is accidental batch-fire); recall evidence 4K/candidate (prefer summary, head+tail).

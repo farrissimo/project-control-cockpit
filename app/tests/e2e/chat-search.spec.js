@@ -67,3 +67,24 @@ test('clicking a result opens that chat; back returns to the list', async () => 
   await expect(page.locator('#chats-list')).not.toHaveClass(/hidden/);
   await expect(page.locator('#chats-search-results')).toHaveClass(/hidden/);
 });
+
+// ADR-0020 T7 truncation-visibility correction: a giant pasted question is searched only as a head+tail
+// slice, and the owner is told so DETERMINISTICALLY (driven by res.questionTruncated), never silently.
+test('an over-cap search question shows a "searched only part of it" notice; a normal one does not', async () => {
+  const pc = require('../../payload-caps.js');
+  const results = page.locator('#chats-search-results');
+  // #chats-btn is a toggle — open the panel only if it isn't already (prior tests may leave it open).
+  const panel = page.locator('#chats-panel');
+  if (((await panel.getAttribute('class')) || '').includes('hidden')) await page.locator('#chats-btn').click();
+  await expect(panel).not.toHaveClass(/hidden/);
+  // A normal question: results render, no trim notice.
+  await page.locator('#chats-search-input').fill('where did we decide the tax app UI?');
+  await page.locator('#chats-search-btn').click();
+  await expect(page.locator('.sr-hit').first()).toBeVisible({ timeout: 20000 });
+  await expect(results.locator('.sr-status.cap-notice')).toHaveCount(0);
+  // An over-cap question (a giant paste): the deterministic notice appears, and results still render.
+  await page.locator('#chats-search-input').fill('Q'.repeat(pc.MAX_RECALL_EVIDENCE_CHARS + 500));
+  await page.locator('#chats-search-btn').click();
+  await expect(results.locator('.sr-status.cap-notice')).toHaveCount(1, { timeout: 20000 });
+  await expect(results.locator('.sr-status.cap-notice')).toContainText('searched only the beginning and end');
+});

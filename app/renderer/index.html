@@ -57,6 +57,8 @@
   .bubble.assistant { align-self: flex-start; background: #1a1d23; border: 1px solid #23262d; }
   .bubble.thinking { align-self: flex-start; color: #8a8f97; font-style: italic; }
   .bubble.error { align-self: flex-start; background: #3a1c1c; color: #f0b0b0; border: 1px solid #5a2a2a; }
+  /* ADR-0020 T7: deterministic per-send trim notice — neutral amber, distinct from a red error (not a bug) */
+  .bubble.cap-notice { align-self: flex-start; background: #2a2410; color: #e8d9a6; border: 1px solid #4a4020; font-size: 12px; font-style: italic; }
   .bubble .codeblock { position: relative; margin: 8px 0; }
   .bubble .cb-code { background: #0b0d10; border: 1px solid #2b2f37; border-radius: 8px;
     padding: 12px 14px; margin: 0; overflow-x: auto; white-space: pre; font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
@@ -124,6 +126,7 @@
   #chats-search-results.hidden, #chats-list.hidden { display: none; }
   .sr-status { font-size: 12px; color: #9aa0a8; padding: 6px 4px; }
   .sr-status.err { color: #e0796f; }
+  .sr-status.cap-notice { color: #e8d9a6; } /* ADR-0020 T7: search-question-trimmed notice */
   .sr-hit { padding: 8px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
   .sr-hit:hover { background: #14171c; border-color: #2b2f37; }
   .sr-hit-name { font-size: 13px; color: #dbe8ff; font-weight: 600; }

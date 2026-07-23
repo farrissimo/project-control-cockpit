@@ -856,7 +856,27 @@ ipcMain.handle('pcc:endJob', (_e, chatId) => authority.disable(chatId));
 // through the per-chat authority store (the create-flow surface IS the owner gate; it is only
 // reachable from the dedicated Create-a-project UI, never from pasted cockpit chat text).
 function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachments, opts) {
-  return new Promise((resolve) => {
+  return new Promise((resolveRaw) => {
+    // ADR-0020 T7 truncation-visibility correction: the deterministic record of what the per-send
+    // caps actually trimmed. Every resolution routes through withCaps(), so no matter how this turn
+    // ends (success, protective stop, or error) the owner is told DIRECTLY via res.caps that a trim
+    // happened — PCC never relies on the worker echoing the injected marker back. capNotices is
+    // populated in the stdin-write block below (synchronous, before any close/error handler fires);
+    // withCaps() is a no-op when nothing was trimmed, so it is safe on every resolve.
+    const capNotices = { messageTruncated: false, attachmentTextTruncated: false, excludedAttachments: 0 };
+    const withCaps = (r) => {
+      if (r && (capNotices.messageTruncated || capNotices.attachmentTextTruncated || capNotices.excludedAttachments > 0)) {
+        r.caps = {
+          messageTruncated: capNotices.messageTruncated,
+          messageCapChars: payloadCaps.MAX_MESSAGE_CHARS,
+          attachmentTextTruncated: capNotices.attachmentTextTruncated,
+          excludedAttachments: capNotices.excludedAttachments,
+          maxAttachments: payloadCaps.MAX_ATTACHMENTS,
+        };
+      }
+      return r;
+    };
+    const resolve = (r) => resolveRaw(withCaps(r));
     const cfg = readModels();
     const chosen = model || cfg.default;
     const scopedCwd = (opts && opts.cwd) || projectDir;
@@ -977,7 +997,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
         const res = { ok: true, text: text };
         if (rollover) res.costRollover = rollover; // R3 slice 2: this chat crossed its cumulative cap
         if (contextTokens !== null) res.contextTokens = contextTokens; // ADR-0019: feed the truthful chat-health meter
-        resolve(res);
+        resolve(res); // ADR-0020 T7: resolve() routes through withCaps — the owner is told if a per-send cap trimmed this send
       } else {
         // A failed FIRST turn means no session actually exists at that id. When
         // the renderer owns the id it tracks that (keeps the chat "not started"
@@ -1034,13 +1054,19 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
       }
     });
     // ADR-0020 T7: bound the per-send INPUT before it reaches the worker — cap the typed message
-    // (a giant paste), the attachment count, and the total attachment text. Deterministic, fail-closed,
-    // and never a silent drop (capMessage/capAttachments leave a visible marker when they trim).
-    const cappedMessage = payloadCaps.capMessage(message).text;
+    // (a giant paste), the attachment count, and the total attachment text. Deterministic and
+    // fail-closed. The injected marker below tells the WORKER its input was trimmed; the OWNER is
+    // told deterministically by PCC's own UI (capNotices -> res.caps), never by relying on the
+    // worker to echo that marker back (ADR-0020 T7 truncation-visibility correction).
+    const cm = payloadCaps.capMessage(message);
+    const cappedMessage = cm.text;
+    capNotices.messageTruncated = cm.truncated;
     if (hasAttach) {
       // One user message: attached file text first (context), then the typed message, then image
       // blocks. base64 images ride inline so the worker never needs filesystem access to them.
       const capped = payloadCaps.capAttachments(attachments);
+      capNotices.attachmentTextTruncated = capped.textTruncated;
+      capNotices.excludedAttachments = capped.droppedForCount + capped.droppedForBudget;
       const content = [];
       for (const a of capped.attachments) if (a && a.kind === 'text' && a.content) content.push({ type: 'text', text: 'Attached file "' + (a.name || 'file') + '":\n\n' + a.content });
       if (cappedMessage && cappedMessage.trim()) content.push({ type: 'text', text: cappedMessage });
@@ -1216,8 +1242,12 @@ ipcMain.handle('pcc:deleteChatFiles', (_e, chatId) => {
 // corpus is the live chats the renderer passes (always fresh); disk files serve extractability.
 ipcMain.handle('pcc:searchChats', async (_e, query, chats) => {
   if (typeof query !== 'string' || !query.trim()) return { ok: false, text: 'Type something to search for.' };
+  // ADR-0020 T7 truncation-visibility correction: if the owner pasted a giant question, every stage
+  // (expand/grep/judge) searched only the head+tail-capped version — tell the renderer so it can say
+  // so directly, rather than the trim being silent.
+  const questionTruncated = chatRecall.questionTruncated(query);
   const corpus = (Array.isArray(chats) ? chats : []).filter((c) => c && c.id && Array.isArray(c.messages) && c.messages.length);
-  if (corpus.length === 0) return { ok: true, matches: [], terms: [] };
+  if (corpus.length === 0) return { ok: true, matches: [], terms: [], questionTruncated };
   // 1) expand (AI, cheap) — plain English -> keyword+synonym list.
   const exp = await oneShotWorker(chatRecall.buildExpandPrompt(query), 'recall-expand');
   const terms = chatRecall.parseTerms(exp.ok ? exp.text : '', query);
@@ -1231,7 +1261,7 @@ ipcMain.handle('pcc:searchChats', async (_e, query, chats) => {
   const matches = chatRecall.parseMatches(jr.text)
     .filter((m) => byId[m.chatId])
     .map((m) => ({ chatId: m.chatId, chatName: byId[m.chatId].name || 'chat', answer: m.answer, quote: m.quote }));
-  return { ok: true, matches, terms };
+  return { ok: true, matches, terms, questionTruncated };
 });
 
 // ---- New Project create-flow (DECISION-114): "New Project" is a new document ----

@@ -72,6 +72,24 @@ test('T7: an oversized search question is head+tail capped in both the expand an
   expect(terms.join(' ').length).toBeLessThan(huge.length);
 });
 
+// ADR-0020 T7 truncation-visibility correction: questionTruncated is the deterministic predicate the
+// renderer uses to tell the owner DIRECTLY that only a head+tail slice of a giant pasted question was
+// searched — so the trim is never silent. It must agree exactly with when capQuestion/headTail trims.
+test('T7: questionTruncated is true iff the question exceeds the recall cap; null/short safe', () => {
+  const pc = require('../../payload-caps.js');
+  expect(cr.questionTruncated('short question')).toBe(false);
+  expect(cr.questionTruncated('X'.repeat(pc.MAX_RECALL_EVIDENCE_CHARS))).toBe(false);      // exactly at the cap = not trimmed
+  expect(cr.questionTruncated('X'.repeat(pc.MAX_RECALL_EVIDENCE_CHARS + 1))).toBe(true);   // one over = trimmed
+  expect(cr.questionTruncated('Q'.repeat(20000))).toBe(true);
+  expect(cr.questionTruncated(null)).toBe(false);
+  expect(cr.questionTruncated(undefined)).toBe(false);
+  // agreement: whenever questionTruncated says true, headTail actually shortened the string (and vice-versa)
+  for (const q of ['tiny', 'Y'.repeat(pc.MAX_RECALL_EVIDENCE_CHARS + 500)]) {
+    const trimmed = pc.headTail(q, pc.MAX_RECALL_EVIDENCE_CHARS).length < q.length;
+    expect(cr.questionTruncated(q)).toBe(trimmed);
+  }
+});
+
 test('parseMatches tolerates prose/fences and drops entries without a chatId', () => {
   expect(cr.parseMatches('{"matches":[{"chatId":"a","answer":"x","quote":"y"}]}')).toEqual([{ chatId: 'a', answer: 'x', quote: 'y' }]);
   expect(cr.parseMatches('sure: ```json\n{"matches":[{"chatId":"b"}]}\n```')).toEqual([{ chatId: 'b', answer: '', quote: '' }]);
