@@ -66,5 +66,23 @@
     return null;
   }
 
-  return { parseStreamJson: parseStreamJson, parseStreamCost: parseStreamCost, parseStreamUsage: parseStreamUsage };
+  // ADR-0020 Step 1 (T9 spine): the REAL agentic-turn count from a stream-json stream's `result` event
+  // (same top-level `num_turns` field as the --output-format json path). Lets attachment/image turns —
+  // which use this path — report how far one message fanned out, closing the last num_turns blind spot.
+  // Honest, like the sibling parsers: only a finite, non-negative number is returned; anything else null.
+  function parseStreamTurns(raw) {
+    for (const line of String(raw).split('\n')) {
+      const l = line.trim();
+      if (!l) continue;
+      try {
+        const o = JSON.parse(l);
+        if (o && o.type === 'result' && typeof o.num_turns === 'number' && Number.isFinite(o.num_turns) && o.num_turns >= 0) {
+          return o.num_turns;
+        }
+      } catch (e) { /* ignore non-JSON lines */ }
+    }
+    return null;
+  }
+
+  return { parseStreamJson: parseStreamJson, parseStreamCost: parseStreamCost, parseStreamUsage: parseStreamUsage, parseStreamTurns: parseStreamTurns };
 });

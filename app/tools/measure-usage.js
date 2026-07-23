@@ -125,6 +125,9 @@ function extract(raw) {
       promptTokens: input + cacheCreate + cacheRead,          // total context sent THIS turn (what turn-output.js calls contextTokens)
       eph5m: Number(eph.ephemeral_5m_input_tokens) || 0,
       eph1h: Number(eph.ephemeral_1h_input_tokens) || 0,
+      // ADR-0020 Step 1 (T9 spine): the real agentic-turn count — how far this one message fanned out.
+      // Non-negative finite only, else null (never a fabricated count), matching usage-log/turn-output.
+      numTurns: (typeof o.num_turns === 'number' && Number.isFinite(o.num_turns) && o.num_turns >= 0) ? o.num_turns : null,
       costUsd: Number(o.total_cost_usd) || 0,
       durationMs: Number(o.duration_ms) || 0,
       result: (o.result || '').slice(0, 60),
@@ -132,13 +135,13 @@ function extract(raw) {
   } catch { return null; }
 }
 
-(async () => {
+async function main() {
   fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
   const rows = [];
   let prevEndMs = null;
   console.log(`\nMeasuring PCC's real read-only chat invocation — model=${MODEL}, turns=${TURNS}, gap=${GAP}s, session=${sessionId.slice(0, 8)}`);
-  console.log('turn | gap(s) | promptTok | input | cacheCreate | cacheRead | output | cost$ | dur(s)');
-  console.log('-----|--------|-----------|-------|-------------|-----------|--------|-------|-------');
+  console.log('turn | gap(s) | promptTok | input | cacheCreate | cacheRead | output | turns | cost$ | dur(s)');
+  console.log('-----|--------|-----------|-------|-------------|-----------|--------|-------|-------|-------');
   for (let i = 0; i < TURNS; i++) {
     if (i > 0 && GAP > 0) await sleep(GAP * 1000);
     const gapSec = prevEndMs !== null ? Math.round((Date.now() - prevEndMs) / 1000) : 0;
@@ -156,7 +159,7 @@ function extract(raw) {
     rows.push(rec);
     fs.appendFileSync(LOG, JSON.stringify(rec) + '\n');
     console.log(
-      `${String(i + 1).padStart(4)} | ${String(gapSec).padStart(6)} | ${String(m.promptTokens).padStart(9)} | ${String(m.input).padStart(5)} | ${String(m.cacheCreate).padStart(11)} | ${String(m.cacheRead).padStart(9)} | ${String(m.output).padStart(6)} | ${m.costUsd.toFixed(4)} | ${(m.durationMs / 1000).toFixed(1)}`
+      `${String(i + 1).padStart(4)} | ${String(gapSec).padStart(6)} | ${String(m.promptTokens).padStart(9)} | ${String(m.input).padStart(5)} | ${String(m.cacheCreate).padStart(11)} | ${String(m.cacheRead).padStart(9)} | ${String(m.output).padStart(6)} | ${String(m.numTurns == null ? '?' : m.numTurns).padStart(5)} | ${m.costUsd.toFixed(4)} | ${(m.durationMs / 1000).toFixed(1)}`
     );
   }
   // Summary: baseline = turn-1 total context; growth = climb across turns; cache split.
@@ -174,4 +177,11 @@ function extract(raw) {
     console.log(`Total notional cost this run: $${good.reduce((a, r) => a + r.costUsd, 0).toFixed(4)} (phantom — flat plan, not billed; a proxy for tokens=usage)`);
     console.log(`Log: ${LOG}`);
   }
-})();
+}
+
+// Require-safe (ADR-0020 Step 1 test hook): the measurement — which spawns a REAL `claude` per turn
+// and appends to the evidence log — runs ONLY when this file is executed directly as a CLI. Requiring
+// the module (e.g. from a unit test) exposes the PURE extract() with NO spawn and NO evidence write.
+if (require.main === module) main();
+
+module.exports = { extract };
