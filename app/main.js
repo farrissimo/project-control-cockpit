@@ -34,6 +34,7 @@ const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
 const { logAppError } = require('./error-log'); // durable trace for otherwise-swallowed app failures
 const usageLog = require('./usage-log'); // records REAL token usage of EVERY LLM call (visible + invisible), LLM-agnostic
+const payloadCaps = require('./payload-caps'); // ADR-0020 T7: hard, deterministic caps on per-send input growth
 
 // This app is the single "home" cockpit. It opens PROJECTS (self-contained
 // folders each with their own .cockpit + engine scripts + CLAUDE.md, exactly
@@ -1032,17 +1033,23 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
         }
       }
     });
+    // ADR-0020 T7: bound the per-send INPUT before it reaches the worker — cap the typed message
+    // (a giant paste), the attachment count, and the total attachment text. Deterministic, fail-closed,
+    // and never a silent drop (capMessage/capAttachments leave a visible marker when they trim).
+    const cappedMessage = payloadCaps.capMessage(message).text;
     if (hasAttach) {
       // One user message: attached file text first (context), then the typed message, then image
       // blocks. base64 images ride inline so the worker never needs filesystem access to them.
+      const capped = payloadCaps.capAttachments(attachments);
       const content = [];
-      for (const a of attachments) if (a && a.kind === 'text' && a.content) content.push({ type: 'text', text: 'Attached file "' + (a.name || 'file') + '":\n\n' + String(a.content).slice(0, 200000) });
-      if (message && message.trim()) content.push({ type: 'text', text: message });
-      for (const a of attachments) if (a && a.kind === 'image' && a.dataBase64) content.push({ type: 'image', source: { type: 'base64', media_type: a.mediaType || 'image/png', data: a.dataBase64 } });
+      for (const a of capped.attachments) if (a && a.kind === 'text' && a.content) content.push({ type: 'text', text: 'Attached file "' + (a.name || 'file') + '":\n\n' + a.content });
+      if (cappedMessage && cappedMessage.trim()) content.push({ type: 'text', text: cappedMessage });
+      for (const a of capped.attachments) if (a && a.kind === 'image' && a.dataBase64) content.push({ type: 'image', source: { type: 'base64', media_type: a.mediaType || 'image/png', data: a.dataBase64 } });
+      if (capped.droppedForCount > 0) content.push({ type: 'text', text: '[PCC input cap: ' + capped.droppedForCount + ' extra attachment(s) beyond ' + payloadCaps.MAX_ATTACHMENTS + ' were not sent.]' });
       if (!content.some((c) => c.type === 'text')) content.push({ type: 'text', text: '(see attached)' });
       child.stdin.write(JSON.stringify({ type: 'user', message: { role: 'user', content } }) + '\n');
     } else {
-      child.stdin.write(message);
+      child.stdin.write(cappedMessage);
     }
     child.stdin.end();
   });

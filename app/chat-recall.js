@@ -15,6 +15,7 @@
 
 'use strict';
 
+const payloadCaps = require('./payload-caps'); // ADR-0020 T7: bound per-candidate judge evidence (pure, no fs/electron)
 const CANDIDATE_CAP = 8;
 const STOP = new Set(['when', 'did', 'we', 'the', 'into', 'what', 'say', 'went', 'with', 'before', 'a', 'an',
   'to', 'is', 'of', 'on', 'do', 'does', 'how', 'are', 'for', 'not', 'that', 'this', 'it', 'at', 'was', 'our', 'my']);
@@ -75,7 +76,9 @@ function selectCandidates(chats, hits, cap) {
 }
 
 function buildJudgePrompt(question, candidateChats) {
-  const evidence = candidateChats.map((c) => 'CHAT ' + c.id + ' ("' + (c.name || 'chat') + '"):\n' + transcriptText(c.messages)).join('\n\n---\n\n');
+  // ADR-0020 T7: bound the evidence per candidate — prefer the dense summary (docText), else the
+  // transcript, then head+tail cap so up-to-8 candidates can't push an unbounded prompt at the judge.
+  const evidence = candidateChats.map((c) => 'CHAT ' + c.id + ' ("' + (c.name || 'chat') + '"):\n' + payloadCaps.headTail(docText(c), payloadCaps.MAX_RECALL_EVIDENCE_CHARS)).join('\n\n---\n\n');
   return [
     'The user asked: "' + String(question || '') + '"',
     'Below are candidate chats. Many are irrelevant noise; a keyword shortlist is imperfect,',
