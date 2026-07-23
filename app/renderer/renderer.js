@@ -986,6 +986,14 @@ function cfSend(text, hidden) {
   if (cfSaving) return;        // no new interview turns once Save has started materializing
   const msg = (text || '').trim();
   if (!msg) return;
+  // ADR-0020 T7: the create-flow has its own send queue (cfQueue) — cap it exactly like the main chat
+  // queue (same MAX_QUEUE), refusing a 6th queued turn BEFORE it is bubbled/queued and handing the
+  // typed text back to the create-flow composer, so an accidental burst can't batch-fire the worker.
+  if (cfBusy && cfQueue.length >= MAX_QUEUE) {
+    if (!hidden && cfInput && !cfInput.value.trim()) cfInput.value = text || '';
+    cfAddBubble('assistant error', 'You already have ' + MAX_QUEUE + ' messages queued while Claude is working — wait for a reply before sending more. (A cap that protects your usage from an accidental burst.) Your text is back in the box.');
+    return;
+  }
   if (!hidden) cfAddBubble('user', msg);
   const item = { msg };
   if (cfBusy) { cfQueue.push(item); return; }

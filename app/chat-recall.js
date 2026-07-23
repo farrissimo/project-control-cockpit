@@ -41,20 +41,28 @@ function docText(chat) {
   return (chat && chat.name ? chat.name + '\n' : '') + transcriptText(chat && chat.messages);
 }
 
+// ADR-0020 T7: bound the owner's search QUESTION with the SAME deterministic cap in every stage
+// (expand prompt, local term-fold, judge prompt) — so a giant paste into the search box can't create
+// oversized one-shot Claude calls, and the AI and local stages can never disagree about what was searched.
+function capQuestion(question) {
+  return payloadCaps.headTail(question, payloadCaps.MAX_RECALL_EVIDENCE_CHARS);
+}
+
 function buildExpandPrompt(question) {
   return [
     'A user is searching their chat history. Turn this question into a compact list of 4-8',
     'lowercase keywords/synonyms likely to appear in the relevant chat (include obvious synonyms',
     'so results are not limited to the user\'s exact words). Output ONLY a JSON array of strings.',
-    'Question: "' + String(question || '') + '"',
+    'Question: "' + capQuestion(question) + '"',
   ].join('\n');
 }
 
 function parseTerms(raw, question) {
   const parsed = safeJson(raw);
   const terms = Array.isArray(parsed) ? parsed.map((t) => String(t).toLowerCase()).filter(Boolean) : [];
-  // Always fold in the question's own significant words, so a weak expansion still greps.
-  return [...new Set(terms.concat(words(question)))];
+  // Always fold in the question's own significant words, so a weak expansion still greps — from the
+  // SAME capped question the AI stages see (T7), so local grep and the model never diverge.
+  return [...new Set(terms.concat(words(capQuestion(question))))];
 }
 
 // Local keyword net. Returns chats ranked by how many terms hit their doc text (score > 0 only).
@@ -80,7 +88,7 @@ function buildJudgePrompt(question, candidateChats) {
   // transcript, then head+tail cap so up-to-8 candidates can't push an unbounded prompt at the judge.
   const evidence = candidateChats.map((c) => 'CHAT ' + c.id + ' ("' + (c.name || 'chat') + '"):\n' + payloadCaps.headTail(docText(c), payloadCaps.MAX_RECALL_EVIDENCE_CHARS)).join('\n\n---\n\n');
   return [
-    'The user asked: "' + String(question || '') + '"',
+    'The user asked: "' + capQuestion(question) + '"',
     'Below are candidate chats. Many are irrelevant noise; a keyword shortlist is imperfect,',
     'so judge by MEANING, not word overlap. Rules for what counts as a match:',
     '- A chat matches ONLY if it genuinely answers the question AS ASKED. A chat that merely',

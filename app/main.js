@@ -1045,7 +1045,8 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
       for (const a of capped.attachments) if (a && a.kind === 'text' && a.content) content.push({ type: 'text', text: 'Attached file "' + (a.name || 'file') + '":\n\n' + a.content });
       if (cappedMessage && cappedMessage.trim()) content.push({ type: 'text', text: cappedMessage });
       for (const a of capped.attachments) if (a && a.kind === 'image' && a.dataBase64) content.push({ type: 'image', source: { type: 'base64', media_type: a.mediaType || 'image/png', data: a.dataBase64 } });
-      if (capped.droppedForCount > 0) content.push({ type: 'text', text: '[PCC input cap: ' + capped.droppedForCount + ' extra attachment(s) beyond ' + payloadCaps.MAX_ATTACHMENTS + ' were not sent.]' });
+      const excluded = capped.droppedForCount + capped.droppedForBudget; // over the per-send count OR the image-size budget
+      if (excluded > 0) content.push({ type: 'text', text: '[PCC input cap: ' + excluded + ' attachment(s) were not sent — over the per-send limit (max ' + payloadCaps.MAX_ATTACHMENTS + ' attachments / bounded total size).]' });
       if (!content.some((c) => c.type === 'text')) content.push({ type: 'text', text: '(see attached)' });
       child.stdin.write(JSON.stringify({ type: 'user', message: { role: 'user', content } }) + '\n');
     } else {

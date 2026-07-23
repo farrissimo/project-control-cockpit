@@ -51,13 +51,29 @@ test('capAttachments: total text is bounded to MAX_ATTACH_TOTAL_CHARS, later tex
   assert.strictEqual(r.attachments[0].content, 'a'.repeat(pc.MAX_ATTACH_TOTAL_CHARS - 100)); // first one within budget untouched
 });
 
-test('capAttachments: images count toward the count cap but not the text budget; non-array is safe', () => {
-  // 200K of text already spends the budget; an image after it is still kept (not a text cost).
+test('capAttachments: a small image is not charged against the TEXT budget; non-array is safe', () => {
+  // 200K of text already spends the text budget; a small image after it is still kept (not a text cost).
   const att = [{ kind: 'text', content: 'a'.repeat(pc.MAX_ATTACH_TOTAL_CHARS), name: 'f1' }, { kind: 'image', dataBase64: 'img' }];
   const r = pc.capAttachments(att);
   assert.strictEqual(r.attachments.length, 2);
   assert.strictEqual(r.attachments[1].kind, 'image');
-  assert.deepStrictEqual(pc.capAttachments(null), { attachments: [], droppedForCount: 0, textTruncated: false });
+  assert.deepStrictEqual(pc.capAttachments(null), { attachments: [], droppedForCount: 0, droppedForBudget: 0, textTruncated: false });
+});
+
+test('capAttachments: an aggregate IMAGE budget drops WHOLE images in order — base64 is never truncated', () => {
+  const fullBudgetImg = () => ({ kind: 'image', dataBase64: 'A'.repeat(pc.MAX_ATTACH_IMAGE_BASE64_CHARS) }); // each = the whole image budget
+  const att = [fullBudgetImg(), fullBudgetImg(), { kind: 'text', content: 'hi', name: 't' }];
+  const r = pc.capAttachments(att);
+  assert.strictEqual(r.droppedForBudget, 1);            // the 2nd image is over budget -> dropped whole
+  const images = r.attachments.filter((a) => a.kind === 'image');
+  assert.strictEqual(images.length, 1);                 // exactly one image kept
+  assert.strictEqual(images[0].dataBase64.length, pc.MAX_ATTACH_IMAGE_BASE64_CHARS); // WHOLE, not truncated (truncated base64 corrupts)
+  assert.ok(r.attachments.some((a) => a.kind === 'text' && a.content === 'hi')); // text still passes
+  // the 10x8MB (~80MB) scenario the per-file guard alone allowed is now bounded:
+  const many = Array.from({ length: 10 }, () => fullBudgetImg());
+  const capped = pc.capAttachments(many);
+  assert.strictEqual(capped.attachments.filter((a) => a.kind === 'image').length, 1);
+  assert.strictEqual(capped.droppedForBudget, 9);
 });
 
 test('capAttachments: never mutates the caller\'s input objects', () => {
