@@ -58,6 +58,20 @@ test('buildJudgePrompt includes candidates and the match rules', () => {
   expect(p).toContain('REVERSES');   // the supersession rule
 });
 
+// ADR-0020 T7: an oversized search question (a giant paste into the search box) is bounded with the
+// SAME deterministic cap in every stage — the expand prompt, the local term-fold, and the judge prompt —
+// so it can't create oversized one-shot Claude calls and the AI/local stages can't disagree.
+test('T7: an oversized search question is head+tail capped in both the expand and judge prompts', () => {
+  const huge = 'Q'.repeat(20000);
+  for (const p of [cr.buildExpandPrompt(huge), cr.buildJudgePrompt(huge, CHATS.slice(0, 1))]) {
+    expect(p.length).toBeLessThan(huge.length);   // the full 20k paste never reaches the model
+    expect(p).toContain('truncated');             // visible head+tail marker, not a silent cut
+  }
+  // the local term-fold reads the SAME capped question (parseTerms folds question words) — bounded too
+  const terms = cr.parseTerms('[]', huge);
+  expect(terms.join(' ').length).toBeLessThan(huge.length);
+});
+
 test('parseMatches tolerates prose/fences and drops entries without a chatId', () => {
   expect(cr.parseMatches('{"matches":[{"chatId":"a","answer":"x","quote":"y"}]}')).toEqual([{ chatId: 'a', answer: 'x', quote: 'y' }]);
   expect(cr.parseMatches('sure: ```json\n{"matches":[{"chatId":"b"}]}\n```')).toEqual([{ chatId: 'b', answer: '', quote: '' }]);

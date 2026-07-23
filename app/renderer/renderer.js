@@ -30,6 +30,7 @@ let busy = false;
 let inFlightChatId = null; // R2: which chat's turn Stop should target — set only while one is actually running
 let attachments = []; // composer attachments for the NEXT send: {kind:'image',mediaType,dataBase64,name} | {kind:'text',name,content}
 let sendQueue = []; // steering: messages composed while a turn is running, sent in order when it finishes
+const MAX_QUEUE = 5; // ADR-0020 T7: cap pending steering messages — beyond this is accidental batch-fire (mirrors payload-caps.MAX_QUEUE)
 // Canonical chat store (Phase 2A S5): chats.json (main-owned) is the AUTHORITY.
 // localStorage is a disposable cache only. These track the identity + revision the
 // renderer must present on every mutation (optimistic concurrency + project binding).
@@ -398,6 +399,16 @@ async function sendMessage(text, displayText) {
   // send with a clear reason rather than optimistically show a bubble that then
   // fails to persist.
   if (servedGeneration === 'prev') { addBubbleUI('assistant error', 'Editing is disabled while showing recovered history — the current chat file must be recovered first.'); return; }
+  // ADR-0020 T7: cap the steering queue. If a turn is running and the queue is already full, refuse
+  // this send plainly BEFORE it is committed to the transcript (rather than silently piling up an
+  // unbounded batch that all fires in sequence and burns usage). The typed text is handed BACK to the
+  // composer (the caller cleared it before calling here), so nothing is lost.
+  if (busy && sendQueue.length >= MAX_QUEUE) {
+    const inp = document.getElementById('input');
+    if (inp && !inp.value.trim()) inp.value = text || '';
+    addBubbleUI('assistant error', 'You already have ' + MAX_QUEUE + ' messages queued while Claude is working — wait for a reply before sending more. (A cap that protects your usage from an accidental burst.) Your text is back in the box.');
+    return;
+  }
   const shown = (displayText || msg).trim();
   const chat = activeChat();
   if (!chat) return;
@@ -975,6 +986,14 @@ function cfSend(text, hidden) {
   if (cfSaving) return;        // no new interview turns once Save has started materializing
   const msg = (text || '').trim();
   if (!msg) return;
+  // ADR-0020 T7: the create-flow has its own send queue (cfQueue) — cap it exactly like the main chat
+  // queue (same MAX_QUEUE), refusing a 6th queued turn BEFORE it is bubbled/queued and handing the
+  // typed text back to the create-flow composer, so an accidental burst can't batch-fire the worker.
+  if (cfBusy && cfQueue.length >= MAX_QUEUE) {
+    if (!hidden && cfInput && !cfInput.value.trim()) cfInput.value = text || '';
+    cfAddBubble('assistant error', 'You already have ' + MAX_QUEUE + ' messages queued while Claude is working — wait for a reply before sending more. (A cap that protects your usage from an accidental burst.) Your text is back in the box.');
+    return;
+  }
   if (!hidden) cfAddBubble('user', msg);
   const item = { msg };
   if (cfBusy) { cfQueue.push(item); return; }
