@@ -84,6 +84,44 @@ root cause:
 **6.** These containment tasks bound the burn; they **do not reproduce a warm worker**. The root-cause fix
 stays open under rule (1).
 
+### Amendment 2 — 2026-07-22 (owner-approved): Gate 0 usage-proof audible
+
+Supersedes the Amendment §5 ordering. Rationale: with paid Claude Max ~5 days from expiry and the T3
+warm-worker path disqualified as *required* architecture (§3), the project must **measure** whether the
+current cold-`claude -p` worker path is still pathological **after** the known app-level multipliers are
+removed — *before* spending the remaining window on a large T3 rewrite. Codex concurred the plan is a
+fork for the owner; owner approved this sequence (Claude worker's ACCEPT-WITH-CHANGES evaluation).
+
+**Revised emergency sequence:**
+1. **T7** — hard-cap attachments (count/total, not just per-file), search evidence, queued sends,
+   Capture-Decisions injection. (Partial caps exist today: per-attachment 200K chars; search candidate cap.)
+2. **T1** — deterministic local compaction/rollover (NO LLM summary, NO silent rollover, explicit
+   protection against the prior rollover loop). Highest-risk pre-experiment item.
+3. **Minimum T9 measurement spine** — NOT the full gateway redesign. The raw Claude session JSONL is the
+   independent ground truth (per-turn input/cache_creation/cache_read/output + num_turns; `tools/
+   reconstruct-incident.js` already attributes PCC-vs-direct). Minimum work: surface num_turns; enumerate
+   + TEST the complete set of `claude` spawn sites (exactly `askClaude` + `oneShotWorker`) so "no
+   unattributed calls" is provable; a small paired-run harness.
+4. **Gate 0 — controlled PCC-vs-direct-Claude usage proof.** Same account/model/repo/tasks/window,
+   equivalent tool profile, ≥3 repeats/arm, **deliberately varying the inter-message gap** (the cache-TTL
+   crux — captured envelopes show a **1-hour** cache TTL, so "cold process rebuilds every message" is a
+   HYPOTHESIS to test, not a proven fact; high cache_creation may instead mean the cached prefix breaks
+   each message — a smaller fix than T3). Threshold weighted on **cache_creation per equivalent task**
+   (proposed PASS ≤~1.3× direct, FAIL ≥~2×; baseline was ~3.6× with all multipliers). Threshold +
+   design **Codex-reviewed and owner-locked BEFORE the run**.
+5. **Decision fork:** (A) still pathological → current architecture fails Gate 0, T3 becomes the mandatory
+   engineering task (zero-required-spend candidate only), experiment rerun against it; (B) no longer
+   pathological → cold-process path is operationally acceptable for Gate 0 (T3 stays open as a strategic
+   zero-spend/provider-independence requirement, NOT closed), then finish T8, T4, remainder of T9.
+
+**T8 and T4 are deferred** behind Gate 0 (NOT cancelled): neither materially changes the ordinary
+per-message burn being measured, so completing them first would consume the Claude window without
+answering the existential question. Guard: the experiment protocol **forbids mid-run restarts** (which
+neutralizes T8's only measurement-relevant effect) and measures from the JSONL, not the T4 meter.
+
+**This does NOT start the ADR-0016 seven-day owner proof** — that stays blocked until the usage crisis
+is solved and proven. Gate 0 is a dedicated viability experiment, not the trust window.
+
 ### Original decision (2026-07-22 — superseded in part by the Amendment above)
 
 Fix the burn as a set of **bounded, independently-verified tasks**, in the order Codex verified
