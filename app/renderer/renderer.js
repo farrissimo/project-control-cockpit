@@ -823,12 +823,21 @@ const staleContextChats = new Set();// chats whose LATEST turn reported no token
 let rolloverAfterTurn = null;        // { chatId, pct } set by runSend when a turn crosses the threshold
 let rolloverInFlight = false;        // guard: never start a second rollover while one is running
 
-// SURVIVAL-TRIAL RULE (2026-07-21, owner + Codex directive during the ADR-0016 trust proving window):
-// PCC must NOT take control. No automatic behavior may interrupt, loop, switch chats, or surprise the
-// owner while he uses PCC in normal life. So forced auto-rollover stays OFF for the window — even though
-// the growth-based meter (below) makes the turn-one loop structurally impossible. The meter now WARNS
-// only; switching to a fresh chat is an OWNER-controlled action, never automatic. Re-enable only after
-// the owner explicitly approves a one-click "continue in a fresh chat with handoff" flow he controls.
+// ADR-0020 T1 (owner decision 2026-07-23): rollover stays OWNER-TRIGGERED for now — the meter WARNS and
+// the "Continue in fresh chat" button makes the switch one click, but PCC does not switch by itself. This
+// KEEPS the 2026-07-21 survival-trial "no auto-switch" stance intact rather than superseding it during the
+// trust window.
+//
+// FLIPPING THIS TO AUTOMATIC IS A ONE-LINE CHANGE (`= true`) — deliberately. Everything automatic rollover
+// needs is already built and wired below:
+//   • autoRolloverToNewChat() builds its carried context LOCALLY + DETERMINISTICALLY (rollover-seed.js) —
+//     NO LLM summary, which was the hidden burn that made the ADR-0019 version unusable;
+//   • the LOOP is structurally prevented — the gauge measures GROWTH past each chat's OWN first-turn
+//     baseline, so a fresh "Continued chat" (its seed included in that baseline) reads ~0% and cannot
+//     re-trigger — plus rolledOverChats (a source rolls over at most once) and rolloverInFlight;
+//   • every failure path HOLDS in the source chat with an honest notice and leaves no empty chat.
+// Post-T1 Gate 0 decides whether automatic is warranted. Do not delete the machinery to "clean up" — the
+// one-line flip is the deliverable.
 const AUTO_ROLLOVER_ENABLED = false;
 
 // Flatten the structured summary into short seed text (best-effort; empty if no summary).
@@ -873,9 +882,21 @@ async function continueInFreshChat() {
     summaryText = summaryToSeedText((source && source.summary) || (cached && cached.summary));
   } catch (e) { summaryText = ''; }
 
+  // ADR-0020 T1: the handoff carries PROJECT truth (repo/git state), not the CONVERSATION — so without
+  // this the "continued" chat still forgot the thread you were actually in the middle of. Carry the recent
+  // conversation forward VERBATIM and BOUNDED, built locally + deterministically (rollover-seed.js): same
+  // messages always produce the same text, and NO LLM summary is generated (that would be a hidden burn,
+  // the exact thing this work exists to stop). Bounded so the fresh chat starts small — the point of
+  // rolling over at all. Additive: the handoff and any already-cached summary are untouched.
+  let recentText = '';
+  try {
+    recentText = PCCRolloverSeed.recentTranscript((source && source.messages) || history);
+  } catch (e) { recentText = ''; }
+
   const carried = '=== Carried context from your previous chat ===\n'
     + '(This is visible and editable. Nothing is sent until you press Send.)\n\n'
     + handoff
+    + (recentText ? ('\n\n=== Recent conversation (verbatim, most recent last) ===\n' + recentText) : '')
     + (summaryText ? ('\n\n=== Conversation summary ===\n' + summaryText) : '')
     + '\n\n=== Continue from here ===\n';
 
@@ -903,13 +924,10 @@ async function autoRolloverToNewChat(sourceChatId, contextTokens) {
       sourceChatId);
     return;
   }
-  let summaryText = '';
-  try { const s = await window.pcc.summarizeChat(sourceChatId, messages); if (s && s.ok) summaryText = summaryToSeedText(s.summary); } catch (e) { summaryText = ''; }
-
-  const seed = 'You are continuing a previous chat that was rolled over because its context got large. '
-    + 'Only what appears below carries forward — treat it as the ground truth for this conversation.\n\n'
-    + '=== Handoff briefing ===\n' + handoff
-    + (summaryText ? ('\n\n=== Conversation summary ===\n' + summaryText) : '');
+  // ADR-0020 T1: build the carried context LOCALLY + DETERMINISTICALLY — the recent conversation verbatim
+  // (bounded) + the deterministic handoff. NO LLM summary (summarizeChat) — that would be a hidden burn,
+  // the exact thing this work exists to stop. Same messages + handoff always produce the same seed.
+  const seed = PCCRolloverSeed.buildContinuationSeed(messages, handoff);
 
   const newId = uuid();
   const cr = await chatCmd('chatsCreate', { id: newId, name: 'Continued chat' });
@@ -936,7 +954,7 @@ async function autoRolloverToNewChat(sourceChatId, contextTokens) {
   // The notice is best-effort: the rollover already materially happened (new chat created, active,
   // and seeded), so a failed notice-append does not undo it or block the mark.
   await appendMessage('assistant',
-    'Your previous chat grew to ' + sizeTxt + ', so PCC automatically continued it here in a fresh chat to protect your Claude usage from a big context re-sent every turn. Your old chat is safe in the list on the left — nothing was deleted. A handoff' + (summaryText ? ' + summary' : ' (a conversation summary could not be generated this time, so only the handoff carried forward)') + ' is carried forward and attached to your next message, so Claude picks up where you left off.',
+    'Your previous chat grew to ' + sizeTxt + ', so PCC automatically continued it here in a fresh chat to protect your Claude usage from a big context re-sent every turn. Your old chat is safe in the list on the left — nothing was deleted. The recent conversation (carried forward verbatim) plus a project handoff are attached to your next message, so Claude picks up where you left off. This carry-forward was built locally — no summary was generated.',
     newId);
   rolledOverChats.add(sourceChatId); // SUCCESS (switch confirmed): hold-paths above return early unmarked, so a transient failure retries next turn
   } finally {
@@ -1816,7 +1834,7 @@ function computeChatSignal() {
     + '• Messages: ' + turns + ' / ' + ROLLOVER_TURNS + '\n'
     + '• Time: ' + (spanHours !== null ? (spanHours < 1 ? '<1' : spanHours.toFixed(1)) : '—') + ' / ' + ROLLOVER_HOURS + ' hr\n'
     + '• ' + ctxLine + '\n'
-    + 'Now driven by: ' + g.driver + '. This WARNS (it never switches chats on you) once the conversation GROWS ~' + kTok(g.rolloverTokens) + ' tokens past its startup baseline (whichever comes first: a usage-burn floor, or 75% of the estimated window).' + wallNote + ' Your plan-usage limit is the separate "Usage" chip up top.';
+    + 'Now driven by: ' + g.driver + '. This WARNS (it never switches chats on you — the “Continue in fresh chat” button switches when YOU decide) once the conversation GROWS ~' + kTok(g.rolloverTokens) + ' tokens past its startup baseline (whichever comes first: a usage-burn floor, or 75% of the estimated window).' + wallNote + ' Your plan-usage limit is the separate "Usage" chip up top.';
 
   return {
     detector: 'chat-rollover',
@@ -1826,13 +1844,13 @@ function computeChatSignal() {
     items: repeatItems,
     observed,
     might_mean: notice
-      ? 'This chat is getting heavy (by messages, time, or real conversation growth). Long chats drift, lose the earlier thread, and burn your Claude usage faster. This is a WARNING only — PCC will NOT switch chats on you. When you are ready, start a fresh chat to keep things light; your current chat stays right here.'
+      ? 'This chat is getting heavy (by messages, time, or real conversation growth). Long chats drift, lose the earlier thread, and burn your Claude usage faster. This is your heads-up — PCC will NOT switch chats on you. Moving on is your call: the “Continue in fresh chat” button opens a new chat with your recent conversation and a project handoff already carried into the message box, where you can read and edit it before anything is sent. Your old chat stays right here in the list and nothing is deleted.'
       : 'This chat is still comfortably within limits on messages, time, and conversation growth — nothing to do.',
     not_proven: g.contextMeasured
       ? 'The token counts are REAL (each turn’s actual prompt tokens). The gauge tracks GROWTH past this chat’s first measured turn (its fixed startup overhead — system prompt + tools + rules — which is re-sent every turn and is NOT chat length), so a fresh chat starts near 0 and only real back-and-forth moves it. The rollover threshold’s WINDOW half is ESTIMATED — headless Claude doesn’t report the window and it depends on your model + plan; PCC assumes the smaller one unless a bigger plan is confirmed (that only rolls over sooner, never later). Readings are taken at each turn’s END, so one very large turn can overshoot before it registers (Stop and the per-turn cap are the backstops). Attachment-only turns are not yet token-measured. Pre-update messages have no timestamp, so the time span may undercount.'
       : 'Conversation growth is not yet measured for this chat this session (an attachment-only turn, or no completed text turn), so this gauge currently reflects messages/time only — it is honest about that rather than showing a fake reading. Pre-update messages have no timestamp, so the time span may undercount.',
     what_to_do: notice
-      ? 'Nothing is forced on you. When this chat feels heavy, hit “New chat” to start fresh — PCC will never switch on its own.'
+      ? 'Hit “Continue in fresh chat” when you reach a natural stopping point. It carries your recent conversation forward verbatim plus a project handoff, so the new chat picks up the thread — nothing is sent until you press Send, and this chat is kept. Carrying on here is fine too; it just costs more usage per message.'
       : 'Nothing needed.',
   };
 }
