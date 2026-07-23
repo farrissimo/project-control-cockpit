@@ -413,7 +413,7 @@ async function sendMessage(text, displayText) {
   const attachNote = outbound.length ? (shown ? '\n\n' : '') + '📎 ' + outbound.length + ' attachment' + (outbound.length > 1 ? 's' : '') + ': ' + outbound.map((a) => a.name || a.kind).join(', ') : '';
   const saved = await appendMessage('user', shown + attachNote, chatId);
   if (!saved.ok) return; // appendMessage already surfaced the error; nothing else advances
-  // Provisional name for a fresh chat (refined later by AI auto-name). Persisted
+  // Provisional name for a fresh chat (refined later by a LOCAL, deterministic re-name; T6: no LLM). Persisted
   // UNLOCKED, and ONLY now that the prompt is safely in the canonical store.
   if (wasFreshNewChat) {
     await chatCmd('chatsRename', { chatId, name: shown.replace(/\s+/g, ' ').slice(0, 40) + (shown.length > 40 ? '…' : ''), lock: false });
@@ -527,15 +527,13 @@ async function runSend(item) {
   }
 }
 
-// ---- First-class chat history: AI auto-name + summary card (docs/CHAT_RECALL_SPEC.md) ----
-// The instant first-message name (in sendMessage) is only a PROVISIONAL label. The real AI name
-// is generated when you're DONE with a chat — when you leave it (switch away / start a new one)
-// or generate its summary — NOT after turn one, because the actual subject usually emerges near
-// the END of a chat (owner: "I usually ask the question at or near the end"). It re-names each
-// time you leave, so the title always reflects the latest state. Skips a hand-locked name; only
-// spends a worker call when the chat has GROWN since it was last named (revisiting is free).
-// Always mirror a chat's full transcript to disk (no AI) so recall has a greppable corpus even
-// for chats never summarized. Fire-and-forget, best-effort. Called on leave and after each turn.
+// ---- First-class chat history: local auto-name + summary card (docs/CHAT_RECALL_SPEC.md) ----
+// The instant first-message name (in sendMessage) is a PROVISIONAL label. On leave/switch the name
+// is reconsidered — but LOCALLY and deterministically (ADR-0020 T6), from the chat's own first user
+// message, with ZERO tokens and NO background LLM call. (Pre-T6 this fired an invisible `claude`
+// call on every leave — the exact invisible burn T6 removes.) Skips a hand-locked name; only
+// recomputes when the chat has GROWN since it was last named. Always mirror a chat's full transcript
+// to disk (no AI) so recall has a greppable corpus. Fire-and-forget. Called on leave and after each turn.
 function persistTranscript(chat) {
   if (chat && chat.messages && chat.messages.length) { try { window.pcc.persistChat(chat.id, chat.messages); } catch (e) { /* best effort */ } }
 }

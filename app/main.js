@@ -1095,13 +1095,14 @@ function oneShotWorker(prompt, trigger) {
   });
 }
 
-// Auto-name: cheap, runs once after the first real exchange. Returns a title only.
-ipcMain.handle('pcc:autoNameChat', async (_e, messages) => {
+// Auto-name (ADR-0020 T6): LOCAL + deterministic — derives the title from the chat's own first
+// user message with ZERO tokens and NO worker/LLM call. This channel is invoked on chat leave/
+// switch, so it must never spend usage (the pre-T6 version fired an invisible `claude` call on
+// every leave). No hidden replacement call: it is pure string work in-process.
+ipcMain.handle('pcc:autoNameChat', (_e, messages) => {
   if (!Array.isArray(messages) || messages.length === 0) return { ok: false, text: 'No messages to name.' };
-  const r = await oneShotWorker(chatSummary.buildNamePrompt(messages), 'auto-name');
-  if (!r.ok) return { ok: false, text: r.text };
-  const title = chatSummary.cleanTitle(r.text);
-  return title ? { ok: true, title } : { ok: false, text: 'No usable title returned.' };
+  const title = chatSummary.localTitle(messages);
+  return title ? { ok: true, title } : { ok: false, text: 'No usable title.' };
 });
 
 // Summarize: on-demand structured card + durable three-tier mirror on disk.
