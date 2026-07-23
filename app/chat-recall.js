@@ -48,6 +48,14 @@ function capQuestion(question) {
   return payloadCaps.headTail(question, payloadCaps.MAX_RECALL_EVIDENCE_CHARS);
 }
 
+// ADR-0020 T7 truncation-visibility correction: was the search QUESTION long enough that capQuestion
+// (headTail) trimmed it? Deterministic — headTail truncates iff the input exceeds the cap — so the
+// renderer can tell the owner DIRECTLY that only part of their question was searched, rather than the
+// trim being silent.
+function questionTruncated(question) {
+  return String(question == null ? '' : question).length > payloadCaps.MAX_RECALL_EVIDENCE_CHARS;
+}
+
 function buildExpandPrompt(question) {
   return [
     'A user is searching their chat history. Turn this question into a compact list of 4-8',
@@ -123,6 +131,6 @@ function safeJson(s) {
 }
 
 module.exports = {
-  CANDIDATE_CAP, words, transcriptText, docText,
+  CANDIDATE_CAP, words, transcriptText, docText, questionTruncated,
   buildExpandPrompt, parseTerms, grep, selectCandidates, buildJudgePrompt, parseMatches, safeJson,
 };

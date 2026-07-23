@@ -321,6 +321,19 @@ function startThinkingTimer(el) {
 }
 function stopThinkingTimer(el) { if (el && el._pccTimer) { clearInterval(el._pccTimer); el._pccTimer = null; } }
 
+// ADR-0020 T7 truncation-visibility correction: plain-English, deterministic notice built ONLY from
+// res.caps (what PCC actually trimmed before sending). Never depends on the worker's reply. The
+// numeric caps travel in res.caps so this wording can never drift from the real payload-caps values.
+function capNoticeText(caps) {
+  const parts = [];
+  if (caps.messageTruncated) parts.push('your message was shortened to about ' + Math.round((caps.messageCapChars || 0) / 1000) + 'K characters');
+  if (caps.attachmentTextTruncated) parts.push('an attached file’s text was shortened');
+  if (caps.excludedAttachments > 0) parts.push(caps.excludedAttachments + ' attachment' + (caps.excludedAttachments > 1 ? 's were' : ' was')
+    + ' not sent (over the per-message limit of ' + caps.maxAttachments + ' attachments, or the total size cap)');
+  return 'Heads up — to protect your Claude usage, PCC trimmed this send before it reached Claude: '
+    + parts.join('; ') + '. Claude only received the trimmed version, so resend a smaller message or fewer/smaller attachments if it matters.';
+}
+
 function addBubbleUI(cls, text) {
   const el = document.createElement('div');
   el.className = 'bubble ' + cls;
@@ -491,6 +504,10 @@ async function runSend(item) {
     // 'assistant' bubble (its own text explains what happened), never the red error style a real bug gets.
     const isProtectiveStop = res.stoppedByOwner || res.budgetExceeded || res.maxTurnsReached || res.usageLimit || res.authError;
     await appendMessage(res.ok || isProtectiveStop ? 'assistant' : 'assistant error', res.text || '(no output)', chatId);
+    // ADR-0020 T7 truncation-visibility correction: if a per-send cap trimmed this message, tell the
+    // owner DIRECTLY and deterministically here — driven by res.caps (what PCC actually sent), never
+    // by relying on Claude to echo the marker injected into its payload. UI-only, like the queue cap.
+    if (res.caps) addBubbleUI('assistant cap-notice', capNoticeText(res.caps));
     if (res.ok) { const cc = chats.find((c) => c.id === chatId); if (cc) persistTranscript(cc); }
     // A stale worker is holding this chat's session — offer a one-click way out.
     if (!res.ok && res.sessionInUse) addRecoveryAction();
@@ -1442,14 +1459,20 @@ function setSearchStatus(html, isErr) {
   box.classList.remove('hidden');
   box.innerHTML = '<div class="sr-status' + (isErr ? ' err' : '') + '">' + html + '</div>';
 }
-function renderSearchResults(query, matches) {
+function renderSearchResults(query, matches, questionTruncated) {
   const box = document.getElementById('chats-search-results');
   const back = '<div class="sr-back" data-act="clear-search">← back to all chats</div>';
+  // ADR-0020 T7 truncation-visibility correction: if the pasted question was too long, PCC searched
+  // only a head+tail slice of it — say so deterministically (driven by res.questionTruncated), never
+  // silently return results as if the whole question had been searched.
+  const trimNote = questionTruncated
+    ? '<div class="sr-status cap-notice">Your question was long, so PCC searched only the beginning and end of it. Try a shorter search if results look off.</div>'
+    : '';
   if (!matches.length) {
-    box.innerHTML = back + '<div class="sr-status">No chats match “' + escapeHtml(query) + '”.</div>';
+    box.innerHTML = back + trimNote + '<div class="sr-status">No chats match “' + escapeHtml(query) + '”.</div>';
     return;
   }
-  box.innerHTML = back + '<div class="sr-status">' + matches.length + ' match' + (matches.length > 1 ? 'es' : '')
+  box.innerHTML = back + trimNote + '<div class="sr-status">' + matches.length + ' match' + (matches.length > 1 ? 'es' : '')
     + ' for “' + escapeHtml(query) + '”</div>'
     + matches.map((m) => '<div class="sr-hit" data-act="open" data-id="' + escapeHtml(m.chatId) + '">'
       + '<div class="sr-hit-name">' + escapeHtml(m.chatName || 'chat') + '</div>'
@@ -1467,7 +1490,7 @@ async function runChatSearch() {
     const corpus = chats.map((c) => ({ id: c.id, name: c.name, messages: c.messages, summary: c.summary }));
     const res = await window.pcc.searchChats(q, corpus);
     if (seq !== searchSeq) return; // a newer search superseded this one
-    if (res && res.ok) renderSearchResults(q, res.matches || []);
+    if (res && res.ok) renderSearchResults(q, res.matches || [], res.questionTruncated);
     else setSearchStatus(escapeHtml((res && res.text) || 'Search failed.'), true);
   } catch (e) {
     if (seq === searchSeq) setSearchStatus('Something went wrong searching.', true);
