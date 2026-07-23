@@ -8,7 +8,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { createStreamParser, parseAll, normalizeUsage } = require('../../stream-parser.js');
-const { parseStreamJson } = require('../../stream-json.js');
+const { parseStreamJson, parseStreamTurns } = require('../../stream-json.js');
 
 const REAL = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'real', 'claude-streamjson-success.txt'), 'utf8');
 
@@ -189,4 +189,17 @@ test('the REAL capture surfaces its five_hour rate_limit_event', () => {
   assert.strictEqual(u.rateLimitType, 'five_hour');
   assert.strictEqual(u.status, 'allowed');
   assert.strictEqual(typeof u.resetsAt, 'number');
+});
+
+// ADR-0020 Step 1 (T9 spine): the attachment/image path (stream-json) must also surface num_turns.
+test('parseStreamTurns reads num_turns from the result event; the real capture reports its count', () => {
+  const stream = [
+    L({ type: 'assistant', message: { content: [txt('hi')] } }),
+    L({ type: 'result', result: 'hi', num_turns: 5, usage: { input_tokens: 1 } }),
+  ].join('\n');
+  assert.strictEqual(parseStreamTurns(stream), 5);
+  assert.strictEqual(parseStreamTurns(REAL), 1);                              // real captured envelope
+  assert.strictEqual(parseStreamTurns(L({ type: 'result', result: 'x' })), null); // absent -> null, not 0
+  assert.strictEqual(parseStreamTurns(L({ type: 'result', num_turns: -2 })), null); // negative dropped
+  assert.strictEqual(parseStreamTurns('not json\n'), null);                  // never throws
 });

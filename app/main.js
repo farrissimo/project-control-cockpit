@@ -29,7 +29,7 @@ const { readUsageLimits, isBudgetExceeded, isMaxTurnsError, isUsageLimitError, i
 const { parseTurnOutput } = require('./turn-output'); // parses --output-format json's real total_cost_usd (desktop-parity R3 slice 2)
 const { loadChatCosts, saveChatCosts } = require('./chat-cost-store'); // durable per-chat cost so rollover survives a restart (ADR-0015 residue)
 const { singleFlight } = require('./single-flight'); // coalesce concurrent detector refreshes (soak W3)
-const { parseStreamJson, parseStreamCost, parseStreamUsage } = require('./stream-json');
+const { parseStreamJson, parseStreamCost, parseStreamUsage, parseStreamTurns } = require('./stream-json');
 const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
 const { logAppError } = require('./error-log'); // durable trace for otherwise-swallowed app failures
@@ -979,7 +979,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
           const attachCost = parseStreamCost(out);
           if (attachCost !== null) rollover = recordChatCost(chatId, attachCost);
           const u = usageLog.usageFrom(parseStreamUsage(out)); // diagnostic: real tokens of this attachment turn (was the one blind spot)
-          if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: 'chat-turn-attach', model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null }, u));
+          if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: 'chat-turn-attach', model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null, num_turns: parseStreamTurns(out) }, u)); // ADR-0020 Step 1: surface agentic-turn count on the attach path too
         } else {
           const parsed = parseTurnOutput(out);
           if (parsed.text !== null) {
@@ -987,7 +987,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
             contextTokens = parsed.contextTokens; // ADR-0019: real prompt size this turn (null if usage absent — never fabricated)
             if (parsed.costUsd !== null) rollover = recordChatCost(chatId, parsed.costUsd);
             const u = usageLog.usageFromJson(out); // diagnostic: real token spend of THIS visible chat turn
-            if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: 'chat-turn', model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null }, u));
+            if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: 'chat-turn', model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null, num_turns: parsed.numTurns }, u)); // ADR-0020 Step 1: agentic-turn count on the normal turn (was only on the max-turns branch)
           } else {
             text = out.trim(); // not JSON (the test fakebin, or any non-JSON stdout) — today's plain-text path, unchanged
           }
@@ -1118,7 +1118,7 @@ function oneShotWorker(prompt, trigger) {
       activeWorkers.delete(child);
       // Diagnostic: record this invisible call's REAL token spend, attributed to its trigger.
       const u = usageLog.usageFromJson(out);
-      if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: trigger || 'one-shot', model: cfg.default, session: 'new' }, u));
+      if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: trigger || 'one-shot', model: cfg.default, session: 'new', num_turns: usageLog.turnsFromJson(out) }, u)); // ADR-0020 Step 1: agentic-turn count on background one-shots
       if (code === 0) {
         // Extract the reply from --output-format json's `result`; fall back to raw for non-JSON
         // (the test fakebin's plain text) so existing callers/tests are unaffected.
