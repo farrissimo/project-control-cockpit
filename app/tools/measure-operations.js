@@ -28,7 +28,7 @@ function oneShotArgs() {
 function runOneShot(prompt) {
   return new Promise((resolve) => {
     let out = '', err = '';
-    const child = spawn('claude', oneShotArgs(), { cwd: REPO_ROOT, shell: true });
+    const child = spawn('claude', oneShotArgs(), { cwd: REPO_ROOT, shell: true, env: require('../worker-env').workerEnv() }); // DECISION-003: never a paid API
     child.stdout.on('data', (d) => (out += d.toString()));
     child.stderr.on('data', (d) => (err += d.toString()));
     child.on('close', () => resolve({ out, err }));

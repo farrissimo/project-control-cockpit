@@ -100,7 +100,7 @@ function runTurn(prompt, isFirst) {
     args.push('--output-format', 'json');
     args.push(prompt);
     let out = '', err = '';
-    const child = spawn('claude', args, { cwd: REPO_ROOT, shell: true });
+    const child = spawn('claude', args, { cwd: REPO_ROOT, shell: true, env: require('../worker-env').workerEnv() }); // DECISION-003: never a paid API
     child.stdout.on('data', (d) => (out += d.toString()));
     child.stderr.on('data', (d) => (err += d.toString()));
     child.on('close', (code) => resolve({ code, out, err }));
