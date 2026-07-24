@@ -47,7 +47,9 @@ function turnsFromJson(raw) {
 // record whose trigger is not in this set is surfaced, not silently accepted. Kept in sync with the
 // logCall call sites in main.js (chat turns + oneShotWorker background calls).
 const KNOWN_TRIGGERS = Object.freeze([
-  'chat-turn', 'chat-turn-attach', 'chat-turn-max-turns', // visible chat turns (askClaude)
+  // Visible chat turns (askClaude). The chat-turn-* family attributes every structured result so a
+  // protective stop or a reported error is a recorded turn, never an invisible burn (ADR-0020 T3 Task 2A).
+  'chat-turn', 'chat-turn-attach', 'chat-turn-max-turns', 'chat-turn-budget', 'chat-turn-error',
   'one-shot', 'summary', 'recall-expand', 'recall-judge',  // background one-shots (oneShotWorker)
 ]);
 

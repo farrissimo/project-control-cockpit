@@ -6,10 +6,14 @@ capability gate below must PASS on real Claude, or this slice is **BLOCKED** and
 ## Objective
 Stop PCC launching a brand-new cold `claude -p` process for **every** owner text message.
 Normal text-only messages in one PCC chat reuse **one** persistent `claude` process
-(`--input-format stream-json --output-format stream-json --verbose`, stdin held open), so
-the prompt cache survives instead of being rebuilt each message — while preserving owner
-authority, tool restrictions, per-message turn/budget safety, Stop, session continuity,
-usage attribution, and zero-required-spend (session auth only).
+(`--input-format stream-json --output-format stream-json --verbose`, stdin held open), so the
+prompt cache is **read** across turns instead of a fresh process starting each message — while
+preserving owner authority, tool restrictions, per-message turn/budget safety, Stop, session
+continuity, usage attribution, and zero-required-spend (session auth only). This is the selected
+emergency recovery architecture; it eliminates repeated process startup and removes the unresolved
+risk of the cold-per-message path. The corrected cold path was **not** validly measured (the earlier
+cold-vs-warm comparison was invalidated — ADR-0020 Amendment 3), so cold restart is **not** claimed as
+the proven root-cause of the usage burn — that hypothesis remains untested.
 
 Non-goals (explicitly out of scope): worker pool; multiple simultaneous workers; provider
 abstraction; LLM gateway; multimodal stream protocol; T4/T8/full-T9; Agent SDK; paid API.

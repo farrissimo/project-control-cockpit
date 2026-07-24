@@ -1,10 +1,13 @@
 // persistent-worker.js — ONE global warm `claude` process for text chat turns (ADR-0020 T3).
 //
-// WHY: PCC used to cold-start a fresh `claude -p` process for EVERY owner message, so the growing
-// conversation context was rebuilt as fresh prompt cache each turn (the root-cause usage burn). A warm
-// streaming process (`--input-format stream-json --output-format stream-json`, stdin held open) keeps
-// the session alive so later turns READ the cache instead of recreating it. Proven on real Claude
-// (capability gate, ADR-0020 Task 2): two messages, one PID, turn 2 read turn 1's cache.
+// WHY: PCC used to cold-start a fresh `claude -p` process for EVERY owner message. A warm streaming
+// process (`--input-format stream-json --output-format stream-json`, stdin held open) instead keeps ONE
+// session alive so later turns READ the prompt cache — demonstrated on real Claude (capability gate,
+// ADR-0020 Task 2: two messages, one PID, turn 2 read turn 1's cache). This is the selected emergency
+// recovery architecture: it eliminates repeated process startup and removes the unresolved risk of the
+// cold-per-message path. NOTE: the corrected cold path was never validly measured (the earlier cold-vs-
+// warm comparison was invalidated — ADR-0020 Amendment 3), so cold restart is NOT claimed as the proven
+// root-cause of the usage burn — that hypothesis remains untested.
 //
 // SCOPE: exactly one live worker (no pool, no concurrency). The renderer serialises sends globally, so
 // at most one text turn is in flight at any moment — this module relies on that and does NOT queue.
@@ -36,13 +39,18 @@ function createPersistentWorker(deps) {
   let current = null; // { child, key, alive, buf, err, pending }
   let launches = 0;   // real process spawns — the count tests assert against
 
-  // Kill the live process (restart / shutdown). Fires onClose exactly once.
+  // Kill the live process (restart / shutdown). Fires onClose exactly once, and — Defect-1 fix — SETTLES
+  // any in-flight owner turn exactly once as 'cancelled', so a New-Chat / project switch / attachment
+  // fallback / identity replacement / app shutdown during an active turn can never orphan the askClaude
+  // promise (which would leave PCC stuck showing "Claude is working…"). Late output and the later close
+  // event are ignored because `current` is already null; nothing is retried or resent.
   function teardown() {
     if (!current) return;
-    const child = current.child;
+    const child = current.child; const p = current.pending;
     current.alive = false; current = null;
     try { kill(child); } catch (e) { /* best effort */ }
     onClose(child);
+    if (p) p.resolve({ kind: 'cancelled', pid: child.pid });
   }
 
   function wire(child) {
@@ -100,6 +108,10 @@ function createPersistentWorker(deps) {
           onSpawn(child);
           wire(child);
         }
+        // Defect-2 fix: turn-scoped output state is RESET for every explicit owner send while the process
+        // identity persists — so a later turn's abnormal close carries only that turn's stdout/stderr, and
+        // a prior turn's result can never be re-parsed, re-logged, or shown as the current failure.
+        current.buf = ''; current.rawOut = ''; current.err = '';
         current.pending = { resolve };
         try { current.child.stdin.write(jsonlMessage + '\n'); }
         catch (e) {

@@ -33,6 +33,7 @@ const { parseStreamJson, parseStreamCost, parseStreamUsage, parseStreamTurns } =
 const { workerEnv } = require('./worker-env'); // DECISION-003: strip paid-API creds from every claude spawn
 const { spawnClaude } = require('./claude-spawn'); // the ONE claude launcher — preserves every argument boundary (no shell)
 const persistentWorker = require('./persistent-worker'); // ADR-0020 T3: one warm claude process for text chat turns
+const { classifyResult } = require('./warm-result'); // ADR-0020 T3: pure per-turn result-envelope classifier
 const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
 const { logAppError } = require('./error-log'); // durable trace for otherwise-swallowed app failures
@@ -275,8 +276,10 @@ function killAllWorkers() {
 }
 
 // ADR-0020 T3: the ONE persistent warm claude worker for normal text chat turns. It keeps a single
-// process alive across same-identity text sends so the prompt cache survives instead of being rebuilt
-// per message (the root-cause burn). onSpawn/onClose keep the warm child inside activeWorkers so
+// process alive across same-identity text sends so the prompt cache is READ across turns instead of a
+// fresh process starting each message (the selected emergency recovery architecture; the cold path's
+// rebuild cost was never validly measured, so it is not claimed as the proven root cause — Amendment 3).
+// onSpawn/onClose keep the warm child inside activeWorkers so
 // kill-on-quit still reaps it; currentTurn (for Stop) is set by askClaude around the in-flight turn.
 const warmWorker = persistentWorker.createPersistentWorker({
   kill: killWorker,
@@ -953,32 +956,42 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     // worker, so we tear the warm one down before taking the cold path.
     const useWarm = !hasAttach && !(opts && opts.forceBuild);
 
-    // Shared: turn ONE `--output-format json`-shaped result (the cold blob OR a warm stream `result`
-    // line — the same shape) into the owner-facing resolve payload, with real usage logging, cross-turn
-    // cost rollover, and the automatic max-turns / budget-cap messages. Used by the warm path.
+    // Shared: turn ONE `--output-format json`-shaped result (the warm stream `result` line, or a cold
+    // json blob on the warm-close path) into the owner-facing resolve payload. classifyResult (pure,
+    // unit-tested) decides success / max-turns / budget / generic-error / malformed; here we apply the
+    // attribution it implies — EXACTLY ONE usage record per envelope (when real usage is present) and the
+    // real total_cost_usd recorded once (deferred rollover for unsuccessful/capped turns so a cap-crossing
+    // is never silently discarded). A structured is_error result, or an unrecognized shape, NEVER returns
+    // ok:true — it fails closed, terminates the worker (reuse not proven safe), and is not retried.
     const resolveJsonResult = (jsonText) => {
-      const parsed = parseTurnOutput(jsonText);
-      if (parsed.maxTurnsReached) {
+      const d = classifyResult(jsonText);
+      if (d.trigger) { // one usage record per envelope, when the envelope carries real usage
         const u = usageLog.usageFromJson(jsonText);
-        if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: 'chat-turn-max-turns', model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null, num_turns: parsed.numTurns }, u));
-        const turnsNote = parsed.numTurns !== null ? ' (it reached ' + parsed.numTurns + ' agentic turns)' : '';
-        return resolve({ ok: false, maxTurnsReached: true, numTurns: parsed.numTurns,
+        if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: d.trigger, model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null, num_turns: d.numTurns }, u));
+      }
+      const rollover = d.costUsd !== null ? recordChatCost(chatId, d.costUsd, d.deferRollover ? { deferRollover: true } : undefined) : null;
+      if (d.terminate) warmWorker.shutdown(); // fail closed: a generic error / unknown shape ends the warm worker
+      if (d.kind === 'max_turns') {
+        const turnsNote = d.numTurns !== null ? ' (it reached ' + d.numTurns + ' agentic turns)' : '';
+        return resolve({ ok: false, maxTurnsReached: true, numTurns: d.numTurns,
           text: 'Stopped automatically — this message hit its per-message turn limit' + turnsNote + ' before finishing. This is a safety limit that stops one message from quietly running for hundreds of hidden steps and burning your Claude usage — not a bug. Some work may already have happened (files read or changed, commands run), so glance at what changed before continuing rather than just resending. You can raise the limit in .cockpit/state/usage-limits.json (max_turns), or send a smaller next step.' });
       }
-      if (parsed.budgetExceeded) {
+      if (d.kind === 'budget') {
         return resolve({ ok: false, budgetExceeded: true,
           text: 'Stopped automatically — this turn hit its per-turn spending cap before finishing. This is a safety limit protecting your Claude usage, not a bug. You can raise the cap in .cockpit/state/usage-limits.json, or just send it again (it will pick up where the plan left off).' });
       }
-      if (parsed.text !== null) {
-        const rollover = parsed.costUsd !== null ? recordChatCost(chatId, parsed.costUsd) : null;
-        const u = usageLog.usageFromJson(jsonText); // ADR-0020 Step 1: one usage record per owner message
-        if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: 'chat-turn', model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null, num_turns: parsed.numTurns }, u));
-        const res = { ok: true, text: parsed.text };
-        if (rollover) res.costRollover = rollover;
-        if (parsed.contextTokens !== null) res.contextTokens = parsed.contextTokens;
-        return resolve(res);
+      if (d.kind === 'error') {
+        return resolve({ ok: false, workerError: true,
+          text: 'Claude reported an error on this turn, so it was stopped. Nothing was retried automatically and nothing further was sent — glance at anything that already changed, then send again when you are ready.' });
       }
-      return resolve({ ok: true, text: String(jsonText).trim() }); // not our JSON shape — return raw (defensive)
+      if (d.kind === 'malformed') {
+        return resolve({ ok: false, workerError: true,
+          text: 'Claude returned a response PCC could not read, so the turn was stopped safely. Nothing was retried automatically — please send your message again.' });
+      }
+      const res = { ok: true, text: d.text }; // success
+      if (rollover) res.costRollover = rollover;
+      if (d.contextTokens !== null) res.contextTokens = d.contextTokens;
+      return resolve(res);
     };
 
     // Shared: map a process-level failure (non-zero exit / stderr) to a plain-language message —
@@ -1020,19 +1033,26 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
           if (isNewSession && !workerSessionId) sessionId = null;
           return resolve({ ok: false, stoppedByOwner: true, text: 'Stopped — you ended this turn before Claude finished. Nothing after this point was sent.' });
         }
+        if (outcome.kind === 'cancelled') {
+          // Defect-1: a deliberate teardown (new chat / project switch / app exit / attachment fallback)
+          // settled this in-flight turn. Report it honestly, never leave it hanging, and do not retry.
+          if (isNewSession && !workerSessionId) sessionId = null;
+          return resolve({ ok: false, cancelled: true, text: 'This turn was cancelled because the chat, project, or app changed before Claude finished. Nothing after this point was sent, and nothing was retried.' });
+        }
         if (outcome.kind === 'spawnError') {
           if (isNewSession && !workerSessionId) sessionId = null;
           return resolve({ ok: false, text: 'Could not launch Claude Code: ' + outcome.message });
         }
         // outcome.kind === 'closed' — the warm process exited during the turn. Finish from its accumulated
-        // stdout exactly like the cold path: a parseable result (success / empty / max-turns / budget) is a
-        // normal turn regardless of exit code; anything else is a classified failure with NO automatic retry.
+        // stdout like the cold path: a clean EMPTY exit is "(no output)"; a parseable result (success /
+        // max-turns / budget / is_error) is classified by resolveJsonResult (is_error fails closed);
+        // anything else is a classified process failure with NO automatic retry.
         if (isNewSession && !workerSessionId) sessionId = null;
         const out = outcome.out || '';
+        if (outcome.code === 0 && out.trim() === '') return resolve({ ok: true, text: '' }); // clean empty exit -> "(no output)"
         const parsed = parseTurnOutput(out);
-        if (parsed.text !== null || parsed.budgetExceeded || parsed.maxTurnsReached ||
-            (outcome.code === 0 && out.trim() === '')) {
-          return resolveJsonResult(out); // handles success text, "(no output)" empty, max-turns, budget
+        if (parsed.text !== null || parsed.budgetExceeded || parsed.maxTurnsReached || parsed.isError === true) {
+          return resolveJsonResult(out);
         }
         return resolveProcessError(outcome.err || out, outcome.code); // crash / session lock / usage limit / auth
       });

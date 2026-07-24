@@ -195,6 +195,50 @@ test('AC-honesty: a result blob delivered WITHOUT a trailing newline is handed t
   assert.equal(o.code, 1);
 });
 
+test('Defect-1: shutdown() DURING an active turn settles that turn as cancelled (never orphaned)', async () => {
+  const h = harness();
+  const p = h.worker.runTextTurn(idFor(), h.thunk, 'm1');
+  const c = h.worker.activeChild();
+  h.worker.shutdown(); // e.g. app exit / attachment fallback while a turn is in flight
+  const o = await p;
+  assert.equal(o.kind, 'cancelled', 'the in-flight turn resolves, so PCC never stays on "Claude is working…"');
+  assert.equal(c.killed, true);
+  assert.equal(h.worker.isAlive(), false);
+  // Late output and a late close after teardown must be ignored — no double-resolve, no auto-respawn.
+  c._emitData(resultLine({ result: 'LATE' }));
+  c._emitClose(0);
+  await tick();
+  assert.equal(h.worker.launchCount(), 1, 'teardown alone starts no replacement process');
+});
+
+test('Defect-1: an identity change while a turn is still pending cannot orphan the old promise', async () => {
+  const h = harness();
+  const pA = h.worker.runTextTurn(idFor({ chatId: 'A' }), h.thunk, 'a'); // NOT completed
+  const cA = h.worker.activeChild();
+  const pB = h.worker.runTextTurn(idFor({ chatId: 'B' }), h.thunk, 'b'); // different identity -> tears A down
+  const oA = await pA;
+  assert.equal(oA.kind, 'cancelled', 'the superseded turn settles, not hangs');
+  assert.equal(cA.killed, true);
+  const oB = await complete(h, pB, { result: 'B' });
+  assert.equal(oB.kind, 'result');
+  assert.equal(h.worker.launchCount(), 2, 'exactly one old teardown + one new worker');
+});
+
+test('Defect-2: a later turn abnormal close carries ONLY that turn output; prior results never replay', async () => {
+  const h = harness();
+  await complete(h, h.worker.runTextTurn(idFor(), h.thunk, 'm1'), { result: 'ONE' }); // turn 1 success
+  const c = h.worker.activeChild();
+  const p2 = h.worker.runTextTurn(idFor(), h.thunk, 'm2'); // reuse same process
+  assert.equal(h.worker.activeChild(), c, 'same process reused');
+  const blob2 = JSON.stringify({ type: 'result', subtype: 'error_max_turns', is_error: true, num_turns: 9 });
+  c._emitData(blob2);   // no trailing newline
+  c._emitClose(1);
+  const o2 = await p2;
+  assert.equal(o2.kind, 'closed');
+  assert.equal(o2.out, blob2, 'turn-2 stdout is scoped to turn 2 — no turn-1 result concatenated or replayed');
+  assert.ok(!/ONE/.test(o2.out), 'turn-1 reply cannot leak into turn-2 evidence');
+});
+
 test('identityKey: stable for identical inputs, distinct when any contract field changes', () => {
   const base = idFor();
   assert.equal(identityKey(base), identityKey(idFor()), 'same inputs => same key (reuse)');

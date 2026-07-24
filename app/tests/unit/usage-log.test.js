@@ -76,3 +76,11 @@ test('reconcile: an all-known set reports zero unattributed; empty/garbage input
   assert.deepStrictEqual(reconcile([]), { total: 0, knownCount: 0, unattributed: [] });
   assert.deepStrictEqual(reconcile(null), { total: 0, knownCount: 0, unattributed: [] });
 });
+
+test('the capped/error chat-turn triggers (ADR-0020 T3 Task 2A) reconcile as KNOWN, never unattributed', () => {
+  // Protective-stop and reported-error turns must be attributable, not invisible burn.
+  for (const t of ['chat-turn-budget', 'chat-turn-error']) {
+    assert.ok(KNOWN_TRIGGERS.includes(t), t + ' must be a known trigger');
+    assert.deepStrictEqual(reconcile([{ trigger: t }]).unattributed, [], t + ' must not be unattributed');
+  }
+});
