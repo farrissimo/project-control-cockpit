@@ -11,7 +11,9 @@ const PAID_API_ENV_VARS = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'];
 
 // Return a copy of `base` (default process.env) with every paid-API credential removed, so a spawned
 // CLI authenticates via the regular session login and can never make a paid API call. Pure; never mutates
-// the input. Use as: spawn('claude', args, { cwd, shell: true, env: workerEnv() }).
+// the input. Use as: spawnClaude(args, { cwd, env: workerEnv() }) — see app/claude-spawn.js, the ONLY
+// launcher (it never enables a shell, so argument boundaries survive). The returned copy keeps PATH,
+// which that launcher needs to resolve the CLI.
 function workerEnv(base) {
   const env = Object.assign({}, base || process.env);
   for (const k of PAID_API_ENV_VARS) delete env[k];

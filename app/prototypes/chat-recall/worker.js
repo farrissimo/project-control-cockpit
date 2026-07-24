@@ -10,20 +10,21 @@
 // askAI(prompt, { model }) -> Promise<string>  (the worker's stdout, trimmed)
 
 'use strict';
-const { spawn } = require('child_process');
-
-// Same scrub as app/main.js:86 so `claude -p` falls back to the claude.ai login.
-for (const k of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN']) delete process.env[k];
+// codex-caught (2026-07-24): this prototype was a SIXTH raw `claude` launch — spawn('claude', …,
+// {shell:true}) — outside the five sites the spawn-contract correction covered. Its args happen to be
+// single words today, so nothing was being mangled, but it is a real usage-spending channel and it
+// mutated the PARENT process.env to scrub credentials. Routed through the one launcher (no shell) and
+// switched to workerEnv(), which returns a scrubbed COPY instead (DECISION-003).
+const { spawnClaude } = require('../../claude-spawn');
+const { workerEnv } = require('../../worker-env');
 
 function askAI(prompt, opts = {}) {
   const model = opts.model || 'claude-sonnet-5';
   return new Promise((resolve, reject) => {
-    // No tool flags: a pure text->text call. shell:true matches the app's spawn
-    // on Windows so `claude` resolves the same way.
-    const child = spawn('claude', ['-p', '--model', model], {
-      shell: true,
+    // No tool flags: a pure text->text call. The prompt goes over stdin, never argv.
+    const child = spawnClaude(['-p', '--model', model], {
       windowsHide: true,
-      env: process.env,
+      env: workerEnv(),
     });
     let out = '', err = '';
     child.stdout.on('data', (d) => { out += d; });

@@ -19,7 +19,7 @@
 //   --model   model id (default: from .cockpit/state/models.json, i.e. the real chat default)
 // Writes one JSON record per turn to .cockpit/evidence/usage-diagnostics.jsonl and prints a table.
 
-const { spawn } = require('child_process');
+const { spawnClaude } = require('../claude-spawn'); // no shell — every argument boundary preserved
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -98,13 +98,24 @@ function runTurn(prompt, isFirst) {
     if (models.chain) args.push('--fallback-model', models.chain);
     args.push(isFirst ? '--session-id' : '--resume', sessionId);
     args.push('--output-format', 'json');
-    args.push(prompt);
     let out = '', err = '';
-    const child = spawn('claude', args, { cwd: REPO_ROOT, shell: true, env: require('../worker-env').workerEnv() }); // DECISION-003: never a paid API
+    // 2026-07-24 CORRECTION. Two defects fixed together, both of which made every prior cold-arm
+    // measurement INVALID:
+    //   (1) this spawned with shell:true, which concatenated the args array unquoted — so
+    //       `--append-system-prompt CHANNEL_PROMPT` became `--append-system-prompt You` and the rest
+    //       leaked out as stray positionals. spawnClaude() removes the shell entirely.
+    //   (2) the prompt was passed as a POSITIONAL argv (args.push(prompt)) while production
+    //       (main.js askClaude) sends it over STDIN. Combined with (1), `claude -p` took the stray
+    //       word "are" as the whole prompt — the worker literally replied "only 'are' is coming
+    //       through each time". Independently of (1), argv-vs-stdin also meant this harness was never
+    //       a faithful proxy for PCC. The prompt now goes over stdin, exactly as production does.
+    const child = spawnClaude(args, { cwd: REPO_ROOT, env: require('../worker-env').workerEnv() }); // DECISION-003: never a paid API
     child.stdout.on('data', (d) => (out += d.toString()));
     child.stderr.on('data', (d) => (err += d.toString()));
     child.on('close', (code) => resolve({ code, out, err }));
     child.on('error', (e) => resolve({ code: -1, out, err: String(e) }));
+    child.stdin.write(prompt);
+    child.stdin.end();
   });
 }
 
@@ -184,4 +195,7 @@ async function main() {
 // the module (e.g. from a unit test) exposes the PURE extract() with NO spawn and NO evidence write.
 if (require.main === module) main();
 
-module.exports = { extract };
+// Gate 0: the prompt SETS are exported so the direct/warm arm (measure-direct.js) sends the byte-identical
+// task sequence instead of its own copy. "Same task sequence" is a locked Gate 0 rule — sharing the arrays
+// makes equivalence structural rather than something copy-paste drift can silently break.
+module.exports = { extract, SHORT_PROMPTS, REAL_PROMPTS, WORK_PROMPTS };

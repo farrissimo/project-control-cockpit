@@ -9,7 +9,29 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const SRC = fs.readFileSync(path.join(__dirname, '..', '..', 'main.js'), 'utf8');
+// These guards scan SOURCE TEXT, so they must ignore comments — several files deliberately quote the
+// old, defective `spawn('claude', args, {shell:true})` pattern while explaining why it was removed, and
+// a naive scan would flag that documentation as the defect itself.
+function stripComments(src) {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+}
+
+const APP_DIR = path.join(__dirname, '..', '..');
+
+// Every .js under app/, excluding dependencies and the deliberate fake `claude` the e2e suite puts on
+// PATH (tests/fakebin/claude.js IS the stand-in CLI — it does not launch the real one).
+function walkAppJs(dir, acc, base) {
+  acc = acc || []; base = base || APP_DIR; dir = dir || APP_DIR;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'fakebin') continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walkAppJs(full, acc, base);
+    else if (entry.name.endsWith('.js')) acc.push(path.relative(base, full));
+  }
+  return acc;
+}
+
+const SRC = stripComments(fs.readFileSync(path.join(APP_DIR, 'main.js'), 'utf8'));
 
 // The function that lexically encloses a source offset = the nearest PRECEDING `function NAME(`.
 function enclosingFn(src, offset) {
@@ -20,7 +42,8 @@ function enclosingFn(src, offset) {
 }
 
 test('app/main.js spawns `claude` from EXACTLY the two known, attributed sites', () => {
-  const re = /spawn\((['"])claude\1/g;
+  // Since 2026-07-24 the launcher is spawnClaude() (app/claude-spawn.js), not spawn('claude', …).
+  const re = /spawnClaude\(/g;
   const sites = [];
   let m;
   while ((m = re.exec(SRC))) sites.push(enclosingFn(SRC, m.index));
@@ -32,16 +55,48 @@ test('app/main.js spawns `claude` from EXACTLY the two known, attributed sites',
     'every `claude` spawn must live in askClaude or oneShotWorker (the usage-logged sites), got: ' + sites.join(', '));
 });
 
+test('main.js never spawns the claude CLI by name — it must go through the safe launcher', () => {
+  // Regression guard for the 2026-07-24 argv-mangling defect: a raw spawn('claude', args, {shell:true})
+  // silently corrupted the system prompt and the tool/authority profile strings. Route every launch
+  // through spawnClaude() (which never enables a shell), so the boundary is proven by spawn-contract.test.js.
+  assert.ok(!/spawn\((['"])claude\1/.test(SRC),
+    'main.js spawns `claude` directly — use spawnClaude() from app/claude-spawn.js instead');
+});
+
 test('every `claude` spawn in main.js strips paid-API creds via workerEnv (DECISION-003)', () => {
   // A spawn that omits `env: workerEnv()` would let the child `claude` grab ANTHROPIC_API_KEY and bill a
   // PAID API — forbidden. Pin that every spawn call passes workerEnv in its options object.
-  const re = /spawn\((['"])claude\1[^;]*?\)/gs;
+  const re = /spawnClaude\([^;]*?\)/gs;
   const calls = SRC.match(re) || [];
   assert.ok(calls.length >= 2, 'expected the known claude spawns');
   for (const call of calls) {
     assert.ok(/env:\s*workerEnv\(\)/.test(call),
       'a claude spawn is missing `env: workerEnv()` (paid-API leak risk): ' + call.replace(/\s+/g, ' ').slice(0, 120));
   }
+});
+
+test('no claude launcher anywhere re-enables a shell (app + measurement tools)', () => {
+  // shell:true is what mangled the args. Pin its absence at every launcher, including the Gate 0 tools,
+  // so a future edit cannot quietly reintroduce the defect that invalidated Step 2's measurements.
+  // codex-caught: a hand-written file list missed app/prototypes/chat-recall/worker.js, a SIXTH raw
+  // launcher. Walk the whole app tree instead, so a new one cannot hide behind an out-of-date list.
+  for (const rel of walkAppJs()) {
+    const src = stripComments(fs.readFileSync(path.join(APP_DIR, rel), 'utf8'));
+    for (const m of src.match(/spawnClaude\([^;]*?\)/gs) || []) {
+      assert.ok(!/shell:\s*true/.test(m), rel + ' passes shell:true to spawnClaude: ' + m.replace(/\s+/g, ' ').slice(0, 120));
+    }
+    assert.ok(!/spawn\((['"])claude\1/.test(src), rel + ' still spawns `claude` directly — use spawnClaude()');
+  }
+});
+
+test('the Gate 0 cold arm sends its prompt over STDIN, like production — not as positional argv', () => {
+  // The cold arm used args.push(prompt) while production writes the message to stdin. That mismatch (plus
+  // the shell mangling) is why every prior cold-arm measurement was invalid. Pin the corrected contract.
+  const src = stripComments(fs.readFileSync(path.join(__dirname, '..', '..', 'tools', 'measure-usage.js'), 'utf8'));
+  assert.ok(/child\.stdin\.write\(prompt\)/.test(src),
+    'measure-usage.js must write the prompt to stdin');
+  assert.ok(!/args\.push\(prompt\)/.test(src),
+    'measure-usage.js still passes the prompt as a positional argument');
 });
 
 test('both spawn-site functions record the call to the usage log (attribution present)', () => {
