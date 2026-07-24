@@ -48,7 +48,14 @@ function Format-Verifier([string]$v) {
 $rc = Test-ReceiptValid -Id $id -Tier $tier -ReceiptPath $receiptPath -SchemaPath $receiptSchema
 if ($rc.ok) {
   $v = Format-Verifier "$($rc.receipt.verifier)"
-  Write-Output "Verified-Receipt: base=$($id.base) diff_id=$($id.diff_id) verdict=PASS verifier=$v"
+  # Canonical-constraint chain (ADR-0020): if the receipt binds a preflight, carry task_id + FULL digest
+  # into the trailer so CI can prove receipt <-> committed preflight <-> diff all agree. `preflight` goes
+  # BEFORE `verifier` because verifier is the parser's last (space-tolerant) field.
+  $pf = ''
+  if ($rc.receipt.preflight_task_id -and $rc.receipt.preflight_digest) {
+    $pf = " preflight=$($rc.receipt.preflight_task_id)@$($rc.receipt.preflight_digest)"
+  }
+  Write-Output "Verified-Receipt: base=$($id.base) diff_id=$($id.diff_id) verdict=PASS$pf verifier=$v"
   exit 0
 }
 

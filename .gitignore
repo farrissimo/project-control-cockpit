@@ -33,6 +33,13 @@ dashboard/index.html
 # itself.)
 .cockpit/evidence/
 
+# Canonical-constraint Phase A LOCK — a LOCAL record of the active preflight's task_id + full digest.
+# Local by design (like the receipt): it pins the digest at the moment mutation was first allowed on
+# THIS machine. The preflight artifacts it points at (.cockpit/preflight/<task_id>.json) ARE committed;
+# only the lock is ignored.
+.cockpit/preflight/.active-lock.json
+.cockpit/preflight/.active-lock.json.tmp
+
 # Electron dependencies for the desktop app (app/). Reinstalled via npm install; not source.
 app/node_modules/
 

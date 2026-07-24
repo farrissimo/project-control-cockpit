@@ -1,0 +1,43 @@
+{
+  "schema": "task-preflight/v1",
+  "generated_at": "2026-07-24T00:00:00Z",
+  "task_id": "gate-0-usage-proof",
+  "task_title": "ADR-0020 Gate 0 — controlled PCC-vs-direct usage proof (corrected main)",
+  "base": "148dbf87890cc7bc28f6574c10af32868519f47a",
+  "constraints_applied": ["RESEARCH_FIRST", "TOKEN_THRIFT_LOCAL_FIRST", "REDUCE_OWNER_BABYSITTING"],
+  "prior_art": [
+    {"source": "Claude Code prompt-cache docs + captured session JSONL (docs/incidents/2026-07-usage-blowup.md)", "finding": "Cache is content-addressed with a 1-hour ephemeral TTL; a cold --resume can cache_read within the TTL. This is exactly the crux Gate 0 measures — the cold-rebuild hypothesis is not yet proven, so the run must vary the inter-message gap across the TTL boundary."},
+    {"source": "ADR-0020 Step 2 diagnostic (RETRACTED) + the shell:true argv-mangling fix (main 148dbf8)", "finding": "The prior cold-vs-warm diagnostic was invalid because the cold arm never received its prompts. Gate 0 must run from the corrected main where measure-usage sends prompts over stdin and both arms are byte-equivalent."},
+    {"source": "existing PCC tools: measure-usage.js (cold), measure-direct.js (warm), reconstruct-incident.js", "finding": "The measurement harness already exists and was corrected; reuse it as-is, do not build new measurement tooling."}
+  ],
+  "reuse_decision": {
+    "decision": "reuse",
+    "rationale": "Gate 0 is a measurement run over the existing, now-corrected measure-usage.js / measure-direct.js tools. No new tooling; the protocol is frozen in docs/specs/gate-0-usage-proof.md."
+  },
+  "deterministic_work": [
+    "reading raw session JSONL telemetry (cache_creation/read, num_turns) — ground truth, not a model call",
+    "computing per-task steady-state cache_creation ratios",
+    "comparing against the locked PASS/FAIL/INCONCLUSIVE thresholds"
+  ],
+  "llm_work": [
+    "the measured turns themselves ARE the plan-usage spend being measured (unavoidable — that is the experiment)",
+    "one real large-context paired run for the Stage 2 sanity check"
+  ],
+  "duplication_avoidance": "Reuses the corrected measurement tools and the frozen protocol; no re-implementation. Stage 1 result gates Stage 2 so usage is not spent reconfirming a failure.",
+  "usage_plan": {
+    "expected_model_ops": 20,
+    "expected_local_ops": 10,
+    "baseline": "direct/warm arm (measure-direct.js) on byte-identical tasks — the matched comparison",
+    "max_authorized_usage": "Stage 1: <5% of a 5-hour limit; Stage 2: one full-size paired run (owner-approved middle option). Hard stop if Stage 1 clearly FAILS.",
+    "stopping_conditions": [
+      "Stage 1 clearly FAILS or shows pathological escalation -> STOP, do not run Stage 2",
+      "any run with missing/unparseable telemetry -> INVALID, excluded",
+      "Stage 2 driver cannot be proven == context -> INVALID"
+    ],
+    "matched_benchmark_required": true,
+    "matched_benchmark_reason": "Gate 0 exists to compare PCC's cold-per-message path against equivalent direct Claude work; a matched direct-vs-PCC token/session benchmark is the entire point.",
+    "completion_evidence": "every raw valid run + PCC/direct steady-state ratios + gap schedule + rollover behaviour + invalid runs + PASS/FAIL/INCONCLUSIVE verdict + operational boundary"
+  },
+  "exceptions": [],
+  "not_proven": "This preflight is authored as the FIRST consumer of the enforcement mechanism. Gate 0 itself remains HALTED and is not run until separately authorized from the corrected main."
+}

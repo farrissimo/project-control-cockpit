@@ -77,6 +77,30 @@ if ($tier -eq 'NONE') {
   else { $verdict = 'BLOCK'; $reasons += "T0/T1 change without valid proof: $($rc.reason)" }
 }
 
+# --- canonical-constraint LAND check (ADR-0020). A change at T0-T3 must carry a valid, digest-bound
+# preflight (Phase Land). This is one policy mechanism invoked at its second lifecycle point — the same
+# checker the PreToolUse hook uses at Phase Preflight — NOT a second gate. BOOTSTRAP: the mechanism does
+# not govern its own introduction. If the checker does not yet exist in the BASELINE, skip (the
+# introducing PR is proven by tests + independent review + CI, per the owner's correction 7). ---
+$canonState = 'not_applicable'
+if ($tier -ne 'NONE' -and $rank[$tier] -ge $rank['T3'] -and $rank[$tier] -le $rank['T0']) {
+  $checkerInBase = $false
+  try { git cat-file -e "$($Baseline):scripts/check-canonical-constraints.ps1" 2>$null; $checkerInBase = ($LASTEXITCODE -eq 0) } catch { $checkerInBase = $false }
+  if (-not $checkerInBase) {
+    $canonState = 'bootstrap_skipped'
+    $reasons += 'canonical-constraint enforcement not present in baseline — introducing change is not governed by its own new gate (bootstrap)'
+  } else {
+    $cc = & pwsh -NoProfile -File (Join-Path $repo 'scripts/check-canonical-constraints.ps1') -Phase Land -Baseline $Baseline -Json 2>$null | ConvertFrom-Json
+    $canonState = if ($cc) { $cc.state } else { 'checker_error' }
+    if (-not $cc -or -not $cc.ok) {
+      $verdict = 'BLOCK'
+      $reasons += "canonical-constraint LAND check failed ($canonState): " + (($cc.reasons) -join '; ')
+    } else {
+      $reasons += "canonical-constraint LAND check PASS (preflight $($cc.task_id))"
+    }
+  }
+}
+
 # a bypass can only turn a BLOCK into an allow, and only for THIS exact diff
 if ($verdict -eq 'BLOCK') {
   $exceptionApplied = Get-StagedBypass -DiffId $id.diff_id -LedgerPath $exceptionsPath
@@ -98,6 +122,7 @@ $run = [ordered]@{
   tree_dirty    = [bool]$id.tree_dirty
   tier          = $tier
   receipt_state = $receiptState
+  canonical     = $canonState
   bypass        = if ($exceptionApplied) { [ordered]@{ diff_id = "$($exceptionApplied.diff_id)"; reason = "$($exceptionApplied.reason)"; authorized_by = "$($exceptionApplied.authorized_by)" } } else { $null }
   verdict       = $verdict
   reasons       = @($reasons)

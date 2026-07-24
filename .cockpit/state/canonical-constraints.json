@@ -1,0 +1,45 @@
+{
+  "constraints_id": "canonical-constraints-v1",
+  "title": "Canonical cross-cutting constraints that every non-trivial change must prove compliance with",
+  "plain_language": {
+    "what": "The project's own top-level rules, made enforceable. A change cannot land (and PCC will not let a build worker start implementing) until a preflight plan records how it honours these.",
+    "why": "The rules were already written in CLAUDE.md, but tasks could proceed and get a PASS without proving they followed them. This makes the proof mandatory and machine-checked.",
+    "how_authority_works": "This file does NOT restate the rules — it POINTS at the exact sentence in the authoritative document and carries its hash. If that sentence is reworded or removed without deliberately updating this registry, the checker fails closed."
+  },
+  "applies_to_tiers": ["T0", "T1", "T2", "T3"],
+  "exempt_tiers": ["T4"],
+  "default_on": true,
+  "constraints": [
+    {
+      "id": "RESEARCH_FIRST",
+      "label": "Research proven prior art before building",
+      "source_path": "CLAUDE.md",
+      "section": "## Work discipline",
+      "requirement_key": "research-first",
+      "statement": "Before building something new, ASSUME the problem is already solved somewhere in the world.",
+      "statement_sha256": "46fd49188311dc15aa82e52a7c94758ab281ce7f4332e1ae664be3932a58353c",
+      "required_evidence": ["prior_art", "reuse_decision"]
+    },
+    {
+      "id": "TOKEN_THRIFT_LOCAL_FIRST",
+      "label": "Local/deterministic first; spend the LLM only on irreducible judgment",
+      "source_path": "CLAUDE.md",
+      "section": "## Work discipline",
+      "requirement_key": "token-thrift-local-first",
+      "statement": "Prefer local, deterministic tools for mechanical work; spend the LLM only on real judgment.",
+      "statement_sha256": "39c46e423892ceb7f3468fcc6daa6051834d3c9af24933eb7f55a4aa1db87e08",
+      "required_evidence": ["deterministic_work", "llm_work", "usage_plan"]
+    },
+    {
+      "id": "REDUCE_OWNER_BABYSITTING",
+      "label": "Reduce owner babysitting (the #1 rule)",
+      "source_path": "CLAUDE.md",
+      "section": null,
+      "requirement_key": "reduce-owner-babysitting",
+      "statement": "They exist to reduce owner babysitting — the #1 rule of this project.",
+      "statement_sha256": "ec467f552819b5d53f502320462d8999320cea5610599c2966133f34727c55f0",
+      "required_evidence": ["duplication_avoidance"]
+    }
+  ],
+  "not_proven": "Presence + hash of the cited sentence proves the rule still exists and the registry was not silently retargeted. It does NOT prove a task's research or reasoning was intellectually complete — that remains the independent verifier's judgment."
+}

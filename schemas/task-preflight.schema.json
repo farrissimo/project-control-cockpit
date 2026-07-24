@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "task-preflight.schema.json",
+  "title": "PCC task preflight — the pre-implementation plan a change must record before mutation is allowed",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "generated_at", "task_id", "base",
+    "constraints_applied", "prior_art", "reuse_decision",
+    "deterministic_work", "llm_work", "duplication_avoidance",
+    "usage_plan", "exceptions"
+  ],
+  "properties": {
+    "schema": { "const": "task-preflight/v1" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "task_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,63}$" },
+    "task_title": { "type": "string" },
+    "base": { "type": "string", "minLength": 7 },
+    "constraints_applied": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "enum": ["RESEARCH_FIRST", "TOKEN_THRIFT_LOCAL_FIRST", "REDUCE_OWNER_BABYSITTING"] }
+    },
+    "prior_art": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "finding"],
+        "properties": {
+          "source": { "type": "string", "minLength": 3 },
+          "finding": { "type": "string", "minLength": 3 }
+        }
+      }
+    },
+    "reuse_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "rationale"],
+      "properties": {
+        "decision": { "enum": ["reuse", "extend", "custom"] },
+        "rationale": { "type": "string", "minLength": 10 }
+      }
+    },
+    "deterministic_work": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 3 } },
+    "llm_work": { "type": "array", "items": { "type": "string", "minLength": 3 } },
+    "duplication_avoidance": { "type": "string", "minLength": 10 },
+    "usage_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expected_model_ops", "expected_local_ops", "max_authorized_usage", "stopping_conditions", "matched_benchmark_required"],
+      "properties": {
+        "expected_model_ops": { "type": "integer", "minimum": 0 },
+        "expected_local_ops": { "type": "integer", "minimum": 0 },
+        "baseline": { "type": "string" },
+        "max_authorized_usage": { "type": "string", "minLength": 1 },
+        "stopping_conditions": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 3 } },
+        "matched_benchmark_required": { "type": "boolean" },
+        "matched_benchmark_reason": { "type": "string" },
+        "completion_evidence": { "type": "string" }
+      }
+    },
+    "exceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["constraint_id", "reason", "owner_authorization"],
+        "properties": {
+          "constraint_id": { "enum": ["RESEARCH_FIRST", "TOKEN_THRIFT_LOCAL_FIRST", "REDUCE_OWNER_BABYSITTING"] },
+          "reason": { "type": "string", "minLength": 5 },
+          "owner_authorization": { "type": "string", "minLength": 5 }
+        }
+      }
+    },
+    "not_proven": { "type": "string" }
+  }
+}

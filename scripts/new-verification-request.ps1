@@ -55,6 +55,8 @@ CONTEXT: $ctx
 
 JUDGE SPECIFICALLY: $judgeText
 
+CANONICAL CONSTRAINTS: for a code/scripts/config/architecture/behavior change (tier T0-T3), a preflight must exist at .cockpit/preflight/<task_id>.json. Read it against the ACTUAL staged diff and the execution evidence -- never the worker's summary. Verify each applicable constraint: RESEARCH_FIRST (real prior-art sources + findings + reuse-vs-build decision), TOKEN_THRIFT_LOCAL_FIRST (deterministic-vs-LLM split + usage plan; a matched direct-vs-PCC token/session benchmark is required IF the change affects model/session usage, caching, rollover, spawning, hidden calls, tool profiles, or measurement, or claims improved efficiency), REDUCE_OWNER_BABYSITTING. Missing required evidence or a material violation is FAIL, not a suggestion.
+
 You may run read-only checks (git, read files, run the script under review against a synthetic input in your own temp dir). Do NOT run ``npm test``.
 
 OUTPUT EXACTLY:

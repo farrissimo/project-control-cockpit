@@ -105,9 +105,28 @@ Copy-File 'docs/HANDOFF_PACKET_SPEC.md'                 # channel 7: the cross-s
 Copy-File 'docs/specs/communication-contracts.md'       # the per-channel contract (all 7 channels)
 Copy-File 'docs/specs/milestone-update-generator.md'    # channel 1 generator spec
 Copy-File 'docs/specs/verification-request-generator.md' # channels 3&4 generator spec
-# The milestone-update ENFORCEMENT hook: the script rides the wholesale scripts/ copy above; seed its
-# Claude Code wiring so a spawned project also gets the on-merge templated-milestone injection (parity).
-Copy-File '.claude/settings.json'                       # PostToolUse hook -> scripts/hooks/milestone-on-merge.ps1
+# Claude Code hook wiring for the child. Seed the milestone PostToolUse hook (parity — its script rides
+# the wholesale scripts/ copy above), but STRIP the canonical-constraint PreToolUse hook (ADR-0020): its
+# registry (.cockpit/state/canonical-constraints.json) and PCC-specific rule citations are NOT provisioned
+# into children, so leaving the hook in would make the child's checker FAIL CLOSED and deny EVERY edit —
+# bricking a freshly-scaffolded project. Canonical-constraint enforcement is scoped to PCC's OWN repo for
+# now (justified DECISION-113 exclusion: forcing preflight-before-implementation onto every spawned project
+# would add owner friction against the #1 rule, and the owner scoped this slice to PCC + Gate 0). Revisit
+# if/when children are fully provisioned with their own registry.
+$__srcSettings = Join-Path $src '.claude/settings.json'
+$__dstSettings = Join-Path $Target '.claude/settings.json'
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $__dstSettings) | Out-Null
+try {
+  $__s = Get-Content -Raw $__srcSettings | ConvertFrom-Json
+  if ($__s.hooks -and $__s.hooks.PSObject.Properties.Name -contains 'PreToolUse') {
+    $__s.hooks.PSObject.Properties.Remove('PreToolUse')
+  }
+  Set-Content -LiteralPath $__dstSettings -Encoding utf8 -Value (($__s | ConvertTo-Json -Depth 12))
+} catch {
+  # Fail safe: if anything about the parse changes, copy verbatim rather than block scaffolding.
+  Copy-Item -LiteralPath $__srcSettings -Destination $__dstSettings -Force
+}
+Write-Output "  + .claude/settings.json (PostToolUse only; canonical PreToolUse hook is PCC-repo-scoped)"
 
 # --- 4. generic declared state (lifecycle model + thresholds copied; state fresh) ---
 Copy-File '.cockpit/state/lifecycle-model.json'

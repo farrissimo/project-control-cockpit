@@ -11,6 +11,18 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|Edit|Write|NotebookEdit|BashOutput|KillBash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File \"${CLAUDE_PROJECT_DIR}/scripts/hooks/canonical-preflight.ps1\"",
+            "timeout": 30
+          }
+        ]
+      }
     ]
   }
 }

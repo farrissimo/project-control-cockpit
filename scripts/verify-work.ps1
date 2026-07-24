@@ -33,6 +33,10 @@ try {
   if ($ej) { $evidence = $ej | ConvertFrom-Json }
 } catch { $evidence = $null }
 
+# Canonical-constraint check for the verifier: judge against the SCOPE, the ACTUAL DIFF, and the
+# EXECUTION EVIDENCE — reading the preflight and diff directly, never the worker's summary.
+$canonNote = "CANONICAL CONSTRAINTS: if the change is code/scripts/config/architecture/behavior (tier T0-T3), a preflight must exist at .cockpit/preflight/<task_id>.json. Read it against the ACTUAL diff and evidence — do NOT trust the worker's summary. Check each applicable constraint: RESEARCH_FIRST (real prior-art sources + findings + a reuse-vs-build decision), TOKEN_THRIFT_LOCAL_FIRST (deterministic vs LLM split, a usage plan; and a matched direct-vs-PCC token/session benchmark IF the change affects model/session usage, caching, rollover, spawning, hidden calls, tool profiles, or measurement, or claims improved efficiency), REDUCE_OWNER_BABYSITTING. Missing required evidence or a material violation is FAIL, not a suggestion."
+
 if ($evidence -and $evidence.range) {
   $rangeNote = "Review EXACTLY this commit range: $($evidence.range) ($($evidence.range_kind))."
   $ciNote = switch ($evidence.ci_state) {
@@ -41,9 +45,9 @@ if ($evidence -and $evidence.range) {
     'pending' { 'CI is still running for the current commit -- note this as NOT PROVEN rather than assuming a result.' }
     default   { 'Live CI status is not available for this repo/commit right now.' }
   }
-  $prompt = "Independently verify the work in this repository. $rangeNote $ciNote Inspect the diff yourself and run any obvious project checks. Output VERDICT on one line as one of PASS, FAIL, INSUFFICIENT, BLOCKED, or OUT_OF_SCOPE, then EVIDENCE as 2-4 bullets of what you actually checked, then NOT PROVEN listing anything you could not verify. Be honest; never PASS without evidence. Do not make any changes."
+  $prompt = "Independently verify the work in this repository. $rangeNote $ciNote Inspect the diff yourself and run any obvious project checks. $canonNote Output VERDICT on one line as one of PASS, FAIL, INSUFFICIENT, BLOCKED, or OUT_OF_SCOPE, then EVIDENCE as 2-4 bullets of what you actually checked, then NOT PROVEN listing anything you could not verify. Be honest; never PASS without evidence. Do not make any changes."
 } else {
-  $prompt = 'Independently verify the most recent work in this repository. Inspect the git diff and run any obvious project checks. Output VERDICT on one line as one of PASS, FAIL, INSUFFICIENT, BLOCKED, or OUT_OF_SCOPE, then EVIDENCE as 2-4 bullets of what you actually checked, then NOT PROVEN listing anything you could not verify. Be honest; never PASS without evidence. Do not make any changes.'
+  $prompt = "Independently verify the most recent work in this repository. Inspect the git diff and run any obvious project checks. $canonNote Output VERDICT on one line as one of PASS, FAIL, INSUFFICIENT, BLOCKED, or OUT_OF_SCOPE, then EVIDENCE as 2-4 bullets of what you actually checked, then NOT PROVEN listing anything you could not verify. Be honest; never PASS without evidence. Do not make any changes."
 }
 
 function Invoke-Codex {

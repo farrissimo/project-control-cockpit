@@ -87,6 +87,15 @@ test('new project gets a fresh vision-promises.json (placeholder, not PCC\'s)', 
   expect(vp.promises[0]).toHaveProperty('declared_status');
 });
 
+// A scaffolded project must inherit the milestone PostToolUse hook (parity) but NOT the canonical
+// PreToolUse enforcement hook — the child has no canonical-constraints registry, so the hook would
+// fail closed and DENY every edit, bricking the new project (ADR-0020; caught pre-merge).
+test('new project keeps the PostToolUse milestone hook but NOT the canonical PreToolUse hook', () => {
+  const s = JSON.parse(fs.readFileSync(path.join(target, '.claude', 'settings.json'), 'utf8'));
+  expect(s.hooks.PostToolUse).toBeTruthy();          // milestone hook travels (parity)
+  expect(s.hooks.PreToolUse).toBeUndefined();        // canonical enforcement is PCC-repo-scoped
+});
+
 // Soak fix F7: a freshly-scaffolded project must PASS its own health check. It used
 // to fail on day one ("4 issues — don't trust current state") because doctor demanded
 // retired-track files the scaffolder deliberately omits. doctor is now scaffold-aware,

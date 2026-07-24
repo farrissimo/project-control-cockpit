@@ -49,6 +49,39 @@ $id = Get-ChangeIdentity -Baseline $Baseline
 $tierInfo = Get-ChangeTier -Identity $id -RepoRoot $repo
 $tier = $tierInfo.tier
 
+# FAIL CLOSED (2026-07-24). Previously, running this before staging produced a receipt bound to NOTHING:
+# Get-ChangeIdentity read the empty staged index, tier came back 'NONE' (not in the schema enum), and the
+# writer never validated its own output — so a receipt that binds base==head and an invalid tier was
+# written and exited 0, silently defeating the gate (it surfaced only downstream as a misleading
+# "schema_invalid"). A receipt bound to no staged change, or to a tier the schema forbids, must never
+# exist. Refuse with the REAL reason.
+$schemaTiers = @('T0', 'T1', 'T2', 'T3', 'T4', 'UNKNOWN')
+if ($tierInfo.empty -or -not $id.files -or @($id.files).Count -eq 0) {
+  [Console]::Error.WriteLine("[FAIL] Refusing to write a verification receipt: nothing is staged (base==head). Stage the change first (git add), then write the receipt so it binds to the exact diff.")
+  exit 2
+}
+if ($schemaTiers -notcontains $tier) {
+  [Console]::Error.WriteLine("[FAIL] Refusing to write a verification receipt: computed tier '$tier' is not a valid schema tier ($($schemaTiers -join ', ')).")
+  exit 2
+}
+
+# Preflight binding (ADR-0020 canonical constraints): if a staged preflight governs this change, bind its
+# FULL 64-char digest + task_id into the receipt, so CI can prove the receipt, the committed preflight,
+# and the final diff all refer to the same task. Never truncated. BOOTSTRAP: gated on the checker existing
+# in the BASELINE — matching the gate and the CI audit — so the change that INTRODUCES the mechanism does
+# not emit a preflight binding the still-old trusted-main auditor cannot parse.
+$preflightTaskId = $null
+$preflightDigest = $null
+$canonChecker = Join-Path $PSScriptRoot 'check-canonical-constraints.ps1'
+$checkerInBase = $false
+try { git cat-file -e "$($Baseline):scripts/check-canonical-constraints.ps1" 2>$null; $checkerInBase = ($LASTEXITCODE -eq 0) } catch { $checkerInBase = $false }
+if ($checkerInBase -and (Test-Path $canonChecker)) {
+  try {
+    $land = & pwsh -NoProfile -File $canonChecker -Phase Land -Baseline $Baseline -Json 2>$null | ConvertFrom-Json
+    if ($land -and $land.ok) { $preflightTaskId = $land.task_id; $preflightDigest = $land.preflight_digest }
+  } catch {}
+}
+
 # Checks: caller-supplied JSON array, or a single derived check from the verdict.
 $checkList = @()
 if ($Checks) {
@@ -82,11 +115,24 @@ $receipt = [ordered]@{
   verdict         = $Verdict
   expires_at      = $expiresAt
   baseline        = $Baseline
+  preflight_task_id = $preflightTaskId
+  preflight_digest  = $preflightDigest
   not_proven      = 'This binds a handed-in verdict to the exact diff (an attestation). It does not itself prove the verification happened or was correct — the receipt is worker-attested. CI + branch protection are the server-side backstop, un-bypassable only if branch protection is active + required and work enters via PR.'
 }
 
 $outPath = '.cockpit/evidence/verification-receipt.json'
 $jsonText = ($receipt | ConvertTo-Json -Depth 8)
+
+# Validate our OWN output before declaring success — the writer used to emit an invalid receipt and only
+# a downstream consumer noticed. Fail closed here instead.
+$tmpValidate = [System.IO.Path]::GetTempFileName()
+try {
+  Set-Content -LiteralPath $tmpValidate -Value $jsonText -Encoding UTF8
+  $okSchema = $false
+  try { $okSchema = [bool](Test-Json -Path $tmpValidate -SchemaFile 'schemas/verification-receipt.schema.json' -ErrorAction Stop) } catch { $okSchema = $false }
+  if (-not $okSchema) { [Console]::Error.WriteLine('[FAIL] Refusing to write a verification receipt that fails its own schema (fail closed).'); exit 2 }
+} finally { Remove-Item -LiteralPath $tmpValidate -ErrorAction SilentlyContinue }
+
 Write-JsonAtomic -Path $outPath -Json $jsonText
 
 if ($Json) { $jsonText }

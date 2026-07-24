@@ -65,7 +65,24 @@ else { $commits = @(& git rev-list --no-merges -n $Last HEAD 2>$null | Where-Obj
 
 $results = @()
 $fails = 0; $attested = 0; $bypassed = 0; $notRequired = 0; $crucial = 0
-$trailerRe = '^Verified-Receipt:\s*base=(?<base>\S+)\s+diff_id=(?<diff>\S+)\s+verdict=(?<verdict>\S+)\s+verifier=(?<verifier>.*)$'
+# `preflight=<task>@<digest>` is OPTIONAL and sits between verdict and verifier (verifier stays last so it
+# may contain spaces). Old commits (pre-mechanism) have no preflight field and must still parse.
+$trailerRe = '^Verified-Receipt:\s*base=(?<base>\S+)\s+diff_id=(?<diff>\S+)\s+verdict=(?<verdict>\S+)(?:\s+preflight=(?<preflight>\S+))?\s+verifier=(?<verifier>.*)$'
+
+# Full digest of a preflight file AS OF a commit (content-addressed, LF-normalized) — the exact same
+# normalization check-canonical-constraints.ps1 uses, so a digest written at commit re-derives here.
+function Get-CommitPreflightDigest([string]$commit, [string]$path) {
+  $raw = & git show "$($commit):$path" 2>$null
+  if ($LASTEXITCODE -ne 0) { return $null }
+  $text = ($raw -join "`n") -replace "`r`n", "`n"
+  $bytes = [System.Text.Encoding]::UTF8.GetBytes($text)
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  try { return (($sha.ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') }) -join '') }
+  finally { $sha.Dispose() }
+}
+# Cross-commit immutability: a preflight task referenced once must never appear later with a different
+# digest (the plan cannot change after it has governed a landed commit).
+$seenPreflight = @{}
 
 foreach ($c in $commits) {
   $short = $c.Substring(0, [Math]::Min(9, $c.Length))
@@ -119,6 +136,41 @@ foreach ($c in $commits) {
     $results += [ordered]@{ commit = $short; tier = $tier; status = 'bypass'; detail = "disclosed bypass, authorized_by '$($bp.authorized_by)'"; subject = $subject }
     continue
   }
+  # --- canonical-constraint preflight chain (ADR-0020). Prove, from history alone: the trailer names a
+  # task + FULL digest, the named preflight exists at this commit, its recomputed digest matches, and the
+  # same task was not previously referenced with a different digest. When the mechanism is present in the
+  # commit's tree, a crucial commit MUST carry a preflight (closes the "forged trailer without preflight"
+  # gap); older commits predating the mechanism are exempt. ---
+  $tPre = $m.Groups['preflight'].Value
+  # "Mechanism already in place" is judged by the PARENT's tree, not this commit's — so the very commit
+  # that INTRODUCES the checker is not required to have used it (bootstrap), while every commit AFTER it is.
+  $mechanismPresent = $false
+  & git cat-file -e "$($c)^:scripts/check-canonical-constraints.ps1" 2>$null; $mechanismPresent = ($LASTEXITCODE -eq 0)
+  if ($tPre) {
+    $atIdx = $tPre.LastIndexOf('@')
+    if ($atIdx -lt 1) {
+      $fails++; $results += [ordered]@{ commit = $short; tier = $tier; status = 'FAIL'; detail = 'malformed preflight= field in trailer'; subject = $subject }; continue
+    }
+    $pTask = $tPre.Substring(0, $atIdx); $pDigest = $tPre.Substring($atIdx + 1)
+    if ($pDigest -notmatch '^[0-9a-f]{64}$') {
+      $fails++; $results += [ordered]@{ commit = $short; tier = $tier; status = 'FAIL'; detail = 'preflight digest in trailer is not a full sha256'; subject = $subject }; continue
+    }
+    $pPath = ".cockpit/preflight/$pTask.json"
+    $derivedPf = Get-CommitPreflightDigest $c $pPath
+    if (-not $derivedPf) {
+      $fails++; $results += [ordered]@{ commit = $short; tier = $tier; status = 'FAIL'; detail = "trailer names preflight '$pTask' but $pPath is absent at this commit"; subject = $subject }; continue
+    }
+    if ($derivedPf -ne $pDigest) {
+      $fails++; $results += [ordered]@{ commit = $short; tier = $tier; status = 'FAIL'; detail = 'committed preflight digest does not match the trailer (tampered)'; subject = $subject }; continue
+    }
+    if ($seenPreflight.ContainsKey($pTask) -and $seenPreflight[$pTask] -ne $pDigest) {
+      $fails++; $results += [ordered]@{ commit = $short; tier = $tier; status = 'FAIL'; detail = "preflight '$pTask' changed after it already governed a commit (immutability violation)"; subject = $subject }; continue
+    }
+    $seenPreflight[$pTask] = $pDigest
+  } elseif ($mechanismPresent) {
+    $fails++; $results += [ordered]@{ commit = $short; tier = $tier; status = 'FAIL'; detail = 'canonical mechanism present but trailer carries no preflight= binding'; subject = $subject }; continue
+  }
+
   $attested++
   $results += [ordered]@{ commit = $short; tier = $tier; status = 'attested'; detail = 'trailer valid (PASS attestation — bound claim, not proof it happened)'; subject = $subject }
 }

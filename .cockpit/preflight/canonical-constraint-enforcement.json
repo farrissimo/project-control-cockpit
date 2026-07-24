@@ -1,0 +1,45 @@
+{
+  "schema": "task-preflight/v1",
+  "generated_at": "2026-07-24T00:00:00Z",
+  "task_id": "canonical-constraint-enforcement",
+  "task_title": "Make PCC's canonical cross-cutting requirements executable (two-phase enforcement)",
+  "base": "148dbf87890cc7bc28f6574c10af32868519f47a",
+  "constraints_applied": ["RESEARCH_FIRST", "TOKEN_THRIFT_LOCAL_FIRST", "REDUCE_OWNER_BABYSITTING"],
+  "prior_art": [
+    {"source": "Danger JS (danger.systems/js)", "finding": "Automated per-change convention enforcement. Pattern adopted; dependency rejected — PR/CI-time + GitHub-centric, while PCC already blocks earlier at a local pre-commit governor."},
+    {"source": "OPA / Conftest (conftest.dev)", "finding": "Policy-as-code over structured JSON with non-zero exit gating — closest structural match. Dependency rejected: adds a Go binary + Rego; PCC already validates JSON via Test-Json in PowerShell. Concept reused."},
+    {"source": "Building Evolutionary Architectures 2e, ch.4 (fitness functions)", "finding": "Cross-cutting fitness functions injected into a shared pipeline all work inherits; explicitly warns AGAINST scoring systems. Vocabulary + shape adopted; matches the owner's no-dashboard/no-score boundary."},
+    {"source": "in-toto / SLSA (secure-pipelines.com)", "finding": "Attestations must bind to an exact digest and fail closed when missing/invalid; provenance bound to a mutable subject is a known bypass. Directly diagnoses the base==head/tier-NONE receipt defect and dictates digest-binding the preflight."}
+  ],
+  "reuse_decision": {
+    "decision": "extend",
+    "rationale": "Extend PCC's existing governor + receipt + trailer + CI-audit chain rather than install a second policy platform (OPA/Danger). A parallel enforcement path alongside the existing governor is itself a failure mode; reuse the proven local seams."
+  },
+  "deterministic_work": [
+    "registry JSON + two JSON schemas",
+    "check-canonical-constraints.ps1 (registry load, drift check, two phases)",
+    "write-task-preflight.ps1 (validate + digest lock, traversal-safe)",
+    "canonical-preflight.ps1 hook adapter (allow/deny decision)",
+    "run-governance-gate.ps1 Phase Land wiring",
+    "write-verification-receipt.ps1 fail-closed + preflight binding",
+    "emit/audit trailer preflight binding",
+    "node/pwsh unit + script-contract tests"
+  ],
+  "llm_work": [
+    "prior-art research (web search, already done)",
+    "the PreToolUse hook-contract proof required 4 tiny haiku smokes (undocumented CLI behavior, could not be proven statically)",
+    "one final independent Codex diff review"
+  ],
+  "duplication_avoidance": "One checker invoked in two phases (not two gates); registry CITES CLAUDE.md rather than restating it; reuses Get-ChangeIdentity/Get-ChangeTier, the existing receipt, trailer, and CI auditor. No new dependency.",
+  "usage_plan": {
+    "expected_model_ops": 5,
+    "expected_local_ops": 40,
+    "baseline": "n/a — this change adds enforcement, it does not change model/session/caching/rollover/spawn/tool-profile/measurement behavior",
+    "max_authorized_usage": "4 haiku hook-contract smokes (spent) + 1 Codex diff review",
+    "stopping_conditions": ["hook contract not honored in either launch mode -> STOP (it was honored)", "Codex FAIL on material finding -> fix then re-review"],
+    "matched_benchmark_required": false,
+    "completion_evidence": "focused tests green; hook contract proven; Codex PASS; exact-head CI green"
+  },
+  "exceptions": [],
+  "not_proven": "This introducing PR is bootstrapped under the EXISTING governor and trusted-main CI auditor; the new server-side enforcement does not govern its own introduction. After merge it becomes authoritative and corrected Gate 0 is the first fully-governed task."
+}

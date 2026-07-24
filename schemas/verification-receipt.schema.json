@@ -34,6 +34,8 @@
     "verdict": { "enum": ["PASS", "FAIL", "INSUFFICIENT", "BLOCKED", "OUT_OF_SCOPE"] },
     "expires_at": { "type": ["string", "null"], "format": "date-time" },
     "baseline": { "type": "string" },
+    "preflight_task_id": { "type": ["string", "null"] },
+    "preflight_digest": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
     "not_proven": { "type": "string" }
   }
 }

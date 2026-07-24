@@ -82,6 +82,14 @@ When asked to verify the most recent work:
    (assembled by `scripts/verify-evidence.ps1`), not just `git log -1` — the work may span commits.
 2. Run the project's real checks if present — `pwsh -NoProfile -File scripts/doctor.ps1`, plus any tests/lint the repo defines.
 3. Judge the work against what was claimed and the task's intent.
+4. **Canonical constraints (ADR-0020).** For a code/scripts/config/architecture/behavior change (tier
+   T0–T3) a preflight exists at `.cockpit/preflight/<task_id>.json`. Read it against the **actual diff and
+   execution evidence — never the worker's summary** — and check each applicable constraint:
+   **RESEARCH_FIRST** (real prior-art sources + findings + a reuse-vs-build decision), **TOKEN_THRIFT_LOCAL_FIRST**
+   (a deterministic-vs-LLM split and a usage plan; a matched direct-vs-PCC token/session benchmark is
+   required **only** when the change affects model/session usage, caching, rollover, spawning, hidden calls,
+   tool profiles, or measurement, or claims improved efficiency), **REDUCE_OWNER_BABYSITTING**. Missing
+   required evidence or a material violation is **FAIL**, not a suggestion.
 
 Then output a verdict in exactly this shape:
 
