@@ -32,6 +32,8 @@ const { singleFlight } = require('./single-flight'); // coalesce concurrent dete
 const { parseStreamJson, parseStreamCost, parseStreamUsage, parseStreamTurns } = require('./stream-json');
 const { workerEnv } = require('./worker-env'); // DECISION-003: strip paid-API creds from every claude spawn
 const { spawnClaude } = require('./claude-spawn'); // the ONE claude launcher — preserves every argument boundary (no shell)
+const persistentWorker = require('./persistent-worker'); // ADR-0020 T3: one warm claude process for text chat turns
+const { classifyResult } = require('./warm-result'); // ADR-0020 T3: pure per-turn result-envelope classifier
 const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
 const { logAppError } = require('./error-log'); // durable trace for otherwise-swallowed app failures
@@ -272,6 +274,18 @@ function killAllWorkers() {
   for (const c of Array.from(activeWorkers)) killWorker(c);
   activeWorkers.clear();
 }
+
+// ADR-0020 T3: the ONE persistent warm claude worker for normal text chat turns. It keeps a single
+// process alive across same-identity text sends so the prompt cache is READ across turns instead of a
+// fresh process starting each message (the selected emergency recovery architecture; the cold path's
+// rebuild cost was never validly measured, so it is not claimed as the proven root cause — Amendment 3).
+// onSpawn/onClose keep the warm child inside activeWorkers so
+// kill-on-quit still reaps it; currentTurn (for Stop) is set by askClaude around the in-flight turn.
+const warmWorker = persistentWorker.createPersistentWorker({
+  kill: killWorker,
+  onSpawn: (child) => { activeWorkers.add(child); },
+  onClose: (child) => { activeWorkers.delete(child); },
+});
 
 function readJson(...rel) {
   try {
@@ -681,7 +695,7 @@ ipcMain.handle('pcc:toolStatus', () => {
 // Start a fresh chat: assign a brand-new pinned session id, so the next
 // message starts an isolated conversation. (The renderer also clears its own
 // history.)
-ipcMain.handle('pcc:newChat', () => { sessionId = null; return { ok: true }; });
+ipcMain.handle('pcc:newChat', () => { warmWorker.shutdown(); sessionId = null; return { ok: true }; }); // ADR-0020 T3: terminate the persistent worker when a new chat starts
 
 // ---- multi-project switching ----
 // The home cockpit points at one active project at a time. These handlers list
@@ -747,6 +761,7 @@ ipcMain.handle('pcc:setActiveProject', (_e, dir) => {
   const w = writeRegistry(reg);
   if (!w.ok) return { ok: false, error: 'Could not save the selection; not switching: ' + w.error };
   projectDir = dir;
+  warmWorker.shutdown();            // ADR-0020 T3: a project switch terminates the persistent worker
   sessionId = null;                 // don't carry a worker session across projects
   chatCostUsd = null;               // reload per-chat cost totals from the NEW project's store (not the old one's)
   return { ok: true, active: projectEntry(dir) };
@@ -934,6 +949,118 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     // worker sees it). Plain-text sends keep the original text path unchanged — no regression to
     // the authority/read-only spawn behavior, which is identical either way (same tool flags).
     const hasAttach = Array.isArray(attachments) && attachments.length > 0;
+    // ADR-0020 T3: normal TEXT chat turns go through the ONE persistent warm worker (below). The COLD
+    // one-shot path is kept for exactly two cases: an attachment turn (headless claude needs stream-json
+    // in/out; it stays a bounded one-shot on the same session) and the New Project create-flow
+    // (forceBuild, which has its own Save/Cancel worker). A cold spawn must never coexist with the warm
+    // worker, so we tear the warm one down before taking the cold path.
+    const useWarm = !hasAttach && !(opts && opts.forceBuild);
+
+    // Shared: turn ONE `--output-format json`-shaped result (the warm stream `result` line, or a cold
+    // json blob on the warm-close path) into the owner-facing resolve payload. classifyResult (pure,
+    // unit-tested) decides success / max-turns / budget / generic-error / malformed; here we apply the
+    // attribution it implies — EXACTLY ONE usage record per envelope (when real usage is present) and the
+    // real total_cost_usd recorded once (deferred rollover for unsuccessful/capped turns so a cap-crossing
+    // is never silently discarded). A structured is_error result, or an unrecognized shape, NEVER returns
+    // ok:true — it fails closed, terminates the worker (reuse not proven safe), and is not retried.
+    const resolveJsonResult = (jsonText) => {
+      const d = classifyResult(jsonText);
+      if (d.trigger) { // one usage record per envelope, when the envelope carries real usage
+        const u = usageLog.usageFromJson(jsonText);
+        if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: d.trigger, model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null, num_turns: d.numTurns }, u));
+      }
+      const rollover = d.costUsd !== null ? recordChatCost(chatId, d.costUsd, d.deferRollover ? { deferRollover: true } : undefined) : null;
+      if (d.terminate) warmWorker.shutdown(); // fail closed: a generic error / unknown shape ends the warm worker
+      if (d.kind === 'max_turns') {
+        const turnsNote = d.numTurns !== null ? ' (it reached ' + d.numTurns + ' agentic turns)' : '';
+        return resolve({ ok: false, maxTurnsReached: true, numTurns: d.numTurns,
+          text: 'Stopped automatically — this message hit its per-message turn limit' + turnsNote + ' before finishing. This is a safety limit that stops one message from quietly running for hundreds of hidden steps and burning your Claude usage — not a bug. Some work may already have happened (files read or changed, commands run), so glance at what changed before continuing rather than just resending. You can raise the limit in .cockpit/state/usage-limits.json (max_turns), or send a smaller next step.' });
+      }
+      if (d.kind === 'budget') {
+        return resolve({ ok: false, budgetExceeded: true,
+          text: 'Stopped automatically — this turn hit its per-turn spending cap before finishing. This is a safety limit protecting your Claude usage, not a bug. You can raise the cap in .cockpit/state/usage-limits.json, or just send it again (it will pick up where the plan left off).' });
+      }
+      if (d.kind === 'error') {
+        return resolve({ ok: false, workerError: true,
+          text: 'Claude reported an error on this turn, so it was stopped. Nothing was retried automatically and nothing further was sent — glance at anything that already changed, then send again when you are ready.' });
+      }
+      if (d.kind === 'malformed') {
+        return resolve({ ok: false, workerError: true,
+          text: 'Claude returned a response PCC could not read, so the turn was stopped safely. Nothing was retried automatically — please send your message again.' });
+      }
+      const res = { ok: true, text: d.text }; // success
+      if (rollover) res.costRollover = rollover;
+      if (d.contextTokens !== null) res.contextTokens = d.contextTokens;
+      return resolve(res);
+    };
+
+    // Shared: map a process-level failure (non-zero exit / stderr) to a plain-language message —
+    // the same classifications the cold close handler uses, for the warm 'closed' outcome.
+    const resolveProcessError = (raw, code) => {
+      raw = (raw || ('Claude exited with code ' + code)).trim();
+      if (/session id .* is already in use/i.test(raw)) {
+        return resolve({ ok: false, sessionInUse: true,
+          text: 'This chat’s worker session is locked — a worker was interrupted (a crash, or the app closed mid-reply) and left the session in use. Use “Recover this chat” below to give it a fresh worker session while keeping your history, or start a new chat.' });
+      }
+      if (isBudgetExceeded(raw)) return resolve({ ok: false, budgetExceeded: true,
+        text: 'Stopped automatically — this turn hit its per-turn spending cap before finishing. This is a safety limit protecting your Claude usage, not a bug. You can raise the cap in .cockpit/state/usage-limits.json, or just send it again (it will pick up where the plan left off).' });
+      if (isMaxTurnsError(raw)) return resolve({ ok: false, maxTurnsReached: true, numTurns: null,
+        text: 'Stopped automatically — this message hit its per-message turn limit before finishing. This is a safety limit that stops one message from quietly running for hundreds of hidden steps and burning your Claude usage — not a bug. Some work may already have happened, so glance at what changed before continuing rather than just resending. You can raise the limit in .cockpit/state/usage-limits.json (max_turns).' });
+      if (isUsageLimitError(raw)) return resolve({ ok: false, usageLimit: true,
+        text: 'You’ve reached your Claude usage limit. This is Anthropic’s limit on your plan (the same one the “Usage” chip at the top of the window tracks) — not a PCC problem, and nothing is broken. Your chat and full history are safe right here. It resets automatically after a while; just send your message again once it does.' });
+      if (isAuthError(raw)) return resolve({ ok: false, authError: true,
+        text: 'PCC can’t reach Claude because your Claude Code sign-in has expired or signed out — this isn’t a PCC bug. To fix it, sign back in to Claude Code (open a terminal and run “claude /login”, or reopen Claude Code and sign in), then send your message again. Your chat and full history are safe right here.' });
+      return resolve({ ok: false, text: raw });
+    };
+
+    if (useWarm) {
+      // The warm streaming worker: continuous stdin, one `result` per owner message. Same tool flags,
+      // channel prompt, model+fallback, budget + max-turns safety, and session id as the cold path —
+      // only the transport (persistent stream-json) differs.
+      const streamArgs = args.concat(['--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose']);
+      const cm = payloadCaps.capMessage(message);       // ADR-0020 T7: bound the per-send input
+      capNotices.messageTruncated = cm.truncated;
+      const jsonl = JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: cm.text }] } });
+      const identity = { cwd: scopedCwd, chatId: chatId || '', sessionId: sessionId, model: chosen, fallback: cfg.fallback_chain || '', isBuild: isBuild, channelPrompt: CHANNEL_PROMPT };
+      const thunk = () => spawnClaude(streamArgs, { cwd: scopedCwd, env: workerEnv() }); // DECISION-003: never a paid API; no shell
+      const p = warmWorker.runTextTurn(identity, thunk, jsonl);
+      const activeChild = warmWorker.activeChild(); // set synchronously by runTextTurn (spawn/reuse + write)
+      if (activeChild) currentTurn = { child: activeChild, chatId: chatId || null, stoppedByOwner: false, warm: true };
+      p.then((outcome) => {
+        if (currentTurn && currentTurn.child === activeChild) currentTurn = null;
+        if (outcome.kind === 'result') return resolveJsonResult(outcome.jsonText);
+        if (outcome.kind === 'stopped') {
+          if (isNewSession && !workerSessionId) sessionId = null;
+          return resolve({ ok: false, stoppedByOwner: true, text: 'Stopped — you ended this turn before Claude finished. Nothing after this point was sent.' });
+        }
+        if (outcome.kind === 'cancelled') {
+          // Defect-1: a deliberate teardown (new chat / project switch / app exit / attachment fallback)
+          // settled this in-flight turn. Report it honestly, never leave it hanging, and do not retry.
+          if (isNewSession && !workerSessionId) sessionId = null;
+          return resolve({ ok: false, cancelled: true, text: 'This turn was cancelled because the chat, project, or app changed before Claude finished. Nothing after this point was sent, and nothing was retried.' });
+        }
+        if (outcome.kind === 'spawnError') {
+          if (isNewSession && !workerSessionId) sessionId = null;
+          return resolve({ ok: false, text: 'Could not launch Claude Code: ' + outcome.message });
+        }
+        // outcome.kind === 'closed' — the warm process exited during the turn. Finish from its accumulated
+        // stdout like the cold path: a clean EMPTY exit is "(no output)"; a parseable result (success /
+        // max-turns / budget / is_error) is classified by resolveJsonResult (is_error fails closed);
+        // anything else is a classified process failure with NO automatic retry.
+        if (isNewSession && !workerSessionId) sessionId = null;
+        const out = outcome.out || '';
+        if (outcome.code === 0 && out.trim() === '') return resolve({ ok: true, text: '' }); // clean empty exit -> "(no output)"
+        const parsed = parseTurnOutput(out);
+        if (parsed.text !== null || parsed.budgetExceeded || parsed.maxTurnsReached || parsed.isError === true) {
+          return resolveJsonResult(out);
+        }
+        return resolveProcessError(outcome.err || out, outcome.code); // crash / session lock / usage limit / auth
+      });
+      return;
+    }
+
+    // COLD PATH (attachment OR create-flow): the warm worker must never coexist with another claude.
+    warmWorker.shutdown();
     if (hasAttach) args.push('--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose');
     // R3 slice 2: non-streaming JSON output for the ordinary text path gives the real per-turn
     // total_cost_usd (app/turn-output.js) — a single blob, not incremental parsing, so this is a
@@ -1500,6 +1627,14 @@ ipcMain.handle('pcc:stopWorker', (_e, chatId) => {
   // The caller must name the turn it means to stop.
   if (currentTurn.chatId !== chatId) return { ok: true, stopped: false, reason: 'chat_mismatch' };
   currentTurn.stoppedByOwner = true;
+  // ADR-0020 T3: a warm text turn is stopped THROUGH the persistent worker so it kills the process,
+  // resolves the in-flight turn as owner-stopped, and marks the worker dead (no auto-restart). A cold
+  // turn (attachment / create-flow) keeps the original direct-kill path.
+  if (currentTurn.warm) {
+    const stopped = warmWorker.stopCurrent();
+    currentTurn = null;
+    return { ok: true, stopped: !!stopped };
+  }
   killWorker(currentTurn.child);
   return { ok: true, stopped: true };
 });
@@ -1670,8 +1805,9 @@ app.whenReady().then(() => {
 // still leave a chat's session locked. The reliable cure is the in-chat "Recover this
 // chat" action (a fresh session id). before-quit covers the quit path; window-all-closed
 // covers closing the last window.
-app.on('before-quit', () => { killAllWorkers(); });
+app.on('before-quit', () => { warmWorker.shutdown(); killAllWorkers(); });
 app.on('window-all-closed', () => {
+  warmWorker.shutdown(); // ADR-0020 T3: no persistent worker survives app exit
   killAllWorkers();
   if (process.platform !== 'darwin') app.quit();
 });

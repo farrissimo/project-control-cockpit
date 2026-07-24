@@ -41,18 +41,26 @@ function enclosingFn(src, offset) {
   return name;
 }
 
-test('app/main.js spawns `claude` from EXACTLY the two known, attributed sites', () => {
+test('app/main.js spawns `claude` ONLY from the known, attributed sites', () => {
   // Since 2026-07-24 the launcher is spawnClaude() (app/claude-spawn.js), not spawn('claude', …).
+  // ADR-0020 T3: askClaude now has TWO spawnClaude calls — the persistent WARM text worker and the COLD
+  // one-shot (attachment / create-flow) path — both inside askClaude and both usage-logged. The guard
+  // that matters is: every spawn site is enclosed by a known attributed function (askClaude or
+  // oneShotWorker), so a NEW hidden burn channel in any other function still fails this test.
   const re = /spawnClaude\(/g;
   const sites = [];
   let m;
   while ((m = re.exec(SRC))) sites.push(enclosingFn(SRC, m.index));
 
-  assert.strictEqual(sites.length, 2,
-    'expected exactly 2 `claude` spawn sites in main.js, found ' + sites.length +
-    ' (' + sites.join(', ') + ') — a new spawn must be a known, usage-logged site');
-  assert.deepStrictEqual([...sites].sort(), ['askClaude', 'oneShotWorker'],
-    'every `claude` spawn must live in askClaude or oneShotWorker (the usage-logged sites), got: ' + sites.join(', '));
+  assert.ok(sites.length >= 2,
+    'expected at least the known `claude` spawn sites in main.js, found ' + sites.length);
+  const allowed = new Set(['askClaude', 'oneShotWorker']);
+  for (const s of sites) {
+    assert.ok(allowed.has(s),
+      'a `claude` spawn lives OUTSIDE the usage-logged sites (in ' + s + ') — every spawn must be attributed');
+  }
+  assert.deepStrictEqual([...new Set(sites)].sort(), ['askClaude', 'oneShotWorker'],
+    'the set of enclosing functions must be exactly {askClaude, oneShotWorker}, got: ' + [...new Set(sites)].join(', '));
 });
 
 test('main.js never spawns the claude CLI by name — it must go through the safe launcher', () => {
