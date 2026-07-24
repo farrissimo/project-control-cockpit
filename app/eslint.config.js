@@ -6,7 +6,7 @@ const globals = require('globals');
 
 // Cross-file renderer globals: defined in one <script> (UMD `root.X = api`) and used in
 // another. ESLint checks a file in isolation, so declare them here rather than false-flag.
-const appGlobals = { PCCOverview: 'readonly', PCCVerification: 'readonly', PCCStakes: 'readonly', PCCProvingWindow: 'readonly', PCCChatHealth: 'readonly' };
+const appGlobals = { PCCOverview: 'readonly', PCCVerification: 'readonly', PCCStakes: 'readonly', PCCProvingWindow: 'readonly', PCCChatHealth: 'readonly', PCCRolloverSeed: 'readonly' };
 
 const shared = { ...globals.node, ...globals.browser, ...appGlobals };
 
