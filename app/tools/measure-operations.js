@@ -5,7 +5,7 @@
 // --strict-mcp-config, --output-format json, a FRESH --session-id per call, prompt over stdin, cwd=repo).
 // This is not a chat simulation — it is the deterministic cost of each operation, byte-faithful to what
 // the app sends. LLM-agnostic: reports TOKENS. Hard-capped: runs a fixed, small set of calls.
-const { spawn } = require('child_process');
+const { spawnClaude } = require('../claude-spawn'); // no shell — every argument boundary preserved
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -28,7 +28,7 @@ function oneShotArgs() {
 function runOneShot(prompt) {
   return new Promise((resolve) => {
     let out = '', err = '';
-    const child = spawn('claude', oneShotArgs(), { cwd: REPO_ROOT, shell: true, env: require('../worker-env').workerEnv() }); // DECISION-003: never a paid API
+    const child = spawnClaude(oneShotArgs(), { cwd: REPO_ROOT, env: require('../worker-env').workerEnv() }); // DECISION-003: never a paid API; no shell
     child.stdout.on('data', (d) => (out += d.toString()));
     child.stderr.on('data', (d) => (err += d.toString()));
     child.on('close', () => resolve({ out, err }));

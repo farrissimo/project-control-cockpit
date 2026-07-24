@@ -11,7 +11,7 @@
 // This is a DIAGNOSTIC, not a Gate 0 proof: one back-to-back run, small N, result is OBSERVED or
 // INCONCLUSIVE, never a PASS. LLM-agnostic (raw tokens). DECISION-003: spawns via workerEnv() so it can
 // NEVER use a paid API. Require-safe: the real run happens only when executed directly as a CLI.
-const { spawn } = require('child_process');
+const { spawnClaude } = require('../claude-spawn'); // no shell — every argument boundary preserved
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -22,24 +22,48 @@ const { extract } = require('./measure-usage.js'); // reuse the exact usage/num_
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const EVIDENCE_DIR = path.join(REPO_ROOT, '.cockpit', 'evidence');
 const LOG = path.join(EVIDENCE_DIR, 'usage-diagnostics.jsonl');
-const MODEL = process.argv.includes('--model') ? process.argv[process.argv.indexOf('--model') + 1] : 'claude-sonnet-5';
+function arg(name, def) {
+  const i = process.argv.indexOf('--' + name);
+  return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : def;
+}
+const MODEL = arg('model', 'claude-sonnet-5');
+// Gate 0 parameters. The cold arm (measure-usage.js) already took --mode/--turns/--gap/--label; the warm
+// arm was fixed at 3 short prompts with no gap control, so the two arms could not be run on the SAME task
+// sequence or the SAME gap schedule. Both are locked Gate 0 rules ("same task sequence", "deliberately
+// varied inter-message gaps"), and a mismatch would make every ratio materially false — so the warm arm
+// takes the same knobs. Nothing about how a turn is sent changed; only which prompts and when.
+const MODE = arg('mode', 'short');
+const GAP = parseInt(arg('gap', '0'), 10);      // seconds to wait BEFORE each turn after the first
+const LABEL = arg('label', 'warm-direct');
 
 // Verbatim from measure-usage.js (which copied it from main.js CHANNEL_PROMPT) so both arms send the
 // SAME system prefix — keep in sync. The comparison is only fair if the two arms differ ONLY in warmth.
 const CHANNEL_PROMPT = 'You are replying inside PCC\'s text-only chat panel: there is no interactive UI, no clickable pickers or buttons you can present. Never use interactive tools such as AskUserQuestion; if you need to ask the owner something, ask it as plain text with the options listed inline. Never narrate internal tool, prompt, or mechanism failures to the owner (e.g. do not say a tool "isn\'t working") - just answer or ask plainly. The owner is a non-coder product lead: be concise and plain-language.';
-// The first 3 SHORT_PROMPTS from measure-usage.js, verbatim — identical tasks to the cold arm's first 3.
-const PROMPTS = [
-  'In one short sentence, what is PCC?',
-  'Name one failure mode PCC tries to prevent. One line.',
-  'What file holds the current project brief? Just the filename.',
-];
+// The prompt sets are IMPORTED from measure-usage.js (not copied) so both arms send byte-identical tasks.
+const { SHORT_PROMPTS, REAL_PROMPTS, WORK_PROMPTS } = require('./measure-usage.js');
+const SET = MODE === 'work' ? WORK_PROMPTS : (MODE === 'real' ? REAL_PROMPTS : SHORT_PROMPTS);
+const TURNS = parseInt(arg('turns', '3'), 10);
+const PROMPTS = SET.slice(0, TURNS);
+
+// codex-caught (Gate 0 pre-run review): the cold arm passes --fallback-model (measure-usage.js mirrors
+// main.js askClaude, which sets it from models.json's fallback_chain) but the warm arm did not. That is an
+// asymmetry OTHER than warmth, so it breaks the "the arms differ only in warmth" premise the whole ratio
+// rests on. Resolve the same way the cold arm does, from the same file, so both arms match by construction.
+function readFallbackChain() {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, '.cockpit', 'state', 'models.json'), 'utf8'));
+    return cfg.fallback_chain || cfg.default || MODEL;
+  } catch { return MODEL; }
+}
+const FALLBACK = readFallbackChain();
 
 function runWarm() {
   return new Promise((resolve) => {
     const sid = crypto.randomUUID();
     const args = ['-p', '--model', MODEL, ...toolFlagsFor(false), '--append-system-prompt', CHANNEL_PROMPT,
+      '--fallback-model', FALLBACK, // codex-caught: match the cold arm / askClaude — see readFallbackChain
       '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--session-id', sid];
-    const child = spawn('claude', args, { cwd: REPO_ROOT, shell: true, env: workerEnv() }); // DECISION-003
+    const child = spawnClaude(args, { cwd: REPO_ROOT, env: workerEnv() }); // DECISION-003; no shell (arg boundaries intact)
     const rows = [];
     let buf = '', turn = 0, prevEndMs = null;
     const send = (t) => child.stdin.write(JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: t }] } }) + '\n');
@@ -54,11 +78,14 @@ function runWarm() {
         const gapSec = prevEndMs !== null ? Math.round((Date.now() - prevEndMs) / 1000) : 0;
         prevEndMs = Date.now();
         const m = extract(line); // the result line IS a --output-format json-shaped object
-        const rec = { ts: new Date().toISOString(), label: 'warm-direct', turn: turn + 1, gapSec, ...(m || { failed: true, raw: line.slice(0, 200) }) };
+        const rec = { ts: new Date().toISOString(), label: LABEL, turn: turn + 1, gapSec, ...(m || { failed: true, raw: line.slice(0, 200) }) };
         rows.push(rec);
         console.log(`${String(turn + 1).padStart(4)} | ${String(gapSec).padStart(6)} | ${String(m ? m.promptTokens : '?').padStart(9)} | ${String(m ? m.input : '?').padStart(5)} | ${String(m ? m.cacheCreate : '?').padStart(11)} | ${String(m ? m.cacheRead : '?').padStart(9)} | ${String(m ? m.output : '?').padStart(6)} | ${String(m && m.numTurns == null ? '?' : (m ? m.numTurns : '?')).padStart(5)} | ${m && !m.ok ? 'ERR' : ''}`);
         turn++;
-        if (turn < PROMPTS.length) send(PROMPTS[turn]);
+        // Honour the gap schedule: wait GAP seconds BEFORE sending the next turn. This is what makes the
+        // ~65-min post-TTL probe possible on the warm arm (the session stays open across the wait, which
+        // is exactly the warm-vs-cold contrast being measured).
+        if (turn < PROMPTS.length) { if (GAP > 0) setTimeout(() => send(PROMPTS[turn]), GAP * 1000); else send(PROMPTS[turn]); }
         else child.stdin.end();
       }
     });
@@ -66,7 +93,11 @@ function runWarm() {
     child.on('error', (e) => { console.log('spawn error: ' + e.message); resolve(rows); });
     child.on('close', () => resolve(rows));
     send(PROMPTS[0]);
-    setTimeout(() => { try { child.kill(); } catch {} }, 180000);
+    // Hard timeout was a FIXED 3 minutes, which would have silently killed any gapped run mid-flight and
+    // produced a truncated (INVALID, but easy to mistake for complete) result. Scale it to the schedule:
+    // the total gap budget plus 3 minutes of model time per turn.
+    const budgetMs = (GAP * 1000 * Math.max(0, PROMPTS.length - 1)) + (180000 * PROMPTS.length);
+    setTimeout(() => { try { child.kill(); } catch {} }, budgetMs);
   });
 }
 

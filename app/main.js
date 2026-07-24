@@ -31,6 +31,7 @@ const { loadChatCosts, saveChatCosts } = require('./chat-cost-store'); // durabl
 const { singleFlight } = require('./single-flight'); // coalesce concurrent detector refreshes (soak W3)
 const { parseStreamJson, parseStreamCost, parseStreamUsage, parseStreamTurns } = require('./stream-json');
 const { workerEnv } = require('./worker-env'); // DECISION-003: strip paid-API creds from every claude spawn
+const { spawnClaude } = require('./claude-spawn'); // the ONE claude launcher — preserves every argument boundary (no shell)
 const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
 const { logAppError } = require('./error-log'); // durable trace for otherwise-swallowed app failures
@@ -211,10 +212,13 @@ for (const k of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN']) delete process.en
 // after an unrelated call ran in between).
 let sessionId = null;
 
-// Soak fix F4: track every spawned worker so we can kill it when the app quits.
-// Workers are spawned with shell:true, so the real `claude` process is a grandchild
-// that OUTLIVES the app if not killed on a tree — orphaning it, which holds the
-// chat's session lock and bricks the chat ("session already in use") on next launch.
+// Soak fix F4: track every spawned worker so we can kill it when the app quits. An abandoned worker
+// OUTLIVES the app, holds the chat's session lock, and bricks the chat ("session already in use") on
+// next launch — so quit kills the whole tree (taskkill /T).
+// (2026-07-24: workers used to be spawned with shell:true, which put the real `claude` behind a shell
+// as a GRANDCHILD. spawnClaude no longer uses a shell — see claude-spawn.js — so `child.pid` is now
+// claude itself. Tree-killing stays correct either way, and is kept because claude may spawn its own
+// tool subprocesses.)
 const activeWorkers = new Set();
 // R2 (desktop-parity, ADR-0013): the owner-visible "Stop" button target. The chat UI runs one
 // turn at a time globally (the renderer's `busy` flag serializes sends across every chat), so a
@@ -941,7 +945,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     let err = '';
     let child;
     try {
-      child = spawn('claude', args, { cwd: scopedCwd, shell: true, env: workerEnv() }); // DECISION-003: never a paid API
+      child = spawnClaude(args, { cwd: scopedCwd, env: workerEnv() }); // DECISION-003: never a paid API; no shell (arg boundaries intact)
     } catch (e) {
       return resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message });
     }
@@ -1109,7 +1113,7 @@ function oneShotWorker(prompt, trigger) {
       '--session-id', crypto.randomUUID()];
     if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
     let out = '', err = '', child;
-    try { child = spawn('claude', args, { cwd: projectDir, shell: true, env: workerEnv() }); } // DECISION-003: never a paid API
+    try { child = spawnClaude(args, { cwd: projectDir, env: workerEnv() }); } // DECISION-003: never a paid API; no shell (arg boundaries intact)
     catch (e) { return resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message }); }
     activeWorkers.add(child); // tracked so app-quit can kill it (F4)
     child.on('error', (e) => { activeWorkers.delete(child); resolve({ ok: false, text: e.message }); });

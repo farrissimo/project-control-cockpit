@@ -122,6 +122,43 @@ neutralizes T8's only measurement-relevant effect) and measures from the JSONL, 
 **This does NOT start the ADR-0016 seven-day owner proof** — that stays blocked until the usage crisis
 is solved and proven. Gate 0 is a dedicated viability experiment, not the trust window.
 
+### Amendment 3 — 2026-07-24 (owner-ruled): EVIDENCE CORRECTION — Step 2's cold arm was mangled; its conclusion is WITHDRAWN
+
+A defect found while starting Gate 0 invalidates the Step 2 pre-T1 diagnostic (PR #61). **The old evidence
+is preserved for audit history — it is corrected here, not deleted or rewritten.**
+
+**The defect.** Every `claude` launch used `spawn('claude', argsArray, { shell: true })`. On Windows that
+concatenates the args array **without quoting** (Node's own `DEP0190` warning). Any argument containing a
+space is split. Measured with a zero-usage argv probe: **15 arguments in → 55 out.** Concretely,
+`--append-system-prompt <CHANNEL_PROMPT>` (which begins *"You are replying inside PCC's…"*) degraded to
+`--append-system-prompt You`, and the remainder became stray **positional** arguments — so `claude -p`
+took the first, **`are`**, as the entire prompt. `measure-usage.js` compounded this by passing its prompt
+as positional argv (`args.push(prompt)`) while production sends it over **stdin**.
+
+**What this means for Step 2 (PR #61), stated plainly:**
+- Step 2's **cold arm never sent its prompts.** Its own logged replies say so: *"only \"are\" is coming
+  through each time"*. Its warm arm was unaffected (stdin) and returned real answers.
+- Its cold-vs-warm comparison is therefore **INVALID** — a working arm measured against a broken one.
+- Its conclusion that a cold `--resume` reads cache like a warm session, and therefore **contradicted**
+  the original root-cause hypothesis, is **WITHDRAWN**.
+- **Fork B is no longer provisionally favored.**
+- The **original cold-process root-cause hypothesis returns to UNTESTED** — not confirmed, not refuted.
+- **Gate 0 run A1 (2026-07-24) is INVALID** and contributes nothing to any verdict.
+
+**Production scope — proven vs unproven, kept separate.** `askClaude` sends the owner's message over
+**stdin**, and stdin wins over the stray positionals, so owner messages arrived intact. But
+`CHANNEL_PROMPT` was truncated to `"You"`, so PCC's channel system prompt was **effectively never applied
+in production**. The same mangling applied to `--tools` / `--allowedTools` / `--disallowedTools`, so the
+read-only vs build **authority profiles arriving intact was UNPROVEN**. **No authority breach is claimed**
+— the deny-list tool names still reached the CLI, just as separate arguments — but neither was correctness
+proven. It is proven now, at the real Windows process boundary, by `app/tests/unit/spawn-contract.test.js`.
+
+**The correction.** One launcher, `app/claude-spawn.js` (`spawnClaude`), which never enables a shell and
+resolves the executable explicitly; every known launch site routed through it (`askClaude`,
+`oneShotWorker`, `measure-usage.js`, `measure-direct.js`, `measure-operations.js`); prompts on stdin
+everywhere, including the Gate 0 cold arm. Gate 0 stays HALTED until separately authorized from the
+corrected main.
+
 ### Original decision (2026-07-22 — superseded in part by the Amendment above)
 
 Fix the burn as a set of **bounded, independently-verified tasks**, in the order Codex verified

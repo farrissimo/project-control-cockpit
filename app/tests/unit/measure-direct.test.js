@@ -21,7 +21,10 @@ test('uses exactly 3 non-empty prompts (identical-task diagnostic, small N)', ()
 });
 
 test('spawns claude via env: workerEnv() — DECISION-003, never a paid API', () => {
-  const call = (SRC.match(/spawn\((['"])claude\1[^;]*?\)/s) || [])[0] || '';
+  // Since 2026-07-24 the launcher is spawnClaude() (app/claude-spawn.js) — no shell, so argument
+  // boundaries survive. The DECISION-003 guarantee it must still carry is unchanged.
+  const call = (SRC.match(/spawnClaude\([^;]*?\)/s) || [])[0] || '';
   assert.ok(call, 'a claude spawn must be present');
   assert.ok(/env:\s*workerEnv\(\)/.test(call), 'the warm-arm claude spawn must pass env: workerEnv()');
+  assert.ok(!/shell:\s*true/.test(SRC), 'the warm arm must never re-enable a shell (argv mangling defect)');
 });
