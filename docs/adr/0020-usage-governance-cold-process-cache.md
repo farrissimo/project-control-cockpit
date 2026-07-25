@@ -159,6 +159,36 @@ resolves the executable explicitly; every known launch site routed through it (`
 everywhere, including the Gate 0 cold arm. Gate 0 stays HALTED until separately authorized from the
 corrected main.
 
+### Amendment 4 — 2026-07-24: Blocker 1 (restart continuity) — false "worker session is locked" after a normal close
+
+**Owner-observed FAIL.** A COMPLETED chat, closed normally (nothing mid-reply), reopened, next message →
+PCC showed *"This chat's worker session is locked — a worker was interrupted…"* and demanded "Recover this
+chat". No real interruption happened.
+
+**Root cause (proven, not assumed).** The renderer decides a send is a chat's *first* worker turn from
+`turnsStarted` — a process-local `Set` that is **not persisted**. After a normal close+reopen it is empty,
+so a completed chat's next send arrives with `isFirstTurn=true`. `main.js` then passes `--session-id <id>`
+(create) for a session Claude had **already created** on the first turn. Claude Code rejects that at
+startup: **"Session ID … is already in use."** Reproduced directly: `claude -p --session-id <existing-id>`
+fails **with no live process holding the id and before any model call** — the error fires purely because
+the on-disk session file exists, so the earlier "hard-kill leaves the session locked" hypothesis was a red
+herring. PCC's `sessionInUse` branch then mis-surfaced this as a scary recovery prompt.
+
+**The fix.** `--session-id` must be used only when the session does **not** exist. Ground-truth the
+create-vs-resume decision against Claude Code's own persisted session store: when the renderer believes a
+send is a first turn, confirm on disk — if `<sessionId>.jsonl` already exists under `<config>/projects/`
+(honoring `CLAUDE_CONFIG_DIR`), **RESUME** it; only genuinely-absent ids (new chat, freshly re-minted
+recovery id) are **CREATED**. The disk check runs *only* on believed-first-turns, so the normal resume
+path is unchanged, and it **fails safe to today's behavior** on any read error — it can only add safety,
+never break a send. Real interrupted-turn / crash protection is untouched: a genuinely new or re-minted id
+has no file yet and still creates; a truly concurrent live hold still surfaces the lock on `--resume`.
+New code: `app/worker-session.js` (`workerSessionExists`, `isNewWorkerSession`); wired at the single
+decision site in `askClaude`. Regression: `app/tests/unit/worker-session.test.js` (synthetic temp dirs).
+
+*Known pre-existing limitation (not introduced here, not the reported bug): a re-minted recovery id is
+also renderer-local, so across a restart a recovered chat sends its original id — which now cleanly
+RESUMES (an improvement over the previous hard error) rather than continuing the re-minted session.*
+
 ### Original decision (2026-07-22 — superseded in part by the Amendment above)
 
 Fix the burn as a set of **bounded, independently-verified tasks**, in the order Codex verified

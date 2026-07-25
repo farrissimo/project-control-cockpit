@@ -34,6 +34,7 @@ const { workerEnv } = require('./worker-env'); // DECISION-003: strip paid-API c
 const { spawnClaude } = require('./claude-spawn'); // the ONE claude launcher — preserves every argument boundary (no shell)
 const persistentWorker = require('./persistent-worker'); // ADR-0020 T3: one warm claude process for text chat turns
 const { classifyResult } = require('./warm-result'); // ADR-0020 T3: pure per-turn result-envelope classifier
+const { workerSessionExists, isNewWorkerSession } = require('./worker-session'); // ADR-0020 T3: restart-continuity create-vs-resume ground truth
 const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
 const { logAppError } = require('./error-log'); // durable trace for otherwise-swallowed app failures
@@ -941,7 +942,19 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     // --session-id/--resume, while build authority above is keyed to the stable chatId. So
     // re-minting a worker session can never move or drop a chat's build authorization.
     let isNewSession;
-    if (workerSessionId) { sessionId = workerSessionId; isNewSession = !!isFirstTurn; }
+    if (workerSessionId) {
+      sessionId = workerSessionId;
+      // Restart continuity (ADR-0020 T3, Blocker 1): isFirstTurn is renderer-local state that is
+      // LOST on app restart, so a completed chat reopened after a normal close would arrive here with
+      // isFirstTurn=true and re-issue --session-id for an ALREADY-CREATED session -> Claude's
+      // "Session ID ... is already in use" -> a false "Recover this chat" prompt. Ground-truth the
+      // decision against Claude's own on-disk session store: when the renderer thinks it's a first
+      // turn, only CREATE if Claude has no session by this id yet; otherwise RESUME. A genuinely new
+      // chat or a freshly re-minted recovery id (no file yet) still creates, so real interrupted-turn
+      // protection is untouched. The disk check runs only on believed-first-turns (the resume path is
+      // unchanged) and fails safe to today's behavior if the store can't be read (see worker-session.js).
+      isNewSession = isNewWorkerSession(isFirstTurn, isFirstTurn && workerSessionExists(sessionId));
+    }
     else { isNewSession = !sessionId; if (isNewSession) sessionId = crypto.randomUUID(); }
     args.push(isNewSession ? '--session-id' : '--resume', sessionId);
     // Attachments (images / files) reach the worker as structured content blocks, which headless
