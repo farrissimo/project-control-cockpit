@@ -2370,9 +2370,35 @@ async function loadUsage() {
     ageTxt + '. Source: the same local usage data the Claude desktop app’s Plan-usage panel reads.');
 }
 
+// "Nearest stop" reconciler (ADR-0018 ext / Task 2.1): one honest line naming the limiter closest to
+// stopping the next turn. Between turns only the CUMULATIVE meters are meaningful (chat spend + the
+// real 5-hour usage); the per-turn caps (turns / per-turn $) reset to 0 each message, so they are
+// omitted here (their live view is Task 2.2). Ranked within each meter's own scale by the pure
+// PCCNearestLimit module — no fake cross-unit math, unknown meters dropped.
+async function loadNearestLimit() {
+  const el = document.getElementById('trust-nearest');
+  if (!el) return;
+  try {
+    const c = activeChat();
+    const d = c ? await window.pcc.nearestLimitData(c.id) : null;
+    const usagePct = (lastUsageReading && typeof lastUsageReading.sessionPercent === 'number') ? lastUsageReading.sessionPercent : null;
+    const n = PCCNearestLimit.nearestStop({
+      chatUsd: d && d.chatUsd, maxChatUsd: d && d.maxChatUsd,
+      sessionPercent: usagePct,
+    });
+    if (!n || n.kind === 'none') { setChip('trust-nearest', 'unknown', 'Nearest limit: —', 'No limit data yet — send a message and this shows which cap is closest to stopping you.'); return; }
+    const near = Math.round(n.proximity * 100);
+    const sev = near >= 80 ? 'bad' : (near >= 50 ? 'warn' : 'good');
+    setChip('trust-nearest', sev, 'Nearest limit: ' + n.label,
+      'The limit closest to stopping your next turn: ' + n.label + ' — ' + n.detail + ' (' + near + '% of the way there). '
+      + 'Ranked within its own meter. ' + (n.isSpendGuard ? 'This is a PCC spend guard, not Claude-plan usage.' : 'This is your real Claude-plan usage.'));
+  } catch (e) { /* leave the prior chip rather than flash a false state */ }
+}
+
 async function loadTrust() {
   loadAuthorityBadge();
   loadUsage();
+  loadNearestLimit();
   let d = null, x = null, ci = null;
   try { d = await window.pcc.detections(); } catch (e) { /* leave unknown */ }
   try { x = await window.pcc.trustExtras(); } catch (e) { /* leave unknown */ }

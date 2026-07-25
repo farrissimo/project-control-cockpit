@@ -832,6 +832,19 @@ function authoritySnapshot(chatId) {
 }
 // Read-only IPC: report the ACTIVE chat's authority state (by stable chatId). Never mutates.
 ipcMain.handle('pcc:authorityState', (_e, chatId) => authoritySnapshot(chatId));
+// Read-only IPC for the "Nearest stop" reconciler (ADR-0018 ext / Task 2.1): the owner-tunable caps
+// + this chat's cumulative cost. Never mutates. Any value that can't be read comes back null — the
+// renderer's pure reconciler DROPS unknown meters rather than guessing.
+ipcMain.handle('pcc:nearestLimitData', (_e, chatId) => {
+  try {
+    const limits = readUsageLimits(path.join(cockpitDir(), 'state'));
+    const chatUsd = chatId ? chatCosts().get(chatId) : null;
+    return {
+      maxTurns: limits.maxTurns, maxTurnUsd: limits.maxTurnUsd, maxChatUsd: limits.maxChatUsd,
+      chatUsd: (typeof chatUsd === 'number' ? chatUsd : null),
+    };
+  } catch (e) { return { maxTurns: null, maxTurnUsd: null, maxChatUsd: null, chatUsd: null }; }
+});
 // Activity heartbeat: renew the idle window for an ALREADY-authorized chat while its worker
 // turn is actively running. Cannot grant or extend authority beyond the hard cap — it only
 // slides the idle deadline for a chat that is already authorized (touchActivity is a no-op
