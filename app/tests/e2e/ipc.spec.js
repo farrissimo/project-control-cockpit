@@ -38,7 +38,7 @@ test('bridge exposes exactly the expected channels', async () => {
     'copyText', 'createFlowCancel', 'createFlowPickLocation', 'createFlowSave', 'createFlowSend', 'createFlowStart',
     'deleteChatFiles', 'detections', 'endJob', 'engineStatus', 'getActiveProject', 'getMemory', 'getModels',
     'getRules', 'getState', 'handoff', 'hardChecks', 'lifecycle', 'lifecycleAdvance',
-    'listProjects', 'loadChatsBackup', 'metrics', 'newChat', 'persistChat', 'pickFolder', 'pull', 'recentDecisions', 'repoHead', 'requestJob',
+    'listProjects', 'loadChatsBackup', 'metrics', 'nearestLimitData', 'newChat', 'persistChat', 'pickFolder', 'pull', 'recentDecisions', 'repoHead', 'requestJob',
     'runProduct', 'saveChatsBackup', 'saveMemory', 'searchChats', 'secondOpinion', 'send', 'setActiveProject', 'setPhaseKind',
     'stakes', 'stopWorker', 'summarizeChat', 'syncStatus', 'toolStatus', 'touchActivity', 'trustExtras', 'usage', 'verify', 'verifyProduct', 'visionPromises',
   ]);
