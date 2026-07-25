@@ -165,6 +165,28 @@ test('new project is born with declared high-stakes rules (detector works, not "
   expect(h.compare_baseline).toBe('pcc-baseline'); // coherent baseline, like the other boundaries
 });
 
+// TRIAL-LE-01 root cause (ADR-0014 parity): a new project must be born with the owner-editable
+// usage-limits.json the app ACTIVELY reads. Missing = readUsageLimits() silently falls back to the
+// hidden code defaults (max_turns=30), which hard-stopped the owner in Land Evaluator with no visible
+// knob. This test proves (a) the file is seeded, (b) its three caps are present positive numbers, and
+// (c) the REAL reader (app/usage-limits.js) resolves the seeded file — not the fallback path.
+test('new project is born with usage-limits.json the app actively reads (TRIAL-LE-01)', () => {
+  const p = path.join(target, '.cockpit', 'state', 'usage-limits.json');
+  expect(fs.existsSync(p), 'child fell back to hidden code defaults instead of a visible limits file').toBe(true);
+  const u = JSON.parse(fs.readFileSync(p, 'utf8'));
+  for (const k of ['max_turn_usd', 'max_turns', 'max_chat_usd']) {
+    expect(typeof u[k], `${k} must be a number`).toBe('number');
+    expect(u[k], `${k} must be a positive cap`).toBeGreaterThan(0);
+  }
+  // The seeded values must match the code defaults (single source of truth: app/usage-limits.js),
+  // and the actual reader must resolve them from the child's own state dir.
+  const { readUsageLimits, DEFAULT_MAX_TURNS, DEFAULT_MAX_TURN_USD, DEFAULT_MAX_CHAT_USD } = require(path.join(REPO, 'app', 'usage-limits.js'));
+  const limits = readUsageLimits(path.join(target, '.cockpit', 'state'));
+  expect(limits.maxTurns).toBe(DEFAULT_MAX_TURNS);
+  expect(limits.maxTurnUsd).toBe(DEFAULT_MAX_TURN_USD);
+  expect(limits.maxChatUsd).toBe(DEFAULT_MAX_CHAT_USD);
+});
+
 // Anti-drift guard for state CONFIG (mirrors the scripts guard below): every .cockpit/state/*.json
 // the APP reads must be born with the project OR be an explicitly-excused runtime file — so a future
 // declared-config file can't silently skip the scaffolder the way models.json/backup-policy.json did.

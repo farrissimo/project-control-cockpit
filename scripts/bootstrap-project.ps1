@@ -116,6 +116,13 @@ Copy-File '.cockpit/state/lifecycle-model.json'
 # default the home cockpit has (fix for under-provisioning: children were born without models.json
 # and fell back to a hard-coded single-model list the owner couldn't edit).
 Copy-File '.cockpit/state/models.json'
+# Usage limits (ADR-0014 parity; TRIAL-LE-01 root cause). The per-project caps the app ACTIVELY
+# reads (readUsageLimits in app/usage-limits.js: max_turn_usd / max_turns / max_chat_usd). These are
+# generic safe defaults, not project-specific, so COPY the canonical home file (same pattern as
+# models.json) rather than templating a drifting duplicate. Missing = the app silently falls back to
+# hidden code defaults (max_turns=30) and can hard-stop the owner with no visible knob — exactly the
+# TRIAL-LE-01 incident. Seeding it makes the active turn/spend policy present and owner-editable day one.
+Copy-File '.cockpit/state/usage-limits.json'
 # Seed a GENERIC STARTER phase manifest (not PCC's own) so the inherited milestone-update generator
 # (scripts/new-milestone-update.ps1) works day one: the owner renames the phase + slices, and the %
 # computes honestly (a slice counts done only with an evidence pointer). Same "well-formed generic
