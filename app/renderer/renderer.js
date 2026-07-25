@@ -429,27 +429,64 @@ async function sendMessage(text, displayText) {
   // Snapshot (pre-append) whether this is a fresh unnamed chat — used to decide the
   // provisional name AFTER the prompt is safely persisted.
   const wasFreshNewChat = !!shown && chat.name === 'New chat' && (chat.messages || []).filter((m) => m.cls === 'user').length === 0;
+  const attachNote = outbound.length ? (shown ? '\n\n' : '') + '📎 ' + outbound.length + ' attachment' + (outbound.length > 1 ? 's' : '') + ': ' + outbound.map((a) => a.name || a.kind).join(', ') : '';
+  // Full draft snapshot so a >=90% usage HOLD can restore it verbatim on Cancel (ADR-0020 T4).
+  const item = { msg, outbound, shown, attachNote, chatId, wasFreshNewChat };
+  // DIRECT send (no turn running): check the usage gate BEFORE committing anything, so a held message
+  // is never stored in history and its draft stays recoverable. Queued sends (below) stay
+  // committed-on-arrival — steering is unchanged — and are gated later at drain (drainNextQueued).
+  if (!busy) {
+    if (await usageHoldCheck(item, false)) return; // held: gate shown, nothing committed, draft kept
+    if (await commitMessage(item)) runSend(item);
+    return;
+  }
+  // A turn is running: commit + show immediately (steering), then queue for drain.
+  if (await commitMessage(item)) sendQueue.push(item);
+}
+
+// Commit a snapshotted draft to canonical history: persist the prompt FIRST (if it cannot be saved,
+// DO NOT run the worker or advance anything — fail visibly, owner retries), then the provisional
+// fresh-chat name, then clear the composer. Returns true on success. Split out of sendMessage so the
+// usage-hold "Send anyway" path commits a previously-held DIRECT draft the exact same way.
+async function commitMessage(item) {
   const welcome = log.querySelector('.welcome');
   if (welcome) welcome.remove();
-  // Persist the prompt FIRST. If it cannot be saved to the canonical store, DO NOT
-  // run the worker AND DO NOT advance the store in any other way (no rename) — that
-  // would mutate history from a prompt that isn't in it. Fail visibly; owner retries.
-  const attachNote = outbound.length ? (shown ? '\n\n' : '') + '📎 ' + outbound.length + ' attachment' + (outbound.length > 1 ? 's' : '') + ': ' + outbound.map((a) => a.name || a.kind).join(', ') : '';
-  const saved = await appendMessage('user', shown + attachNote, chatId);
-  if (!saved.ok) return; // appendMessage already surfaced the error; nothing else advances
-  // Provisional name for a fresh chat (refined later by a LOCAL, deterministic re-name; T6: no LLM). Persisted
-  // UNLOCKED, and ONLY now that the prompt is safely in the canonical store.
-  if (wasFreshNewChat) {
-    await chatCmd('chatsRename', { chatId, name: shown.replace(/\s+/g, ' ').slice(0, 40) + (shown.length > 40 ? '…' : ''), lock: false });
+  const saved = await appendMessage('user', item.shown + item.attachNote, item.chatId);
+  if (!saved.ok) return false; // appendMessage already surfaced the error; nothing else advances
+  if (item.wasFreshNewChat) {
+    await chatCmd('chatsRename', { chatId: item.chatId, name: item.shown.replace(/\s+/g, ' ').slice(0, 40) + (item.shown.length > 40 ? '…' : ''), lock: false });
     renderChatList();
   }
   attachments = []; renderAttachments();
-  const item = { msg, outbound, chatId }; // by ID: refresh-after-mutation replaces chat objects
-  if (busy) { sendQueue.push(item); return; } // a turn is running — send this one when it finishes
-  runSend(item);
+  return true;
 }
 
-// Run one turn against the worker, then drain the next queued message (if any).
+// ADR-0020 T4: the usage gate. Returns true (and shows the 3-action hold, clearing the rest of the
+// burst) when the FRESH 5-hour reading is >=90%; false to proceed. Fail honest — a stale/unavailable
+// reading (usageProtectionAction 'none') never holds. `persisted` tells the hold whether the message
+// is already committed (a queued drain) or not (a direct send), which controls Cancel + Send-anyway.
+async function usageHoldCheck(item, persisted) {
+  let reading = null;
+  try { reading = await window.pcc.usage(); } catch (e) { reading = null; }
+  if (PCCUsageProtection.usageProtectionAction(reading) !== 'hold') return false;
+  presentUsageHold(item, reading, persisted);
+  return true;
+}
+
+// Drain the next queued (steering) message, re-checking the usage gate FIRST: a message queued while
+// usage was fine can reach the front after usage crossed 90%. If it holds, the gate is shown and the
+// rest of the burst is cleared — deterministic, no stranding or later surprise release (defect-2 fix).
+async function drainNextQueued() {
+  const next = sendQueue.shift();
+  if (!next) return;
+  if (await usageHoldCheck(next, true)) return; // this queued item hit the hold; gate shown, queue cleared
+  runSend(next);
+}
+
+// Run one turn against the worker, then drain the next queued message (if any). The >=90% usage HOLD
+// is enforced at the ENTRY points (sendMessage for a direct send; drainNextQueued for a queued drain),
+// BEFORE a message is committed or drained — so it is never bypassed and a held message is never
+// falsely stored. runSend always runs the item it is handed.
 async function runSend(item) {
   const chatId = item.chatId;
   if (!chats.find((c) => c.id === chatId)) { return; }
@@ -541,7 +578,7 @@ async function runSend(item) {
     // whatever refreshCanonical last observed for servedGeneration.
     setRecoveryState(servedGeneration);
     if (sendQueue.length) {
-      runSend(sendQueue.shift()); // steering: send the next queued message
+      drainNextQueued(); // steering: send the next queued message (re-checking the usage gate first)
     } else {
       // The send burst is done. A worker turn (esp. a build turn) can commit, push,
       // or edit files, which moves the git-derived trust chips (Verified / backup /
@@ -903,6 +940,55 @@ async function continueInFreshChat() {
   // startNewChat drops `carried` into the composer (input.value) and focuses it — visible, not sent.
   // If it fails to create the chat it surfaces its own error and the owner stays in the source chat.
   await startNewChat({ name: 'Continued chat', prefill: carried });
+}
+
+// ADR-0020 T4: the three-action usage-protection gate. Shown INSTEAD of invoking the worker when the
+// fresh 5-hour usage reading is >=90%. UI-only (addBubbleUI). Honest copy: rolling to a fresh chat
+// lowers FUTURE per-message usage, but NEVER the current 5-hour % (that resets on its own timer).
+// `persisted` = whether this message is already committed to history: a QUEUED drain is (shown by
+// steering), a DIRECT send is NOT (it was held before commit) — which controls Cancel + Send-anyway so
+// a held message is never falsely stored and Cancel can restore the exact draft.
+function presentUsageHold(item, reading, persisted) {
+  // Defect-2 fix: a hold stops the whole burst. Deterministically clear any remaining queued drafts so
+  // they can never strand or be released later by an unrelated completed turn.
+  const alsoHeld = sendQueue.length;
+  sendQueue.length = 0;
+  const pct = reading && typeof reading.sessionPercent === 'number' ? reading.sessionPercent : null;
+  const pctTxt = pct === null ? 'your 5-hour limit' : pct + '% of your 5-hour Claude usage limit';
+  const gate = addBubbleUI('assistant usage-hold', '');
+  const msg = document.createElement('div');
+  msg.textContent = 'Held before sending — you’re at ' + pctTxt + '. This message was NOT sent, to protect your '
+    + 'remaining usage. Starting a fresh chat can lower usage on FUTURE messages (a smaller conversation is re-sent '
+    + 'each turn); it does NOT lower your current 5-hour percentage — that only resets on its own timer.'
+    + (alsoHeld > 0 ? ' (' + alsoHeld + ' other queued message' + (alsoHeld > 1 ? 's were' : ' was') + ' also held and not sent.)' : '')
+    + ' Your choice:';
+  gate.appendChild(msg);
+  const row = document.createElement('div');
+  row.style.marginTop = '8px'; row.style.display = 'flex'; row.style.gap = '8px'; row.style.flexWrap = 'wrap';
+  const mkBtn = (label, cls, fn) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'ch-action ' + cls; b.textContent = label;
+    b.addEventListener('click', (e) => { e.stopPropagation(); gate.remove(); fn(); });
+    row.appendChild(b);
+  };
+  mkBtn('Continue in fresh chat', 'notice', () => { continueInFreshChat(); });
+  // One-message override: send exactly THIS message. A queued item was already committed on arrival, so
+  // just run it; a held DIRECT draft is committed NOW (only once the owner chose to send it).
+  mkBtn('Send this message anyway', 'clear', async () => {
+    if (persisted) { runSend(item); }
+    else if (await commitMessage(item)) { runSend(item); }
+  });
+  mkBtn('Cancel', 'clear', () => {
+    if (!persisted) {
+      // DIRECT hold: nothing was committed. Restore the exact draft — text back to the composer,
+      // attachments were never cleared — so nothing is lost and there is NO false/duplicate history.
+      if (input) { input.value = item.msg; try { growComposer(); } catch (e) { /* best effort */ } input.focus(); }
+    } else {
+      // QUEUED hold: already shown/committed by steering. Leave it as an honest unsent bubble rather
+      // than silently vanishing a message the owner already saw queued.
+      addBubbleUI('assistant', 'That queued message was held and not sent (usage protection). It’s still here — send it again after your 5-hour limit resets, or use “Continue in fresh chat”.');
+    }
+  });
+  gate.appendChild(row);
 }
 
 // Carry a too-full chat forward into a fresh chat. Fail-safe ORDER (AC-10): build the carried
@@ -2187,7 +2273,13 @@ async function loadAuthorityBadge() {
 // SAME measure as the Claude desktop app's own "Plan usage limits" panel — no token math, no
 // jargon. `stale` (the local cache hasn't refreshed recently) always shows as 'unknown' rather
 // than a reassuring color, because a color we can't currently vouch for is worse than none.
-function usageSeverity(pct) { return pct >= 90 ? 'bad' : pct >= 70 ? 'warn' : 'good'; }
+// ADR-0020 T4: the 5-hour severity thresholds are single-sourced in usage-protection.js so the meter
+// color and the automatic protection can never drift apart (>=90 'bad'/hold, >=70 'warn').
+function usageSeverity(pct) { return pct >= PCCUsageProtection.HOLD_PCT ? 'bad' : pct >= PCCUsageProtection.WARN_PCT ? 'warn' : 'good'; }
+// ADR-0020 T4: the most recent plan-usage reading (from loadUsage's poll), cached so the chat-health
+// strip can OR-expose "Continue in fresh chat" on high usage. The HARD send-interception in runSend
+// re-fetches a FRESH reading at send time rather than trusting this cache.
+let lastUsageReading = null;
 function fmtAge(ms) {
   const min = Math.round(ms / 60000);
   return min < 1 ? 'just now' : min === 1 ? '1 minute ago' : min + ' minutes ago';
@@ -2222,6 +2314,7 @@ function usageUnavailableCopy(reason) {
 async function loadUsage() {
   let u = null;
   try { u = await window.pcc.usage(); } catch (e) { /* leave unknown */ }
+  lastUsageReading = u || null; // ADR-0020 T4: cache for the chat-health strip's OR-exposure of rollover
   if (!u || !u.available) {
     const c = usageUnavailableCopy(u && u.reason);
     setUsageMeter('unavailable', 0, 'unknown', c.sub, c.title);
@@ -2360,8 +2453,22 @@ function renderChatHealth(d) {
       + '<span class="ch-status">' + escapeHtml(sig) + '</span></span>';
   }).join('');
 
-  const actionHtml = chatSignal
-    ? '<button class="ch-action ' + (chatSignal.signal === 'notice' ? 'notice' : 'clear') + '" id="continue-fresh-chat" type="button" title="Owner-controlled: open a fresh chat with your context carried forward into the composer. Nothing is sent to Claude until you press Send.">Continue in fresh chat</button>'
+  // ADR-0020 T4: OR semantics — the SAME "Continue in fresh chat" action is offered by TWO independent
+  // signals: context growth (this chat is heavy) OR the real 5-hour usage (little plan headroom left).
+  // Either can raise it to 'notice' urgency; when both fire, both reasons show; neither overwrites the
+  // other. Only the 5-hour >=90% path actually intercepts a send (in runSend); context growth stays
+  // advisory and never blocks.
+  const usageAction = (function () { try { return PCCUsageProtection.usageProtectionAction(lastUsageReading); } catch (e) { return 'none'; } })();
+  const rolloverReasons = [];
+  if (chatSignal && chatSignal.signal === 'notice') rolloverReasons.push('this chat has grown large');
+  if (usageAction !== 'none' && lastUsageReading) rolloverReasons.push('you’re at ' + lastUsageReading.sessionPercent + '% of your 5-hour usage limit');
+  const rolloverUrgent = (chatSignal && chatSignal.signal === 'notice') || usageAction !== 'none';
+  const actionHtml = (chatSignal || usageAction !== 'none')
+    ? '<button class="ch-action ' + (rolloverUrgent ? 'notice' : 'clear') + '" id="continue-fresh-chat" type="button" title="'
+      + escapeHtml(rolloverReasons.length
+        ? ('Offered because ' + rolloverReasons.join(' and ') + '. Owner-controlled: opens a fresh chat with your context carried into the composer; nothing is sent until you press Send.')
+        : 'Owner-controlled: open a fresh chat with your context carried forward into the composer. Nothing is sent to Claude until you press Send.')
+      + '">Continue in fresh chat</button>'
     : '';
   el.innerHTML = gaugeHtml + '<div class="ch-tiles">' + tiles + '</div>' + actionHtml;
   el.querySelectorAll('[data-open], .ch-gauge').forEach((t) => t.addEventListener('click', openSignals));
