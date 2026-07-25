@@ -123,13 +123,17 @@ test('if the handoff cannot be built, PCC holds in the source chat and never ope
 test('continuing a BUILD-ENABLED chat offers a one-click re-approval bound to the new chat (ADR-0021)', async () => {
   const { app, page } = await launchApp();
   try {
-    // Enable build on the current chat via the owner-driven request+approve seam (not chat text).
+    // Wait until the app is ready (active chat initialized) BEFORE touching authority — otherwise
+    // activeChat() is still falsy and the request binds to a throwaway id.
+    await expect(page.locator('#continue-fresh-chat')).toBeVisible({ timeout: 20000 });
     const srcId = await page.evaluate(() => activeChat() && activeChat().id);
-    await page.evaluate((cid) => window.pcc.requestJob('new_project', 'DemoBuild', cid), srcId);
+    expect(typeof srcId).toBe('string');
+    // Enable build on the ACTIVE chat via the owner-driven request+approve seam (not chat text).
+    const req = await page.evaluate((cid) => window.pcc.requestJob('new_project', 'DemoBuild', cid), srcId);
+    expect(req.chatId).toBe(srcId); // request is bound to the active chat, not a fresh id
     await page.evaluate(() => window.pcc.approveJob());
     expect((await page.evaluate((cid) => window.pcc.authorityState(cid), srcId)).mode).toBe('authorized_running');
 
-    await expect(page.locator('#continue-fresh-chat')).toBeVisible({ timeout: 20000 });
     await page.locator('#continue-fresh-chat').click();
 
     // The continued chat opens AND an in-flow re-approval modal appears (visible, not a memory task).
@@ -150,10 +154,11 @@ test('continuing a BUILD-ENABLED chat offers a one-click re-approval bound to th
 test('continuing a READ-ONLY chat carries NO build authority and shows no approval modal (no silent inheritance)', async () => {
   const { app, page } = await launchApp();
   try {
+    await expect(page.locator('#continue-fresh-chat')).toBeVisible({ timeout: 20000 });
     const srcId = await page.evaluate(() => activeChat() && activeChat().id);
+    expect(typeof srcId).toBe('string');
     expect((await page.evaluate((cid) => window.pcc.authorityState(cid), srcId)).mode).toBe('read_only');
 
-    await expect(page.locator('#continue-fresh-chat')).toBeVisible({ timeout: 20000 });
     await page.locator('#continue-fresh-chat').click();
     await expect(page.locator('#chats-btn')).toContainText('Chats (2)', { timeout: 20000 });
 
