@@ -1067,6 +1067,11 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
         if (parsed.text !== null || parsed.budgetExceeded || parsed.maxTurnsReached || parsed.isError === true) {
           return resolveJsonResult(out);
         }
+        // ADR-0020 T9: a warm process that died mid-turn may still have spent before dying — attribute
+        // any usage its partial stream-json stdout carries (best-effort; null when there's nothing real,
+        // never a fabricated zero). The parseable-result cases above already logged via resolveJsonResult.
+        const wu = usageLog.usageFrom(parseStreamUsage(out));
+        if (wu) usageLog.logCall(costStoreDir(), Object.assign({ trigger: 'chat-turn-error', model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null, num_turns: parseStreamTurns(out) }, wu));
         return resolveProcessError(outcome.err || out, outcome.code); // crash / session lock / usage limit / auth
       });
       return;
@@ -1154,6 +1159,16 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
         // next successful turn — the old code reset it here, silently eating the crossing (codex-caught).
         if (!hasAttach) { const p = parseTurnOutput(err || out); if (p.costUsd !== null) recordChatCost(chatId, p.costUsd, { deferRollover: true }); }
         else { const c = parseStreamCost(err || out); if (c !== null) recordChatCost(chatId, c, { deferRollover: true }); } // accumulate partial cost; rolls over on the next successful turn
+        // ADR-0020 T9: attribute the REAL token spend of a FAILED cold turn too — a budget / usage-limit /
+        // error abort still cost usage, so the ledger must carry it (no invisible burn). Use the SAME
+        // parser the success path uses for this turn's shape (stream-json for attachments, --output-format
+        // json otherwise) — this also fixes the attachment max-turns hole that mis-used usageFromJson on
+        // stream-json output. usageFrom* returns null when there is genuinely no usage (e.g. a session
+        // lock that never reached the model), so a spend-free failure logs nothing — never a fake zero.
+        const failUsage = hasAttach ? usageLog.usageFrom(parseStreamUsage(out)) : usageLog.usageFromJson(out);
+        const logFailUsage = (trigger, numTurns) => {
+          if (failUsage) usageLog.logCall(costStoreDir(), Object.assign({ trigger, model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null, num_turns: (typeof numTurns === 'number' ? numTurns : null) }, failUsage));
+        };
         const raw = (err || (hasAttach ? parseStreamJson(out) : out) || ('Claude exited with code ' + code)).trim();
         // Soak fix F4: a stale session lock (a worker orphaned by an earlier crash or
         // mid-turn quit) surfaces as the raw "Session ID ... is already in use". Turn
@@ -1165,6 +1180,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
         } else if (isBudgetExceeded(raw) || (!hasAttach && parseTurnOutput(err || out).budgetExceeded)) {
           // R3: Claude Code's own --max-budget-usd aborted this turn — an automatic protection
           // firing as designed, not a failure. Say so plainly, never a scary raw budget error.
+          logFailUsage('chat-turn-budget'); // ADR-0020 T9: the capped turn still spent — attribute it
           resolve({ ok: false, budgetExceeded: true,
             text: 'Stopped automatically — this turn hit its per-turn spending cap before finishing. This is a safety limit protecting your Claude usage, not a bug. You can raise the cap in .cockpit/state/usage-limits.json, or just send it again (it will pick up where the plan left off).' });
         } else if ((!hasAttach && parseTurnOutput(err || out).maxTurnsReached) || isMaxTurnsError(out)) {
@@ -1176,9 +1192,10 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
           // json path; a text signature catch on the stream-json (attachments) path.
           const numTurns = hasAttach ? null : parseTurnOutput(err || out).numTurns; // the real count Claude reported (null if absent)
           // The capped turn still spent tokens — retain its real usage + turn count in the ledger
-          // (the whole point of the usage-governance work is that no burn is invisible).
-          const u = usageLog.usageFromJson(out);
-          if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: 'chat-turn-max-turns', model: chosen, session: isNewSession ? 'new' : 'resume', chatId: chatId || null, num_turns: numTurns }, u));
+          // (the whole point of the usage-governance work is that no burn is invisible). ADR-0020 T9:
+          // via logFailUsage so the ATTACHMENT case parses stream-json usage (parseStreamUsage) instead
+          // of the old usageFromJson(out), which returned null on stream-json and silently dropped it.
+          logFailUsage('chat-turn-max-turns', numTurns);
           const turnsNote = numTurns !== null ? ' (it reached ' + numTurns + ' agentic turns)' : '';
           resolve({ ok: false, maxTurnsReached: true, numTurns: numTurns,
             text: 'Stopped automatically — this message hit its per-message turn limit' + turnsNote + ' before finishing. This is a safety limit that stops one message from quietly running for hundreds of hidden steps and burning your Claude usage — not a bug. Some work may already have happened (files read or changed, commands run), so glance at what changed before continuing rather than just resending. You can raise the limit in .cockpit/state/usage-limits.json (max_turns), or send a smaller next step.' });
@@ -1186,14 +1203,17 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
           // The owner hit their actual Claude PLAN usage limit (Anthropic's, not PCC's). This is the
           // most likely shock in heavy use — turn the scary raw CLI error into a plain, reassuring
           // message: it's your plan limit resetting, not a PCC bug, and nothing was lost.
+          logFailUsage('chat-turn-error'); // ADR-0020 T9: attribute any usage this failed turn carried
           resolve({ ok: false, usageLimit: true,
             text: 'You’ve reached your Claude usage limit. This is Anthropic’s limit on your plan (the same one the “Usage” chip at the top of the window tracks) — not a PCC problem, and nothing is broken. Your chat and full history are safe right here. It resets automatically after a while; just send your message again once it does.' });
         } else if (isAuthError(raw)) {
           // Claude Code sign-in expired / signed out — not a PCC bug, but it does need the owner to
           // sign back in (auth is a browser flow PCC can't do for you). Say so plainly, not raw.
+          logFailUsage('chat-turn-error'); // ADR-0020 T9: usually no spend (never reached the model), but attribute if present
           resolve({ ok: false, authError: true,
             text: 'PCC can’t reach Claude because your Claude Code sign-in has expired or signed out — this isn’t a PCC bug. To fix it, sign back in to Claude Code (open a terminal and run “claude /login”, or reopen Claude Code and sign in), then send your message again. Your chat and full history are safe right here.' });
         } else {
+          logFailUsage('chat-turn-error'); // ADR-0020 T9: a generic failed exit can still have spent — attribute it
           resolve({ ok: false, text: raw });
         }
       }
