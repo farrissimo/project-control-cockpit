@@ -57,6 +57,32 @@ shown. `isAuthError` unit tests include the critical no-false-positive cases (us
 overload, ordinary output). This is the same decision as the usage-limit handler, so it lives here
 rather than as a separate ADR.
 
+## Addendum (2026-07-25): Task 2.1 — the "Nearest stop" reconciler
+
+ADR-0018 made a *fired* limit legible. The LE trust trial exposed the other half: the owner could not
+tell, proactively, **which of four limiters was about to stop him**, or reconcile a stop when the
+visible meters looked fine (chat length ~21%, 5-hour ~14%, yet stopped by the per-turn spend cap). He
+had to reverse-engineer it. Per [PARENT_TRUST_CONTINUITY_PLAN.md](../PARENT_TRUST_CONTINUITY_PLAN.md)
+Task 2.1 and Codex advisory (2026-07-25), the fix is an **extension of this ADR, not a new one**.
+
+**Decision:** add one honest "Nearest stop" reconciler over the four limiters — `max_turns`,
+`max_turn_usd`, `max_chat_usd`, and the real 5-hour Claude usage — and reuse its label on the stop
+bubble ("Stopped by: …"). The pure core is [app/renderer/nearest-limit.js](../../app/renderer/nearest-limit.js)
+(`nearestStop`). Honesty rules it enforces:
+- Each meter ranked WITHIN ITS OWN scale (fraction of its own cap / hold point) — never a fake
+  dollars-vs-percent cross-unit ranking.
+- Dollar caps labeled **spend guards** (partly phantom on a flat plan, ADR-0020), NOT Claude-plan
+  exhaustion; only the 5-hour reading is real plan usage.
+- The 5-hour meter is measured against the usage-protection HOLD point (90%, ADR-0020 T4), not 100%.
+- A meter with no data (e.g. an unknown/stale 5-hour reading) is EXCLUDED, never inferred; no data at
+  all yields `kind:'none'`, never a false answer.
+
+**Bounded slice order:** (1) pure reconciler + unit tests [DONE — 6 tests, suite 338/338];
+(2) render one "Nearest stop" line beside the Usage/Chat-length surfaces + reuse the label on stop
+bubbles, with an e2e proof; no live per-second progress, no predictive math beyond threshold
+comparisons (that is Task 2.2). Confirmation for slice 2: e2e asserts the line names the nearest cap
+and the stop bubble names the one that fired; CI green on the exact commit; Codex primary verifier.
+
 ## Consequences
 
 - **Gain:** the two most likely heavy-use external shocks (plan-limit hit, sign-in expiry) become
