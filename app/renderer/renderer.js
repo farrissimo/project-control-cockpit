@@ -937,9 +937,48 @@ async function continueInFreshChat() {
     + (summaryText ? ('\n\n=== Conversation summary ===\n' + summaryText) : '')
     + '\n\n=== Continue from here ===\n';
 
+  // Option B (ADR-0021, Task 1.1): if the SOURCE chat currently holds build authority, carry a
+  // one-click re-approval into the continued chat — rather than silently inheriting the grant (which
+  // would violate the authority core law) or leaving "re-enable build" as a hidden memory task the
+  // owner forgets. Captured here (source still known) via the pure guard; only an ACTIVELY authorized
+  // source carries (expired/read_only/pending never do).
+  let carriedBuild = { offer: false, name: null };
+  try {
+    const srcAuth = source ? await window.pcc.authorityState(source.id) : null;
+    carriedBuild = PCCContinuedBuild.planContinuedBuild(srcAuth);
+  } catch (e) { carriedBuild = { offer: false, name: null }; }
+
   // startNewChat drops `carried` into the composer (input.value) and focuses it — visible, not sent.
   // If it fails to create the chat it surfaces its own error and the owner stays in the source chat.
-  await startNewChat({ name: 'Continued chat', prefill: carried });
+  const newId = await startNewChat({ name: 'Continued chat', prefill: carried });
+
+  // In-flow re-approval (never silent). One explicit owner click keeps the build session going, bound
+  // to the NEW chat.id with fresh deadlines; cancel leaves the continued chat read-only.
+  if (newId && carriedBuild.offer) { await offerCarriedBuildSession(newId, carriedBuild.name); }
+}
+
+// Option B (ADR-0021): carry the build session into a "Continue in fresh chat" via ONE explicit,
+// in-flow owner approve — the SAME owner-gated request->confirm->approve path resumeBuildForActiveChat
+// uses, but bound to the CONTINUED chat's id. Never self-authorizing, never pasted-text driven, still
+// one chat, still expiring. On cancel the continued chat simply stays read-only.
+async function offerCarriedBuildSession(chatId, name) {
+  const jobName = name || 'this chat';
+  try {
+    const req = await window.pcc.requestJob('new_project', jobName, chatId);
+    if (!req || !req.ok) return;
+    loadTrust();
+    const ok = await pccConfirm(
+      'Continue the build session for "' + jobName + '" in this continued chat?\n\n'
+      + 'Your previous chat had build enabled. Approving re-enables it HERE as a new bounded session; '
+      + 'cancel to stay read-only.',
+      'Continue build');
+    if (!ok) { await window.pcc.cancelJob(); loadTrust(); return; }
+    const appr = await window.pcc.approveJob();
+    if (!appr || !appr.ok) { await window.pcc.cancelJob(); loadTrust(); return; }
+    await chatCmd('chatsUpdateMeta', { chatId: chatId, fields: { buildChat: true, buildName: jobName } });
+    loadTrust();
+    addBubbleUI('assistant notice', BUILD_ENABLED_NOTICE);
+  } catch (e) { /* best-effort: on any failure the continued chat stays read-only */ }
 }
 
 // ADR-0020 T4: the three-action usage-protection gate. Shown INSTEAD of invoking the worker when the
