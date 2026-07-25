@@ -27,10 +27,13 @@ test('the nearest-limit reconciler is wired into the renderer and ranks honestly
     const r = await page.evaluate(() => PCCNearestLimit.nearestStop({ sessionPercent: 85, chatUsd: 10, maxChatUsd: 40 }));
     expect(r.kind).toBe('usage');
     expect(r.isSpendGuard).toBe(false);
-    // A dollar cap is labeled a spend guard, not Claude-plan exhaustion.
+    // ADR-0022: a demoted dollar cap is NEVER the nearest stop — spend guards are excluded from the
+    // stop ranking even at/above their cap. With only spend data, there is no stopper (kind:none)...
     const g = await page.evaluate(() => PCCNearestLimit.nearestStop({ chatUsd: 39, maxChatUsd: 40 }));
-    expect(g.kind).toBe('chat_usd');
-    expect(g.isSpendGuard).toBe(true);
+    expect(g.kind).toBe('none');
+    // ...but it is STILL surfaced for advisory display via meters(), labeled a spend guard.
+    const ms = await page.evaluate(() => PCCNearestLimit.meters({ chatUsd: 39, maxChatUsd: 40 }));
+    expect(ms.some((m) => m.kind === 'chat_usd' && m.isSpendGuard === true)).toBe(true);
   } finally {
     await closeApp(app);
   }

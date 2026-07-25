@@ -70,15 +70,14 @@ test('hitting the Claude PLAN usage limit shows a calm, plain message — never 
   });
 });
 
-test('R3: send actually passes --max-budget-usd (the value from .cockpit/state/usage-limits.json) to the worker', async () => {
+test('ADR-0022: send does NOT pass --max-budget-usd — the per-turn dollar cap is demoted to advisory (phantom dollars never stop approved work)', async () => {
   const argvFile = path.join(require('os').tmpdir(), 'pcc-test-argv-' + Date.now() + '.json');
   await withApp({ PCC_FAKE_CLAUDE_ARGV_FILE: argvFile }, async (page) => {
     const r = await callOn(page, 'send', 'hi', undefined, 'c1', true);
-    expect(r.ok).toBe(true); // the flag being present doesn't break a normal turn
+    expect(r.ok).toBe(true); // a normal turn still works without the flag
     const argv = JSON.parse(require('fs').readFileSync(argvFile, 'utf8'));
-    const i = argv.indexOf('--max-budget-usd');
-    expect(i).toBeGreaterThanOrEqual(0);
-    expect(Number(argv[i + 1])).toBe(3); // the repo's real .cockpit/state/usage-limits.json default
+    // The per-turn dollar cap must NOT be passed — it may never abort approved work (ADR-0022).
+    expect(argv).not.toContain('--max-budget-usd');
   });
   require('fs').rmSync(argvFile, { force: true });
 });
@@ -96,7 +95,7 @@ test('ADR-0020 T2: send passes exactly ONE native --max-turns (value from usage-
     // No regression: the pre-existing critical args are all still assembled alongside the new cap.
     expect(argv[0]).toBe('-p');
     expect(argv.indexOf('--model')).toBeGreaterThanOrEqual(0);
-    expect(argv.indexOf('--max-budget-usd')).toBeGreaterThanOrEqual(0); // the cost cap still present
+    expect(argv).not.toContain('--max-budget-usd'); // ADR-0022: the per-turn dollar cap is demoted, never passed
     expect(argv.some((a) => a === '--session-id' || a === '--resume')).toBe(true); // worker session identity intact
     expect(argv.indexOf('--allowedTools')).toBeGreaterThanOrEqual(0); // tool profile (authority) intact
   });

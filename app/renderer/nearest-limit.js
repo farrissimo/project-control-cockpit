@@ -35,11 +35,14 @@
     const pTurns = frac(i.turns, i.maxTurns);
     if (pTurns !== null) out.push({ kind: 'turns', label: 'per-message turn cap', proximity: pTurns,
       detail: finiteNonNeg(i.turns) + '/' + finiteNonNeg(i.maxTurns) + ' turns this message', isSpendGuard: false });
+    // ADR-0022: the dollar caps are DEMOTED to advisory — they no longer stop or reroute approved work
+    // (phantom dollars on a flat plan). They are still built here for advisory DISPLAY, but nearestStop
+    // excludes anything with isSpendGuard so a spend figure is never named as a stopper.
     const pTurnUsd = frac(i.turnUsd, i.maxTurnUsd);
-    if (pTurnUsd !== null) out.push({ kind: 'turn_usd', label: 'per-turn spend guard', proximity: pTurnUsd,
+    if (pTurnUsd !== null) out.push({ kind: 'turn_usd', label: 'per-turn spend (advisory)', proximity: pTurnUsd,
       detail: money(i.turnUsd) + ' / ' + money(i.maxTurnUsd) + ' this turn', isSpendGuard: true });
     const pChatUsd = frac(i.chatUsd, i.maxChatUsd);
-    if (pChatUsd !== null) out.push({ kind: 'chat_usd', label: 'chat spend guard (rollover)', proximity: pChatUsd,
+    if (pChatUsd !== null) out.push({ kind: 'chat_usd', label: 'chat spend (advisory)', proximity: pChatUsd,
       detail: money(i.chatUsd) + ' / ' + money(i.maxChatUsd) + ' this chat', isSpendGuard: true });
     const holdPct = finiteNonNeg(i.usageHoldPercent) || USAGE_HOLD_PCT;
     const pUsage = frac(i.sessionPercent, holdPct);
@@ -48,12 +51,15 @@
     return out;
   }
 
-  // The single nearest stop. Returns { kind:'none' } when NO meter has usable data (never a false answer).
-  // Ties broken deterministically by a fixed severity order (real usage first, then turn caps, then chat).
+  // The single nearest stop. Returns { kind:'none' } when NO meter can actually stop work (never a
+  // false answer). ADR-0022: only controls that HARD-STOP approved work are eligible — the real
+  // 5-hour usage hold and the per-message turn cap. The dollar caps are advisory (isSpendGuard) and
+  // are excluded here, even at 100%, so a spend figure is never presented as "what will stop you".
+  // Ties broken deterministically by a fixed severity order (real usage first, then the turn cap).
   function nearestStop(input) {
-    const ms = meters(input);
+    const ms = meters(input).filter((m) => !m.isSpendGuard);
     if (ms.length === 0) return { kind: 'none', label: null, proximity: null, detail: 'no limit data yet', isSpendGuard: false };
-    const order = { usage: 0, turns: 1, turn_usd: 2, chat_usd: 3 };
+    const order = { usage: 0, turns: 1 };
     ms.sort((a, b) => (b.proximity - a.proximity) || (order[a.kind] - order[b.kind]));
     return ms[0];
   }

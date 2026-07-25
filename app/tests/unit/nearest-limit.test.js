@@ -24,12 +24,21 @@ test('5-hour usage is measured against the HOLD point (90%), not 100%', () => {
   assert.strictEqual(USAGE_HOLD_PCT, 90);
 });
 
-test('dollar caps are labeled spend guards, not Claude-plan exhaustion', () => {
-  const r = nearestStop({ ...FULL, turnUsd: 7.5 }); // 7.5/8 = 0.9375, nearest
-  assert.strictEqual(r.kind, 'turn_usd');
-  assert.strictEqual(r.isSpendGuard, true);
-  assert.match(r.label, /spend guard/);
-  assert.doesNotMatch(r.label, /Claude|plan/i);
+test('ADR-0022: a demoted spend guard is NEVER the nearest stop, even at/above its cap', () => {
+  // turn$ 7.9/8 = 0.9875 is the highest proximity of any meter, but spend guards no longer stop
+  // approved work (phantom dollars), so nearestStop must skip it and pick a real stopper.
+  const r = nearestStop({ ...FULL, turnUsd: 7.9, chatUsd: 39, turns: 4, sessionPercent: 5 });
+  assert.notStrictEqual(r.kind, 'turn_usd');
+  assert.notStrictEqual(r.kind, 'chat_usd');
+  assert.strictEqual(r.isSpendGuard, false);
+  // meters() STILL surfaces the spend guards for advisory display — only the STOP ranking excludes them.
+  const ms = meters({ ...FULL, turnUsd: 7.9 });
+  assert.ok(ms.some((m) => m.kind === 'turn_usd' && m.isSpendGuard === true), 'spend guards remain available as advisory');
+});
+
+test('ADR-0022: when ONLY spend data exists, there is no nearest stop (kind:none) — nothing can actually stop work', () => {
+  const r = nearestStop({ turnUsd: 7.9, maxTurnUsd: 8, chatUsd: 39, maxChatUsd: 40 });
+  assert.strictEqual(r.kind, 'none');
 });
 
 test('an unknown 5-hour reading is EXCLUDED, never inferred', () => {
