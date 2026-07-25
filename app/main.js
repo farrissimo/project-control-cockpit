@@ -1624,6 +1624,12 @@ function pollUsageIntoCache() {
   } catch (e) { return { ok: true, available: false, reason: 'malformed' }; }
 }
 ipcMain.handle('pcc:usage', () => {
+  // Test-only seam (mirrors PCC_FAKE_CLAUDE_FIXTURE): inject a usage reading so the ADR-0020 T4
+  // protection gate can be driven deterministically in e2e without touching the real desktop-app
+  // cache. Never set in production; the real read path below is otherwise unchanged.
+  if (process.env.PCC_FAKE_USAGE) {
+    try { return JSON.parse(process.env.PCC_FAKE_USAGE); } catch (e) { /* fall through to the real read */ }
+  }
   const fresh = pollUsageIntoCache();
   return applyLastGood(fresh, lastGoodUsage, Date.now());
 });

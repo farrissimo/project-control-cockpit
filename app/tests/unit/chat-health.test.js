@@ -36,20 +36,22 @@ test('rollover threshold = whichever comes first: absolute floor OR 75% of windo
 });
 
 test('GROWTH-based: a fresh chat whose FIRST turn is a huge fixed baseline reads ~0%, never rolls over', () => {
-  // The 2026-07-21 loop bug: turn one already carries ~252K of fixed overhead. With growth metering,
-  // the first reading IS the baseline (growth 0), so the meter is calm and the auto-rollover can't trip.
+  // The 2026-07-21 loop bug: turn one already carries a huge fixed overhead (the value below is an
+  // ARBITRARY large example, NOT a canonical startup figure — ADR-0020 found the old "~252K on turn
+  // one" claim was late-session context mislabeled as startup). With growth metering, the first
+  // reading IS the baseline (growth 0), so the meter is calm and the auto-rollover can't trip.
   const g = computeGauge({ turns: 1, spanHours: 0, contextTokens: 252000, baselineTokens: 252000, model: 'claude-opus-4-8' });
   assert.strictEqual(g.growthTokens, 0);
   assert.strictEqual(g.overRollover, false);      // <-- the loop is structurally impossible
-  assert.strictEqual(g.gaugePct, 3);              // driven by messages (1/40), not the 252K baseline
+  assert.strictEqual(g.gaugePct, 3);              // driven by messages (1/40), not the fixed baseline
   assert.strictEqual(g.driver, 'messages');
   assert.strictEqual(g.contextMeasured, true);    // context IS measured; it just grew 0 so far
   assert.strictEqual(g.overWindowEstimate, true); // 252K > 200K conservative estimate => real window is larger
 });
 
 test('GROWTH-based: only conversation growth past the baseline moves the gauge / trips rollover', () => {
-  const base = 252000;
-  // Grown 150K past the 252K baseline -> hits the conservative 150K rollover threshold.
+  const base = 252000; // arbitrary example baseline value, not a canonical startup figure
+  // Grown 150K past the baseline -> hits the conservative 150K rollover threshold.
   const g = computeGauge({ turns: 6, spanHours: 1, contextTokens: base + 150000, baselineTokens: base, model: 'claude-opus-4-8' });
   assert.strictEqual(g.growthTokens, 150000);
   assert.strictEqual(g.rolloverTokens, 150000);

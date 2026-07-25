@@ -453,6 +453,18 @@ async function sendMessage(text, displayText) {
 async function runSend(item) {
   const chatId = item.chatId;
   if (!chats.find((c) => c.id === chatId)) { return; }
+  // ADR-0020 T4: automatic usage protection. This is the ONE pre-worker-invocation boundary that both
+  // direct AND queued sends drain through, so a hold here cannot be bypassed. When the REAL 5-hour
+  // usage is fresh+available and >=90%, HOLD this send and let the OWNER decide (fresh chat / send
+  // anyway / cancel) — PCC never switches chats by itself. Fail honest: a stale/unavailable reading
+  // never holds (re-fetched FRESH here, not the cached poll value). `item.usageOverride` is the
+  // one-message "Send anyway" bypass, so a hold is never a lockout and authorizes exactly this message
+  // (a later send re-checks and re-intercepts while usage stays >=90%).
+  if (!item.usageOverride) {
+    let reading = null;
+    try { reading = await window.pcc.usage(); } catch (e) { reading = null; }
+    if (PCCUsageProtection.usageProtectionAction(reading) === 'hold') { presentUsageHold(item, reading); return; }
+  }
   busy = true; input.focus();
   inFlightChatId = chatId; // R2: Stop targets exactly this turn
   if (stopBtn) stopBtn.disabled = false; // Stop is always visible; ENABLE it while a turn runs
@@ -903,6 +915,36 @@ async function continueInFreshChat() {
   // startNewChat drops `carried` into the composer (input.value) and focuses it — visible, not sent.
   // If it fails to create the chat it surfaces its own error and the owner stays in the source chat.
   await startNewChat({ name: 'Continued chat', prefill: carried });
+}
+
+// ADR-0020 T4: the three-action usage-protection gate. Shown INSTEAD of invoking the worker when the
+// fresh 5-hour usage reading is >=90%. UI-only (addBubbleUI, never persisted). Honest copy: rolling to
+// a fresh chat lowers FUTURE per-message usage, but NEVER the current 5-hour % (that resets on its own
+// timer). Three owner choices; PCC never switches chats by itself.
+function presentUsageHold(item, reading) {
+  const pct = reading && typeof reading.sessionPercent === 'number' ? reading.sessionPercent : null;
+  const pctTxt = pct === null ? 'your 5-hour limit' : pct + '% of your 5-hour Claude usage limit';
+  const gate = addBubbleUI('assistant usage-hold', '');
+  const msg = document.createElement('div');
+  msg.textContent = 'Held before sending — you’re at ' + pctTxt + '. This message was NOT sent, to protect your '
+    + 'remaining usage. Starting a fresh chat can lower usage on FUTURE messages (a smaller conversation is re-sent '
+    + 'each turn); it does NOT lower your current 5-hour percentage — that only resets on its own timer. Your choice:';
+  gate.appendChild(msg);
+  const row = document.createElement('div');
+  row.style.marginTop = '8px'; row.style.display = 'flex'; row.style.gap = '8px'; row.style.flexWrap = 'wrap';
+  const mkBtn = (label, cls, fn) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'ch-action ' + cls; b.textContent = label;
+    b.addEventListener('click', (e) => { e.stopPropagation(); gate.remove(); fn(); });
+    row.appendChild(b);
+  };
+  mkBtn('Continue in fresh chat', 'notice', () => { continueInFreshChat(); });
+  // One-message override: authorizes exactly THIS send; the next send re-checks and re-intercepts.
+  mkBtn('Send this message anyway', 'clear', () => { item.usageOverride = true; runSend(item); });
+  mkBtn('Cancel', 'clear', () => {
+    addBubbleUI('assistant', 'Message held and not sent (usage protection). It’s still here — send it again after '
+      + 'your 5-hour limit resets, or use “Continue in fresh chat”.');
+  });
+  gate.appendChild(row);
 }
 
 // Carry a too-full chat forward into a fresh chat. Fail-safe ORDER (AC-10): build the carried
@@ -2187,7 +2229,13 @@ async function loadAuthorityBadge() {
 // SAME measure as the Claude desktop app's own "Plan usage limits" panel — no token math, no
 // jargon. `stale` (the local cache hasn't refreshed recently) always shows as 'unknown' rather
 // than a reassuring color, because a color we can't currently vouch for is worse than none.
-function usageSeverity(pct) { return pct >= 90 ? 'bad' : pct >= 70 ? 'warn' : 'good'; }
+// ADR-0020 T4: the 5-hour severity thresholds are single-sourced in usage-protection.js so the meter
+// color and the automatic protection can never drift apart (>=90 'bad'/hold, >=70 'warn').
+function usageSeverity(pct) { return pct >= PCCUsageProtection.HOLD_PCT ? 'bad' : pct >= PCCUsageProtection.WARN_PCT ? 'warn' : 'good'; }
+// ADR-0020 T4: the most recent plan-usage reading (from loadUsage's poll), cached so the chat-health
+// strip can OR-expose "Continue in fresh chat" on high usage. The HARD send-interception in runSend
+// re-fetches a FRESH reading at send time rather than trusting this cache.
+let lastUsageReading = null;
 function fmtAge(ms) {
   const min = Math.round(ms / 60000);
   return min < 1 ? 'just now' : min === 1 ? '1 minute ago' : min + ' minutes ago';
@@ -2222,6 +2270,7 @@ function usageUnavailableCopy(reason) {
 async function loadUsage() {
   let u = null;
   try { u = await window.pcc.usage(); } catch (e) { /* leave unknown */ }
+  lastUsageReading = u || null; // ADR-0020 T4: cache for the chat-health strip's OR-exposure of rollover
   if (!u || !u.available) {
     const c = usageUnavailableCopy(u && u.reason);
     setUsageMeter('unavailable', 0, 'unknown', c.sub, c.title);
@@ -2360,8 +2409,22 @@ function renderChatHealth(d) {
       + '<span class="ch-status">' + escapeHtml(sig) + '</span></span>';
   }).join('');
 
-  const actionHtml = chatSignal
-    ? '<button class="ch-action ' + (chatSignal.signal === 'notice' ? 'notice' : 'clear') + '" id="continue-fresh-chat" type="button" title="Owner-controlled: open a fresh chat with your context carried forward into the composer. Nothing is sent to Claude until you press Send.">Continue in fresh chat</button>'
+  // ADR-0020 T4: OR semantics — the SAME "Continue in fresh chat" action is offered by TWO independent
+  // signals: context growth (this chat is heavy) OR the real 5-hour usage (little plan headroom left).
+  // Either can raise it to 'notice' urgency; when both fire, both reasons show; neither overwrites the
+  // other. Only the 5-hour >=90% path actually intercepts a send (in runSend); context growth stays
+  // advisory and never blocks.
+  const usageAction = (function () { try { return PCCUsageProtection.usageProtectionAction(lastUsageReading); } catch (e) { return 'none'; } })();
+  const rolloverReasons = [];
+  if (chatSignal && chatSignal.signal === 'notice') rolloverReasons.push('this chat has grown large');
+  if (usageAction !== 'none' && lastUsageReading) rolloverReasons.push('you’re at ' + lastUsageReading.sessionPercent + '% of your 5-hour usage limit');
+  const rolloverUrgent = (chatSignal && chatSignal.signal === 'notice') || usageAction !== 'none';
+  const actionHtml = (chatSignal || usageAction !== 'none')
+    ? '<button class="ch-action ' + (rolloverUrgent ? 'notice' : 'clear') + '" id="continue-fresh-chat" type="button" title="'
+      + escapeHtml(rolloverReasons.length
+        ? ('Offered because ' + rolloverReasons.join(' and ') + '. Owner-controlled: opens a fresh chat with your context carried into the composer; nothing is sent until you press Send.')
+        : 'Owner-controlled: open a fresh chat with your context carried forward into the composer. Nothing is sent to Claude until you press Send.')
+      + '">Continue in fresh chat</button>'
     : '';
   el.innerHTML = gaugeHtml + '<div class="ch-tiles">' + tiles + '</div>' + actionHtml;
   el.querySelectorAll('[data-open], .ch-gauge').forEach((t) => t.addEventListener('click', openSignals));

@@ -60,9 +60,11 @@
   //
   // GROWTH, not absolute size (2026-07-21 fix). Every turn PCC sends carries a large FIXED baseline —
   // the system prompt + all tool definitions + CLAUDE.md/AGENTS.md — that is re-sent unchanged each
-  // turn and is NOT "chat length" (for the owner's setup it is ~252K tokens on turn one). Counting it
-  // made a fresh chat read ~full immediately and, with auto-rollover on, loop forever. So the gauge
-  // measures how much the CONVERSATION has GROWN past its own first-turn baseline:
+  // turn and is NOT "chat length". PCC assumes NO fixed figure for that baseline (an earlier "~252K on
+  // turn one" estimate was later found to be late-session context mislabeled as startup overhead —
+  // ADR-0020); instead each chat records its OWN first measured turn as its baseline. Counting that
+  // baseline as chat length made a fresh chat read ~full immediately and, with auto-rollover on, loop
+  // forever. So the gauge measures how much the CONVERSATION has GROWN past that recorded baseline:
   //     growth = max(0, contextTokens - baselineTokens)
   // The FIRST measured turn IS the baseline, so a fresh chat reads ~0% and climbs only as the real
   // back-and-forth accumulates. Because each new chat records its OWN baseline, a rolled-over chat
