@@ -315,7 +315,21 @@ function fmtElapsed(ms) {
 function startThinkingTimer(el) {
   if (!el) return;
   const t0 = Date.now();
-  const tick = () => { if (el.isConnected) el.textContent = 'Claude is working… (' + fmtElapsed(Date.now() - t0) + ')'; };
+  // Two lines: the live elapsed counter (unchanged) plus an honest live limiter readout (Task 2.2).
+  el.textContent = '';
+  const main = document.createElement('div'); main.className = 'tw-main';
+  const sub = document.createElement('div'); sub.className = 'tw-sub';
+  el.appendChild(main); el.appendChild(sub);
+  const tick = () => {
+    if (!el.isConnected) return;
+    main.textContent = 'Claude is working… (' + fmtElapsed(Date.now() - t0) + ')';
+    // Surface the ONLY real stopper live (ADR-0022): the cached 5-hour usage, with its own freshness.
+    // No dollars (phantom on a flat plan); pure PCCTurnStatus so the honest fresh/stale/unknown logic
+    // is unit- and adversarially-tested, and it can never dress a stale number as live.
+    const line = PCCTurnStatus.liveLimiterLine(lastUsageReading, PCCUsageProtection.HOLD_PCT);
+    sub.textContent = line.text;
+    sub.className = 'tw-sub tw-' + line.kind;
+  };
   tick();
   el._pccTimer = setInterval(tick, 1000);
 }

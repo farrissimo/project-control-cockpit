@@ -83,6 +83,44 @@ bubbles, with an e2e proof; no live per-second progress, no predictive math beyo
 comparisons (that is Task 2.2). Confirmation for slice 2: e2e asserts the line names the nearest cap
 and the stop bubble names the one that fired; CI green on the exact commit; Codex primary verifier.
 
+## Addendum (2026-07-26): Task 2.2 — live turn-status limiter line
+
+Task 2.1 made the nearest stop legible **between** turns. The remaining LE pain: the owner watches
+"Claude is working…" for 7–8+ minutes **during** a turn with no view of progress or which cap is near.
+Per [PARENT_TRUST_CONTINUITY_PLAN.md](../PARENT_TRUST_CONTINUITY_PLAN.md) Task 2.2 and Codex advisory
+(2026-07-26), this is again an **extension of this ADR, not a new one**.
+
+**Decision:** on the working bubble, keep the existing live elapsed counter and add ONE honest line
+naming the only thing that can actually stop approved work — the real 5-hour Claude usage. Pure core:
+[app/renderer/turn-status.js](../../app/renderer/turn-status.js) (`liveLimiterLine`). Honesty rules:
+- **No dollars** (ADR-0022: `total_cost_usd` is phantom on a flat plan; a dollar cap is never a live
+  stopper). The line shows the 5-hour usage vs the 90% hold, or `unknown`/`stale` — never money.
+- The reading is the SAME cached 5-hour sample the usage meter reads (usage-meter.js), carrying its own
+  freshness. A stale reading is shown but flagged "too old to trust as live"; unavailable → `unknown`;
+  PCC never guesses a number (no fake 0%).
+- **No fabricated turn count.** `num_turns` exists only on the final envelope, so a "turns so far" field
+  would be invented — deliberately omitted (Codex-scoped bounded slice; deferred, not faked).
+
+**Codex rabbit-hole ruling (2026-07-26):** a genuinely live per-turn action/turn stream would mean
+refactoring the safety-critical spawn path or inventing data — OUT of scope. Bounded slice = elapsed +
+live real-limiter visibility only.
+
+**Acceptance (EARS):**
+- WHEN a turn is running THE SYSTEM SHALL show, live, the elapsed time AND a limiter line naming the
+  real 5-hour usage vs the 90% hold.
+- WHERE the 5-hour reading is stale or unavailable THE SYSTEM SHALL say so plainly and SHALL NOT present
+  a stale value as live or fabricate a number.
+- THE SYSTEM SHALL NOT present any dollar figure as a live stopper.
+
+**Confirmation:** unit `app/tests/unit/turn-status.test.js` (adversarial: fresh/at-hold/stale/unknown,
+no-$, no fake 0%, configurable hold); e2e `app/tests/e2e/turn-status.spec.js` (module wired in the real
+renderer + honest across readings; the working bubble shows both lines during a slow turn); the existing
+`thinking-elapsed.spec.js` still green (no elapsed-counter regression); CI green on the exact commit;
+Codex primary verifier (static + lint; cannot launch Electron — the e2e is worker-attested).
+
+**Engagement:** owner sees, during a long turn, that the only real stopper (5-hour usage) is X% of the
+hold — informed, not flying blind. Shared home-app logic → inherited by spawned projects automatically.
+
 ## Consequences
 
 - **Gain:** the two most likely heavy-use external shocks (plan-limit hit, sign-in expiry) become

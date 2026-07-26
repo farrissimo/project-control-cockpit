@@ -82,3 +82,8 @@ The two things that stopped LE from moving without the owner in the loop.
 ## Log
 - 2026-07-25: Plan created and authorized. Next: Codex advisory review of the phasing + Task 1.2 risk,
   then begin Task 1.1 (or the smallest safe unit Codex recommends) under ADR-0021.
+- 2026-07-26: Tasks 1.1 / 2.1 / 3.2 / 1.2 shipped (ADR-0021/0018-ext/0014-parity/0023), main green.
+  Owner then authorized the remaining two quality items (NOT trial blockers): **Task 2.2 built** as a
+  Codex-scoped bounded slice — live turn-status limiter line on the working bubble (elapsed + real
+  5-hour usage vs the 90% hold, no dollars, honest stale/unknown), ADR-0018 addendum. Next: Task 3.1
+  (monotonic chat-length meter).
