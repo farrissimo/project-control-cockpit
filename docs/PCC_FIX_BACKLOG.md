@@ -10,11 +10,15 @@ and every future child inherit it. Otherwise we hand-patch copies forever (the r
 
 ## Open items
 
-1. **Port the chat-length meter fix upstream.**
-   Once the meter-jump fix is proven in Land Evaluator, apply the identical fix to PCC's
-   `app/renderer/renderer.js` + `app/renderer/chat-health.js` so future children inherit it.
-   Origin: LE meter reads ~100% then drops to ~18-21% in the same chat (reproduced twice,
-   2026-07-25). Trust/legibility bug, not a burn bug (auto-rollover is off).
+1. **Port the chat-length meter fix upstream.** — **SUPERSEDED (2026-07-26, ADR-0025).** The
+   chat-length meter was REMOVED from PCC entirely (merged to main `4d47784`), so there is no
+   meter to port a fix to and the meter-jump bug is moot. New form of this item: **port the
+   meter REMOVAL down to scaffolded children (LE, ITM), which still carry the old meter**, so
+   they lose it too rather than keeping a hand-patched divergent copy.
+   (Original: once the meter-jump fix is proven in Land Evaluator, apply the identical fix to
+   PCC's `app/renderer/renderer.js` + `app/renderer/chat-health.js` so future children inherit
+   it. Origin: LE meter reads ~100% then drops to ~18-21% in the same chat, reproduced twice
+   2026-07-25 — trust/legibility bug, not a burn bug.)
 
 2. **Legible "binding limiter" surface.**
    The owner has four limiters — `max_turns`, `max_turn_usd`, `max_chat_usd`, and the real
@@ -46,6 +50,48 @@ and every future child inherit it. Otherwise we hand-patch copies forever (the r
    progress and cost, so the owner is informed, not operating the machine.
    This likely should be fixed BEFORE the cosmetic items above — revisit fix ORDER accordingly.
 
+7. **Chat composer doesn't collapse after a large paste is sent.**
+   The composer textarea auto-grows to fit a big pasted block (e.g. a copy-block directive) but
+   does NOT reset to its normal height after the message sends — it stays expanded, filling most
+   of the screen, and the owner must manually drag it back down ("I can resize it manually but
+   that's a pain"). Reset the composer height on send, at the same seam that auto-grows it
+   (`growComposer()` in `app/renderer/renderer.js`). Low-priority usability. Observed 2026-07-26.
+
+8. **Turn-limit message wording is misleading.** The auto-continue / max-turns surface (ADR-0023)
+   says "per-message turn limit," which the owner reasonably reads as a cap on his own chat
+   messages; it actually counts internal agentic steps within one working stretch. Reword so it is
+   obvious it counts internal steps, not owner messages. Owner (ITM chat): "how do you calculate we
+   reached a per message turn limit? we've only had 5 messages." Truthfulness/legibility; relates to
+   item 2. Observed 2026-07-26.
+
+9. **Governance classifier blind spot: test-assertion changes go ungoverned.** `classify-stakes`
+   escalates on test-file DELETION only, not on changes to a test's assertions/expectations — so a
+   commit that weakens or alters what a test checks can pass as T3 with NO independent verification.
+   Treat assertion/expectation edits in test files as escalating. This ships to every child via the
+   scaffold. Found in the ITM audit; the same hole is in PCC's own classifier. Observed 2026-07-26.
+
+10. **No gate checks scope/roadmap docs for architectural coherence.** PCC's gates verify only the
+    current CODE diff, never the roadmap/scope for constraint violations. A child's scope can carry a
+    dependency that violates a hard constraint (ITM V2 was scoped as "requires a PCC parent change,"
+    which directly breaks ITM's read-only "never modifies PCC" law) and it hid through intake,
+    bootstrap, and 4 build chats with zero detection. Candidate: a cheap deterministic check that
+    flags parent-modifying / constraint-conflicting language in a child's scope docs. Observed 2026-07-26.
+
+11. **Intake must surface consequential scope decisions for explicit owner sign-off.** When the LLM
+    decomposes an idea into scope/versions, the calls that change what the owner actually GETS
+    (deferring the real payoff to a later version, cross-project dependencies, big architectural forks)
+    get buried in a paste the owner delegates and does not line-read. Extract and flag the 2-3
+    consequential decisions in plain language for a yes/no. Keeps the visionary's delegate-the-detail
+    workflow intact while anchoring the choices that matter. Observed 2026-07-26.
+
+12. **Remote-less projects need an honest local verification mode.** PCC's trust model treats CI +
+    branch protection as the un-bypassable backstop, but many projects (especially in trial) have no
+    remote, so CI never runs and the scaffolded governance docs OVERCLAIM a protection that is not
+    present. Fix: intake asks whether the project has a remote/CI; if not, the child adapts — the local
+    guarded test run becomes the execution authority AND is required for "done," and the docs +
+    "Verified" surface say "local run," never implying CI. Likely wants an ADR. Owner engaged this
+    directly; leaning "ADR/plan first." Observed 2026-07-26.
+
 ## Log
 - 2026-07-25: Created. Items gathered from the LE trust-trial session + Codex parent findings.
 - 2026-07-25: Added item 6 (owner-as-relay) as highest priority after the LE meter task hit the
@@ -53,3 +99,10 @@ and every future child inherit it. Otherwise we hand-patch copies forever (the r
   (chat-health.js / renderer.js / chat-health.test.js) — unproven, not committed, not verified.
   Owner stopped work for the day (cannot babysit). Resume point: secure that fix on a branch,
   run unit tests, then decide whether to reorder toward item 6 first.
+- 2026-07-26: Item 1 marked SUPERSEDED — the chat-length meter was removed from PCC entirely
+  (ADR-0025, merged to main `4d47784`); its new form is porting the REMOVAL to children. Added
+  item 7 (chat composer doesn't collapse after a large paste is sent; owner-observed).
+- 2026-07-26: Added items 8-12 from the ITM trial-observation session (all PCC-specific,
+  non-blocking, deferred): turn-limit message wording (8), test-assertion classifier blind spot
+  (9), no roadmap/scope coherence gate (10), intake must surface consequential decisions (11),
+  remote-less honest local verification mode (12).
