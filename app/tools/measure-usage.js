@@ -83,7 +83,7 @@ const REAL_PROMPTS = [
 const WORK_PROMPTS = [
   'Read app/main.js in full and list every function name you find, one per line.',
   'Now read app/renderer/renderer.js in full and summarize what it does in a short paragraph.',
-  'Read docs/adr/0019-context-auto-rollover-new-chat.md and app/renderer/chat-health.js. Explain how they relate.',
+  'Read docs/adr/0019-context-auto-rollover-new-chat.md and app/renderer/rollover-seed.js. Explain how they relate.',
   'Read PROJECT.md in full and tell me the current phase.',
   'Grep the app/ folder for every use of spawn( and show the matching lines.',
   'Read app/authority-tool-profile.js and app/usage-limits.js and summarize each.',

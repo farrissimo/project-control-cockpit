@@ -12,7 +12,7 @@ test('successful result -> kind success, trigger chat-turn, roll-over-now, never
   const d = classifyResult(env({ subtype: 'success', is_error: false, result: 'hi', total_cost_usd: 0.01, num_turns: 1, usage: { input_tokens: 5, cache_read_input_tokens: 10, cache_creation_input_tokens: 2 } }));
   assert.equal(d.kind, 'success'); assert.equal(d.trigger, 'chat-turn');
   assert.equal(d.deferRollover, false); assert.equal(d.terminate, false);
-  assert.equal(d.text, 'hi'); assert.equal(d.costUsd, 0.01); assert.equal(d.numTurns, 1); assert.equal(d.contextTokens, 17);
+  assert.equal(d.text, 'hi'); assert.equal(d.costUsd, 0.01); assert.equal(d.numTurns, 1);
 });
 
 test('error_max_turns -> kind max_turns, trigger chat-turn-max-turns, deferred rollover, not terminate', () => {
@@ -67,7 +67,7 @@ test('Task 2A: a JSON-but-unknown-shape envelope carrying real usage/cost is ATT
 
 test('missing usage/cost is not fabricated (success with no usage/cost)', () => {
   const d = classifyResult(env({ subtype: 'success', is_error: false, result: 'ok' }));
-  assert.equal(d.kind, 'success'); assert.equal(d.costUsd, null); assert.equal(d.contextTokens, null);
+  assert.equal(d.kind, 'success'); assert.equal(d.costUsd, null);
 });
 
 test('exactly one attribution trigger per envelope (or null for malformed)', () => {

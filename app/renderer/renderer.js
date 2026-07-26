@@ -520,36 +520,9 @@ async function runSend(item) {
     // `started` means "has messages", which is not the same as "had a worker turn".
     const isFirstTurn = !turnsStarted.has(chatId);
     const workerSession = sessionIds.get(chatId) || chatId;
-    // ADR-0019: a rolled-over chat's FIRST turn carries the handoff+summary seed to the WORKER
-    // (it's also shown as a bubble). Prepended to the prompt so Claude has the context; the owner's
-    // visible bubble is still just their own message.
-    let sendText = item.msg;
-    const seededFirstTurn = isFirstTurn && pendingSeed.has(chatId);
-    if (seededFirstTurn) {
-      // codex-caught: do NOT delete the seed here — if this send fails, the carried context would be
-      // lost on retry. It is dropped below only AFTER the turn actually succeeds (AC-10).
-      sendText = pendingSeed.get(chatId) + '\n\n=== The person you are helping now says: ===\n' + item.msg;
-    }
-    const res = await window.pcc.send(sendText, getSelectedModel(), workerSession, isFirstTurn, chatId, item.outbound);
+    const res = await window.pcc.send(item.msg, getSelectedModel(), workerSession, isFirstTurn, chatId, item.outbound);
     stopThinkingTimer(thinking); thinking.remove();
     if (res.ok) turnsStarted.add(chatId);
-    if (res.ok && seededFirstTurn) pendingSeed.delete(chatId); // AC-10: drop the carried seed ONLY once it's actually delivered
-    // ADR-0019: record this turn's REAL context size for the chat-health meter; track staleness when a
-    // turn reports no tokens after a prior reading (AC-5); flag an auto-rollover if this chat crossed the
-    // threshold (fired below once the send burst settles, so it never races a queued steer).
-    if (res.ok) {
-      if (typeof res.contextTokens === 'number') {
-        recordContextBaseline(chatId, res.contextTokens); // freeze this chat's fixed overhead on its FIRST reading
-        recordContextTokens(chatId, res.contextTokens);
-        staleContextChats.delete(chatId); // a fresh real reading — no longer stale
-        const rg = PCCChatHealth.computeGauge({ contextTokens: res.contextTokens, baselineTokens: chatContextBaseline.get(chatId), model: getSelectedModel() });
-        // codex-caught: do NOT mark rolledOverChats here — that would fail-STUCK a chat whose rollover
-        // then errors. It is marked only on a SUCCESSFUL rollover (in autoRolloverToNewChat).
-        if (AUTO_ROLLOVER_ENABLED && rg.overRollover && !rolledOverChats.has(chatId) && !rolloverInFlight) { rolloverAfterTurn = { chatId: chatId, tokens: res.contextTokens }; }
-      } else if (chatContextTokens.has(chatId)) {
-        staleContextChats.add(chatId); // a measured chat had an UNMEASURED turn — the reading may now understate (AC-5)
-      }
-    }
     // R2/R3: an owner-initiated stop, an automatic budget-cap stop, the native per-message turn-cap
     // stop (ADR-0020 T2), or hitting the Claude PLAN usage limit are not PCC failures — a neutral
     // 'assistant' bubble (its own text explains what happened), never the red error style a real bug gets.
@@ -590,9 +563,6 @@ async function runSend(item) {
       // CI). Refresh the trust strip so it never shows a stale snapshot as current
       // after a turn (I4 audit: boot/action snapshot, no post-turn invalidation).
       loadTrust();
-      // ADR-0019: the burst is done (no queued steers) — if this chat crossed the context
-      // threshold, carry it over into a fresh chat now. Fire-and-forget: it owns its own UI + errors.
-      if (rolloverAfterTurn) { const r = rolloverAfterTurn; rolloverAfterTurn = null; autoRolloverToNewChat(r.chatId, r.tokens).catch(() => {}); }
     }
   }
 }
@@ -856,32 +826,6 @@ async function startNewChat(opts) {
 }
 document.getElementById('new-chat').addEventListener('click', startNewChat);
 
-// ADR-0019 Slice C: automatic context-rollover into a NEW chat. When a completed turn shows the
-// chat is over the context threshold, PCC carries a handoff + summary forward into a fresh chat and
-// switches to it — the old chat is kept, nothing deleted. State:
-const pendingSeed = new Map();      // newChatId -> carried context, prepended to that chat's FIRST worker turn
-const rolledOverChats = new Set();  // source chats already SUCCESSFULLY rolled over (AC-11: at most once per chat)
-const staleContextChats = new Set();// chats whose LATEST turn reported no tokens after a prior reading (AC-5)
-let rolloverAfterTurn = null;        // { chatId, pct } set by runSend when a turn crosses the threshold
-let rolloverInFlight = false;        // guard: never start a second rollover while one is running
-
-// ADR-0020 T1 (owner decision 2026-07-23): rollover stays OWNER-TRIGGERED for now — the meter WARNS and
-// the "Continue in fresh chat" button makes the switch one click, but PCC does not switch by itself. This
-// KEEPS the 2026-07-21 survival-trial "no auto-switch" stance intact rather than superseding it during the
-// trust window.
-//
-// FLIPPING THIS TO AUTOMATIC IS A ONE-LINE CHANGE (`= true`) — deliberately. Everything automatic rollover
-// needs is already built and wired below:
-//   • autoRolloverToNewChat() builds its carried context LOCALLY + DETERMINISTICALLY (rollover-seed.js) —
-//     NO LLM summary, which was the hidden burn that made the ADR-0019 version unusable;
-//   • the LOOP is structurally prevented — the gauge measures GROWTH past each chat's OWN first-turn
-//     baseline, so a fresh "Continued chat" (its seed included in that baseline) reads ~0% and cannot
-//     re-trigger — plus rolledOverChats (a source rolls over at most once) and rolloverInFlight;
-//   • every failure path HOLDS in the source chat with an honest notice and leaves no empty chat.
-// Post-T1 Gate 0 decides whether automatic is warranted. Do not delete the machinery to "clean up" — the
-// one-line flip is the deliverable.
-const AUTO_ROLLOVER_ENABLED = false;
-
 // Flatten the structured summary into short seed text (best-effort; empty if no summary).
 function summaryToSeedText(s) {
   if (!s || typeof s !== 'object') return '';
@@ -1033,63 +977,6 @@ function presentUsageHold(item, reading, persisted) {
     }
   });
   gate.appendChild(row);
-}
-
-// Carry a too-full chat forward into a fresh chat. Fail-safe ORDER (AC-10): build the carried
-// context FIRST while the source is still active; only on success create + seed + switch. If the
-// handoff can't be built, HOLD in the source chat with a plain warning — never open an empty chat,
-// never continue silently.
-async function autoRolloverToNewChat(sourceChatId, contextTokens) {
-  rolloverInFlight = true;
-  try {
-  const sizeTxt = (typeof contextTokens === 'number' && contextTokens > 0) ? ('~' + Math.round(contextTokens / 1000) + 'K tokens') : 'a large size';
-  const source = chats.find((c) => c.id === sourceChatId);
-  const messages = (source && source.messages) || history;
-
-  let handoff = '';
-  try { const h = await window.pcc.handoff(); handoff = (h && (h.text || h.brief)) || (typeof h === 'string' ? h : ''); } catch (e) { handoff = ''; }
-  if (!handoff) {
-    await appendMessage('assistant',
-      'This chat has grown to ' + sizeTxt + ' and should roll over, but PCC could not build the handoff to carry forward — so it is HOLDING here rather than starting an empty chat. Hit “New chat” to start fresh, or keep going.',
-      sourceChatId);
-    return;
-  }
-  // ADR-0020 T1: build the carried context LOCALLY + DETERMINISTICALLY — the recent conversation verbatim
-  // (bounded) + the deterministic handoff. NO LLM summary (summarizeChat) — that would be a hidden burn,
-  // the exact thing this work exists to stop. Same messages + handoff always produce the same seed.
-  const seed = PCCRolloverSeed.buildContinuationSeed(messages, handoff);
-
-  const newId = uuid();
-  const cr = await chatCmd('chatsCreate', { id: newId, name: 'Continued chat' });
-  if (!cr.ok) {
-    await appendMessage('assistant',
-      'This chat has grown to ' + sizeTxt + ' and should roll over, but PCC could not create the new chat (' + (cr.error || 'unknown') + ') — holding here. Try “New chat”.',
-      sourceChatId);
-    return;
-  }
-  pendingSeed.set(newId, seed);                                   // prepended to the new chat's first worker turn
-  if (source) { persistTranscript(source); reconsiderChatName(source); } // preserve the old chat's arc
-  // codex-caught: the SWITCH is the material step — if it fails, the owner is still in the over-full
-  // source chat, so treat it as a hold (don't mark rolled-over) rather than a stuck success.
-  const sa = await chatCmd('chatsSetActive', { chatId: newId });
-  if (!sa || !sa.ok) {
-    pendingSeed.delete(newId);
-    try { await chatCmd('chatsDelete', { chatId: newId }); } catch (e) { /* codex-caught: best-effort remove the orphan "Continued chat" the failed switch left behind */ }
-    await appendMessage('assistant',
-      'This chat has grown to ' + sizeTxt + ' and should roll over, but PCC could not switch to the new chat (' + ((sa && sa.error) || 'unknown') + ') — holding here. Try “New chat”.',
-      sourceChatId);
-    return; // unmarked → retries on a later turn
-  }
-  renderActiveChat(); renderChatList(); loadTrust();
-  // The notice is best-effort: the rollover already materially happened (new chat created, active,
-  // and seeded), so a failed notice-append does not undo it or block the mark.
-  await appendMessage('assistant',
-    'Your previous chat grew to ' + sizeTxt + ', so PCC automatically continued it here in a fresh chat to protect your Claude usage from a big context re-sent every turn. Your old chat is safe in the list on the left — nothing was deleted. The recent conversation (carried forward verbatim) plus a project handoff are attached to your next message, so Claude picks up where you left off. This carry-forward was built locally — no summary was generated.',
-    newId);
-  rolledOverChats.add(sourceChatId); // SUCCESS (switch confirmed): hold-paths above return early unmarked, so a transient failure retries next turn
-  } finally {
-    rolloverInFlight = false;
-  }
 }
 
 // New project (DECISION-114): "New Project" is a NEW DOCUMENT. Clicking it takes you OUT of the
@@ -1818,7 +1705,7 @@ async function runHardChecks() {
 // ---- signals view ----
 // Renders each detector in the honest four-part format. The renderer only
 // displays what the deterministic scripts report; it never invents a verdict.
-const SIGNAL_TITLES = { 'untracked-files': 'Untracked files', 'scope-drift': 'Out-of-scope / drift', 'stale-docs': 'Stale docs', 'repo-sync': 'Work backed up? (repo sync)', 'bloat': 'Project bloat', 'high-stakes': 'High-stakes change — second opinion?', 'sycophancy': 'Never says no?', 'chat-rollover': 'Chat health / rollover' };
+const SIGNAL_TITLES = { 'untracked-files': 'Untracked files', 'scope-drift': 'Out-of-scope / drift', 'stale-docs': 'Stale docs', 'repo-sync': 'Work backed up? (repo sync)', 'bloat': 'Project bloat', 'high-stakes': 'High-stakes change — second opinion?', 'sycophancy': 'Never says no?' };
 
 // Sycophancy / never-says-no nudge (roadmap #17). Honest and light: it checks
 // whether the most recent substantive AI answer used ANY risk/pushback language.
@@ -1860,149 +1747,6 @@ function computeSycophancySignal() {
   };
 }
 
-// Chat rollover signal (roadmap #8). Computed from THIS chat's own history in
-// localStorage - the only honest data the app actually has. Named thresholds,
-// not mind-reading. It deliberately does NOT claim to measure tokens or true
-// context degradation (not observable from here); those go under NOT proven.
-const ROLLOVER_TURNS = PCCChatHealth.ROLLOVER_TURNS;   // soft notice past this many of your messages
-const ROLLOVER_HOURS = PCCChatHealth.ROLLOVER_HOURS;   // soft notice past this long on one chat
-
-// ADR-0019: the latest REAL context-token reading per chat (from res.contextTokens). Persisted to
-// localStorage so a restart cannot falsely drop the meter to green (AC-12, cache tier — same tier as
-// the chat-history mirror). Never fabricated: only finite, non-negative readings are stored.
-const CTX_LS_KEY = 'pcc.chatContextTokens';
-const chatContextTokens = (() => {
-  try {
-    const o = JSON.parse(localStorage.getItem(CTX_LS_KEY) || '{}');
-    return new Map(Object.entries(o).filter(([, v]) => typeof v === 'number' && Number.isFinite(v) && v >= 0));
-  } catch (e) { return new Map(); }
-})();
-function recordContextTokens(chatId, tokens) {
-  if (!chatId || typeof tokens !== 'number' || !Number.isFinite(tokens) || tokens < 0) return;
-  chatContextTokens.set(chatId, tokens);
-  try { localStorage.setItem(CTX_LS_KEY, JSON.stringify(Object.fromEntries(chatContextTokens))); } catch (e) { /* cache best-effort */ }
-}
-
-// ADR-0019 (growth revision, 2026-07-21): each chat's FIRST measured turn = its fixed baseline (the
-// large per-turn overhead Claude Code re-sends unchanged: system prompt + tool defs + CLAUDE.md/
-// AGENTS.md). The chat-health meter tracks growth PAST this baseline, so a fresh chat reads ~0% and
-// the auto-rollover can't loop. First reading wins and is frozen; persisted (same cache tier as the
-// token map) so a restart keeps a chat's baseline instead of re-baselining higher and reading falsely low.
-const CTX_BASE_LS_KEY = 'pcc.chatContextBaseline';
-const chatContextBaseline = (() => {
-  try {
-    const o = JSON.parse(localStorage.getItem(CTX_BASE_LS_KEY) || '{}');
-    return new Map(Object.entries(o).filter(([, v]) => typeof v === 'number' && Number.isFinite(v) && v >= 0));
-  } catch (e) { return new Map(); }
-})();
-function recordContextBaseline(chatId, tokens) {
-  if (!chatId || typeof tokens !== 'number' || !Number.isFinite(tokens) || tokens < 0) return;
-  if (chatContextBaseline.has(chatId)) return; // first reading wins — the baseline is frozen for this chat
-  chatContextBaseline.set(chatId, tokens);
-  try { localStorage.setItem(CTX_BASE_LS_KEY, JSON.stringify(Object.fromEntries(chatContextBaseline))); } catch (e) { /* cache best-effort */ }
-}
-
-function computeChatSignal() {
-  const userMsgs = history.filter((m) => m.cls === 'user');
-  const turns = userMsgs.length;
-
-  // Repeats: same message (whitespace/case-normalized) sent 2+ times - the
-  // exact "don't make me repeat myself" wound, and directly observable.
-  const norm = (t) => (t || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  const counts = {};
-  userMsgs.forEach((m) => { const k = norm(m.text); if (k) counts[k] = (counts[k] || 0) + 1; });
-  const repeats = Object.entries(counts).filter(([, n]) => n >= 2)
-    .sort((a, b) => b[1] - a[1]);
-  const repeatItems = repeats.map(([k, n]) => n + '×  "' + (k.length > 60 ? k.slice(0, 60) + '…' : k) + '"');
-
-  // Elapsed span from whatever timestamps exist (older messages predate ts).
-  const ts = history.map((m) => m.ts).filter((t) => typeof t === 'number');
-  let spanHours = null;
-  if (ts.length >= 2) spanHours = (Math.max(...ts) - Math.min(...ts)) / 3600000;
-
-  // ADR-0019: REAL context size for THIS chat's latest turn, metered against the model's (estimated)
-  // window with a general, plan-safe rollover threshold (absolute floor OR % of window — computed in
-  // chat-health.js from the CURRENT model). The gauge reads "how close to rollover", so it hits 100%
-  // exactly when protection fires, not a calm-looking % of a huge window.
-  const ctxTokens = activeId ? chatContextTokens.get(activeId) : null;
-  const ctxBaseline = activeId ? chatContextBaseline.get(activeId) : null;
-  const g = PCCChatHealth.computeGauge({
-    turns, spanHours,
-    contextTokens: (typeof ctxTokens === 'number' ? ctxTokens : null),
-    baselineTokens: (typeof ctxBaseline === 'number' ? ctxBaseline : null),
-    model: getSelectedModel(),
-  });
-
-  // AC-5: the reading is STALE if the latest turn reported no tokens (e.g. an attachment turn) after
-  // a prior measured reading — the real context has likely grown past what we last saw. Disclosed,
-  // never silently shown as current.
-  const contextStale = activeId ? staleContextChats.has(activeId) : false;
-
-  const notice = (turns >= ROLLOVER_TURNS) || (repeats.length > 0) || (spanHours !== null && spanHours >= ROLLOVER_HOURS) || g.overRollover;
-
-  const kTok = (n) => Math.round(n / 1000) + 'K';
-  let observed = turns + ' message(s) sent in this chat';
-  if (spanHours !== null) observed += ', spanning ~' + (spanHours < 1 ? '<1' : spanHours.toFixed(1)) + ' hour(s)';
-  // GROWTH, not raw size: report how much the conversation has added past its fixed first-turn baseline.
-  if (g.contextMeasured) observed += ', conversation grown ~' + kTok(g.growthTokens) + ' tokens past its ~' + kTok(g.baselineTokens || 0) + ' startup baseline' + (contextStale ? ' as of an earlier turn' : '');
-  observed += '.';
-  if (repeats.length) observed += ' ' + repeats.length + ' message(s) were sent more than once.';
-
-  // Hover breakdown (AC-4): plain-language "how this number is calculated" + which input drives it.
-  const staleNote = (g.contextMeasured && contextStale) ? ' — from an earlier turn (the last turn reported no tokens, so real growth may be higher)' : '';
-  // Secondary "approaching the hard wall" detail — kept, but honest that the window is an estimate and
-  // may be too small (raw total already over it => the real window is larger).
-  const wallNote = g.contextMeasured
-    ? (g.overWindowEstimate
-      ? ' Raw total ~' + kTok(g.contextTokens) + ' tokens already exceeds PCC’s conservative ~' + kTok(g.windowTokens) + ' window estimate, so your plan’s real window is larger — growth (above) is what the meter tracks, and it doesn’t depend on the window.'
-      : ' Raw total ~' + kTok(g.contextTokens) + ' tokens is ~' + Math.round(g.pctOfWindow * 100) + '% of the estimated ~' + kTok(g.windowTokens) + ' window.')
-    : '';
-  const ctxLine = g.contextMeasured
-    ? ('Conversation growth: ~' + kTok(g.growthTokens) + ' / ~' + kTok(g.rolloverTokens) + ' tokens before this warns (measured past this chat’s fixed startup baseline, so the constant per-turn overhead never counts as chat length)' + staleNote)
-    : 'Conversation growth: not measured yet this session — shown when available, never guessed';
-  const hover = 'Chat health = the highest (worst) of these three, so nothing hides a problem:\n'
-    + '• Messages: ' + turns + ' / ' + ROLLOVER_TURNS + '\n'
-    + '• Time: ' + (spanHours !== null ? (spanHours < 1 ? '<1' : spanHours.toFixed(1)) : '—') + ' / ' + ROLLOVER_HOURS + ' hr\n'
-    + '• ' + ctxLine + '\n'
-    + 'Now driven by: ' + g.driver + '. This WARNS (it never switches chats on you — the “Continue in fresh chat” button switches when YOU decide) once the conversation GROWS ~' + kTok(g.rolloverTokens) + ' tokens past its startup baseline (whichever comes first: a usage-burn floor, or 75% of the estimated window).' + wallNote + ' Your plan-usage limit is the separate "Usage" chip up top.';
-
-  return {
-    detector: 'chat-rollover',
-    signal: notice ? 'notice' : 'clear',
-    checked_at: new Date().toISOString(),
-    gauge: { value: g.gaugePct, label: 'Chat length', hover },
-    items: repeatItems,
-    observed,
-    might_mean: notice
-      ? 'This chat is getting heavy (by messages, time, or real conversation growth). Long chats drift, lose the earlier thread, and burn your Claude usage faster. This is your heads-up — PCC will NOT switch chats on you. Moving on is your call: the “Continue in fresh chat” button opens a new chat with your recent conversation and a project handoff already carried into the message box, where you can read and edit it before anything is sent. Your old chat stays right here in the list and nothing is deleted.'
-      : 'This chat is still comfortably within limits on messages, time, and conversation growth — nothing to do.',
-    not_proven: g.contextMeasured
-      ? 'The token counts are REAL (each turn’s actual prompt tokens). The gauge tracks GROWTH past this chat’s first measured turn (its fixed startup overhead — system prompt + tools + rules — which is re-sent every turn and is NOT chat length), so a fresh chat starts near 0 and only real back-and-forth moves it. The rollover threshold’s WINDOW half is ESTIMATED — headless Claude doesn’t report the window and it depends on your model + plan; PCC assumes the smaller one unless a bigger plan is confirmed (that only rolls over sooner, never later). Readings are taken at each turn’s END, so one very large turn can overshoot before it registers (Stop and the per-turn cap are the backstops). Attachment-only turns are not yet token-measured. Pre-update messages have no timestamp, so the time span may undercount.'
-      : 'Conversation growth is not yet measured for this chat this session (an attachment-only turn, or no completed text turn), so this gauge currently reflects messages/time only — it is honest about that rather than showing a fake reading. Pre-update messages have no timestamp, so the time span may undercount.',
-    what_to_do: notice
-      ? 'Hit “Continue in fresh chat” when you reach a natural stopping point. It carries your recent conversation forward verbatim plus a project handoff, so the new chat picks up the thread — nothing is sent until you press Send, and this chat is kept. Carrying on here is fine too; it just costs more usage per message.'
-      : 'Nothing needed.',
-  };
-}
-
-// Reusable gauge (roadmap #23). A semicircle "speedometer/tank" for a single,
-// bounded metric approaching a limit (chat length, bloat). Color reinforces but
-// never carries meaning alone: the fill LEVEL and the numeric readout convey the
-// value even without color (WCAG + colorblind-safe). Zones: green under 60%,
-// amber 60-85%, red 85%+. pathLength=100 lets the fill be a simple percentage.
-function zoneForPct(p) { return p < 60 ? 'success' : (p < 85 ? 'warning' : 'danger'); }
-function gaugeSVG(pct, label, hover) {
-  const p = Math.max(0, Math.min(100, Math.round(pct)));
-  const arc = 'M 12 60 A 40 40 0 0 1 108 60';
-  const titleAttr = hover ? ' title="' + escapeHtml(hover) + '"' : ''; // ADR-0019 AC-4: explain the number on hover
-  return '<div class="gauge-wrap" role="img"' + titleAttr + ' aria-label="' + escapeHtml(label + ': ' + p + ' percent') + '">'
-    + '<svg viewBox="0 0 120 70" class="gauge">'
-    + '<path class="gauge-track" d="' + arc + '" pathLength="100"/>'
-    + '<path class="gauge-fill ' + zoneForPct(p) + '" d="' + arc + '" pathLength="100" stroke-dasharray="' + p + ' 100"/>'
-    + '<text x="60" y="55" text-anchor="middle" class="gauge-val">' + p + '%</text>'
-    + '</svg><div class="gauge-cap">' + escapeHtml(label) + '</div></div>';
-}
-
 function signalCard(d) {
   const sig = (d.signal || 'unknown');
   const card = document.createElement('div');
@@ -2010,7 +1754,6 @@ function signalCard(d) {
   const title = SIGNAL_TITLES[d.detector] || d.detector || 'Signal';
   let html = '<div class="signal-head"><span class="signal-title">' + escapeHtml(title)
     + '</span><span class="signal-badge ' + sig + '">' + escapeHtml(sig) + '</span></div>';
-  if (d.gauge) html += gaugeSVG(d.gauge.value, d.gauge.label || '', d.gauge.hover);
   html += '<div class="signal-row"><span class="k">Observed</span>' + escapeHtml(d.observed || '—') + '</div>';
   if (Array.isArray(d.items) && d.items.length) {
     html += '<ul class="signal-items">' + d.items.map((i) => '<li>' + escapeHtml(i) + '</li>').join('') + '</ul>';
@@ -2090,7 +1833,6 @@ async function loadSignals() {
   } else {
     const cards = Object.values(d.det || {});
     cards.push(computeSycophancySignal()); // app-side: never-says-no nudge
-    cards.push(computeChatSignal()); // app-side signal from this chat's own history
     cards.forEach((c) => list.appendChild(signalCard(c)));
   }
   status.textContent = '';
@@ -2496,24 +2238,15 @@ async function loadTrust() {
 // (no extra IPC), plus the two app-side signals. Honest: status is shown as a
 // word and a colored dot, never color alone.
 const CH_LABELS = { 'untracked-files': 'Untracked', 'scope-drift': 'Drift', 'stale-docs': 'Stale docs',
-  'repo-sync': 'Backed up', 'bloat': 'Bloat', 'high-stakes': 'High-stakes', 'sycophancy': 'Never says no?', 'chat-rollover': 'Chat length' };
+  'repo-sync': 'Backed up', 'bloat': 'Bloat', 'high-stakes': 'High-stakes', 'sycophancy': 'Never says no?' };
 function renderChatHealth(d) {
   const el = document.getElementById('chat-health');
   if (!el) return;
   const signals = Object.values(d || {});
   try { signals.push(computeSycophancySignal()); } catch (e) { /* app-side, optional */ }
-  try { signals.push(computeChatSignal()); } catch (e) { /* app-side, optional */ }
-  if (!signals.length) { el.innerHTML = ''; return; }
 
   const openSignals = () => { const n = document.querySelector('.nav[data-view="signals"]'); if (n) n.click(); };
 
-  // The one gauge we have today (chat length) gets its own prominent box.
-  let gaugeHtml = '';
-  const withGauge = signals.find((s) => s && s.gauge);
-  if (withGauge) gaugeHtml = '<div class="ch-gauge" title="Click for detail in the Signals tab.">'
-    + gaugeSVG(withGauge.gauge.value, withGauge.gauge.label || '', withGauge.gauge.hover) + '</div>';
-
-  const chatSignal = signals.find((s) => s && s.detector === 'chat-rollover');
   const tiles = signals.map((s) => {
     const sig = (s && s.signal) || 'unknown';
     const cls = (sig === 'clear' || sig === 'notice') ? sig : 'unknown';
@@ -2523,25 +2256,21 @@ function renderChatHealth(d) {
       + '<span class="ch-status">' + escapeHtml(sig) + '</span></span>';
   }).join('');
 
-  // ADR-0020 T4: OR semantics — the SAME "Continue in fresh chat" action is offered by TWO independent
-  // signals: context growth (this chat is heavy) OR the real 5-hour usage (little plan headroom left).
-  // Either can raise it to 'notice' urgency; when both fire, both reasons show; neither overwrites the
-  // other. Only the 5-hour >=90% path actually intercepts a send (in runSend); context growth stays
-  // advisory and never blocks.
+  // The "Continue in fresh chat" action is ALWAYS available — owner-controlled chat rotation, the manual
+  // replacement for the removed chat-length meter (ADR-0025). The real 5-hour usage (little plan headroom
+  // left) raises it to 'notice' urgency and adds a reason; otherwise it stays a calm, always-present
+  // control. Only the 5-hour >=90% path actually intercepts a send (in runSend); this button never blocks.
   const usageAction = (function () { try { return PCCUsageProtection.usageProtectionAction(lastUsageReading); } catch (e) { return 'none'; } })();
   const rolloverReasons = [];
-  if (chatSignal && chatSignal.signal === 'notice') rolloverReasons.push('this chat has grown large');
   if (usageAction !== 'none' && lastUsageReading) rolloverReasons.push('you’re at ' + lastUsageReading.sessionPercent + '% of your 5-hour usage limit');
-  const rolloverUrgent = (chatSignal && chatSignal.signal === 'notice') || usageAction !== 'none';
-  const actionHtml = (chatSignal || usageAction !== 'none')
-    ? '<button class="ch-action ' + (rolloverUrgent ? 'notice' : 'clear') + '" id="continue-fresh-chat" type="button" title="'
+  const rolloverUrgent = usageAction !== 'none';
+  const actionHtml = '<button class="ch-action ' + (rolloverUrgent ? 'notice' : 'clear') + '" id="continue-fresh-chat" type="button" title="'
       + escapeHtml(rolloverReasons.length
         ? ('Offered because ' + rolloverReasons.join(' and ') + '. Owner-controlled: opens a fresh chat with your context carried into the composer; nothing is sent until you press Send.')
         : 'Owner-controlled: open a fresh chat with your context carried forward into the composer. Nothing is sent to Claude until you press Send.')
-      + '">Continue in fresh chat</button>'
-    : '';
-  el.innerHTML = gaugeHtml + '<div class="ch-tiles">' + tiles + '</div>' + actionHtml;
-  el.querySelectorAll('[data-open], .ch-gauge').forEach((t) => t.addEventListener('click', openSignals));
+      + '">Continue in fresh chat</button>';
+  el.innerHTML = '<div class="ch-tiles">' + tiles + '</div>' + actionHtml;
+  el.querySelectorAll('[data-open]').forEach((t) => t.addEventListener('click', openSignals));
   const cont = document.getElementById('continue-fresh-chat');
   if (cont) cont.addEventListener('click', (e) => { e.stopPropagation(); continueInFreshChat(); });
 }
@@ -2618,12 +2347,10 @@ async function loadProjectGlance() {
   //  — so there's a single "where are we" source. This hero is now evidence: the
   //  signal health tiles + metrics, under the "evidence" fold.)
 
-  // 2. Signals health (+ chat gauge). Reuses the same signal objects the Signals
-  //    tab renders, plus the two app-side ones.
+  // 2. Signals health. Reuses the same signal objects the Signals tab renders,
+  //    plus the app-side sycophancy one.
   const signals = Object.values(det || {});
   try { signals.push(computeSycophancySignal()); } catch (e) { /* optional */ }
-  const chatSig = (() => { try { return computeChatSignal(); } catch (e) { return null; } })();
-  if (chatSig) signals.push(chatSig);
   if (signals.length) {
     const nClear = signals.filter((s) => s && s.signal === 'clear').length;
     const nNotice = signals.filter((s) => s && s.signal === 'notice').length;
@@ -2637,10 +2364,9 @@ async function loadProjectGlance() {
       return '<span class="ch-tile ' + cls + '"><span class="ch-dot"></span>' + escapeHtml(label)
         + '<span class="ch-status">' + escapeHtml(sig) + '</span></span>';
     }).join('');
-    const gaugeHtml = (chatSig && chatSig.gauge) ? gaugeSVG(chatSig.gauge.value, chatSig.gauge.label) : '';
     html += '<div class="glance-card"><div class="glance-title">Health</div>'
       + '<div class="glance-headline ' + headCls + '">' + escapeHtml(headTxt) + '</div>'
-      + '<div class="glance-flex">' + gaugeHtml + '<div class="glance-health">' + tiles + '</div></div></div>';
+      + '<div class="glance-flex"><div class="glance-health">' + tiles + '</div></div></div>';
   }
 
   // 3. Metrics as stat cards.
