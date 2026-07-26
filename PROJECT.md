@@ -1,6 +1,32 @@
 # PROJECT.md — current project brief
 
-## ⚠ READ THIS FIRST — state as of 2026-07-21 (updated after the usage-meter fix)
+## ⚠ READ THIS FIRST — state as of 2026-07-24 (ADR-0020 three trial blockers COMPLETE)
+The emergency usage-governance work (ADR-0020) reached its goal: the **three trial blockers are DONE
+and merged to `main`**, clearing the runway for the **7-day trust test** (the ADR-0016 proving-window
+trial: one week of regular use without a serious shock).
+- **Blocker 1 — Restart continuity (T8, PR #66):** no more false "worker session is locked" after a
+  normal close/reopen. Root cause: renderer `isFirstTurn`/`turnsStarted` wasn't persisted, so a
+  completed chat re-issued `--session-id` for an already-created session → Claude's "Session ID … is
+  already in use". Fix: `app/worker-session.js` grounds create-vs-resume in Claude's on-disk session
+  store. **Owner live-tested PASS** (recalled a code across a real restart).
+- **Blocker 2 — Automatic usage protection (T4, PR #67):** warns at 70% of the real 5-hour usage %,
+  and at 90% HOLDS the next send with an owner gate (Continue in fresh chat / Send this message anyway /
+  Cancel). Never auto-switches chats; fails honest when the reading is stale. Two lifecycle defects
+  (draft loss on Cancel; queued-send stranding) were found by GPT review and fixed.
+- **Blocker 3 — Full usage accounting (T9, PR #68):** every Claude spend — including FAILED turns
+  (budget / max-turns / usage-limit / auth / generic / warm crash) — now lands in the usage ledger, so
+  "did PCC silently burn usage?" is fully answerable. The measurement spine + launch-site guard already
+  existed; this closed the failure-path holes (incl. an attachment stream-json parser bug).
+- Each blocker: independent `codex exec` verification (PASS) + full exact-SHA CI green + unit suite.
+- **DEFERRED (non-blocking fast-follows, owner-approved):** an in-app usage **ledger VIEW** (eyeball
+  the accounting); the T4 **queued-drain e2e** hardening (test-only). STEERING remains deferred.
+- Verification/ADR trail: `docs/adr/0020-usage-governance-cold-process-cache.md` (Amendment 4 =
+  Blocker 1) and `docs/specs/t4-usage-protection.md` (Blocker 2). Live facts (exact SHA, CI verdict)
+  check directly — never trust a SHA written here as current.
+
+The section below (2026-07-21) is retained as historical durable state.
+
+## ⚠ state as of 2026-07-21 (updated after the usage-meter fix)
 The #1 broken thing — **the usage meter — is now FIXED and proven accurate on the owner's actual
 screen** (2026-07-21). Root cause, finally diagnosed (not guessed): the Claude desktop app is a
 Microsoft Store / MSIX app, so `%APPDATA%\Claude` is only a **junction** into its package container
