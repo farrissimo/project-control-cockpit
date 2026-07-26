@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Accepted
 date: 2026-07-26
 deciders: owner (+ Codex verifier)
 ---
@@ -50,15 +50,17 @@ losing it removes a hidden risk, not a proven protection. Early "off-the-rails" 
 out of scope (owner-babysat; reliable automated detection is a declined rabbit hole).
 
 ## Confirmation
-Proof this removal is complete and breaks nothing (to be finalized on verify — build → CI → verify → done):
-- The full test suite stays green after removal, with meter-specific unit/e2e tests removed and a new
-  E2E asserting the gauge tile is **gone** from the rendered app (not merely hidden).
-- `npm run lint` (no-undef) stays clean — no dangling references to removed symbols
-  (`PCCChatHealth`, `computeGauge`, `chatContext*`, auto-rollover machinery).
-- The manual "Continue in fresh chat" button still works (covered by its existing test), and the
-  usage meter / cost surfaces are untouched (they are separate from the chat-length meter).
-- CI is green on the exact merge commit, and an independent verifier (Codex) reviews the diff and
-  returns a verdict. This ADR is flipped to Accepted only after that.
+Proven complete and non-breaking on removal commit `51b272c` (feat/remove-chat-length-meter, PR #77):
+- **CI green on the exact SHA** (`scripts/ci-status.ps1 -Sha 51b272c…` → `passed`): the clean-machine
+  full suite — unit + full Playwright E2E + `npm audit` — passed, including the new
+  `no-chat-length-meter.spec.js` asserting the gauge tile is **gone** from the rendered app.
+- **Independent Codex verdict: PASS** on the staged diff — confirmed zero remaining references to the
+  removed symbols (`PCCChatHealth`, `computeGauge`, `computeChatSignal`, `autoRolloverToNewChat`,
+  `contextTokensFrom`), the manual button path intact, and ran lint + `check-adr` itself.
+- Local: `npm run lint` 0 errors; unit suite **341 pass / 0 fail**; affected E2E specs green.
+- The manual "Continue in fresh chat" button still works (re-gated to render unconditionally; covered by
+  `continue-fresh-chat.spec.js`), and the usage meter / cost surfaces are untouched.
+- Governor gate: PASS (T1) with a valid diff-bound receipt (`verifier=codex exec verdict=PASS`).
 
 ## Engagement
 - **Owner:** the chat-length meter is gone; PCC no longer guesses when to start a fresh chat. Use the

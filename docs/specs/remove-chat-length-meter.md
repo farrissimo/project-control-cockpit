@@ -1,4 +1,4 @@
-# Remove chat-length meter   (status: draft)
+# Remove chat-length meter   (status: done)
 
 ## Objective
 Remove the chat-length / chat-health meter and the automatic context-rollover behavior it fed
