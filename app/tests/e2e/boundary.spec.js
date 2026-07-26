@@ -116,7 +116,48 @@ test('ADR-0020 T2: a native --max-turns cap surfaces as a PLAIN, neutral message
     expect(r.text).not.toMatch(/error_max_turns/);
     expect(r.text).not.toMatch(/is_error/);
     expect(r.text).not.toContain('{');
+    // ADR-0023 AC-6: a READ-ONLY chat (no approved job) must NOT auto-continue — it hard-stops.
+    expect(r.autoContinued).toBeFalsy();
   });
+});
+
+test('ADR-0023 AC-1/AC-2/AC-3/AC-4: approved work auto-continues ONCE past --max-turns on the SAME session, with a lowered cap and a visible notice', async () => {
+  const argvFile = path.join(require('os').tmpdir(), 'pcc-test-argv-ac-' + Date.now() + '.json');
+  const seqState = path.join(require('os').tmpdir(), 'pcc-test-seq-ac-' + Date.now() + '.txt');
+  const cid = 'auto-continue-chat';
+  await withApp({
+    PCC_FAKE_CLAUDE_FIXTURE: FX('worker-max-turns-then-success.json'),
+    PCC_FAKE_CLAUDE_SEQ_STATE: seqState,     // advances the sequence across the two spawns
+    PCC_FAKE_CLAUDE_ARGV_FILE: argvFile,     // captures the LAST spawn's argv (the resumed segment)
+  }, async (page) => {
+    // Approve a bounded build job bound to this chat, so the send is APPROVED work (isBuild true).
+    await page.evaluate((c) => window.pcc.requestJob('new_project', 'AutoContinue', c), cid);
+    await page.evaluate(() => window.pcc.approveJob());
+    // send(message, model, workerSessionId, isFirstTurn, chatId, attachments): same chatId for session + authority.
+    const r = await callOn(page, 'send', 'a long approved task that fans out past the turn cap', undefined, cid, true, cid);
+
+    // AC-1/AC-4: the resumed segment succeeded and the owner sees the segment succeed BEHIND a visible notice.
+    expect(r.ok).toBe(true);
+    expect(r.autoContinued).toBe(true);
+    expect(r.text).toMatch(/[Cc]ontinued automatically past the per-message turn limit/);
+    expect(r.text).toMatch(/[Ss]top anytime/);
+    expect(r.text).toContain('Finished the remaining slice of the approved task.'); // the resumed reply is included
+    expect(r.text).not.toMatch(/error_max_turns/); // no raw envelope leaks
+
+    // AC-1/AC-2/AC-3: the resumed segment ran on the SAME session (--resume, not a new --session-id),
+    // kept its tool profile (no escalation), and used a LOWERED cap = remaining cumulative budget
+    // (perMessageMaxTurns 30, 31 turns already spent, cumulative cap 45 -> 14).
+    const argv = JSON.parse(require('fs').readFileSync(argvFile, 'utf8'));
+    expect(argv).toContain('--resume');
+    expect(argv).not.toContain('--session-id');
+    const mi = argv.indexOf('--max-turns');
+    expect(mi).toBeGreaterThanOrEqual(0);
+    expect(Number(argv[mi + 1])).toBe(14);
+    expect(argv).toContain('--allowedTools'); // authority/tool profile intact on the resumed segment
+    expect(argv).not.toContain('--max-budget-usd'); // no dollar gate reintroduced (ADR-0022)
+  });
+  require('fs').rmSync(argvFile, { force: true });
+  require('fs').rmSync(seqState, { force: true });
 });
 
 test('verifier FAIL is reported as FAIL, not PASS', async () => {

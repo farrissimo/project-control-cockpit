@@ -34,6 +34,7 @@ const { workerEnv } = require('./worker-env'); // DECISION-003: strip paid-API c
 const { spawnClaude } = require('./claude-spawn'); // the ONE claude launcher — preserves every argument boundary (no shell)
 const persistentWorker = require('./persistent-worker'); // ADR-0020 T3: one warm claude process for text chat turns
 const { classifyResult } = require('./warm-result'); // ADR-0020 T3: pure per-turn result-envelope classifier
+const { decideAutoContinue, DEFAULTS: AUTO_CONTINUE_DEFAULTS } = require('./auto-continue'); // ADR-0023: auto-continue approved work once past --max-turns
 const { workerSessionExists, isNewWorkerSession } = require('./worker-session'); // ADR-0020 T3: restart-continuity create-vs-resume ground truth
 const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
@@ -793,6 +794,22 @@ ipcMain.handle('pcc:pickFolder', async () => {
 // against the behavior. Kept constant so it doesn't bust the prompt cache.
 const CHANNEL_PROMPT = 'You are replying inside PCC\'s text-only chat panel: there is no interactive UI, no clickable pickers or buttons you can present. Never use interactive tools such as AskUserQuestion; if you need to ask the owner something, ask it as plain text with the options listed inline. Never narrate internal tool, prompt, or mechanism failures to the owner (e.g. do not say a tool "isn\'t working") - just answer or ask plainly. The owner is a non-coder product lead: be concise and plain-language.';
 
+// ADR-0023 / Task 1.2: the GUARDED continuation prompt sent as the single resumed segment when
+// approved work is auto-continued past the native --max-turns cap. It forces the resumed worker to
+// re-orient against real state before acting, forbids repeating completed/destructive work, and
+// STOPS on any uncertainty — so an auto-continue can only ever FINISH near-done approved work, never
+// restart it or expand scope. Kept constant so it doesn't bust the prompt cache.
+const AUTO_CONTINUE_PROMPT = [
+  'CONTINUATION GUARD: The immediately previous segment stopped only because the native max-turns cap fired. Continue this already-approved work in the same chat/session.',
+  '',
+  'Before taking any action:',
+  '1. Inspect the current repo and conversation state to determine what already completed.',
+  '2. Do NOT repeat completed work, re-run destructive commands, or re-apply edits that already succeeded.',
+  '3. If state is unclear or you are not confident what already happened, STOP and reply briefly with the uncertainty instead of acting.',
+  '4. Do NOT expand scope, ask for higher limits, or start over from scratch.',
+  '5. Finish only the smallest remaining slice of the approved task, then stop.',
+].join('\n');
+
 // Execution authority (DECISION-112). Reading context is never authorization to act.
 // The chat is read_only by default; only an EXPLICIT owner approval of a bounded job
 // grants execution — tied to ONE chat and auto-expiring. State lives here in main (the
@@ -896,6 +913,10 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     // populated in the stdin-write block below (synchronous, before any close/error handler fires);
     // withCaps() is a no-op when nothing was trimmed, so it is safe on every resolve.
     const capNotices = { messageTruncated: false, attachmentTextTruncated: false, excludedAttachments: 0 };
+    // ADR-0023: auto-continue state carried across the ONE allowed resumed segment. Undefined on a
+    // genuine owner send (count 0, no turns spent, clock starts now); the recursive resumed call
+    // threads the SAME startedAt so the wall-clock ceiling covers original + resumed together.
+    const ac = (opts && opts.autoContinue) || { count: 0, cumulativeTurns: 0, startedAt: Date.now() };
     const withCaps = (r) => {
       if (r && (capNotices.messageTruncated || capNotices.attachmentTextTruncated || capNotices.excludedAttachments > 0)) {
         r.caps = {
@@ -951,7 +972,12 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     // must never abort approved work — so it is deliberately NOT passed. The real total_cost_usd is
     // still parsed + logged as telemetry (below). --max-turns stays as a runaway backstop for now
     // (its bare-stop is the remaining non-real stopper, fixed under ADR-0023 / Task 1.2).
-    args.push('--max-turns', String(limits.maxTurns));
+    // ADR-0023: a resumed auto-continue segment runs with a LOWERED --max-turns (the remaining
+    // cumulative-turn budget) so original + resumed can never exceed the cumulative ceiling; a normal
+    // owner send uses the configured per-message cap. Never raises the cap above the config.
+    const effectiveMaxTurns = (opts && typeof opts.maxTurnsOverride === 'number' && opts.maxTurnsOverride >= 1)
+      ? Math.min(Math.floor(opts.maxTurnsOverride), limits.maxTurns) : limits.maxTurns;
+    args.push('--max-turns', String(effectiveMaxTurns));
     // Worker (Claude) session identity is SEPARATE from authority identity: the renderer
     // passes workerSessionId (the chat's own id, or a re-minted id after crash recovery) for
     // --session-id/--resume, while build authority above is keyed to the stable chatId. So
@@ -1000,6 +1026,36 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
       const rollover = d.costUsd !== null ? recordChatCost(chatId, d.costUsd, d.deferRollover ? { deferRollover: true } : undefined) : null;
       if (d.terminate) warmWorker.shutdown(); // fail closed: a generic error / unknown shape ends the warm worker
       if (d.kind === 'max_turns') {
+        // ADR-0023 / Task 1.2: the native turn cap is a REAL runaway backstop, but a bare stop on it
+        // is a FALSE stop of approved work that only real usage should halt (ADR-0022). If this is
+        // build-authorized warm text work and every ceiling still permits it, auto-continue ONCE on
+        // the SAME session with a guarded prompt and a lowered cap; otherwise fall through to the
+        // normal stop. decideAutoContinue is pure + unit-tested; main only applies its verdict.
+        const spentTurns = ac.cumulativeTurns + (d.numTurns !== null ? d.numTurns : limits.maxTurns);
+        const decision = decideAutoContinue({
+          kind: 'max_turns', buildAuthorized: isBuild, hasAttachments: hasAttach,
+          autoContinuesSoFar: ac.count, cumulativeTurns: spentTurns,
+          elapsedMs: Date.now() - ac.startedAt, perMessageMaxTurns: limits.maxTurns,
+        });
+        if (decision.allow) {
+          warmWorker.shutdown(); // clean teardown so the resumed segment re-spawns on --resume <session>
+          const nextOpts = Object.assign({}, opts, {
+            autoContinue: { count: ac.count + 1, cumulativeTurns: spentTurns, startedAt: ac.startedAt },
+            maxTurnsOverride: decision.resumeMaxTurns,
+          });
+          const notice = 'Continued automatically past the per-message turn limit (auto-continue '
+            + (ac.count + 1) + ' of ' + AUTO_CONTINUE_DEFAULTS.maxAutoContinues
+            + ') so this approved work would not stop on a safety backstop, not your real Claude usage. You can Stop anytime.';
+          // Re-enter the SAME turn function with the guarded prompt on the SAME chat + session. Its
+          // result becomes this turn's result, with the visible notice prepended (never silent).
+          return askClaude(AUTO_CONTINUE_PROMPT, chosen, sessionId, false, chatId, [], nextOpts)
+            .then((r2) => {
+              const merged = Object.assign({}, r2);
+              merged.autoContinued = true;
+              merged.text = notice + '\n\n' + (r2 && typeof r2.text === 'string' ? r2.text : '');
+              return resolve(merged);
+            });
+        }
         const turnsNote = d.numTurns !== null ? ' (it reached ' + d.numTurns + ' agentic turns)' : '';
         return resolve({ ok: false, maxTurnsReached: true, numTurns: d.numTurns,
           text: 'Stopped automatically — this message hit its per-message turn limit' + turnsNote + ' before finishing. This is a safety limit that stops one message from quietly running for hundreds of hidden steps and burning your Claude usage — not a bug. Some work may already have happened (files read or changed, commands run), so glance at what changed before continuing rather than just resending. You can raise the limit in .cockpit/state/usage-limits.json (max_turns), or send a smaller next step.' });
