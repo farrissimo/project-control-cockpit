@@ -40,11 +40,11 @@ The two things that stopped LE from moving without the owner in the loop.
   Bounded scope: safe auto-continue past a per-message turn-cap stop for a whitelisted governed task,
   under a HARD ceiling (max auto-continues, max cumulative spend) with live visibility, so the owner is
   informed, not operating. This modifies a safety mechanism — design conservatively, Codex-heavy.
-  Needs ADR (0022). Acceptance (EARS): WHEN a governed task hits the per-message turn cap mid-task AND
+  Needs ADR (0023 — 0022 is the stop-policy reframe). Acceptance (EARS): WHEN a governed task hits the per-message turn cap mid-task AND
   auto-continue is in force AND the hard ceiling is not exceeded THE SYSTEM SHALL continue the task in a
   new segment and report progress, WITHOUT requiring the owner to relay; AND WHEN the hard ceiling is
   reached THE SYSTEM SHALL stop and say so plainly.
-  **Codex-advised design constraints (2026-07-25) — bind these into ADR-0022:**
+  **Codex-advised design constraints (2026-07-25) — bind these into ADR-0023:**
   - Whitelisted governed task type ONLY; no general auto-continue.
   - Continue ONLY on the specific `max_turns` stop — never on cost/authority/error stops.
   - Hard ceilings: small `max_auto_continues` (1-2), cumulative turn cap, cumulative USD cap, wall-clock cap.
