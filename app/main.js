@@ -243,20 +243,18 @@ function chatCosts() {
   if (chatCostUsd === null) chatCostUsd = new Map(Object.entries(loadChatCosts(costStoreDir())));
   return chatCostUsd;
 }
+// ADR-0022: per-chat cumulative cost is ADVISORY telemetry only. It accumulates each chat's REAL
+// cost so "what has this chat spent" stays answerable, but it NEVER triggers a rollover, NEVER
+// reroutes the worker, and NEVER resets the counter — phantom dollars on a flat plan (ADR-0020) must
+// not stop or silently reroute approved work. Always returns null (no rollover signal); the caller's
+// `res.costRollover` therefore never fires. `opts` is accepted for call-site compatibility and ignored.
 function recordChatCost(chatId, costUsd, opts) {
   if (!chatId || typeof costUsd !== 'number' || !Number.isFinite(costUsd) || costUsd < 0) return null;
   const costs = chatCosts();
   const total = (costs.get(chatId) || 0) + costUsd;
-  const cap = readUsageLimits(path.join(cockpitDir(), 'state')).maxChatUsd;
-  // deferRollover (the failed-turn path): do NOT roll over / reset here. The error path resolves its
-  // own message and starts no new session, so rolling over now would only RESET the counter to 0
-  // without any protective rollover actually firing — silently eating the cap-crossing and defeating
-  // the cross-turn cap (a codex-caught fail-open). Instead we ACCUMULATE the real cost and let the
-  // next SUCCESSFUL turn cross the cap and roll over for real.
-  const rollNow = total >= cap && !(opts && opts.deferRollover);
-  costs.set(chatId, rollNow ? 0 : total); // a real rollover "pays down" the counter — the fresh session starts clean
-  saveChatCosts(costStoreDir(), Object.fromEntries(costs)); // best-effort durability; a failed write just keeps the run's in-memory total
-  return rollNow ? { totalUsd: total } : null;
+  costs.set(chatId, total); // accumulate only — never zeroed, never rolled over
+  saveChatCosts(costStoreDir(), Object.fromEntries(costs)); // best-effort durability for the advisory total
+  return null;
 }
 function killWorker(child) {
   if (!child || child.killed || !child.pid) return;
@@ -948,7 +946,11 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     // the cost cap, stopping the "one message -> hundreds of hidden model turns" burn. Both cap
     // values come from the same fail-closed usage-limits config (read once here).
     const limits = readUsageLimits(path.join(cockpitDir(), 'state'));
-    args.push('--max-budget-usd', String(limits.maxTurnUsd));
+    // ADR-0022: only the owner's REAL 5-hour Claude usage may hard-stop approved work. The per-turn
+    // dollar cap (--max-budget-usd) is DEMOTED to advisory — a phantom figure on a flat plan (ADR-0020)
+    // must never abort approved work — so it is deliberately NOT passed. The real total_cost_usd is
+    // still parsed + logged as telemetry (below). --max-turns stays as a runaway backstop for now
+    // (its bare-stop is the remaining non-real stopper, fixed under ADR-0023 / Task 1.2).
     args.push('--max-turns', String(limits.maxTurns));
     // Worker (Claude) session identity is SEPARATE from authority identity: the renderer
     // passes workerSessionId (the chat's own id, or a re-minted id after crash recovery) for

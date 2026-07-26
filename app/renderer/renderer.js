@@ -548,19 +548,10 @@ async function runSend(item) {
     if (res.ok) { const cc = chats.find((c) => c.id === chatId); if (cc) persistTranscript(cc); }
     // A stale worker is holding this chat's session — offer a one-click way out.
     if (!res.ok && res.sessionInUse) addRecoveryAction();
-    // R3 slice 2 (desktop-parity, ADR-0015): this chat's cumulative cost crossed its cap — roll it
-    // over AUTOMATICALLY, zero owner action. Reuses the exact same mechanism manual "Recover this
-    // chat" already uses (a fresh underlying session, full visible history kept) — just triggered
-    // by real spend instead of a stale-lock error. Honest, not overclaiming: the model's own
-    // context resets with the new session; the chat's history in PCC does not.
-    if (res.costRollover) {
-      remintSession(chatId);
-      await appendMessage('assistant',
-        'This chat has used about $' + res.costRollover.totalUsd.toFixed(2) + ' so far — PCC automatically started a fresh worker ' +
-        'session to protect your Claude usage from growing unnoticed over a long chat. Your full history stays right here; the new ' +
-        'session starts with a clean context. Nothing more to do — just keep chatting.',
-        chatId);
-    }
+    // ADR-0022: the per-chat dollar cap is DEMOTED to advisory — cumulative cost never reroutes the
+    // worker (recordChatCost no longer signals a rollover, so res.costRollover is never set). The old
+    // automatic "started a fresh worker session" notice is removed with it. Real 5-hour usage is the
+    // only thing that intercepts approved work (handled by the usage-protection hold, not here).
   } catch (err) {
     stopThinkingTimer(thinking); thinking.remove();
     await appendMessage('assistant error', 'Something went wrong: ' + err.message, chatId);
