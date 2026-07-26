@@ -1,4 +1,7 @@
-# Context-triggered auto-rollover + truthful chat-health meter   (status: draft)
+# Context-triggered auto-rollover + truthful chat-health meter   (status: superseded by ADR-0025)
+
+> **SUPERSEDED (2026-07-26, ADR-0025):** the chat-length meter and automatic context-rollover were
+> removed. See `docs/specs/remove-chat-length-meter.md`. Kept for history.
 
 Desktop-parity R3. Direct fix for the 2026-07-20 incident: a ~4-hour chat grew to a
 **426K-token context**, burning the owner's Claude usage with no warning and no stop,

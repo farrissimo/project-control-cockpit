@@ -41,6 +41,14 @@ stamp. **CI-green + a valid trailer is necessary, NEVER sufficient — a feature
 - **Plain-language usage-limit message (ADR-0018)** — ⬜ not yet proven on screen.
 Work down the ⬜/❌ items one at a time, proving each on the owner's screen before marking it ✅.
 
+**Chat-length meter REMOVED (2026-07-26, ADR-0025).** After a design session concluded neither usable
+signal was both honest and built (model-step "work distance" isn't built; context-token/age fullness
+isn't honest — estimated window, measures size not safety), the chat-length / chat-health meter AND the
+automatic context-rollover it fed (ADR-0019) were removed rather than reshaped — a meter that can't be
+shown truthfully is the fake-green this app exists to kill. The manual "Continue in fresh chat" button
+(ADR-0021) stays; the owner rotates chats by judgment. Do not re-introduce a size/age chat meter without
+a new ADR. Details: `docs/adr/0025-remove-chat-length-meter.md`.
+
 Read this first. Always-current summary so a new session starts fully oriented,
 with no re-briefing from the owner. (Last refreshed 2026-07-21.) This file records
 DURABLE state only. The exact current commit SHA, whether local == origin/main,

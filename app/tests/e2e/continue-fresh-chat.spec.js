@@ -31,7 +31,7 @@ test('continue in fresh chat carries the handoff into the composer, even before 
   }
 });
 
-test('chat-health warning offers an owner-controlled fresh chat that carries context, without auto-send', async () => {
+test('continue in fresh chat carries the recent conversation VERBATIM plus the handoff, without auto-send', async () => {
   const seqState = path.join(os.tmpdir(), 'pcc-seq-continue-' + Date.now() + '.txt');
   const { app, page } = await launchApp({ PCC_FAKE_CLAUDE_FIXTURE: FX, PCC_FAKE_CLAUDE_SEQ_STATE: seqState });
   try {
@@ -41,7 +41,7 @@ test('chat-health warning offers an owner-controlled fresh chat that carries con
     await page.locator('#send').click();
     await expect(page.locator('.bubble.assistant:not(.thinking)')).toHaveCount(1, { timeout: 20000 });
 
-    await page.locator('#input').fill('second message — cross the warning threshold');
+    await page.locator('#input').fill('second message — carried forward verbatim');
     await page.locator('#send').click();
     await expect(page.locator('.bubble.assistant:not(.thinking)')).toHaveCount(2, { timeout: 20000 });
 
@@ -54,6 +54,10 @@ test('chat-health warning offers an owner-controlled fresh chat that carries con
     // New chat opens with the handoff carried into the composer.
     await expect(page.locator('#chats-btn')).toContainText('Chats (2)', { timeout: 20000 });
     await expect(page.locator('#input')).toHaveValue(HANDOFF_MARKER, { timeout: 20000 });
+    // The recent CONVERSATION carries forward verbatim — what the handoff alone never carried, and the
+    // coverage previously held by the now-removed context-rollover meter spec (ADR-0025).
+    await expect(page.locator('#input')).toHaveValue(/Recent conversation \(verbatim, most recent last\)/);
+    await expect(page.locator('#input')).toHaveValue(/You: second message — carried forward verbatim/);
 
     // Old chat is intact and reachable, and NOTHING was auto-sent (no new worker turn).
     await page.locator('#chats-btn').click();

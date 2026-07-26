@@ -20,21 +20,9 @@
     return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null;
   }
 
-  // The turn's CURRENT context size = the total input-side (prompt) tokens Claude processed:
-  // uncached input + cache-read + cache-write. This is a per-turn CURRENT reading (the whole
-  // accumulated conversation sent this turn), NOT a running sum — summing across turns would
-  // massively overstate fullness (codex-caught, ADR-0019). If the usage block is absent or has no
-  // usable input_tokens, returns null (unknown) — never a fabricated 0 that would read as "empty".
-  function contextTokensFrom(usage) {
-    if (!usage || typeof usage !== 'object') return null;
-    const inp = nonNegNum(usage.input_tokens);
-    if (inp === null) return null;
-    return inp + (nonNegNum(usage.cache_read_input_tokens) || 0) + (nonNegNum(usage.cache_creation_input_tokens) || 0);
-  }
-
   // The safe "nothing parseable" shape — every field null/false so a non-JSON or malformed body
   // (the test fakebin's plain text, any raw edge case) can never fabricate a cost/text/flag.
-  const NULL_SHAPE = { text: null, costUsd: null, isError: null, budgetExceeded: false, maxTurnsReached: false, numTurns: null, contextTokens: null };
+  const NULL_SHAPE = { text: null, costUsd: null, isError: null, budgetExceeded: false, maxTurnsReached: false, numTurns: null };
 
   function parseTurnOutput(raw) {
     let o;
@@ -48,7 +36,6 @@
       // ADR-0020 T2: the native --max-turns cap fired — recognized by structured subtype, not prose.
       maxTurnsReached: o.subtype === 'error_max_turns',
       numTurns: nonNegNum(o.num_turns), // the real agentic-turn count Claude reports (null if absent — never fabricated)
-      contextTokens: contextTokensFrom(o.usage),
     };
   }
 

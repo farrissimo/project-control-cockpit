@@ -8,7 +8,7 @@ const { parseTurnOutput } = require('../../turn-output.js');
 
 test('a real success envelope (verified live shape) yields text + cost', () => {
   const raw = JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'ok', total_cost_usd: 0.030456, session_id: 'x' });
-  assert.deepStrictEqual(parseTurnOutput(raw), { text: 'ok', costUsd: 0.030456, isError: false, budgetExceeded: false, maxTurnsReached: false, numTurns: null, contextTokens: null });
+  assert.deepStrictEqual(parseTurnOutput(raw), { text: 'ok', costUsd: 0.030456, isError: false, budgetExceeded: false, maxTurnsReached: false, numTurns: null});
 });
 
 test('a real budget-exceeded envelope is recognized by subtype, not by matching prose', () => {
@@ -34,7 +34,6 @@ test('ADR-0020 T2: a REAL error_max_turns envelope (captured from the installed 
   assert.strictEqual(r.isError, true);
   assert.strictEqual(r.text, null);              // no `result` field on this abort shape — never fabricated
   assert.strictEqual(r.costUsd, 0.0968618);      // real cost of the (partial) capped turn is kept
-  assert.strictEqual(r.contextTokens, 3 + 14991 + 15216); // usage still extracted
 });
 
 test('num_turns is only trusted when a real non-negative number; a missing/garbage value is null, never fabricated', () => {
@@ -45,35 +44,12 @@ test('num_turns is only trusted when a real non-negative number; a missing/garba
 });
 
 test('plain text (the fakebin worker, or any non-JSON stdout) -> everything null/false, never fabricated', () => {
-  assert.deepStrictEqual(parseTurnOutput('FAKE-CLAUDE-REPLY: received 12 chars.'), { text: null, costUsd: null, isError: null, budgetExceeded: false, maxTurnsReached: false, numTurns: null, contextTokens: null });
+  assert.deepStrictEqual(parseTurnOutput('FAKE-CLAUDE-REPLY: received 12 chars.'), { text: null, costUsd: null, isError: null, budgetExceeded: false, maxTurnsReached: false, numTurns: null});
 });
 
 test('empty string, malformed JSON, and non-object JSON all degrade to the same safe null shape', () => {
   for (const raw of ['', '{not json', '[1,2,3]', '"just a string"', '42', 'null']) {
-    assert.deepStrictEqual(parseTurnOutput(raw), { text: null, costUsd: null, isError: null, budgetExceeded: false, maxTurnsReached: false, numTurns: null, contextTokens: null }, JSON.stringify(raw));
-  }
-});
-
-// --- context-token extraction (ADR-0019): the CURRENT prompt size, not a running sum ---
-
-test('contextTokens = input + cache_read + cache_creation (the full current prompt size)', () => {
-  const raw = JSON.stringify({ result: 'ok', total_cost_usd: 0.01, usage: { input_tokens: 1000, cache_read_input_tokens: 5000, cache_creation_input_tokens: 200, output_tokens: 42 } });
-  assert.strictEqual(parseTurnOutput(raw).contextTokens, 6200); // output_tokens is NOT context, excluded
-});
-
-test('contextTokens with only input_tokens present = input_tokens (missing cache fields treated as 0)', () => {
-  assert.strictEqual(parseTurnOutput(JSON.stringify({ result: 'ok', usage: { input_tokens: 1234 } })).contextTokens, 1234);
-});
-
-test('no usage block, or usage without a usable input_tokens, yields null — never a fabricated 0', () => {
-  assert.strictEqual(parseTurnOutput(JSON.stringify({ result: 'ok' })).contextTokens, null);
-  assert.strictEqual(parseTurnOutput(JSON.stringify({ result: 'ok', usage: {} })).contextTokens, null);
-  assert.strictEqual(parseTurnOutput(JSON.stringify({ result: 'ok', usage: 'nope' })).contextTokens, null);
-});
-
-test('a negative or non-finite input_tokens is rejected (null), never trusted as a real context size', () => {
-  for (const bad of [-1, NaN, Infinity, -Infinity, '5000']) {
-    assert.strictEqual(parseTurnOutput(JSON.stringify({ result: 'ok', usage: { input_tokens: bad } })).contextTokens, null, String(bad));
+    assert.deepStrictEqual(parseTurnOutput(raw), { text: null, costUsd: null, isError: null, budgetExceeded: false, maxTurnsReached: false, numTurns: null}, JSON.stringify(raw));
   }
 });
 

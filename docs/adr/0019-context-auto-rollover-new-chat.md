@@ -1,10 +1,15 @@
 ---
-status: Accepted
+status: Superseded by ADR-0025
 date: 2026-07-21
 deciders: owner (product lead), Claude (worker), Codex (independent verifier)
 ---
 
 # ADR-0019: Context-triggered auto-rollover to a fresh chat + a truthful chat-health meter — desktop-parity R3
+
+> **SUPERSEDED by [ADR-0025](0025-remove-chat-length-meter.md) (2026-07-26):** both the chat-length /
+> chat-health meter and this automatic context-rollover were REMOVED — neither usable signal was both
+> honest and built, so a meter that could not be displayed truthfully was retired rather than reshaped.
+> The manual "Continue in fresh chat" button (ADR-0021) remains. This record is kept for history.
 
 ## Amendment (2026-07-21, GROWTH revision — the shipped design)
 
