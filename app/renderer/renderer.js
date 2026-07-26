@@ -1581,10 +1581,19 @@ function growComposer() {
 })();
 input.addEventListener('input', growComposer);
 // A manual drag of the resize grip ends with mouseup on the textarea; persist that
-// height as the new floor so it sticks across turns and restarts.
+// height as the new floor so it sticks across turns and restarts. Guard (ITM backlog item 7):
+// only a GENUINE grip drag — where the height changed DURING the mouse press — becomes the
+// floor. A plain click to place the cursor must NOT capture a content-auto-grown height, or a
+// big paste would "stick" the composer tall forever (even across restarts, since the floor is
+// persisted), and clearing the text on send would no longer collapse it.
+let composerPressH = null;
+input.addEventListener('mousedown', () => { composerPressH = input.offsetHeight; });
 input.addEventListener('mouseup', () => {
   const h = input.offsetHeight;
-  if (Math.abs(h - composerFloor) > 2) { composerFloor = h; localStorage.setItem(COMPOSER_H_KEY, String(h)); }
+  if (composerPressH !== null && Math.abs(h - composerPressH) > 2) {
+    composerFloor = h; localStorage.setItem(COMPOSER_H_KEY, String(h));
+  }
+  composerPressH = null;
 });
 
 // Handoff packet (docs/specs/conversation-handoff-packet.md). Select a slice of the

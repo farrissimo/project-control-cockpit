@@ -108,9 +108,9 @@ test('ADR-0020 T2: a native --max-turns cap surfaces as a PLAIN, neutral message
     expect(r.ok).toBe(false);
     expect(r.maxTurnsReached).toBe(true);
     expect(r.numTurns).toBe(2);                       // the real reported count is retained
-    expect(r.text).toMatch(/per-message turn limit/i); // plain language, states what happened
-    expect(r.text).toMatch(/2 agentic turns/);         // reports the actual num_turns to the owner
-    expect(r.text).toMatch(/safety limit/i);           // framed as a protection, not a bug
+    expect(r.text).toMatch(/limit on internal work steps/i); // plain language, states what happened
+    expect(r.text).toMatch(/2 internal steps/);              // reports the actual num_turns to the owner
+    expect(r.text).toMatch(/NOT a limit on how many messages you can send/i); // kills the "we've only had 5 messages" confusion (ITM item 8)
     expect(r.text).toMatch(/before continuing|glance at what changed/i); // tells the owner to review partial state
     // The raw JSON envelope and its internals must NEVER reach the owner.
     expect(r.text).not.toMatch(/error_max_turns/);
@@ -139,7 +139,7 @@ test('ADR-0023 AC-1/AC-2/AC-3/AC-4: approved work auto-continues ONCE past --max
     // AC-1/AC-4: the resumed segment succeeded and the owner sees the segment succeed BEHIND a visible notice.
     expect(r.ok).toBe(true);
     expect(r.autoContinued).toBe(true);
-    expect(r.text).toMatch(/[Cc]ontinued automatically past the per-message turn limit/);
+    expect(r.text).toMatch(/[Cc]ontinued automatically past the single-message internal-step limit/);
     expect(r.text).toMatch(/[Ss]top anytime/);
     expect(r.text).toContain('Finished the remaining slice of the approved task.'); // the resumed reply is included
     expect(r.text).not.toMatch(/error_max_turns/); // no raw envelope leaks
