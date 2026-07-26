@@ -18,7 +18,11 @@ test('the Owner Overview proof card no longer claims CI is unwired — states it
     const ov = page.locator('#owner-overview');
     await expect(ov).toBeVisible({ timeout: 40000 });
     await expect(ov).not.toContainText('not yet wired into PCC');
-    await expect(ov).toContainText('surfaced in the "Verified" chip');
+    // The card shows a "Reading the project…" placeholder until the async detectors populate it.
+    // toBeVisible passes on that placeholder, so this content assertion must ALSO wait the full
+    // populate window — the default 5s races the ~10-25s load and flaked on a loaded CI box
+    // (received "Reading the project…"). Match the 40s intent above.
+    await expect(ov).toContainText('surfaced in the "Verified" chip', { timeout: 40000 });
   } finally {
     await closeApp(app);
   }
