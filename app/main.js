@@ -1043,7 +1043,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
             autoContinue: { count: ac.count + 1, cumulativeTurns: spentTurns, startedAt: ac.startedAt },
             maxTurnsOverride: decision.resumeMaxTurns,
           });
-          const notice = 'Continued automatically past the per-message turn limit (auto-continue '
+          const notice = 'Continued automatically past the single-message internal-step limit (auto-continue '
             + (ac.count + 1) + ' of ' + AUTO_CONTINUE_DEFAULTS.maxAutoContinues
             + ') so this approved work would not stop on a safety backstop, not your real Claude usage. You can Stop anytime.';
           // Re-enter the SAME turn function with the guarded prompt on the SAME chat + session. Its
@@ -1056,9 +1056,9 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
               return resolve(merged);
             });
         }
-        const turnsNote = d.numTurns !== null ? ' (it reached ' + d.numTurns + ' agentic turns)' : '';
+        const turnsNote = d.numTurns !== null ? ' (it used ' + d.numTurns + ' internal steps)' : '';
         return resolve({ ok: false, maxTurnsReached: true, numTurns: d.numTurns,
-          text: 'Stopped automatically — this message hit its per-message turn limit' + turnsNote + ' before finishing. This is a safety limit that stops one message from quietly running for hundreds of hidden steps and burning your Claude usage — not a bug. Some work may already have happened (files read or changed, commands run), so glance at what changed before continuing rather than just resending. You can raise the limit in .cockpit/state/usage-limits.json (max_turns), or send a smaller next step.' });
+          text: 'Stopped automatically — this request reached its limit on internal work steps' + turnsNote + ' before finishing. One message you send can trigger many internal steps — Claude reading files, running commands, and calling tools to answer it — and this caps how many a single message may take, so it cannot quietly run for hundreds of hidden steps and burn your Claude usage. It is NOT a limit on how many messages you can send, and not a bug. Some work may already have happened (files read or changed, commands run), so glance at what changed before continuing rather than just resending. You can raise the limit in .cockpit/state/usage-limits.json (max_turns), or send a smaller next step.' });
       }
       if (d.kind === 'budget') {
         return resolve({ ok: false, budgetExceeded: true,
@@ -1088,7 +1088,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
       if (isBudgetExceeded(raw)) return resolve({ ok: false, budgetExceeded: true,
         text: 'Stopped automatically — this turn hit its per-turn spending cap before finishing. This is a safety limit protecting your Claude usage, not a bug. You can raise the cap in .cockpit/state/usage-limits.json, or just send it again (it will pick up where the plan left off).' });
       if (isMaxTurnsError(raw)) return resolve({ ok: false, maxTurnsReached: true, numTurns: null,
-        text: 'Stopped automatically — this message hit its per-message turn limit before finishing. This is a safety limit that stops one message from quietly running for hundreds of hidden steps and burning your Claude usage — not a bug. Some work may already have happened, so glance at what changed before continuing rather than just resending. You can raise the limit in .cockpit/state/usage-limits.json (max_turns).' });
+        text: 'Stopped automatically — this request reached its limit on internal work steps before finishing. One message you send can trigger many internal steps — Claude reading files, running commands, and calling tools to answer it — and this caps how many a single message may take, so it cannot quietly run for hundreds of hidden steps and burn your Claude usage. It is NOT a limit on how many messages you can send, and not a bug. Some work may already have happened, so glance at what changed before continuing rather than just resending. You can raise the limit in .cockpit/state/usage-limits.json (max_turns).' });
       if (isUsageLimitError(raw)) return resolve({ ok: false, usageLimit: true,
         text: 'You’ve reached your Claude usage limit. This is Anthropic’s limit on your plan (the same one the “Usage” chip at the top of the window tracks) — not a PCC problem, and nothing is broken. Your chat and full history are safe right here. It resets automatically after a while; just send your message again once it does.' });
       if (isAuthError(raw)) return resolve({ ok: false, authError: true,
@@ -1261,9 +1261,9 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
           // via logFailUsage so the ATTACHMENT case parses stream-json usage (parseStreamUsage) instead
           // of the old usageFromJson(out), which returned null on stream-json and silently dropped it.
           logFailUsage('chat-turn-max-turns', numTurns);
-          const turnsNote = numTurns !== null ? ' (it reached ' + numTurns + ' agentic turns)' : '';
+          const turnsNote = numTurns !== null ? ' (it used ' + numTurns + ' internal steps)' : '';
           resolve({ ok: false, maxTurnsReached: true, numTurns: numTurns,
-            text: 'Stopped automatically — this message hit its per-message turn limit' + turnsNote + ' before finishing. This is a safety limit that stops one message from quietly running for hundreds of hidden steps and burning your Claude usage — not a bug. Some work may already have happened (files read or changed, commands run), so glance at what changed before continuing rather than just resending. You can raise the limit in .cockpit/state/usage-limits.json (max_turns), or send a smaller next step.' });
+            text: 'Stopped automatically — this request reached its limit on internal work steps' + turnsNote + ' before finishing. One message you send can trigger many internal steps — Claude reading files, running commands, and calling tools to answer it — and this caps how many a single message may take, so it cannot quietly run for hundreds of hidden steps and burn your Claude usage. It is NOT a limit on how many messages you can send, and not a bug. Some work may already have happened (files read or changed, commands run), so glance at what changed before continuing rather than just resending. You can raise the limit in .cockpit/state/usage-limits.json (max_turns), or send a smaller next step.' });
         } else if (isUsageLimitError(raw)) {
           // The owner hit their actual Claude PLAN usage limit (Anthropic's, not PCC's). This is the
           // most likely shock in heavy use — turn the scary raw CLI error into a plain, reassuring
