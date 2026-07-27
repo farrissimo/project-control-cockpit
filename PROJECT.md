@@ -1,5 +1,21 @@
 # PROJECT.md — current project brief
 
+## ▶ NEXT CHAT — START HERE (active work as of 2026-07-27)
+**Owner-approved, permanent, tier-1 workflow change: every PCC feature must carry an
+Expected-Behavior Map (lean traceability matrix), enforced with teeth. Decision recorded in
+`docs/adr/0027-expected-behavior-map-traceability.md` (Proposed) — read it; its "Implementation task
+list" is your exact mandate.** In short: (1) the map is a required section in every feature ADR (idea
+can't be formalized without it; `check-adr.ps1` gets teeth); (2) "done" now means every mapped behavior
+has a passing test, checked *at completion*, not deferred; (3) it travels to spawned projects; (4) a
+separate **retroactive backfill** builds `docs/EXPECTATION_AUDIT.md` for everything already built (Stage
+1 = finite control-surface spine + docs-sourced expected behavior + built/tested status, ranked by
+shock-risk; Stage 2 = mine the ~254 dev transcripts for undocumented/emergent expectations — opt-in,
+token-heavy). Keep it LEAN (anti-over-governance). **Origin:** the owner pressed real cockpit buttons for
+the first time (2026-07-27) and found two green-but-wrong defects (#2 switch-while-busy, #3 search
+navigation — fixed in PR #83); the deeper lesson is that CI-green proves "code does what its tests say,"
+not "the app does what the owner expects" (the ADR-0003 residue). This is PCC only for now, not ITM.
+A separate handoff copy block from the closing chat carries the nuance not captured here.
+
 ## ⚠ READ THIS FIRST — state as of 2026-07-21 (updated after the usage-meter fix)
 The #1 broken thing — **the usage meter — is now FIXED and proven accurate on the owner's actual
 screen** (2026-07-21). Root cause, finally diagnosed (not guessed): the Claude desktop app is a
