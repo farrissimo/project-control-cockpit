@@ -103,16 +103,18 @@ The policy stays a pure, unit-tested decision (`app/auto-continue.js`); `main.js
   verifies the diff (static + runnable checks; the E2E is worker-attested — it cannot launch Electron).
 - **Future chats / children:** the policy + ceilings live here and in the spec; inherited by every scaffold.
 
-## Open questions for the owner (the decisions this ADR asks you to make)
+## Owner decisions (recorded 2026-07-26; status stays Proposed pending implementation + proof)
 
-1. **Opt-in per-task spend cap?** By default dollars stay advisory (ADR-0022) and never hard-stop the run.
-   Do you want an OPTIONAL per-task $ ceiling you can switch on when you want a hard money bound — or are
-   real 5-hour usage + the runaway backstops enough for you?
-2. **Automatic for all approved work, or opt-in per task?** Default proposed: automatic for any
-   build-authorized chat (that is where the friction is), Stop always available.
-3. **Backstop values:** cumulative-turn cap (default 200?), wall-clock (30 min?), and N = consecutive
-   no-progress segments before stopping (2?) — conservative enough to catch a true spiral without
-   clipping a long honest build.
+1. **Run mode — DECIDED: automatic for all approved work.** Owner: *"work continues safely. less
+   babysitting always."* Any build-authorized chat runs its task to completion without the owner relaying;
+   Stop is always available; a running notice shows cumulative turns/cost.
+2. **Opt-in per-task spend cap — DEFERRED (owner undecided; a long-standing open question).** Baseline for
+   the initial build: dollars stay advisory (ADR-0022), no hard dollar stop. An opt-in per-task $ ceiling
+   can be added later as a separate, additive switch — it does not block or change the core fix, so the
+   undecided debate does not hold up item #6.
+3. **Backstop starting defaults (tunable, not a hard decision):** cumulative-turn cap 200, whole-run
+   wall-clock 30 min, and N = 2 consecutive no-substantive-progress segments. Conservative starting points
+   to catch a true spiral without clipping a long honest build; revisit after real use.
 
 ## Supersedes / Related
 
