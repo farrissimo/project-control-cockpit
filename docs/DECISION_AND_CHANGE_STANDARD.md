@@ -15,6 +15,7 @@ Each significant decision or change = one file `docs/adr/NNNN-title.md`. Format:
 status: Proposed | Accepted | Deprecated | Superseded by ADR-NNNN
 date: YYYY-MM-DD
 deciders: owner (+ verifier if used)
+feature: true          # OMIT unless this ADR introduces/changes a user-facing feature (ADR-0027)
 ---
 
 # ADR-NNNN: <short present-tense title>
@@ -27,6 +28,29 @@ What we chose ("We will…").
 
 ## Consequences
 What we gain — and what we GIVE UP (the honest trade-off).
+
+## Expected-Behavior Map   [REQUIRED for feature ADRs — ADR-0027]
+*(Only for `feature: true` ADRs; omit the whole section for process/meta decisions.)*
+The lean RTM: one row per behavior the feature should exhibit. Map intent → the control that
+triggers it → what the owner expects → where that expectation comes from → its real status →
+the test that pins it. This is also the click-through script for the final sign-off test.
+
+| behavior | control (which button/action) | expected result | source | status | test |
+|---|---|---|---|---|---|
+| <what it does> | <the trigger> | <what the owner expects to see> | STATED chat-id / doc:line | A | <spec file / commit> |
+
+- **source** — `STATED` (explicit in a chat/doc; cite it) · `INFERRED` (deduced; say so) ·
+  `REFERENCE` (imported from an anchor, e.g. "mimic the Claude/Codex desktop chat" — one line that
+  imports a whole behavior set: resize, auto-grow, stop button — without enumerating each).
+- **status** — `A` built+tested+matches · `B` built+tested but *narrower/different* than expected
+  (the shock class) · `C` built but *not* tested · `D` expected, not built, *not* rejected (a real gap)
+  · `E` not built *because* explicitly rejected/deferred/superseded (not a gap) · `F` regressed.
+- The map is **living**: map every *known* behavior now, name the reference anchors, and add rows as
+  new expectations emerge (build, use, or audit). No fake precision, no invented rows — an unknown
+  stays unknown. Keep it a small table, not aerospace RTM.
+- **Teeth:** `check-adr.ps1` rejects a `feature: true` ADR with no map. When the ADR is **Accepted**
+  (claimed done), no row may be status **C**, and every built row (A/B) must name a test — that is the
+  Definition of Done, machine-enforced.
 
 ## Confirmation        [REQUIRED — Pillar 1]
 How we proved it works AND didn't break what we have:
@@ -67,7 +91,7 @@ Minimal decisions may leave optional MADR sections out, but **Confirmation and E
 
 ## Enforcement (so it's not "followed by discipline")
 
-The ADR validator (run in doctor / CI / pre-commit) **rejects an Accepted ADR missing `Confirmation` or `Engagement`**. That's what turns this from a good intention into a guarantee — and it's the same validator that enforces the MADR format itself (DECISION-115).
+The ADR validator (run in doctor / CI / pre-commit) **rejects an Accepted ADR missing `Confirmation` or `Engagement`**. That's what turns this from a good intention into a guarantee — and it's the same validator that enforces the MADR format itself (DECISION-115). It also enforces the **Expected-Behavior Map** for `feature: true` ADRs (ADR-0027): no map ⇒ reject; Accepted with an untested behavior ⇒ reject. Green ≠ correct is why the map exists — the gates prove "the code does what its tests say"; the map is how we also check "the app does what the owner expects."
 
 ---
 
