@@ -34,7 +34,7 @@ const { workerEnv } = require('./worker-env'); // DECISION-003: strip paid-API c
 const { spawnClaude } = require('./claude-spawn'); // the ONE claude launcher — preserves every argument boundary (no shell)
 const persistentWorker = require('./persistent-worker'); // ADR-0020 T3: one warm claude process for text chat turns
 const { classifyResult } = require('./warm-result'); // ADR-0020 T3: pure per-turn result-envelope classifier
-const { decideAutoContinue, DEFAULTS: AUTO_CONTINUE_DEFAULTS } = require('./auto-continue'); // ADR-0023: auto-continue approved work once past --max-turns
+const { decideAutoContinue } = require('./auto-continue'); // ADR-0026: run approved work to completion past --max-turns
 const { workerSessionExists, isNewWorkerSession } = require('./worker-session'); // ADR-0020 T3: restart-continuity create-vs-resume ground truth
 const chatSummary = require('./chat-summary');
 const chatRecall = require('./chat-recall');
@@ -810,6 +810,37 @@ const AUTO_CONTINUE_PROMPT = [
   '5. Finish only the smallest remaining slice of the approved task, then stop.',
 ].join('\n');
 
+// ADR-0026 no-substantive-progress guard: a cheap, deterministic completion fingerprint of the
+// worker's repo — the git HEAD commit plus the porcelain working-tree state. If a resumed segment
+// changes a file, makes a commit, or writes evidence, this string changes; if it only talked, it
+// stays identical, and N such stale segments in a row halt the run. Returns null (the guard fails
+// OPEN) on any git error or a non-git project, so the run is still bounded by the turn + wall-clock
+// caps but is never FALSELY halted for progress it cannot measure. Never throws.
+function computeProgressFingerprint(cwd) {
+  try {
+    const cp = require('child_process');
+    const opts = { cwd: cwd, timeout: 5000, windowsHide: true, encoding: 'utf8' };
+    const head = cp.execFileSync('git', ['rev-parse', 'HEAD'], opts).trim();
+    const status = cp.execFileSync('git', ['status', '--porcelain'], opts);
+    return require('crypto').createHash('sha256').update(head + '\n' + status).digest('hex');
+  } catch (e) {
+    return null; // fail open — never halt honest work just because progress couldn't be measured
+  }
+}
+
+// ADR-0026: plain, honest end-of-run message when a runaway backstop or the no-progress guard stops
+// an auto-continued approved task. Names which ceiling fired and how to raise it — never a raw envelope.
+function autoContinueStopText(reason, spentTurns, spentCost) {
+  const tally = ' (about ' + spentTurns + ' internal steps and $' + (Number(spentCost) || 0).toFixed(2) + ' this run)';
+  if (reason === 'cumulative-turn-cap-reached') {
+    return 'Stopped automatically — this approved task reached the safety ceiling on total internal work steps for one run' + tally + ', across several automatic continuations, before it finished on its own. This is a runaway backstop protecting you, NOT your real Claude usage and NOT a bug. Some work very likely landed (files changed, commits made) — glance at what changed. To let a long build run further, raise max_chat_turns in .cockpit/state/usage-limits.json, or send the next step.';
+  }
+  if (reason === 'wall-clock-cap-exceeded') {
+    return 'Stopped automatically — this approved task hit its whole-run time ceiling (about 30 minutes)' + tally + ', across several automatic continuations, before it finished on its own. This is a runaway backstop protecting you, NOT your real Claude usage and NOT a bug. Glance at what changed, then send the next step to keep going.';
+  }
+  return 'Stopped automatically — this approved task kept running but stopped making visible progress (no file, commit, or saved evidence changed) across the last couple of automatic continuations' + tally + ', so PCC halted it instead of looping forever. It may be stuck, or waiting on a real decision from you. Glance at what is there, then send a clearer next step to continue.';
+}
+
 // Execution authority (DECISION-112). Reading context is never authorization to act.
 // The chat is read_only by default; only an EXPLICIT owner approval of a bounded job
 // grants execution — tied to ONE chat and auto-expiring. State lives here in main (the
@@ -916,7 +947,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     // ADR-0023: auto-continue state carried across the ONE allowed resumed segment. Undefined on a
     // genuine owner send (count 0, no turns spent, clock starts now); the recursive resumed call
     // threads the SAME startedAt so the wall-clock ceiling covers original + resumed together.
-    const ac = (opts && opts.autoContinue) || { count: 0, cumulativeTurns: 0, startedAt: Date.now() };
+    const ac = (opts && opts.autoContinue) || { count: 0, cumulativeTurns: 0, cumulativeCost: 0, startedAt: Date.now(), fingerprint: undefined, noProgressStreak: 0 };
     const withCaps = (r) => {
       if (r && (capNotices.messageTruncated || capNotices.attachmentTextTruncated || capNotices.excludedAttachments > 0)) {
         r.caps = {
@@ -1032,20 +1063,38 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
         // the SAME session with a guarded prompt and a lowered cap; otherwise fall through to the
         // normal stop. decideAutoContinue is pure + unit-tested; main only applies its verdict.
         const spentTurns = ac.cumulativeTurns + (d.numTurns !== null ? d.numTurns : limits.maxTurns);
+        const spentCost = (ac.cumulativeCost || 0) + (d.costUsd !== null ? d.costUsd : 0);
+        // No-substantive-progress guard: compare the completion fingerprint at THIS stop to the previous
+        // stop's. Same fingerprint = the segment that just ran advanced nothing (no file/commit/evidence
+        // change) -> the stale streak grows; a change resets it to 0. Fails OPEN (streak 0) when the
+        // fingerprint can't be read, so a non-git project stays bounded by the turn/clock caps, never
+        // falsely halted. Only computed for eligible (build-authorized, attachment-free) work.
+        let fingerprint = ac.fingerprint;
+        let noProgressStreak = 0;
+        if (isBuild && !hasAttach) {
+          const fp = computeProgressFingerprint(scopedCwd);
+          if (fp === null) { noProgressStreak = 0; }                                   // unmeasurable -> guard inactive
+          else if (ac.fingerprint === undefined || ac.fingerprint === null) { fingerprint = fp; noProgressStreak = 0; } // first stop: baseline
+          else { noProgressStreak = (fp === ac.fingerprint) ? ((ac.noProgressStreak || 0) + 1) : 0; fingerprint = fp; }
+        }
         const decision = decideAutoContinue({
           kind: 'max_turns', buildAuthorized: isBuild, hasAttachments: hasAttach,
-          autoContinuesSoFar: ac.count, cumulativeTurns: spentTurns,
-          elapsedMs: Date.now() - ac.startedAt, perMessageMaxTurns: limits.maxTurns,
+          cumulativeTurns: spentTurns, elapsedMs: Date.now() - ac.startedAt,
+          noProgressStreak: noProgressStreak, perMessageMaxTurns: limits.maxTurns,
+          ceilings: { maxChatTurns: limits.maxChatTurns },
         });
         if (decision.allow) {
           warmWorker.shutdown(); // clean teardown so the resumed segment re-spawns on --resume <session>
           const nextOpts = Object.assign({}, opts, {
-            autoContinue: { count: ac.count + 1, cumulativeTurns: spentTurns, startedAt: ac.startedAt },
+            autoContinue: { count: ac.count + 1, cumulativeTurns: spentTurns, cumulativeCost: spentCost,
+              startedAt: ac.startedAt, fingerprint: fingerprint, noProgressStreak: noProgressStreak },
             maxTurnsOverride: decision.resumeMaxTurns,
           });
-          const notice = 'Continued automatically past the single-message internal-step limit (auto-continue '
-            + (ac.count + 1) + ' of ' + AUTO_CONTINUE_DEFAULTS.maxAutoContinues
-            + ') so this approved work would not stop on a safety backstop, not your real Claude usage. You can Stop anytime.';
+          // ADR-0026: a running notice on EVERY continuation with the cumulative turns + cost so far, so the
+          // owner sees approved work run to completion (never silent) and can Stop anytime.
+          const notice = 'Continued automatically so this approved work runs to completion — a safety '
+            + 'step-limit stopped it mid-task, not your real Claude usage. About ' + spentTurns
+            + ' internal steps and $' + spentCost.toFixed(2) + ' so far. You can Stop anytime.';
           // Re-enter the SAME turn function with the guarded prompt on the SAME chat + session. Its
           // result becomes this turn's result, with the visible notice prepended (never silent).
           return askClaude(AUTO_CONTINUE_PROMPT, chosen, sessionId, false, chatId, [], nextOpts)
@@ -1055,6 +1104,14 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
               merged.text = notice + '\n\n' + (r2 && typeof r2.text === 'string' ? r2.text : '');
               return resolve(merged);
             });
+        }
+        // Denied. A runaway backstop or the no-progress guard firing (only reachable AFTER eligibility
+        // passed) gets its OWN plain stop naming which ceiling fired and how to raise it — never a raw
+        // envelope. Every other denial (read-only chat, attachments) falls through to the normal cap stop.
+        if (decision.reason === 'cumulative-turn-cap-reached' || decision.reason === 'wall-clock-cap-exceeded'
+            || decision.reason === 'no-substantive-progress') {
+          return resolve({ ok: false, maxTurnsReached: true, numTurns: d.numTurns, autoContinueStopped: decision.reason,
+            text: autoContinueStopText(decision.reason, spentTurns, spentCost) });
         }
         const turnsNote = d.numTurns !== null ? ' (it used ' + d.numTurns + ' internal steps)' : '';
         return resolve({ ok: false, maxTurnsReached: true, numTurns: d.numTurns,

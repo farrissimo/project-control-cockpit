@@ -3,14 +3,14 @@
 // degrades to the safe default, never to "no cap" or a negative/zero/non-finite value.
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { normalizeLimits, isBudgetExceeded, isMaxTurnsError, isUsageLimitError, isAuthError, DEFAULT_MAX_TURN_USD, DEFAULT_MAX_CHAT_USD, DEFAULT_MAX_TURNS } = require('../../usage-limits.js');
+const { normalizeLimits, isBudgetExceeded, isMaxTurnsError, isUsageLimitError, isAuthError, DEFAULT_MAX_TURN_USD, DEFAULT_MAX_CHAT_USD, DEFAULT_MAX_TURNS, DEFAULT_MAX_CHAT_TURNS } = require('../../usage-limits.js');
 
 test('well-formed positive caps (all fields) are used as-is', () => {
-  assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: 20, max_turns: 45 }), { maxTurnUsd: 5, maxChatUsd: 20, maxTurns: 45 });
+  assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: 20, max_turns: 45, max_chat_turns: 120 }), { maxTurnUsd: 5, maxChatUsd: 20, maxTurns: 45, maxChatTurns: 120 });
 });
 
 test('missing/null/non-object config -> all safe defaults, never unbounded', () => {
-  const def = { maxTurnUsd: DEFAULT_MAX_TURN_USD, maxChatUsd: DEFAULT_MAX_CHAT_USD, maxTurns: DEFAULT_MAX_TURNS };
+  const def = { maxTurnUsd: DEFAULT_MAX_TURN_USD, maxChatUsd: DEFAULT_MAX_CHAT_USD, maxTurns: DEFAULT_MAX_TURNS, maxChatTurns: DEFAULT_MAX_CHAT_TURNS };
   assert.deepStrictEqual(normalizeLimits(null), def);
   assert.deepStrictEqual(normalizeLimits(undefined), def);
   assert.deepStrictEqual(normalizeLimits('not an object'), def);
@@ -19,10 +19,26 @@ test('missing/null/non-object config -> all safe defaults, never unbounded', () 
 
 test('zero, negative, or non-finite values are rejected per-field -> that field\'s safe default (never disables any cap)', () => {
   for (const bad of [0, -1, -0.0001, NaN, Infinity, -Infinity]) {
-    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: bad, max_chat_usd: 20, max_turns: 45 }), { maxTurnUsd: DEFAULT_MAX_TURN_USD, maxChatUsd: 20, maxTurns: 45 }, 'turn:' + bad);
-    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: bad, max_turns: 45 }), { maxTurnUsd: 5, maxChatUsd: DEFAULT_MAX_CHAT_USD, maxTurns: 45 }, 'chat:' + bad);
-    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: 20, max_turns: bad }), { maxTurnUsd: 5, maxChatUsd: 20, maxTurns: DEFAULT_MAX_TURNS }, 'turns:' + bad);
+    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: bad, max_chat_usd: 20, max_turns: 45, max_chat_turns: 120 }), { maxTurnUsd: DEFAULT_MAX_TURN_USD, maxChatUsd: 20, maxTurns: 45, maxChatTurns: 120 }, 'turn:' + bad);
+    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: bad, max_turns: 45, max_chat_turns: 120 }), { maxTurnUsd: 5, maxChatUsd: DEFAULT_MAX_CHAT_USD, maxTurns: 45, maxChatTurns: 120 }, 'chat:' + bad);
+    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: 20, max_turns: bad, max_chat_turns: 120 }), { maxTurnUsd: 5, maxChatUsd: 20, maxTurns: DEFAULT_MAX_TURNS, maxChatTurns: 120 }, 'turns:' + bad);
+    assert.deepStrictEqual(normalizeLimits({ max_turn_usd: 5, max_chat_usd: 20, max_turns: 45, max_chat_turns: bad }), { maxTurnUsd: 5, maxChatUsd: 20, maxTurns: 45, maxChatTurns: DEFAULT_MAX_CHAT_TURNS }, 'chatTurns:' + bad);
   }
+});
+
+test('ADR-0026: max_chat_turns fails closed to the safe default for every malformed/hostile value (never "no cap")', () => {
+  // The cumulative run-to-completion cap can NEVER be disabled by a broken config — always DEFAULT_MAX_CHAT_TURNS.
+  for (const bad of [undefined, 0, 0.5, -5, NaN, Infinity, -Infinity, '200', null, {}, [], true]) {
+    const cfg = { max_turn_usd: 3, max_chat_usd: 15, max_turns: 30 };
+    if (bad !== undefined) cfg.max_chat_turns = bad;
+    assert.strictEqual(normalizeLimits(cfg).maxChatTurns, DEFAULT_MAX_CHAT_TURNS, JSON.stringify(bad));
+  }
+});
+
+test('ADR-0026: a valid max_chat_turns integer is used as-is, a fractional >=1 is floored, and the default is 200', () => {
+  assert.strictEqual(normalizeLimits({ max_chat_turns: 500 }).maxChatTurns, 500);
+  assert.strictEqual(normalizeLimits({ max_chat_turns: 200.9 }).maxChatTurns, 200); // floored — a turn count is whole
+  assert.strictEqual(DEFAULT_MAX_CHAT_TURNS, 200); // conservative starting default (ADR-0026 #3); guards silent drift
 });
 
 test('ADR-0020 T2: max_turns fails closed to the safe default for every malformed/hostile value (never "no cap")', () => {

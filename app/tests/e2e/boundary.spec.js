@@ -121,7 +121,7 @@ test('ADR-0020 T2: a native --max-turns cap surfaces as a PLAIN, neutral message
   });
 });
 
-test('ADR-0023 AC-1/AC-2/AC-3/AC-4: approved work auto-continues ONCE past --max-turns on the SAME session, with a lowered cap and a visible notice', async () => {
+test('ADR-0026: approved work auto-continues past --max-turns on the SAME session (full chunk), then FINISHES on its own with a visible notice', async () => {
   const argvFile = path.join(require('os').tmpdir(), 'pcc-test-argv-ac-' + Date.now() + '.json');
   const seqState = path.join(require('os').tmpdir(), 'pcc-test-seq-ac-' + Date.now() + '.txt');
   const cid = 'auto-continue-chat';
@@ -136,25 +136,59 @@ test('ADR-0023 AC-1/AC-2/AC-3/AC-4: approved work auto-continues ONCE past --max
     // send(message, model, workerSessionId, isFirstTurn, chatId, attachments): same chatId for session + authority.
     const r = await callOn(page, 'send', 'a long approved task that fans out past the turn cap', undefined, cid, true, cid);
 
-    // AC-1/AC-4: the resumed segment succeeded and the owner sees the segment succeed BEHIND a visible notice.
+    // The resumed segment succeeded and the owner sees it succeed BEHIND a visible running notice.
     expect(r.ok).toBe(true);
     expect(r.autoContinued).toBe(true);
-    expect(r.text).toMatch(/[Cc]ontinued automatically past the single-message internal-step limit/);
+    expect(r.text).toMatch(/[Cc]ontinued automatically so this approved work runs to completion/);
+    expect(r.text).toMatch(/internal steps and \$/); // the running notice shows cumulative turns + cost
     expect(r.text).toMatch(/[Ss]top anytime/);
     expect(r.text).toContain('Finished the remaining slice of the approved task.'); // the resumed reply is included
     expect(r.text).not.toMatch(/error_max_turns/); // no raw envelope leaks
 
-    // AC-1/AC-2/AC-3: the resumed segment ran on the SAME session (--resume, not a new --session-id),
-    // kept its tool profile (no escalation), and used a LOWERED cap = remaining cumulative budget
-    // (perMessageMaxTurns 30, 31 turns already spent, cumulative cap 45 -> 14).
+    // The resumed segment ran on the SAME session (--resume, not a new --session-id), kept its tool
+    // profile (no escalation), and used a FULL per-message chunk clamped by the remaining cumulative
+    // budget (perMessageMaxTurns 30, 31 spent, maxChatTurns 200 -> min(30, 169) = 30). Not "once".
     const argv = JSON.parse(require('fs').readFileSync(argvFile, 'utf8'));
     expect(argv).toContain('--resume');
     expect(argv).not.toContain('--session-id');
     const mi = argv.indexOf('--max-turns');
     expect(mi).toBeGreaterThanOrEqual(0);
-    expect(Number(argv[mi + 1])).toBe(14);
+    expect(Number(argv[mi + 1])).toBe(30);
     expect(argv).toContain('--allowedTools'); // authority/tool profile intact on the resumed segment
     expect(argv).not.toContain('--max-budget-usd'); // no dollar gate reintroduced (ADR-0022)
+  });
+  require('fs').rmSync(argvFile, { force: true });
+  require('fs').rmSync(seqState, { force: true });
+});
+
+test('ADR-0026: a run-to-completion that keeps hitting the cap stops at the cumulative-turn BACKSTOP with a plain ceiling message — never a raw envelope, and read-only never gets here', async () => {
+  const argvFile = path.join(require('os').tmpdir(), 'pcc-test-argv-cc-' + Date.now() + '.json');
+  const seqState = path.join(require('os').tmpdir(), 'pcc-test-seq-cc-' + Date.now() + '.txt');
+  const cid = 'auto-continue-cumcap-chat';
+  await withApp({
+    PCC_FAKE_CLAUDE_FIXTURE: FX('worker-max-turns-cumcap.json'), // two max_turns stops, 120 turns each
+    PCC_FAKE_CLAUDE_SEQ_STATE: seqState,
+    PCC_FAKE_CLAUDE_ARGV_FILE: argvFile,
+  }, async (page) => {
+    await page.evaluate((c) => window.pcc.requestJob('new_project', 'CumCap', c), cid);
+    await page.evaluate(() => window.pcc.approveJob());
+    const r = await callOn(page, 'send', 'an approved task that keeps fanning out past the cap', undefined, cid, true, cid);
+
+    // It DID auto-continue once (first stop at 120 < 200), then the SECOND stop crossed the cumulative
+    // 200-turn ceiling, so PCC stopped the run with a plain, honest ceiling message — not a raw envelope.
+    expect(r.autoContinued).toBe(true);                       // continued at least once
+    expect(r.maxTurnsReached).toBe(true);
+    expect(r.autoContinueStopped).toBe('cumulative-turn-cap-reached');
+    expect(r.text).toMatch(/safety ceiling on total internal work steps/i);
+    expect(r.text).toMatch(/max_chat_turns/);                 // tells the owner exactly which knob raises it
+    expect(r.text).toMatch(/[Cc]ontinued automatically so this approved work runs to completion/); // the running notice is still shown
+    expect(r.text).not.toMatch(/error_max_turns/);            // no raw envelope leaks
+    expect(r.text).not.toContain('{');
+    // The resumed segment still rode the SAME session with its tool profile intact.
+    const argv = JSON.parse(require('fs').readFileSync(argvFile, 'utf8'));
+    expect(argv).toContain('--resume');
+    expect(argv).toContain('--allowedTools');
+    expect(argv).not.toContain('--max-budget-usd');
   });
   require('fs').rmSync(argvFile, { force: true });
   require('fs').rmSync(seqState, { force: true });
