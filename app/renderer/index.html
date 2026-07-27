@@ -115,6 +115,7 @@
   .chat-row { display: flex; align-items: center; gap: 4px; border-radius: 8px; padding: 2px; }
   .chat-row:hover { background: #14171c; }
   .chat-row.active { background: #1c2637; }
+  .chat-row.working .chat-when { color: #7fd0a0; font-weight: 600; } /* #2: which chat has a live turn */
   .chat-row-main { flex: 1; min-width: 0; padding: 6px 8px; cursor: pointer; }
   .chat-name { font-size: 13px; color: #dbe8ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chat-when { font-size: 11px; color: #7a7f87; }
@@ -138,6 +139,8 @@
   .sr-hit-name { font-size: 13px; color: #dbe8ff; font-weight: 600; }
   .sr-hit-answer { font-size: 12px; color: #cdd4de; line-height: 1.4; margin: 2px 0; }
   .sr-hit-quote { font-size: 11px; color: #8fa6c8; font-style: italic; border-left: 2px solid #2b2f37; padding-left: 6px; }
+  .search-hit-flash { animation: srflash 2.4s ease-out; border-radius: 8px; } /* #3: land on + flash the matched message */
+  @keyframes srflash { 0% { background: #2a3a55; } 70% { background: #2a3a55; } 100% { background: transparent; } }
   .sr-back { font-size: 11px; color: #7a7f87; cursor: pointer; padding: 2px 4px; }
   .sr-back:hover { color: #dbe8ff; }
   /* First-class chat history: the summary card slide-over (docs/CHAT_RECALL_SPEC.md) */

@@ -335,6 +335,22 @@ function startThinkingTimer(el) {
 }
 function stopThinkingTimer(el) { if (el && el._pccTimer) { clearInterval(el._pccTimer); el._pccTimer = null; } }
 
+// Switching chats while a turn runs is allowed: a turn resolves into its OWN captured chat (runSend
+// binds chatId up front), so viewing another chat can never misroute it. The live "Claude is working…"
+// indicator, the Stop button, and the steer cue therefore key off WHICH chat is on screen — they show
+// ONLY when the chat you're looking at is the one with a turn in flight. Idempotent; safe to call on
+// every switch/render/turn-boundary. inFlightChatId is the single source of truth for "a turn is live".
+function syncWorkingIndicator() {
+  const showHere = !!inFlightChatId && inFlightChatId === activeId;
+  const existing = log.querySelector('.bubble.assistant.thinking');
+  if (showHere && !existing) { startThinkingTimer(addBubbleUI('assistant thinking', 'Claude is working…')); }
+  else if (!showHere && existing) { stopThinkingTimer(existing); existing.remove(); }
+  if (stopBtn) stopBtn.disabled = !showHere; // Stop can only ever target the turn you're actually looking at
+  const sh = document.getElementById('steer-hint');
+  if (sh) sh.classList.toggle('hidden', !showHere);
+  renderChatList(); // reflect WHICH chat has the live turn in the list (the "● working…" marker), from inFlightChatId
+}
+
 // ADR-0020 T7 truncation-visibility correction: plain-English, deterministic notice built ONLY from
 // res.caps (what PCC actually trimmed before sending). Never depends on the worker's reply. The
 // numeric caps travel in res.caps so this wording can never drift from the real payload-caps values.
@@ -372,9 +388,14 @@ function addBubbleUI(cls, text) {
 // caller; it must NOT re-read activeChat() here — the active chat can change during
 // an awaited worker turn, which would otherwise append to the wrong chat). Returns
 // { ok, el }: callers that must not proceed on an unsaved message check `ok`.
-async function appendMessage(cls, text, targetChatId) {
-  const el = addBubbleUI(cls, text);
+async function appendMessage(cls, text, targetChatId, activeOnly) {
   const chatId = targetChatId || (activeChat() && activeChat().id);
+  // Render the bubble immediately, EXCEPT an `activeOnly` append (a worker reply/error that can resolve
+  // while you're viewing a DIFFERENT chat — switching mid-turn is allowed, ADR-0026 follow-up): it must
+  // NOT paint into whatever chat is on screen when its own chat isn't the one shown. It is still
+  // PERSISTED below regardless; renderActiveChat re-shows it when you open that chat. Non-activeOnly
+  // appends (your own message, notices) always render — they belong to the chat you're looking at.
+  const el = (!activeOnly || !chatId || chatId === activeId) ? addBubbleUI(cls, text) : null;
   if (!chatId) return { ok: false, el };
   // Fixed message id => the append is IDEMPOTENT (chat-store no-ops a duplicate id).
   // So on a revision CONFLICT (two appends raced the same revision) we can safely
@@ -506,11 +527,7 @@ async function runSend(item) {
   if (!chats.find((c) => c.id === chatId)) { return; }
   busy = true; input.focus();
   inFlightChatId = chatId; // R2: Stop targets exactly this turn
-  if (stopBtn) stopBtn.disabled = false; // Stop is always visible; ENABLE it while a turn runs
-  const steerHint = document.getElementById('steer-hint');
-  if (steerHint) steerHint.classList.remove('hidden'); // show the steer cue while working
-  const thinking = addBubbleUI('assistant thinking', 'Claude is working…');
-  startThinkingTimer(thinking); // live elapsed time so a long turn reads as progressing, not frozen
+  syncWorkingIndicator(); // show "working…" + Stop + steer cue — but ONLY while THIS chat is the one on screen
   try {
     // Two IDs, kept separate on purpose: the WORKER session id is the re-minted id
     // from sessionIds (after a recovery re-mint) else the stable chatId — so a
@@ -521,33 +538,35 @@ async function runSend(item) {
     const isFirstTurn = !turnsStarted.has(chatId);
     const workerSession = sessionIds.get(chatId) || chatId;
     const res = await window.pcc.send(item.msg, getSelectedModel(), workerSession, isFirstTurn, chatId, item.outbound);
-    stopThinkingTimer(thinking); thinking.remove();
+    inFlightChatId = null; syncWorkingIndicator(); // turn resolved: drop the working indicator, Stop goes dim
     if (res.ok) turnsStarted.add(chatId);
     // R2/R3: an owner-initiated stop, an automatic budget-cap stop, the native per-message turn-cap
     // stop (ADR-0020 T2), or hitting the Claude PLAN usage limit are not PCC failures — a neutral
     // 'assistant' bubble (its own text explains what happened), never the red error style a real bug gets.
     const isProtectiveStop = res.stoppedByOwner || res.budgetExceeded || res.maxTurnsReached || res.usageLimit || res.authError;
-    await appendMessage(res.ok || isProtectiveStop ? 'assistant' : 'assistant error', res.text || '(no output)', chatId);
+    await appendMessage(res.ok || isProtectiveStop ? 'assistant' : 'assistant error', res.text || '(no output)', chatId, true); // activeOnly: don't paint this reply into a chat you switched to mid-turn
     // ADR-0020 T7 truncation-visibility correction: if a per-send cap trimmed this message, tell the
     // owner DIRECTLY and deterministically here — driven by res.caps (what PCC actually sent), never
     // by relying on Claude to echo the marker injected into its payload. UI-only, like the queue cap.
-    if (res.caps) addBubbleUI('assistant cap-notice', capNoticeText(res.caps));
+    // Paint the per-send cap notice ONLY if this turn's chat is the one on screen — a turn can resolve
+    // while you're viewing a DIFFERENT chat (switching mid-turn is allowed), and this UI-only notice must
+    // not appear in the wrong chat. Same rule as the reply above.
+    if (res.caps && chatId === activeId) addBubbleUI('assistant cap-notice', capNoticeText(res.caps));
     if (res.ok) { const cc = chats.find((c) => c.id === chatId); if (cc) persistTranscript(cc); }
-    // A stale worker is holding this chat's session — offer a one-click way out.
-    if (!res.ok && res.sessionInUse) addRecoveryAction();
+    // A stale worker is holding this chat's session — offer a one-click way out, but only in that chat's
+    // own view (never inject the recovery action into whatever chat you happened to switch to).
+    if (!res.ok && res.sessionInUse && chatId === activeId) addRecoveryAction();
     // ADR-0022: the per-chat dollar cap is DEMOTED to advisory — cumulative cost never reroutes the
     // worker (recordChatCost no longer signals a rollover, so res.costRollover is never set). The old
     // automatic "started a fresh worker session" notice is removed with it. Real 5-hour usage is the
     // only thing that intercepts approved work (handled by the usage-protection hold, not here).
   } catch (err) {
-    stopThinkingTimer(thinking); thinking.remove();
-    await appendMessage('assistant error', 'Something went wrong: ' + err.message, chatId);
+    inFlightChatId = null; syncWorkingIndicator();
+    await appendMessage('assistant error', 'Something went wrong: ' + err.message, chatId, true); // activeOnly: same as the reply path
   } finally {
-    stopThinkingTimer(thinking); // belt-and-suspenders: never leak the interval
     busy = false; input.focus();
     inFlightChatId = null;
-    if (stopBtn) stopBtn.disabled = true; // turn done — Stop stays visible but goes dim/disabled
-    { const sh = document.getElementById('steer-hint'); if (sh) sh.classList.add('hidden'); }
+    syncWorkingIndicator(); // belt-and-suspenders: clear indicator/Stop/steer for the shown chat + stop the timer
     // Finding C fix: a mid-turn resync (appendMessage's assistant-reply persist, above,
     // runs a refreshCanonical -> setRecoveryState while busy was still true) can leave
     // sendBtn.disabled=true as a stale snapshot -- nothing re-derived it after busy
@@ -1319,6 +1338,7 @@ function renderActiveChat() {
   // session expired. The authority chip is the honest live source of truth.
   c.messages.forEach((m) => { if (m.text === BUILD_ENABLED_NOTICE) return; addBubble(m.cls, m.text, false); });
   scrollDown();
+  syncWorkingIndicator(); // if you switched TO the chat with a live turn, re-show "working…"; otherwise nothing
 }
 
 // READ-ONLY gather of this project's chats from localStorage — the UNTOUCHED
@@ -1389,7 +1409,7 @@ async function loadChats() {
 }
 
 async function switchChat(id) {
-  if (busy || id === activeId) { closeChatsPanel(); return; }
+  if (id === activeId) { closeChatsPanel(); return; } // #2: switching is allowed WHILE busy — a turn resolves into its own captured chat, so viewing another chat can't misroute it
   if (!chats.find((x) => x.id === id)) return;
   const leaving = activeChat();            // name the chat you're done with, from its full arc
   const r = await chatCmd('chatsSetActive', { chatId: id }); // refresh adopts the new active chat
@@ -1399,6 +1419,25 @@ async function switchChat(id) {
   loadTrust();
   closeChatsPanel();
   if (leaving && leaving.id !== id) { persistTranscript(leaving); reconsiderChatName(leaving); } // fire-and-forget; switch stays instant
+}
+
+// #3: open the chat a search hit came from AND land on the matched message (scroll + brief highlight),
+// instead of dumping the owner at the chat with no idea where the match was. Works for the ACTIVE chat
+// too (the old path silently no-opped when the hit was in the chat already on screen).
+async function openChatToMatch(chatId, quote) {
+  if (chatId && chatId !== activeId) { await switchChat(chatId); } // switchChat re-renders the log synchronously after its await
+  else { closeChatsPanel(); }
+  highlightMatch(quote);
+}
+function highlightMatch(quote) {
+  const q = String(quote || '').trim().slice(0, 80).toLowerCase();
+  if (!q) { scrollDown(); return; }
+  // Locate the rendered message whose VERBATIM text (dataset.raw, set by addBubble) contains the quote.
+  const hit = [...log.querySelectorAll('.bubble')].find((b) => String(b.dataset.raw || '').toLowerCase().includes(q));
+  if (!hit) { scrollDown(); return; } // the chat is open even if the exact line can't be re-located — never a dead click
+  hit.scrollIntoView({ block: 'center' });
+  hit.classList.add('search-hit-flash');
+  setTimeout(() => { hit.classList.remove('search-hit-flash'); }, 2600);
 }
 
 async function renameChat(id) {
@@ -1446,10 +1485,10 @@ function renderChatList() {
   if (!panel) return;
   const ordered = chats.slice().sort((a, b) => b.updatedAt - a.updatedAt);
   panel.innerHTML = ordered.map((c) =>
-    '<div class="chat-row' + (c.id === activeId ? ' active' : '') + '" data-id="' + c.id + '">'
+    '<div class="chat-row' + (c.id === activeId ? ' active' : '') + (c.id === inFlightChatId ? ' working' : '') + '" data-id="' + c.id + '">'
     + '<div class="chat-row-main" data-act="switch" data-id="' + c.id + '">'
     + '<div class="chat-name">' + escapeHtml(c.name) + '</div>'
-    + '<div class="chat-when">' + relTime(c.updatedAt) + '</div></div>'
+    + '<div class="chat-when">' + (c.id === inFlightChatId ? '● working…' : relTime(c.updatedAt)) + '</div></div>'
     + '<button class="chat-mini" data-act="summary" data-id="' + c.id + '" title="High-level summary of this chat">📋</button>'
     + '<button class="chat-mini" data-act="rename" data-id="' + c.id + '" title="Rename">✎</button>'
     + '<button class="chat-mini" data-act="delete" data-id="' + c.id + '" title="Delete">🗑</button>'
@@ -1509,7 +1548,7 @@ function renderSearchResults(query, matches, questionTruncated) {
   }
   box.innerHTML = back + trimNote + '<div class="sr-status">' + matches.length + ' match' + (matches.length > 1 ? 'es' : '')
     + ' for “' + escapeHtml(query) + '”</div>'
-    + matches.map((m) => '<div class="sr-hit" data-act="open" data-id="' + escapeHtml(m.chatId) + '">'
+    + matches.map((m) => '<div class="sr-hit" data-act="open" data-id="' + escapeHtml(m.chatId) + '" data-quote="' + escapeHtml(String(m.quote || '').slice(0, 120)) + '">'
       + '<div class="sr-hit-name">' + escapeHtml(m.chatName || 'chat') + '</div>'
       + (m.answer ? '<div class="sr-hit-answer">' + escapeHtml(m.answer) + '</div>' : '')
       + (m.quote ? '<div class="sr-hit-quote">“' + escapeHtml(m.quote) + '”</div>' : '')
@@ -1542,7 +1581,7 @@ async function runChatSearch() {
     const el = e.target.closest('[data-act]');
     if (!el) return;
     if (el.dataset.act === 'clear-search') { si.value = ''; showChatList(); }
-    else if (el.dataset.act === 'open') { switchChat(el.dataset.id); }
+    else if (el.dataset.act === 'open') { openChatToMatch(el.dataset.id, el.dataset.quote); }
   });
 }
 
