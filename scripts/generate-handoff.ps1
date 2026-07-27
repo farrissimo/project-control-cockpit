@@ -99,17 +99,45 @@ $untracked = @($porcelain | Where-Object { $_ -match '^\?\?' }).Count
 $trackedChanges = @($porcelain | Where-Object { $_ -notmatch '^\?\?' }).Count
 $tree = if ($porcelain.Count -eq 0) { 'clean' } else { "$trackedChanges uncommitted, $untracked untracked" }
 
+# --- build project-agnostic reference fragments: cite a file only if it actually
+# exists in THIS repo, so a scaffolded CHILD project never inherits PCC-only paths as
+# false repo-truth. (A fresh child chat used to be told to read docs/COCKPIT_ROADMAP.md
+# and DECISION-102, which do not exist in a child — the LE trial incident, finding #4.) ---
+$hasRoadmap = Test-Path -LiteralPath 'docs/COCKPIT_ROADMAP.md' -PathType Leaf
+$hasDecisions = Test-Path -LiteralPath 'docs/DECISIONS.md' -PathType Leaf
+
+$orientLines = @(
+  '- PROJECT.md - current brief (what this is, architecture, what''s built, pending).',
+  '- CLAUDE.md - my standing rules (follow them).',
+  '- docs/adr/ - the decision records (what''s already decided).'
+)
+if ($hasRoadmap) { $orientLines += '- docs/COCKPIT_ROADMAP.md - full ranked feature list + status.' }
+if ($hasDecisions) { $orientLines += '- docs/DECISIONS.md - the product-direction decision log.' }
+$orientBlock = $orientLines -join "`n"
+
+# RECENT DECISIONS only when the sibling parser actually found some (empty in a child
+# with no DECISIONS.md — never emit a header pointing at a file that is not there).
+$decisionsSection = ''
+if ($decisionsBlock) {
+  $logRef = if ($hasDecisions) { 'full log in docs/DECISIONS.md' } else { 'full log in docs/adr/' }
+  $decisionsSection = "RECENT DECISIONS (most recent 3; $logRef):`n$decisionsBlock`n`n"
+}
+
+# The roadmap-grid standing order + START HERE only apply where a roadmap exists.
+$roadmapOrder = if ($hasRoadmap) { "`n- On every update, show the roadmap grid with progress." } else { '' }
+$startHere = if ($hasRoadmap) {
+  'START HERE: continue down docs/COCKPIT_ROADMAP.md by priority (see "Next" in PROJECT.md), snapshotting as you go.'
+} else {
+  'START HERE: do the next task in PROJECT.md''s "Pending / immediate next tasks", snapshotting as you go.'
+}
+
 # --- emit the paste block ---
-$nl = "`n"
 $out = @"
-You are picking up $projName (PCC) mid-build in a fresh chat. Don't ask me to
+You are picking up $projName mid-build in a fresh chat. Don't ask me to
 re-explain anything.
 
 ORIENT FROM REPO TRUTH FIRST:
-- PROJECT.md - current brief (what this is, architecture, what's built, pending).
-- docs/COCKPIT_ROADMAP.md - full ranked feature list + status.
-- docs/DECISIONS.md -> DECISION-102 - the product direction.
-- CLAUDE.md - my standing rules (follow them).
+$orientBlock
 
 CURRENT STATE (as of $now):
 - Branch: $branch at $headLine
@@ -117,23 +145,17 @@ CURRENT STATE (as of $now):
 - Working tree: $tree
 - Phase: $phase
 - Verification: $verdict
-- Next action: see "Pending / immediate next tasks" in PROJECT.md (the canonical
-  brief; kept current for the app-build lane).
+- Next action: see "Pending / immediate next tasks" in PROJECT.md (the canonical brief).
 
-RECENT DECISIONS (most recent 3; full log in docs/DECISIONS.md):
-$decisionsBlock
-
-STANDING ORDERS:
+$($decisionsSection)STANDING ORDERS:
 - Keep going by default (stop only when genuinely unsure or at a real milestone).
 - Research existing solutions before building; don't reinvent the wheel.
 - Snapshot (commit) as you go; never lose work.
 - Concise, plain-language updates tied to project goals; no cheerleading.
-- Never fake a "done" - test it or say plainly it's untested.
-- On every update, show the roadmap grid with progress.
+- Never fake a "done" - test it or say plainly it's untested.$roadmapOrder
 - I'm the visionary/product lead, not a coder.
 
-START HERE: continue down docs/COCKPIT_ROADMAP.md by priority (see "Next" in
-PROJECT.md), snapshotting as you go.
+$startHere
 "@
 
 Write-Output $out
