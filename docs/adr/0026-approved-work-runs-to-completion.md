@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Accepted
 date: 2026-07-26
 deciders: owner (product lead), Claude (worker), Codex (independent verifier)
 ---
@@ -25,7 +25,8 @@ the manual relay for a machine loop is exactly the experience the trial must eli
 
 ## Decision
 
-*(PROPOSED — this ADR is the owner's decision to make before any implementation.)*
+*(ACCEPTED — implemented and merged to `main` at `8f4c04c` (PR #81): unit 346 + lint + boundary E2E
+13/13 green, `codex exec` PASS, governor T1 receipt/trailer, exact-SHA CI green on the merge commit.)*
 
 **For approved (build-authorized) warm work, replace "auto-continue ONCE" with "auto-continue until the
 work completes OR a real ceiling is hit," keeping every ADR-0023 safety intact and making the binding
@@ -103,7 +104,7 @@ The policy stays a pure, unit-tested decision (`app/auto-continue.js`); `main.js
   verifies the diff (static + runnable checks; the E2E is worker-attested — it cannot launch Electron).
 - **Future chats / children:** the policy + ceilings live here and in the spec; inherited by every scaffold.
 
-## Owner decisions (recorded 2026-07-26; status stays Proposed pending implementation + proof)
+## Owner decisions (recorded 2026-07-26; implemented + merged 2026-07-27, status Accepted)
 
 1. **Run mode — DECIDED: automatic for all approved work.** Owner: *"work continues safely. less
    babysitting always."* Any build-authorized chat runs its task to completion without the owner relaying;
