@@ -22,7 +22,7 @@ Found by reading code while investigating a real bug the owner hit after a few d
 yet reproduced live.
 
 **⚠ NONE of the above has touched the real app or `main`.** Everything is on branch
-`feat/adr-0027-expected-behavior-map`, 4 commits, **local only — never pushed to GitHub, never merged.**
+`feat/adr-0027-expected-behavior-map`, 5 commits, **local only — never pushed to GitHub, never merged.**
 Fetch/checkout that branch to see it; `main` is unchanged.
 
 **What's NOT done — the actual next step:** the live click-through / sign-off test (ADR-0009 gate b)
