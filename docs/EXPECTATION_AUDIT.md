@@ -20,26 +20,32 @@ Across the whole audit — including a mine of all 256 historical dev-session tr
 (Stage 2, below) — these are the highest shock-risk gaps (likelihood you hit it × severity). Everything
 else on the control surface is built and pinned by a test.
 
-1. **"Steering" doesn't steer — and this is the single most-repeated complaint in PCC's history.**
+1. **Sending a message in one chat may silently stall if a different chat is still working.**
+   Found while investigating a real chat-switching bug reported after a few days of actual use.
+   `sendMessage()` checks one global "busy" flag instead of per-chat state, so a message sent to an
+   idle chat can fall into the queue built for redirecting an already-busy chat, and sit uncommitted
+   until the *unrelated* chat's turn finishes. **Not yet confirmed live** — found by reading the code,
+   not by reproducing it end-to-end (hit-list #0).
+2. **"Steering" doesn't steer — and this is the single most-repeated complaint in PCC's history.**
    Typing while a turn runs **queues** a message for after it finishes; it does not redirect the running
    worker. Raised independently in 9+ separate sessions over weeks. Once fake-verified (a commit claimed
    "steer" worked when it didn't) — that false stamp is long since closed, but the underlying control
    still isn't built (§0.1 / hit-list #1).
-2. **You can't watch the worker work — and now there's a root cause.** No live activity feed, only a
+3. **You can't watch the worker work — and now there's a root cause.** No live activity feed, only a
    "Claude is working…" timer. One transcript names why: *"the worker runs one-shot and discards tool
    events"* — it's an architecture gap, not a missing UI widget (§0b.1). *The top trust item for the
    proving window.*
-3. **The removed chat-length meter left a real need unmet.** Its removal (ADR-0025) was the right call —
+4. **The removed chat-length meter left a real need unmet.** Its removal (ADR-0025) was the right call —
    a meter that lies is worse than none — but "how do I know this chat is safe to keep going" is still a
    live, repeatedly-raised owner pain with no honest replacement (§0b.3).
-4. **Usage accuracy on a cold turn is unproven**, and **two internal tools you're about to rely on**
+5. **Usage accuracy on a cold turn is unproven**, and **two internal tools you're about to rely on**
    (`verify-evidence.ps1`, the Verify tab on no-remote projects) have transcript-flagged reliability
    questions that were never re-confirmed fixed (§0b.2, Stage 2 tooling section).
-5. **Two smaller, concrete things to click-check:** delete-chat's confirm dialog differs from the rest of
+6. **Two smaller, concrete things to click-check:** delete-chat's confirm dialog differs from the rest of
    the app (hit-list #2), and closing PCC via the X should be confirmed to actually kill every underlying
    process (Stage 2, S2.3).
 
-The rest of this document is the evidence and the full click-through order behind those five.
+The rest of this document is the evidence and the full click-through order behind those six.
 
 ## How to read this
 
@@ -142,6 +148,7 @@ button-press could surprise the owner — ordered by shock-risk (likelihood he h
 
 | rank | behavior | control | expected result | actual (from code) | class | source | on-screen probe for sign-off |
 |---|---|---|---|---|---|---|---|
+| 0 | **Sending in one chat while another chat's turn is still running** | type + Send in an idle chat you switched to (per PR #83's fix, switching itself works) | the idle chat sends immediately — its own turn is independent of any other chat's | `sendMessage()` (renderer.js:442-479) checks a single **global** `busy` flag, not "is *this* chat busy." If ANY chat has a turn in flight, `if (!busy)` (line 473) is false in every OTHER chat too, so the new message falls into the **steering-queue path** (built for redirecting the SAME busy chat) instead of sending immediately — it may sit committed-but-not-running until the unrelated chat's turn finishes. Same global-`busy` gate also silently no-ops "New chat" (line 830), "Enable build session" (line 1167), the correction chips (line 1205), and "Second opinion" (line 1227) while any other chat is mid-turn. | **B — UNCONFIRMED** (static code read only; a live reproduction was in progress but not completed before this session's work was paused) | INFERRED — direct code reading, renderer.js:29-30, 442-479, 830, 1167, 1205, 1227 | send a message in an idle chat while a DIFFERENT chat is still working — does it run immediately, or sit until the other one finishes? Also try "New chat" / "Enable build session" / a correction chip in that same window. |
 | 1 | **Steer a running turn** | typing in `#input` while a turn runs (`#steer-hint`) | redirect/correct the **currently running** worker mid-turn (like Claude/Codex desktop; ADR-0013 "steer half") | message is **committed + queued** and sent as a **new turn after the current one finishes** (renderer.js:32, 440–479); worker is not steered mid-flight | **B** | STATED PROJECT.md:51 ❌; ADR-0013; REFERENCE "mimic Claude/Codex desktop" | type a redirect mid-turn — does the running answer change, or only get a follow-up after it ends? |
 | 2 | **Delete a chat** confirm dialog | 🗑 on a chat row → `deleteChatFiles` + `chatsDelete` | a reliable, on-brand confirm before deleting (as used for every other destructive action) | uses **native `confirm()`** (renderer.js:1457), *not* the Electron-safe `pccConfirm` the app deliberately built and uses everywhere else (rename, discard-project, end-build) | **B?** | INFERRED (code inconsistency); native dialogs are why `pccConfirm` exists | click 🗑 — does a proper confirm appear and does Cancel truly abort / OK truly delete? |
 | 3 | **Attach / paste / drop files** | `#attach-btn` +, paste image, drag-drop onto `#composer` | attachment reaches the worker and influences its answer | files are read client-side into `attachments[]` and passed to `send`; **no dedicated E2E spec** exercises the round-trip | **C?** | STATED (shipped per project memory "image paste + file '+' SHIPPED") | attach an image + a file, send, confirm the worker actually receives/uses them |
