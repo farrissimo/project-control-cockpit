@@ -1,36 +1,52 @@
 # PROJECT.md — current project brief
 
-## ▶ NEXT CHAT — START HERE (end of session, 2026-07-27)
+## ▶ NEXT CHAT — START HERE (end of session, 2026-07-28)
 
-**ADR-0027 forward-process teeth: BUILT, TESTED, CODEX-VERIFIED PASS.** Every feature ADR
-(`feature: true` in front matter) must now carry an `## Expected-Behavior Map`; `check-adr.ps1` rejects
-one that doesn't, and rejects an `Accepted` ADR with any untested mapped behavior. Proof: 16/16 new
-`check-adr.spec.js` tests + 36/36 `scaffold-kit.spec.js` tests (spawned-project parity) pass; Codex
-independently reviewed the exact diff and returned PASS — receipt at
-`.cockpit/evidence/verification-receipt.json`. Full suite (`npm test`) was NOT proven clean end-to-end
-this session (one unrelated test flaked on live account-usage state, diagnosed as environmental, not a
-regression — see the doc below); only the two directly-relevant spec files were confirmed passing.
+**PR OPEN, NOT MERGED: [#85](https://github.com/farrissimo/project-control-cockpit/pull/85)**
+(`feat/adr-0027-expected-behavior-map` → `main`, 16 commits). Fully pushed to GitHub (verified 3 ways:
+local `git log`, `git fetch` + SHA compare, GitHub API directly — all agree on head `4f49e19`). Codex
+independently reviewed the full branch, **PASS**, scoped correctly per this project's own precedent
+(Codex's sandbox can't launch Electron — see `project_codex_cannot_launch_electron` memory; its job is
+static review + `check-adr.ps1` + `doctor.ps1`, not re-running the live app). Receipt bound to the exact
+diff at `.cockpit/evidence/verification-receipt.json` (local only, gitignored by design). **Merging is
+the owner's call — not done automatically.**
 
-**Backfill Stage 1 + Stage 2: DONE.** `docs/EXPECTATION_AUDIT.md` (33 sourced rows) is the retroactive
-Expected-Behavior Map for everything already built in PCC — the control surface (every renderer control
-+ all 65 IPC channels) and the docs (Stage 1), plus a mine of all 256 dev-session transcripts + 11
-in-app chats (Stage 2, owner-authorized 2026-07-27). Read the doc's "short version" at the top for the
-ranked findings. Most actionable: an **UNCONFIRMED** bug — `sendMessage()` and several buttons
-(renderer.js:442-479, 830, 1167, 1205, 1227) gate on one **global** `busy` flag instead of per-chat
-state, so sending in an idle chat may silently stall behind an unrelated chat's still-running turn.
-Found by reading code while investigating a real bug the owner hit after a few days of actual use — not
-yet reproduced live.
+**What's in the PR:**
+1. **ADR-0027 forward-process teeth** (permanent, tier-1 rule): a feature ADR (`feature: true`) must
+   carry an `## Expected-Behavior Map` or `check-adr.ps1` rejects it; `Accepted` + any untested mapped
+   behavior also fails. No shipped app code touched — governance script + docs only. 16/16 +36/36 tests
+   pass (`check-adr.spec.js`, `scaffold-kit.spec.js` — spawned-project parity proven).
+2. **`docs/EXPECTATION_AUDIT.md`** — retroactive Expected-Behavior Map for PCC's existing app. Stage 1
+   (control surface + docs) + Stage 2 (mined 256 dev transcripts + 11 in-app chats, owner-authorized)
+   + a **live click-through phase**: 9 items actually reproduced against the real running app (Playwright
+   + deterministic fake worker, **zero real Claude usage**), not just read from code.
 
-**⚠ NONE of the above has touched the real app or `main`.** Everything is on branch
-`feat/adr-0027-expected-behavior-map`, 5 commits, **local only — never pushed to GitHub, never merged.**
-Fetch/checkout that branch to see it; `main` is unchanged.
+**The most important finding — CONFIRMED, live, not theoretical:** Send, New chat, and the correction
+chips all go **silently dead** in any chat other than the one that's currently busy (composer keeps the
+typed text, no error, doesn't self-recover even after the busy chat finishes). This is very likely the
+real bug behind the owner's own "chat switching is broken" complaint from actual day-to-day use. Root
+cause is narrowed to the global `busy` flag / `sendBtn.disabled` area (renderer.js:29, 104, 442-479,
+830, 1205) but **not fully pinned down** — a follow-up check contradicted the first hypothesis, so the
+doc honestly separates "behavior confirmed" from "exact mechanism uncertain." **NOT FIXED — owner has
+not authorized a fix, only finding and documenting.**
 
-**What's NOT done — the actual next step:** the live click-through / sign-off test (ADR-0009 gate b)
-against the ~13 genuinely-unverified items in the doc's hit-list + Section 0's "not yet proven on
-screen" rows + the Stage 2 new findings (desktop-shortcut launch, close-button process cleanup, the
-busy-flag bug above, etc.). **Do not re-test steer or the removed chat-length meter — both are already
-settled/deferred decisions, not open questions; the doc explains why.** Most of the 13 items cost zero
-real Claude usage (UI/dialog checks); a couple would need an actual real turn.
+**Other live-confirmed items** (all in `docs/EXPECTATION_AUDIT.md`'s hit-list, each with method +
+result): rename-a-chat, Memory-tab save, model selector, correction-chip text mapping, file attachment,
+and close-button (X) process cleanup — **all work correctly**, upgraded from unverified to confirmed.
+Delete-chat's confirm dialog logic is confirmed correct; whether the real native OS dialog renders well
+in the packaged app is NOT verifiable by an agent (Playwright intercepts native dialogs) — needs one
+owner click.
+
+**Still genuinely open (documented, not blocking):** desktop-shortcut launch (needs a real `.lnk`),
+durable-per-chat-cost-across-restart, cold-usage-accounting accuracy (Gate 0, pre-existing), Verify tab
+on a no-remote project, and the native-dialog question above. Full `npm test` was never proven clean
+end-to-end this session — one unrelated flake (`continue-fresh-chat.spec.js`) traced to a live/unmocked
+Claude-account-usage dependency, diagnosed as environmental not a regression (documented in the doc's
+Stage 2 tooling section); the two directly-relevant spec files plus the 4 usage-protection specs were
+separately confirmed passing in isolation (12/12 + 16/16 + 36/36).
+
+**Do not re-test steer or the removed chat-length meter** — both are already settled/deferred decisions
+(ADR-0013, ADR-0025), not open questions. The doc explains why; re-raising them wastes a click.
 
 **Origin:** the owner pressed real cockpit buttons for the first time (2026-07-27) and found two
 green-but-wrong defects (#2 switch-while-busy, #3 search navigation — fixed in PR #83); the deeper
