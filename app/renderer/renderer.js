@@ -90,7 +90,10 @@ async function refreshCanonical() {
 // Reflect the served generation in the UI. A 'prev' read is a RECOVERY view: show a
 // persistent banner and disable the composer so nothing is edited from a recovered
 // (previous-generation) view; mutations are also hard-blocked in chatCmd. 'current'
-// clears the banner and restores the composer (unless a turn is in flight).
+// clears the banner and restores the composer. The composer is NOT disabled just because
+// a turn is in flight — steering (ADR-0013) commits + queues a mid-turn send in order, and
+// a single global `busy` must never lock the composer of a DIFFERENT chat you switched to
+// (that was the silent "chat switching is broken" defect — spec: switch-while-busy).
 function setRecoveryState(served) {
   servedGeneration = (served === 'prev') ? 'prev' : 'current';
   const inRecovery = servedGeneration === 'prev';
@@ -101,7 +104,7 @@ function setRecoveryState(served) {
     recoveryBanner.classList.toggle('hidden', !inRecovery);
   }
   if (input) input.disabled = inRecovery;
-  if (sendBtn) sendBtn.disabled = inRecovery || busy;
+  if (sendBtn) sendBtn.disabled = inRecovery;
 }
 
 // Run a command-shaped mutation through the canonical IPC, then resync from the
@@ -827,7 +830,9 @@ function addRecoveryAction() {
 }
 
 async function startNewChat(opts) {
-  if (busy) return;
+  // No busy-gate: creating/switching chats is safe mid-turn — an in-flight turn resolves into
+  // its own captured chat (runSend routes by chatId; replies paint activeOnly), so a new chat
+  // can't misroute it. Blocking here was half of the silent switch-while-busy defect.
   opts = opts || {};
   const leaving = activeChat();            // name the chat you're leaving behind, from its full arc
   const newId = uuid();
@@ -863,7 +868,8 @@ function summaryToSeedText(s) {
 // never open an empty one. On success the carried context is dropped VISIBLY into the composer of
 // the new chat (editable, no hidden seed), and NOTHING is sent until the owner presses Send.
 async function continueInFreshChat() {
-  if (busy) return;
+  // Building the handoff mid-turn would race the running turn; refuse honestly, don't die silently.
+  if (busy) { addBubbleUI('assistant notice', "Claude is still working — wait for the current reply before continuing in a fresh chat."); return; }
   const source = activeChat();
   const btn = document.getElementById('continue-fresh-chat');
   const restoreBtn = () => { if (btn) { btn.disabled = false; btn.textContent = 'Continue in fresh chat'; } };
@@ -1164,7 +1170,8 @@ function activeIsBuildChat() {
 // still expiring. On approval the chat's send id is re-pinned to the approved id so its next
 // send gets the build profile.
 async function resumeBuildForActiveChat() {
-  if (busy) return;
+  // Changing build authority mid-turn is unsafe; refuse honestly rather than dying silently.
+  if (busy) { addBubbleUI('assistant notice', "Claude is still working — wait for the current reply before enabling a build session."); return; }
   const c = activeChat();
   if (!c) return;
   const chatId = c.id; // stable authority key (NOT the worker session id)
@@ -1202,7 +1209,9 @@ function renderCorrections() {
     b.textContent = c.label;
     b.title = 'Applies to your typed question, or to the last answer if the box is empty: "' + c.msg + '"';
     b.addEventListener('click', () => {
-      if (busy) return;
+      // No busy-gate: sendMessage commits + queues a mid-turn send (steering, ADR-0013), so a chip
+      // works in the viewed chat even while another chat is running. Silent-return here was the third
+      // part of the switch-while-busy defect (spec: switch-while-busy).
       const typed = input.value.trim();
       if (typed) { input.value = ''; sendMessage(typed + '\n\n' + c.msg); }
       else { sendMessage(c.msg); }
@@ -1224,7 +1233,9 @@ function makeSecondOpinionButton() {
   b.textContent = 'Second opinion';
   b.title = "Have Codex (a different model) independently review Claude's latest answer — a real cross-check, not self-agreement.";
   b.addEventListener('click', async () => {
-    if (busy) return;
+    // A second opinion starts a SEPARATE verifier turn; the single worker can't run two at once.
+    // Refuse honestly (visible one-line reason) rather than dying silently (spec: switch-while-busy).
+    if (busy) { addBubbleUI('assistant notice', "Claude is still working — wait for the current reply before asking for a second opinion (they can't run at the same time)."); return; }
     const chatId = activeChat() && activeChat().id; // capture: persist the review to THIS chat
     const assistants = history.filter((m) => m.cls === 'assistant');
     const lastA = assistants.length ? assistants[assistants.length - 1] : null;
@@ -1285,7 +1296,9 @@ function makeCaptureDecisionsButton() {
   b.textContent = 'Capture decisions';
   b.title = 'Scans THIS chat\'s own transcript (not memory) for agreements you made, and proposes them - quoted, never invented - for you to confirm before writing to docs/DECISIONS.md.';
   b.addEventListener('click', async () => {
-    if (busy) return;
+    // Capture decisions starts a SEPARATE worker turn; the single worker can't run two at once.
+    // Refuse honestly (visible one-line reason) rather than dying silently (spec: switch-while-busy).
+    if (busy) { addBubbleUI('assistant notice', "Claude is still working — wait for the current reply before capturing decisions (they can't run at the same time)."); return; }
     const { text, truncated, count } = buildChatTranscript();
     if (!count) { await appendMessage('assistant error', 'Nothing to scan yet - this chat has no messages.'); return; }
     const note = truncated ? '\n(Transcript truncated to the most recent ~' + CAPTURE_TRANSCRIPT_MAX_CHARS + ' characters - only what fits below was scanned.)' : '';
