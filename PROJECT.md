@@ -1,20 +1,41 @@
 # PROJECT.md — current project brief
 
-## ▶ NEXT CHAT — START HERE (active work as of 2026-07-27)
-**Owner-approved, permanent, tier-1 workflow change: every PCC feature must carry an
-Expected-Behavior Map (lean traceability matrix), enforced with teeth. Decision recorded in
-`docs/adr/0027-expected-behavior-map-traceability.md` (Proposed) — read it; its "Implementation task
-list" is your exact mandate.** In short: (1) the map is a required section in every feature ADR (idea
-can't be formalized without it; `check-adr.ps1` gets teeth); (2) "done" now means every mapped behavior
-has a passing test, checked *at completion*, not deferred; (3) it travels to spawned projects; (4) a
-separate **retroactive backfill** builds `docs/EXPECTATION_AUDIT.md` for everything already built (Stage
-1 = finite control-surface spine + docs-sourced expected behavior + built/tested status, ranked by
-shock-risk; Stage 2 = mine the ~254 dev transcripts for undocumented/emergent expectations — opt-in,
-token-heavy). Keep it LEAN (anti-over-governance). **Origin:** the owner pressed real cockpit buttons for
-the first time (2026-07-27) and found two green-but-wrong defects (#2 switch-while-busy, #3 search
-navigation — fixed in PR #83); the deeper lesson is that CI-green proves "code does what its tests say,"
-not "the app does what the owner expects" (the ADR-0003 residue). This is PCC only for now, not ITM.
-A separate handoff copy block from the closing chat carries the nuance not captured here.
+## ▶ NEXT CHAT — START HERE (end of session, 2026-07-27)
+
+**ADR-0027 forward-process teeth: BUILT, TESTED, CODEX-VERIFIED PASS.** Every feature ADR
+(`feature: true` in front matter) must now carry an `## Expected-Behavior Map`; `check-adr.ps1` rejects
+one that doesn't, and rejects an `Accepted` ADR with any untested mapped behavior. Proof: 16/16 new
+`check-adr.spec.js` tests + 36/36 `scaffold-kit.spec.js` tests (spawned-project parity) pass; Codex
+independently reviewed the exact diff and returned PASS — receipt at
+`.cockpit/evidence/verification-receipt.json`. Full suite (`npm test`) was NOT proven clean end-to-end
+this session (one unrelated test flaked on live account-usage state, diagnosed as environmental, not a
+regression — see the doc below); only the two directly-relevant spec files were confirmed passing.
+
+**Backfill Stage 1 + Stage 2: DONE.** `docs/EXPECTATION_AUDIT.md` (33 sourced rows) is the retroactive
+Expected-Behavior Map for everything already built in PCC — the control surface (every renderer control
++ all 65 IPC channels) and the docs (Stage 1), plus a mine of all 256 dev-session transcripts + 11
+in-app chats (Stage 2, owner-authorized 2026-07-27). Read the doc's "short version" at the top for the
+ranked findings. Most actionable: an **UNCONFIRMED** bug — `sendMessage()` and several buttons
+(renderer.js:442-479, 830, 1167, 1205, 1227) gate on one **global** `busy` flag instead of per-chat
+state, so sending in an idle chat may silently stall behind an unrelated chat's still-running turn.
+Found by reading code while investigating a real bug the owner hit after a few days of actual use — not
+yet reproduced live.
+
+**⚠ NONE of the above has touched the real app or `main`.** Everything is on branch
+`feat/adr-0027-expected-behavior-map`, 4 commits, **local only — never pushed to GitHub, never merged.**
+Fetch/checkout that branch to see it; `main` is unchanged.
+
+**What's NOT done — the actual next step:** the live click-through / sign-off test (ADR-0009 gate b)
+against the ~13 genuinely-unverified items in the doc's hit-list + Section 0's "not yet proven on
+screen" rows + the Stage 2 new findings (desktop-shortcut launch, close-button process cleanup, the
+busy-flag bug above, etc.). **Do not re-test steer or the removed chat-length meter — both are already
+settled/deferred decisions, not open questions; the doc explains why.** Most of the 13 items cost zero
+real Claude usage (UI/dialog checks); a couple would need an actual real turn.
+
+**Origin:** the owner pressed real cockpit buttons for the first time (2026-07-27) and found two
+green-but-wrong defects (#2 switch-while-busy, #3 search navigation — fixed in PR #83); the deeper
+lesson is CI-green proves "code does what its tests say," not "the app does what the owner expects"
+(the ADR-0003 residue). PCC only for now, not ITM.
 
 ## ⚠ READ THIS FIRST — state as of 2026-07-21 (updated after the usage-meter fix)
 The #1 broken thing — **the usage meter — is now FIXED and proven accurate on the owner's actual
