@@ -14,6 +14,17 @@ the over-governance trap). One file per feature: `docs/specs/<feature>.md`.
 passing tests. No criterion without a test; no merge until they're green. That single rule
 gives spec-driven development's main benefit — verifiable intent — without the pipeline.
 
+## Expected-Behavior Map (ADR-0027)
+The acceptance criteria above answer "what did we *decide* to build." The **Expected-Behavior Map**
+also answers "what does the owner *expect* to happen when he presses the button" — including
+expectations imported from a reference anchor (e.g. "mimic the Claude/Codex desktop chat") that were
+never enumerated. Keep the map in the feature's ADR (`feature: true`), one lean table per feature —
+see `docs/DECISION_AND_CHANGE_STANDARD.md` for the row shape, the source legend
+(STATED/INFERRED/REFERENCE) and the status taxonomy (A–F). It is a **living** doc: add rows as new
+expectations surface in use. The map catches the class an all-green suite cannot — a behavior built
+*narrower than expected* (status **B**) — and doubles as the click-through script for the final
+sign-off test.
+
 ## Acceptance-criteria format — EARS
 Write each criterion as one observable behavior:
 `WHEN <trigger> THE SYSTEM SHALL <response>` (variants: `WHILE <state>`, `IF <condition>`,

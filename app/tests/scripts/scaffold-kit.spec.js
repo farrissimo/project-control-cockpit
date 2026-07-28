@@ -232,6 +232,29 @@ test('new project gets a generic starter phase-manifest and the inherited genera
   expect(o.total).toBe(m.slices.length);
 });
 
+// Expected-Behavior Map parity (ADR-0027, DECISION-113): a spawned project must inherit not just the
+// map TEMPLATE (the standard doc + specs README travel wholesale) but the TEETH — its own copied
+// check-adr.ps1 must reject a feature ADR that ships without a map. Prove the enforcement travels, not
+// just the file, by running the CHILD's validator against a synthetic feature ADR missing its map.
+test('spawned project inherits the Expected-Behavior Map teeth (check-adr bites there too)', () => {
+  // The standard + spec that carry the map template must have travelled...
+  const standard = fs.readFileSync(path.join(target, 'docs', 'DECISION_AND_CHANGE_STANDARD.md'), 'utf8');
+  expect(standard).toContain('Expected-Behavior Map');
+  // ...and the child's OWN check-adr.ps1 must enforce it. Drop a feature ADR with no map into the
+  // child's docs/adr and run the child's inherited validator; it must FAIL. Clean up after.
+  const badAdr = `---\nstatus: Proposed\ndate: 2026-07-16\nfeature: true\n---\n\n# ADR-0999: A feature with no map\n\n## Context and Problem\nx\n\n## Decision\nx\n\n## Consequences\nx\n\n## Confirmation\nx\n\n## Engagement\nx\n`;
+  const badPath = path.join(target, 'docs', 'adr', '0999-no-map.md');
+  fs.writeFileSync(badPath, badAdr);
+  try {
+    const r = spawnSync('pwsh', ['-NoProfile', '-File', 'scripts/check-adr.ps1'],
+      { cwd: target, encoding: 'utf8', timeout: 30000, windowsHide: true });
+    expect(r.status, r.stdout + r.stderr).toBe(1);
+    expect(r.stdout).toMatch(/\[FAIL\].*Expected-Behavior Map/);
+  } finally {
+    fs.rmSync(badPath, { force: true });
+  }
+});
+
 // Anti-drift guard: EVERY scripts/*.ps1 the app invokes must travel, so no button
 // is dead in a scaffolded project. Derived from main.js, not a hand-maintained list.
 test('every script the app invokes travels into a new project', () => {

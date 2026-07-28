@@ -130,3 +130,135 @@ test('empty docs/adr PASSes (validate-if-present is the documented, accepted bou
   expect(r.stdout).toMatch(/nothing to validate/);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+// ---------------------------------------------------------------------------
+// ADR-0027: feature ADRs must carry an Expected-Behavior Map (RTM), and when
+// Accepted the map's Definition-of-Done bites. These tests prove the teeth.
+// ---------------------------------------------------------------------------
+
+// A feature ADR = same as VALID_ADR but front matter carries `feature: true` and it gains the map.
+// `status` and `map` are injected per-scenario so each test exercises one behavior.
+function featureAdr({ status = 'Accepted', map }) {
+  const front = `---
+status: ${status}
+date: 2026-07-16
+feature: true
+---
+
+# ADR-0100: A feature decision
+
+## Context and Problem
+Body.
+
+## Decision
+Body.
+
+## Consequences
+Body.
+
+## Confirmation
+Body.
+
+## Engagement
+Body.
+`;
+  return map == null ? front : front + '\n' + map + '\n';
+}
+// A well-formed map with one built+tested (A) row — the happy path.
+const MAP_A_TESTED = `## Expected-Behavior Map
+
+| behavior | control | expected result | source | status | test |
+|---|---|---|---|---|---|
+| switch chat while busy | chat tab | loads the other chat | STATED chat-abc | A | switch-chat.spec.js |`;
+
+test('feature ADR PASSES when it carries a well-formed Expected-Behavior Map', () => {
+  const dir = makeRepo({ '0100-feature.md': featureAdr({ status: 'Accepted', map: MAP_A_TESTED }) });
+  const r = run(dir);
+  expect(r.status, r.stdout + r.stderr).toBe(0);
+  expect(r.stdout).toMatch(/\[PASS\].*0100-feature\.md/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('FAIL when a feature ADR has NO Expected-Behavior Map section', () => {
+  const dir = makeRepo({ '0100-feature.md': featureAdr({ status: 'Proposed', map: null }) });
+  const r = run(dir);
+  expect(r.status).toBe(1);
+  expect(r.stdout).toMatch(/\[FAIL\].*Expected-Behavior Map/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('FAIL when the Expected-Behavior Map section has no behavior rows', () => {
+  const emptyMap = `## Expected-Behavior Map\n\n(to be filled in)`;
+  const dir = makeRepo({ '0100-feature.md': featureAdr({ status: 'Proposed', map: emptyMap }) });
+  const r = run(dir);
+  expect(r.status).toBe(1);
+  expect(r.stdout).toMatch(/\[FAIL\].*no behavior rows/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// The Definition-of-Done tooth: a PROPOSED feature ADR may legitimately still have untested (C)
+// behaviors mid-build — that must PASS (work in progress is not a violation).
+test('PASS: a Proposed feature ADR may carry a built-but-untested (C) behavior', () => {
+  const mapC = `## Expected-Behavior Map
+
+| behavior | control | expected result | source | status | test |
+|---|---|---|---|---|---|
+| switch chat while busy | chat tab | loads the other chat | STATED chat-abc | C | — |`;
+  const dir = makeRepo({ '0100-feature.md': featureAdr({ status: 'Proposed', map: mapC }) });
+  const r = run(dir);
+  expect(r.status, r.stdout + r.stderr).toBe(0);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// ...but the SAME map at Accepted (= claimed done) must FAIL: done means every behavior tested.
+test('FAIL: an Accepted feature ADR with a built-but-untested (C) behavior violates Definition of Done', () => {
+  const mapC = `## Expected-Behavior Map
+
+| behavior | control | expected result | source | status | test |
+|---|---|---|---|---|---|
+| switch chat while busy | chat tab | loads the other chat | STATED chat-abc | C | — |`;
+  const dir = makeRepo({ '0100-feature.md': featureAdr({ status: 'Accepted', map: mapC }) });
+  const r = run(dir);
+  expect(r.status).toBe(1);
+  expect(r.stdout).toMatch(/\[FAIL\].*(status C|Definition of Done)/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// A built behavior (A/B) at Accepted with an empty test reference also fails DoD.
+test('FAIL: an Accepted feature ADR with a built (A) behavior and no test reference violates DoD', () => {
+  const mapNoTest = `## Expected-Behavior Map
+
+| behavior | control | expected result | source | status | test |
+|---|---|---|---|---|---|
+| switch chat while busy | chat tab | loads the other chat | STATED chat-abc | A | — |`;
+  const dir = makeRepo({ '0100-feature.md': featureAdr({ status: 'Accepted', map: mapNoTest }) });
+  const r = run(dir);
+  expect(r.status).toBe(1);
+  expect(r.stdout).toMatch(/\[FAIL\].*(no test reference|Definition of Done)/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// The B class (built+tested but NARROWER than expected — the #2/#3 defect class) is NOT machine-blocked
+// when it names a test: it's a real, honestly-recorded state that the human/verifier weighs. Pin that so
+// the map can express the very class it exists to surface without the gate rejecting it.
+test('PASS: an Accepted feature ADR may record a class-B (narrower-than-expected) behavior that names a test', () => {
+  const mapB = `## Expected-Behavior Map
+
+| behavior | control | expected result | source | status | test |
+|---|---|---|---|---|---|
+| search jumps to match | search box | scrolls to the hit | REFERENCE claude-desktop | B | search.spec.js |`;
+  const dir = makeRepo({ '0100-feature.md': featureAdr({ status: 'Accepted', map: mapB }) });
+  const r = run(dir);
+  expect(r.status, r.stdout + r.stderr).toBe(0);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// Backward-compatibility guard: a NON-feature ADR (no `feature: true`) needs no map — the whole
+// existing corpus (ADR-0000..0026) must keep passing. This is the promise that the tooth is additive.
+test('PASS: a non-feature ADR needs no Expected-Behavior Map (backward compatible)', () => {
+  const dir = makeRepo({ '0001-valid.md': VALID_ADR });
+  const r = run(dir);
+  expect(r.status, r.stdout + r.stderr).toBe(0);
+  expect(r.stdout).not.toContain('Expected-Behavior Map');
+  fs.rmSync(dir, { recursive: true, force: true });
+});

@@ -40,6 +40,8 @@ $anyFailed = $false
 foreach ($f in $files) {
   $text = Get-Content -LiteralPath $f.FullName -Raw
   $problems = [System.Collections.Generic.List[string]]::new()
+  $isFeature = $false          # ADR-0027: front matter `feature: true` marks a feature ADR
+  $status = $null
 
   # --- YAML front matter: the block between the first two --- fences ---
   $fm = $null
@@ -61,6 +63,7 @@ foreach ($f in $files) {
     if ($fm -notmatch '(?m)^\s*date:\s*\d{4}-\d{2}-\d{2}\s*$') {
       $problems.Add('front matter missing a valid "date: YYYY-MM-DD"')
     }
+    if ($fm -match '(?m)^\s*feature:\s*true\s*$') { $isFeature = $true }
   }
 
   # --- title ---
@@ -72,6 +75,61 @@ foreach ($f in $files) {
   foreach ($s in $requiredSections) {
     if ($text -notmatch ('(?m)^' + [regex]::Escape($s) + '\s*$')) {
       $problems.Add("missing required section '$s'")
+    }
+  }
+
+  # --- ADR-0027: feature ADRs carry an Expected-Behavior Map (RTM) ---
+  # A feature-tagged ADR (`feature: true`) must contain the map section with a real table.
+  # When the ADR is Accepted (= claimed done), the Definition-of-Done bites: no behavior may
+  # be status C (built-but-untested), and every built row (A/B) must name a test reference.
+  if ($isFeature) {
+    $lines = $text -split "\r?\n"
+    $hIdx = -1
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+      if ($lines[$i] -match '^\s*##\s+Expected-Behavior Map\b') { $hIdx = $i; break }
+    }
+    if ($hIdx -lt 0) {
+      $problems.Add("feature ADR missing required section '## Expected-Behavior Map'")
+    } else {
+      # Gather the contiguous markdown table under the heading (skip blank lines first).
+      $j = $hIdx + 1
+      while ($j -lt $lines.Count -and $lines[$j].Trim() -eq '') { $j++ }
+      $tableRows = [System.Collections.Generic.List[string]]::new()
+      while ($j -lt $lines.Count -and $lines[$j] -match '^\s*\|') { $tableRows.Add($lines[$j]); $j++ }
+      # Data rows = table rows that aren't the header or the |---|---| separator.
+      $dataRows = @($tableRows | Where-Object { $_ -notmatch '^\s*\|[\s:|-]*\|?\s*$' })
+      if ($tableRows.Count -lt 2 -or $dataRows.Count -lt 1) {
+        $problems.Add("Expected-Behavior Map has no behavior rows (needs a table with at least one row)")
+      } else {
+        # Locate the 'status' and 'test' columns from the header row (robust to reordering).
+        $header = $tableRows[0]
+        $cols = @($header.Trim('|').Split('|') | ForEach-Object { $_.Trim().ToLower() })
+        $statusCol = -1; $testCol = -1
+        for ($c = 0; $c -lt $cols.Count; $c++) {
+          if ($statusCol -lt 0 -and $cols[$c] -match 'status')       { $statusCol = $c }
+          if ($testCol   -lt 0 -and $cols[$c] -match 'test')         { $testCol   = $c }
+        }
+        $isAccepted = ($status -eq 'Accepted')
+        if ($isAccepted -and ($statusCol -lt 0 -or $testCol -lt 0)) {
+          $problems.Add("Expected-Behavior Map (Accepted) must have 'status' and 'test' columns to prove done-ness")
+        }
+        if ($isAccepted -and $statusCol -ge 0 -and $testCol -ge 0) {
+          $empties = @('', '-', '--', '—', '–', 'n/a', 'na', 'none', 'tbd', '?', 'todo')
+          # 2nd row is the |---| separator; data rows start at index >= 1 among non-separator rows.
+          foreach ($row in $dataRows[1..($dataRows.Count - 1)]) {
+            $cells = @($row.Trim().Trim('|').Split('|') | ForEach-Object { $_.Trim() })
+            if ($cells.Count -le [Math]::Max($statusCol, $testCol)) { continue }
+            $st = ($cells[$statusCol] -replace '[^A-Za-z]', '').ToUpper()
+            $stClass = if ($st.Length -gt 0) { $st.Substring(0,1) } else { '' }
+            $testRef = $cells[$testCol].ToLower()
+            if ($stClass -eq 'C') {
+              $problems.Add("Accepted feature ADR has a behavior built-but-untested (status C) — Definition of Done requires a passing test")
+            } elseif (($stClass -eq 'A' -or $stClass -eq 'B') -and ($empties -contains $testRef)) {
+              $problems.Add("Accepted feature ADR has a built behavior (status $stClass) with no test reference — Definition of Done requires a test")
+            }
+          }
+        }
+      }
     }
   }
 

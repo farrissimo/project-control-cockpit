@@ -60,6 +60,13 @@ work needs the top of that ladder. **A non-trivial change is not done until an i
 (`codex exec`, see the Verification protocol below) has reviewed it and returned a verdict — the
 sequence is build → CI → verify → done. Do NOT self-certify a batch and skip the verifier.**
 
+**For a feature (ADR-0027):** "done" also requires **every behavior in its Expected-Behavior Map to
+have a passing test, checked now — not deferred.** When the feature ADR flips to `Accepted`,
+`check-adr.ps1` rejects it if any mapped behavior is status `C` (built-but-untested) or any built
+(A/B) behavior names no test. Green tests prove "the code does what its tests say"; the map is how we
+also prove "the app does what the owner expects" — so the verifier checks map↔test *coverage*, not
+just that the suite is green.
+
 ## Where the architecture lives (pointers, not prose)
 - `PROJECT.md` — current brief (read first; durable state only, live facts checked directly)
 - `docs/ARCHITECTURE.md` — structure
