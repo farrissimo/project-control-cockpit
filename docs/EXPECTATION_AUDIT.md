@@ -16,20 +16,30 @@
 
 ## The short version — what's most likely to surprise you
 
-Across the whole audit, these are the highest shock-risk gaps (likelihood you hit it × severity).
-Everything else on the control surface is built and pinned by a test.
+Across the whole audit — including a mine of all 256 historical dev-session transcripts + in-app chats
+(Stage 2, below) — these are the highest shock-risk gaps (likelihood you hit it × severity). Everything
+else on the control surface is built and pinned by a test.
 
-1. **You can't watch the worker work.** There's no live activity feed — only a "Claude is working…"
-   timer. The real-time stepper/action-timeline the design calls for isn't wired (§0b.1). *This is the
-   "it works silently" problem — the top trust item for the proving window.*
-2. **"Steering" doesn't steer.** Typing while a turn runs **queues** a message for after it finishes; it
-   does not redirect the running worker. The docs admit this (§0.1 / hit-list #1).
-3. **Usage accuracy on a cold turn is unproven.** The cold per-message usage measurement was halted on a
-   real defect and never re-proven (§0b.2).
-4. **Delete-chat uses a different confirm dialog** than the rest of the app — worth one on-screen check
-   that Cancel/OK behave (hit-list #2).
+1. **"Steering" doesn't steer — and this is the single most-repeated complaint in PCC's history.**
+   Typing while a turn runs **queues** a message for after it finishes; it does not redirect the running
+   worker. Raised independently in 9+ separate sessions over weeks. Once fake-verified (a commit claimed
+   "steer" worked when it didn't) — that false stamp is long since closed, but the underlying control
+   still isn't built (§0.1 / hit-list #1).
+2. **You can't watch the worker work — and now there's a root cause.** No live activity feed, only a
+   "Claude is working…" timer. One transcript names why: *"the worker runs one-shot and discards tool
+   events"* — it's an architecture gap, not a missing UI widget (§0b.1). *The top trust item for the
+   proving window.*
+3. **The removed chat-length meter left a real need unmet.** Its removal (ADR-0025) was the right call —
+   a meter that lies is worse than none — but "how do I know this chat is safe to keep going" is still a
+   live, repeatedly-raised owner pain with no honest replacement (§0b.3).
+4. **Usage accuracy on a cold turn is unproven**, and **two internal tools you're about to rely on**
+   (`verify-evidence.ps1`, the Verify tab on no-remote projects) have transcript-flagged reliability
+   questions that were never re-confirmed fixed (§0b.2, Stage 2 tooling section).
+5. **Two smaller, concrete things to click-check:** delete-chat's confirm dialog differs from the rest of
+   the app (hit-list #2), and closing PCC via the X should be confirmed to actually kill every underlying
+   process (Stage 2, S2.3).
 
-The rest of this document is the evidence and the full click-through order behind those four.
+The rest of this document is the evidence and the full click-through order behind those five.
 
 ## How to read this
 
@@ -173,11 +183,80 @@ is tracked in Section 0 and resolved by the sign-off click-through.
 
 ---
 
-## Stage 2 (not yet run — explicit owner opt-in required)
+## Stage 2 — transcript + in-app chat mine (owner-authorized, run 2026-07-27)
 
-Sections 0–2 are **Stage 1**: bounded, sourced from the finite control surface + the docs + the test
-suite. **Stage 2** mines the ~254 dev-session transcripts + in-app chats for *undocumented / emergent*
-expectations — the class that never made it into any doc (the #2/#3 pattern was exactly this). It is
-token-heavy and is a parallel-agent job; per ADR-0027 it runs only on the owner's explicit go. Until
-then, this register is complete **for everything the docs and code already record**, and honestly
-silent about what only the chat history knows.
+Mined the full corpus: 256 dev-session transcripts (266MB, `~/.claude/projects/C--ProjectControlCockpit/`,
+sharded 8-way) + 11 in-app PCC chats (3 live + 8 exported), via 9 parallel read-only agents, grep-first
+so multi-MB session logs didn't blow context. Below is the synthesis — not a raw dump of everything
+found (that would violate "keep it lean"); only what changes or strengthens the register.
+
+**Integrity note on this run's own data:** one transcript shard (`37709fd2....jsonl`) is *this current
+session's own live log* — it was still being written while the mining agents ran, so a few of its "hits"
+were the mining agent reading back things **I had already written earlier in this same session** (the
+pccConfirm-vs-native-confirm() note, the "save-chats-backup no-op" note). Those are **not independent
+corroboration** and are excluded from the counts below; they remain exactly as already sourced (direct
+code reading), not inflated with a circular transcript citation.
+
+### What this confirms (independently, across many separate historical sessions)
+
+- **Steer doesn't steer** (hit-list #1) — the single most-repeated owner complaint in the entire corpus,
+  independently raised in at least 9 separate historical sessions across weeks/months ("stop button
+  seems to work but steer isn't an option," "steering genuinely doesn't work in the running app for some
+  reason I can't see statically," "steer was claimed done... doesn't even show for you"). One session
+  notes it was **fake-verified**: 6 "desktop-parity" commits were stamped `Verified-Receipt` while steer
+  was actually broken underneath — a historical false-green, since closed by governance hardening. This
+  is not a one-off; it is the most persistent unmet expectation in PCC's history.
+- **No live worker-activity feed** (§0b.1) — independently raised at least 5 times ("the worker feed
+  isn't showing any changes, I was expecting more activity," "nothing happens when I click on those
+  journey buttons... I would expect a slideout," "an in-chat progress bar... it would auto-refresh," "it
+  just powers through the work completely silently"). One session gives a **root cause**: *"the worker
+  runs one-shot and discards tool events"* — the backend never keeps the incremental `tool_use` stream
+  around long enough to show it, confirming this is an architecture gap, not a rendering oversight.
+- **The removed chat-length meter left a real, still-felt owner need** (§0b.3) — independently raised
+  repeatedly ("chat health meter sucks, how am I supposed to know it's going off the rails," "I can't
+  objectively tell when a chat is no longer safe to continue," "all the safety and invisible stuff needs
+  to be automatic, hidden from me, but needs a token count"). ADR-0025's removal was correct (a meter
+  that can't be shown truthfully is worse than none) — but the owner's underlying need was never
+  re-solved, only the dishonest solution was removed. Upgrading this row's residual-risk note.
+
+### New findings (not previously in this register)
+
+| # | behavior | expected | found in transcripts | class | source | on-screen probe |
+|---|---|---|---|---|---|---|
+| S2.1 | **Desktop shortcut launch** | launching PCC via its desktop shortcut opens the current build with full, current data | Two separate historical incidents: shortcut bypassed a launcher fix and ran a stale build ("of course it 'didn't work' — it never ran"); a second session: "the desktop shortcut doesn't work. that's what we fought all morning." Both were resolved *in-session* at the time, but the failure mode (shortcut ≠ the code path Playwright launches) is structural, not a specific bug — no E2E test launches via an actual `.lnk` shortcut | **C** (untested path) | STATED — 2 independent sessions | launch PCC from its real desktop shortcut (not a terminal command) and confirm it's the current build with full chat history |
+| S2.2 | **Remote/mobile control** | a `/remote-control`-style capability so the owner can interact with a project away from the desktop, matching the Claude-desktop-app anchor | "no /remote-control flag in the pcc app at all and I use that all the time in the desktop-app" | **D** (real gap, never built, not rejected) | STATED — 8345031d…jsonl; REFERENCE "mimic desktop app" | none — not built; flag for a scoping decision, not a click-check |
+| S2.3 | **Close (X) fully terminates the app** | clicking the window close button kills the app and all underlying worker/child processes, permanently | "fix it so that when I click the X to close the app it actually closes the app and any underlying processes... it better be a permanent solution not some half-assed patch" | **C?** (likely fixed — `singleton.spec.js` covers single-instance handling, but not confirmed to cover full process-tree termination on close specifically) | STATED — 85961ade…jsonl | close via the X, confirm no orphaned Electron/node process remains (Task Manager / `tasklist`) |
+| S2.4 | **App never hangs unrecoverably on "Claude is thinking"** | a hung turn is always stoppable; the owner should never have to force-close the whole app | "it doesn't respond once it says 'Claude is thinking'... I couldn't stop it so I just closed the app" | **A?** (the Stop button — ADR-0013 — was built afterward and PROJECT.md marks it ✅ owner-tested; this looks historically resolved, but worth one re-confirm given the severity of the original incident) | STATED — f3b44eac…jsonl (historical, pre-Stop-button) | trigger a long turn, click Stop, confirm it actually interrupts rather than just hiding the "thinking" bubble |
+
+### Internal tooling reliability (not a UI control, but real and owner-raised)
+
+- **`verify-evidence.ps1` may still hand the verifier a stale diff range** instead of the change actually
+  in flight — flagged as "known broken" in one session (2edb894a…jsonl) and matches an existing standing
+  note (project memory: *"PCC's own verification tooling has proven defects — verify-work.ps1 stale
+  range"*). Not re-confirmed fixed; worth a direct check before trusting any Codex verdict this register
+  depends on.
+- **PCC's Verify tab may time out on local-first / no-remote projects** rather than degrading gracefully,
+  unlike Backup (which already has an honest local-only tier) — STATED, 3334ee25…jsonl. Not re-confirmed
+  fixed or broken.
+
+### Test-suite finding (a side effect of this audit, not a transcript item)
+
+Running the full suite during this work surfaced a **live-data dependency in `continue-fresh-chat.spec.js`**:
+its first test hardcodes an expectation that the "Continue in fresh chat" button carries CSS class
+`clear`, but that class is driven by the **real, unmocked Claude 5-hour usage percentage**
+(`app/renderer/renderer.js:2311-2315`, thresholds in `app/renderer/usage-protection.js`) — at ≥70% real
+usage the button legitimately switches to `notice`. The code itself was verified correct (it does build
+the handoff before opening the new chat, contrary to an old transcript complaint that the live button
+skipped this — that appears already fixed). The test failure is an **environmental flake tied to how
+much of the real Claude plan has been used**, not a regression from any change in this session. Follow-up
+worth flagging separately: this test should stub usage like its sibling tests do, so it isn't flaky
+during exactly the high-usage periods (like this one) when you'd most want the suite trustworthy.
+
+### Not re-litigated (already correctly closed, confirmed by the mine)
+
+PR #50's failing-tests-at-merge incident, the 6 fake-verified desktop-parity commits, Owner Overview not
+checking CI result, `doctor.ps1`/scaffolder false alarms, and the scaffolder's own defect-cloning risk are
+all **historical** — each has a matching spec now in the suite (`work-packet-messages.spec.js`,
+`governance-gate.spec.js`, `overview-ci-claim.spec.js`, the scaffold-kit "passes doctor with no ISSUEs"
+test) or was addressed by later governance hardening. Listed here only so a future audit doesn't
+re-surface them as if new.
