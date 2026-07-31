@@ -102,7 +102,7 @@
   #usage-meter.unavailable .um-cap { color: #f0685c; }
   #usage-meter.unavailable .um-pct { color: #ff4b42; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
   #usage-meter.unavailable .um-sub { color: #e58b84; }
-  #model-select { background: #1a1d23; color: #e8eaed; border: 1px solid #2b2f37; border-radius: 8px;
+  #worker-select, #model-select { background: #1a1d23; color: #e8eaed; border: 1px solid #2b2f37; border-radius: 8px;
     padding: 4px 8px; font-size: 12px; font-family: inherit; }
   .chats-wrap { margin-left: auto; position: relative; }
   #chats-btn, #new-chat, #handoff-packet-btn { background: #14171c; color: #aeb4bd; border: 1px solid #2b2f37;
@@ -446,6 +446,9 @@
   .bubble.codex { border-left: 3px solid var(--info); background: #12203a; }
   .bubble.codex::before { content: "Codex cross-check"; display: block; font-size: 10px;
     letter-spacing: .04em; text-transform: uppercase; color: var(--info); margin-bottom: 6px; font-weight: 600; }
+  .bubble.ag { border-left: 3px solid #1d8f6f; background: #11271f; }
+  .bubble.ag::before { content: "AG cross-check"; display: block; font-size: 10px;
+    letter-spacing: .04em; text-transform: uppercase; color: #7fe0c3; margin-bottom: 6px; font-weight: 600; }
 
   /* Back up & sync card (Project view). */
   .sync-card { background: var(--surface-2); border: 1px solid var(--border-2); border-radius: 10px; padding: 12px; margin-top: 8px; }
@@ -523,7 +526,7 @@
     </button>
     <div id="proj-panel" class="proj-panel hidden"></div>
     <nav>
-      <button class="nav active" data-view="chat" title="Talk to Claude Code about this project.">Chat</button>
+      <button class="nav active" data-view="chat" title="Talk to the selected worker about this project.">Chat</button>
       <button class="nav" data-view="project" title="Current project state, decisions, babysitting-reduction metrics, and the new-chat handoff generator.">Project</button>
       <button class="nav" data-view="rules" title="Your standing rules (CLAUDE.md) - loads into every Claude session automatically.">Rules</button>
       <button class="nav" data-view="memory" title="The project brief (PROJECT.md) Claude reads at the start of every session. Edit and save here.">Memory</button>
@@ -531,7 +534,7 @@
       <button class="nav" data-view="signals" title="Honest alarms: untracked files, drift, stale docs, backup status, bloat, and more.">Signals</button>
       <button class="nav" data-view="verify" title="Deterministic hard checks plus independent AI review of the work.">Verify</button>
     </nav>
-    <div class="side-foot">Talking to your Claude Code</div>
+    <div class="side-foot">Talking to your selected worker</div>
   </aside>
 
   <section id="content">
@@ -562,8 +565,10 @@
           <span class="um-pct" id="um-pct">…</span>
           <span class="um-sub" id="um-sub"></span>
         </div>
+        <label class="ct-label" for="worker-select">Worker</label>
+        <select id="worker-select" title="Which CLI handles your chat turns."></select>
         <label class="ct-label" for="model-select">Model</label>
-        <select id="model-select" title="Which Claude model answers your messages. Defaults to Sonnet 5; falls back automatically if a model is unavailable."></select>
+        <select id="model-select" title="Which model the selected worker uses for this chat."></select>
         <div class="chats-wrap">
           <button id="chats-btn" type="button" title="Your saved chats — switch, rename, or delete.">Chats</button>
           <div id="chats-panel" class="hidden">
@@ -584,13 +589,13 @@
       <div id="log"></div>
       <div id="corrections"></div>
       <div id="attachments" class="hidden"></div>
-      <div id="steer-hint" class="hidden">Claude is working — keep typing to <b>steer</b>: your next message queues and sends the moment this turn finishes.</div>
+      <div id="steer-hint" class="hidden">The worker is working — keep typing to <b>steer</b>: your next message queues and sends the moment this turn finishes.</div>
       <form id="composer">
         <button id="attach-btn" type="button" title="Attach files or images. You can also paste or drop an image into the box.">+</button>
         <input id="attach-input" type="file" multiple style="display:none" accept="image/*,text/*,.md,.txt,.json,.js,.ts,.tsx,.jsx,.py,.ps1,.csv,.log,.html,.css,.yml,.yaml" />
         <textarea id="input" placeholder="Tell PCC what to do" rows="1"></textarea>
-        <button id="send" type="submit" title="Send this message to Claude Code (Enter also sends; Shift+Enter for a new line).">Send</button>
-        <button id="stop" type="button" disabled title="Stop the running turn. Enabled only while Claude is working; nothing after this point is sent and your history is kept.">Stop</button>
+        <button id="send" type="submit" title="Send this message to the selected worker (Enter also sends; Shift+Enter for a new line).">Send</button>
+        <button id="stop" type="button" disabled title="Stop the running turn. Enabled only while the selected worker is working; nothing after this point is sent and your history is kept.">Stop</button>
       </form>
     </div>
 

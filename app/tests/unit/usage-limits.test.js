@@ -118,6 +118,7 @@ test('isAuthError matches the REAL claude-code auth/login failure strings (extra
   assert.strictEqual(isAuthError('Run /login to re-authenticate, then retry.'), true);
   assert.strictEqual(isAuthError('Your session expired. /login to sign in again.'), true);
   assert.strictEqual(isAuthError('Please /login to reconnect.'), true);
+  assert.strictEqual(isAuthError('Your organization has disabled Claude subscription access for Claude Code. Use an Anthropic API key instead or ask your admin to enable access.'), true);
 });
 
 test('isAuthError does NOT fire on ordinary output, a usage-limit, or a budget message', () => {

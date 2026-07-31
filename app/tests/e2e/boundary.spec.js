@@ -217,3 +217,11 @@ test('codex out-of-usage surfaces as unavailable in a second opinion', async () 
     expect(r.text).not.toMatch(/\bAGREE\b/);
   });
 });
+
+test('ag unavailable surfaces as unavailable in a second opinion', async () => {
+  await withApp({ PCC_FAKE_AGY_FIXTURE: FX('verifier-outofusage.json') }, async (page) => {
+    const r = await callOn(page, 'secondOpinion', 'Q: ok?\nA: yes.', 'ag');
+    expect(r.text).toMatch(/usage limit|out of usage|no output/i);
+    expect(r.text).not.toMatch(/\bAGREE\b/);
+  });
+});

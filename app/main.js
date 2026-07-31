@@ -32,6 +32,7 @@ const { singleFlight } = require('./single-flight'); // coalesce concurrent dete
 const { parseStreamJson, parseStreamCost, parseStreamUsage, parseStreamTurns } = require('./stream-json');
 const { workerEnv } = require('./worker-env'); // DECISION-003: strip paid-API creds from every claude spawn
 const { spawnClaude } = require('./claude-spawn'); // the ONE claude launcher — preserves every argument boundary (no shell)
+const { spawnCodex } = require('./codex-spawn'); // mirrors the safe launcher pattern for the Codex worker
 const persistentWorker = require('./persistent-worker'); // ADR-0020 T3: one warm claude process for text chat turns
 const { classifyResult } = require('./warm-result'); // ADR-0020 T3: pure per-turn result-envelope classifier
 const { decideAutoContinue } = require('./auto-continue'); // ADR-0026: run approved work to completion past --max-turns
@@ -649,19 +650,115 @@ ipcMain.handle('pcc:trustExtras', async () => {
   return { rulesLoaded, verification, headCommitEpoch, dirty, gitKnown };
 });
 
-// Model config: an editable list + default + fallback chain, so the app never
-// hard-codes models. If the chosen model is retired/unavailable, Claude Code's
-// --fallback-model quietly tries the chain instead of crashing.
+// Worker/provider + model config. Backward-compatible with the old Claude-only
+// shape so existing children do not break if they have not been refreshed yet.
 function readModels() {
-  const fallback = { default: 'claude-sonnet-5', fallback_chain: 'claude-sonnet-5',
-    models: [{ id: 'claude-sonnet-5', label: 'Sonnet 5 (default)' }] };
+  const fallback = {
+    default_provider: 'claude',
+    providers: [
+      { id: 'codex', label: 'Codex CLI', enabled: true },
+      { id: 'claude', label: 'Claude Code', enabled: true },
+    ],
+    reviewers: [
+      { id: 'codex', label: 'Codex CLI' },
+      { id: 'ag', label: 'Antigravity CLI' },
+    ],
+    second_opinion_by_worker: { claude: 'codex', codex: 'ag' },
+    by_provider: {
+      codex: {
+        default: 'auto',
+        models: [{ id: 'auto', label: 'Codex account default' }],
+      },
+      claude: {
+        default: 'claude-sonnet-5',
+        fallback_chain: 'claude-sonnet-5',
+        models: [{ id: 'claude-sonnet-5', label: 'Sonnet 5 (default)' }],
+      },
+    },
+  };
   try {
     const cfg = JSON.parse(fs.readFileSync(path.join(cockpitDir(), 'state', 'models.json'), 'utf8'));
-    return { default: cfg.default || fallback.default, fallback_chain: cfg.fallback_chain || cfg.default || fallback.fallback_chain, models: cfg.models || fallback.models };
+    // Legacy Claude-only shape.
+    if (!cfg.by_provider && !cfg.providers && !cfg.default_provider) {
+      return {
+        default_provider: 'claude',
+        providers: fallback.providers,
+        reviewers: fallback.reviewers,
+        second_opinion_by_worker: fallback.second_opinion_by_worker,
+        by_provider: {
+          codex: fallback.by_provider.codex,
+          claude: {
+            default: cfg.default || fallback.by_provider.claude.default,
+            fallback_chain: cfg.fallback_chain || cfg.default || fallback.by_provider.claude.fallback_chain,
+            models: cfg.models || fallback.by_provider.claude.models,
+          },
+        },
+      };
+    }
+    let providers = Array.isArray(cfg.providers) && cfg.providers.length ? cfg.providers : fallback.providers;
+    const byProvider = Object.assign({}, fallback.by_provider, cfg.by_provider || {});
+    const codex = byProvider.codex || fallback.by_provider.codex;
+    const claude = byProvider.claude || fallback.by_provider.claude;
+    if (process.env.PCC_TEST_MODE && !process.env.PCC_TEST_USE_REAL_PROVIDER_CONFIG) {
+      providers = providers.map((p) => (p && p.id === 'claude') ? Object.assign({}, p, { enabled: true }) : p);
+    }
+    return {
+      default_provider: cfg.default_provider || fallback.default_provider,
+      providers,
+      reviewers: Array.isArray(cfg.reviewers) && cfg.reviewers.length ? cfg.reviewers : fallback.reviewers,
+      second_opinion_by_worker: Object.assign({}, fallback.second_opinion_by_worker, cfg.second_opinion_by_worker || {}),
+      by_provider: {
+        codex: {
+          default: codex.default || fallback.by_provider.codex.default,
+          models: codex.models || fallback.by_provider.codex.models,
+        },
+        claude: {
+          default: claude.default || fallback.by_provider.claude.default,
+          fallback_chain: claude.fallback_chain || claude.default || fallback.by_provider.claude.fallback_chain,
+          models: claude.models || fallback.by_provider.claude.models,
+        },
+      },
+      // Test-mode stability: the established suite is heavily Claude-specific
+      // (session reuse / argv capture / max-turn fixtures). Keep that default in
+      // PCC_TEST_MODE unless a test explicitly chooses a different worker.
+      test_default_provider: process.env.PCC_TEST_MODE ? 'claude' : undefined,
+    };
   } catch (e) { return fallback; }
 }
 
 ipcMain.handle('pcc:getModels', () => readModels());
+
+function providerConfig(cfg, providerId) {
+  const declared = Array.isArray(cfg.providers) ? cfg.providers : [];
+  const enabledIds = declared.filter((p) => p && p.enabled !== false).map((p) => p.id);
+  const preferredDefault = (cfg.test_default_provider && enabledIds.includes(cfg.test_default_provider))
+    ? cfg.test_default_provider
+    : cfg.default_provider;
+  const safeDefault = enabledIds.includes(preferredDefault) ? preferredDefault : (enabledIds[0] || 'claude');
+  const requested = (providerId === 'codex' || providerId === 'claude') ? providerId : safeDefault;
+  const id = enabledIds.includes(requested) ? requested : safeDefault;
+  const p = (cfg.by_provider && cfg.by_provider[id]) || ((id === 'codex') ? { default: 'auto', models: [{ id: 'auto', label: 'Codex account default' }] } : { default: 'claude-sonnet-5', fallback_chain: 'claude-sonnet-5', models: [{ id: 'claude-sonnet-5', label: 'Sonnet 5 (default)' }] });
+  return { id, default: p.default, fallback_chain: p.fallback_chain, models: p.models || [] };
+}
+
+function normalizeSendArgs(provider, model, workerSessionId, isFirstTurn, chatId, attachments) {
+  if (provider === 'codex' || provider === 'claude') {
+    return { provider, model, workerSessionId, isFirstTurn, chatId, attachments };
+  }
+  // Backward compatibility for direct IPC/test callers that still use the old
+  // shape: send(message, model, workerSessionId, isFirstTurn, chatId, attachments).
+  if (typeof workerSessionId === 'boolean' || typeof isFirstTurn === 'string' || Array.isArray(chatId)) {
+    return {
+      provider: undefined,
+      model: provider,
+      workerSessionId: model,
+      isFirstTurn: workerSessionId,
+      chatId: isFirstTurn,
+      attachments: chatId,
+    };
+  }
+  return { provider, model, workerSessionId, isFirstTurn, chatId, attachments };
+}
 
 // External-tool preflight. PCC drives four command-line tools it does NOT bundle: pwsh (the whole
 // detector/lifecycle/backup/scaffold script layer), git (backup + version tracking), claude (the
@@ -684,9 +781,9 @@ ipcMain.handle('pcc:toolStatus', () => {
   // but the message names WHAT breaks so a user can judge urgency.
   const meta = {
     pwsh:   { label: 'PowerShell 7 (pwsh)', why: 'detectors, lifecycle, backup, and New Project' },
-    claude: { label: 'Claude Code (claude)', why: 'the worker — chat and building' },
+    claude: { label: 'Claude Code (claude)', why: 'the chat worker when Claude is selected' },
     git:    { label: 'Git (git)', why: 'backup / sync and version tracking' },
-    codex:  { label: 'Codex CLI (codex)', why: 'the independent verifier (Verify)' },
+    codex:  { label: 'Codex CLI (codex)', why: 'the chat worker when Codex is selected, and the verifier' },
   };
   const missing = Object.keys(meta).filter((k) => !present[k]).map((k) => ({ tool: k, label: meta[k].label, why: meta[k].why }));
   return { present, missing };
@@ -793,6 +890,106 @@ ipcMain.handle('pcc:pickFolder', async () => {
 // session..." - a confusing non-answer. We both disallow that tool and instruct
 // against the behavior. Kept constant so it doesn't bust the prompt cache.
 const CHANNEL_PROMPT = 'You are replying inside PCC\'s text-only chat panel: there is no interactive UI, no clickable pickers or buttons you can present. Never use interactive tools such as AskUserQuestion; if you need to ask the owner something, ask it as plain text with the options listed inline. Never narrate internal tool, prompt, or mechanism failures to the owner (e.g. do not say a tool "isn\'t working") - just answer or ask plainly. The owner is a non-coder product lead: be concise and plain-language.';
+
+const CODEX_CREATE_FLOW_PROMPT = [
+  'NEW PROJECT INTAKE MODE:',
+  '- You are interviewing the owner to shape a brand-new project.',
+  '- Keep using the conversation history below. Do not claim earlier turns are unavailable.',
+  '- Do not create scripts, run scaffold tests, initialize git, or fix/build the project during intake.',
+  '- The only file you may write during intake is blueprint.json, and only after the owner has given enough project details.',
+  '- Ask plain-language questions, one or two at a time.',
+].join('\n');
+const CODEX_CREATE_FLOW_MAX_TURNS = 24;
+const CODEX_CREATE_FLOW_MAX_CHARS = 30000;
+
+function boundedCreateFlowTranscript(turns) {
+  const src = Array.isArray(turns) ? turns.slice(-CODEX_CREATE_FLOW_MAX_TURNS) : [];
+  const kept = [];
+  let total = 0;
+  for (let i = src.length - 1; i >= 0; i--) {
+    const role = src[i] && src[i].role === 'assistant' ? 'assistant' : 'owner';
+    const text = String((src[i] && src[i].text) || '').trim();
+    if (!text) continue;
+    const room = CODEX_CREATE_FLOW_MAX_CHARS - total;
+    if (room <= 0) break;
+    const clipped = text.length > room ? text.slice(text.length - room) : text;
+    kept.unshift({ role, text: clipped });
+    total += clipped.length;
+  }
+  return kept;
+}
+
+function formatCreateFlowTranscript(turns) {
+  const bounded = boundedCreateFlowTranscript(turns);
+  if (!bounded.length) return '';
+  return bounded.map((t) => '[' + t.role.toUpperCase() + ']\n' + t.text).join('\n\n');
+}
+
+function codexChatPrompt(message, opts) {
+  let prompt = CHANNEL_PROMPT;
+  if (opts && opts.createFlowIntake) {
+    const history = formatCreateFlowTranscript(opts.createFlowTranscript);
+    prompt += '\n\n' + CODEX_CREATE_FLOW_PROMPT;
+    if (history) prompt += '\n\nPrior New Project conversation:\n' + history;
+    prompt += '\n\nCurrent owner message:\n' + String(message || '');
+    return prompt;
+  }
+  return prompt + '\n\nOwner message:\n' + String(message || '');
+}
+
+function askCodex(message, model, chatId, attachments, opts) {
+  return new Promise((resolve) => {
+    if (Array.isArray(attachments) && attachments.length) {
+      return resolve({ ok: false, text: 'Codex is selected, but PCC does not support attachments with Codex yet. Switch this chat to Claude Code to send files or images.' });
+    }
+    const cfg = readModels();
+    const provider = providerConfig(cfg, 'codex');
+    const chosen = model || provider.default;
+    const scopedCwd = (opts && opts.cwd) || projectDir;
+    const isBuild = (opts && opts.forceBuild) || authority.authorizeSend(chatId, Date.now());
+    const sandbox = isBuild ? 'workspace-write' : 'read-only';
+    const outFile = path.join(app.getPath('temp'), 'pcc-codex-' + crypto.randomUUID() + '.txt');
+    const args = ['exec', '--sandbox', sandbox];
+    if (opts && opts.skipGitRepoCheck) args.push('--skip-git-repo-check');
+    if (chosen && chosen !== 'auto') args.push('--model', chosen);
+    args.push('-o', outFile, '-');
+    let out = '';
+    let err = '';
+    let child;
+    try {
+      child = spawnCodex(args, { cwd: scopedCwd, env: workerEnv(), windowsHide: true });
+    } catch (e) {
+      return resolve({ ok: false, text: 'Could not launch Codex CLI: ' + e.message });
+    }
+    activeWorkers.add(child);
+    if (!(opts && opts.forceBuild)) currentTurn = { child: child, chatId: chatId || null, stoppedByOwner: false };
+    if (opts && typeof opts.onSpawn === 'function') opts.onSpawn(child);
+    child.on('error', (e) => {
+      activeWorkers.delete(child);
+      if (currentTurn && currentTurn.child === child) currentTurn = null;
+      try { if (fs.existsSync(outFile)) fs.unlinkSync(outFile); } catch (_) { /* best effort */ }
+      resolve({ ok: false, text: 'Could not launch Codex CLI: ' + e.message });
+    });
+    child.stdout.on('data', (d) => { out += d.toString(); });
+    child.stderr.on('data', (d) => { err += d.toString(); });
+    child.on('close', (code) => {
+      activeWorkers.delete(child);
+      const wasStoppedByOwner = !!(currentTurn && currentTurn.child === child && currentTurn.stoppedByOwner);
+      if (currentTurn && currentTurn.child === child) currentTurn = null;
+      let reply = '';
+      try { if (fs.existsSync(outFile)) reply = fs.readFileSync(outFile, 'utf8').trim(); } catch (_) { /* best effort */ }
+      try { if (fs.existsSync(outFile)) fs.unlinkSync(outFile); } catch (_) { /* best effort */ }
+      if (wasStoppedByOwner) return resolve({ ok: false, stoppedByOwner: true, text: 'Stopped — you ended this turn before Codex finished. Nothing after this point was sent.' });
+      if (code === 0) return resolve({ ok: true, text: reply || out.trim() || '(no output)' });
+      const raw = (err || out || reply || ('Codex exited with code ' + code)).trim();
+      if (/usage limit/i.test(raw)) return resolve({ ok: false, usageLimit: true, text: 'You’ve reached your Codex usage limit. This is the CLI/provider limit, not a PCC bug. Your chat history is safe here; send again once the limit resets.' });
+      if (/not authenticated|login|sign in/i.test(raw)) return resolve({ ok: false, authError: true, text: 'PCC can’t reach Codex because the Codex CLI is not signed in. Sign in to Codex in a terminal, then send your message again. Your chat history is safe here.' });
+      return resolve({ ok: false, text: raw });
+    });
+    child.stdin.write(codexChatPrompt(message, opts));
+    child.stdin.end();
+  });
+}
 
 // ADR-0023 / Task 1.2: the GUARDED continuation prompt sent as the single resumed segment when
 // approved work is auto-continued past the native --max-turns cap. It forces the resumed worker to
@@ -962,7 +1159,8 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     };
     const resolve = (r) => resolveRaw(withCaps(r));
     const cfg = readModels();
-    const chosen = model || cfg.default;
+    const provider = providerConfig(cfg, 'claude');
+    const chosen = model || provider.default;
     const scopedCwd = (opts && opts.cwd) || projectDir;
     // Authority-gated spawn (DECISION-112). Reading context is never authorization to
     // act. By DEFAULT the chat spawns READ-ONLY: an allowlist of web+read tools only,
@@ -988,7 +1186,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
     // is proven by the A/B/C headless repros (web denied -> web works -> Bash still denied).
     const toolFlags = toolFlagsFor(isBuild);
     const args = ['-p', '--model', chosen, ...toolFlags, '--append-system-prompt', CHANNEL_PROMPT];
-    if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
+    if (provider.fallback_chain) args.push('--fallback-model', provider.fallback_chain);
     // R3 (desktop-parity ADR-0014): a real, Anthropic-enforced per-turn hard cost cap — Claude
     // Code's OWN --max-budget-usd flag aborts THIS turn cleanly if its spend crosses the cap,
     // rather than PCC trying to reinvent cost tracking. Caps a single-turn runaway; a whole
@@ -1161,7 +1359,7 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
       const cm = payloadCaps.capMessage(message);       // ADR-0020 T7: bound the per-send input
       capNotices.messageTruncated = cm.truncated;
       const jsonl = JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: cm.text }] } });
-      const identity = { cwd: scopedCwd, chatId: chatId || '', sessionId: sessionId, model: chosen, fallback: cfg.fallback_chain || '', isBuild: isBuild, channelPrompt: CHANNEL_PROMPT };
+      const identity = { cwd: scopedCwd, chatId: chatId || '', sessionId: sessionId, model: chosen, fallback: provider.fallback_chain || '', isBuild: isBuild, channelPrompt: CHANNEL_PROMPT };
       const thunk = () => spawnClaude(streamArgs, { cwd: scopedCwd, env: workerEnv() }); // DECISION-003: never a paid API; no shell
       const p = warmWorker.runTextTurn(identity, thunk, jsonl);
       const activeChild = warmWorker.activeChild(); // set synchronously by runTextTurn (spawn/reuse + write)
@@ -1369,7 +1567,14 @@ function askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachm
   });
 }
 
-ipcMain.handle('pcc:send', (_e, message, model, workerSessionId, isFirstTurn, chatId, attachments) => askClaude(message, model, workerSessionId, isFirstTurn, chatId, attachments));
+ipcMain.handle('pcc:send', (_e, message, provider, model, workerSessionId, isFirstTurn, chatId, attachments) => {
+  const args = normalizeSendArgs(provider, model, workerSessionId, isFirstTurn, chatId, attachments);
+  const cfg = readModels();
+  const chosen = providerConfig(cfg, args.provider);
+  return chosen.id === 'codex'
+    ? askCodex(message, args.model || chosen.default, args.chatId, args.attachments)
+    : askClaude(message, args.model || chosen.default, args.workerSessionId, args.isFirstTurn, args.chatId, args.attachments);
+});
 
 // ---- First-class chat history: LOCAL names + structured summaries (docs/CHAT_RECALL_SPEC.md) ----
 // A chat is no longer a truncated first line. Its NAME is derived LOCALLY and deterministically
@@ -1387,13 +1592,14 @@ ipcMain.handle('pcc:send', (_e, message, model, workerSessionId, isFirstTurn, ch
 function oneShotWorker(prompt, trigger) {
   return new Promise((resolve) => {
     const cfg = readModels();
-    const args = ['-p', '--model', cfg.default,
+    const claude = providerConfig(cfg, 'claude');
+    const args = ['-p', '--model', claude.default,
       '--tools', 'Read Glob Grep', '--strict-mcp-config',
       '--allowedTools', 'Read Glob Grep',
       '--disallowedTools', 'AskUserQuestion Bash BashOutput KillBash PowerShell Edit Write NotebookEdit Agent Monitor Skill ToolSearch Task WebSearch WebFetch',
       '--output-format', 'json',
       '--session-id', crypto.randomUUID()];
-    if (cfg.fallback_chain) args.push('--fallback-model', cfg.fallback_chain);
+    if (claude.fallback_chain) args.push('--fallback-model', claude.fallback_chain);
     let out = '', err = '', child;
     try { child = spawnClaude(args, { cwd: projectDir, env: workerEnv() }); } // DECISION-003: never a paid API; no shell (arg boundaries intact)
     catch (e) { return resolve({ ok: false, text: 'Could not launch Claude Code: ' + e.message }); }
@@ -1405,7 +1611,7 @@ function oneShotWorker(prompt, trigger) {
       activeWorkers.delete(child);
       // Diagnostic: record this invisible call's REAL token spend, attributed to its trigger.
       const u = usageLog.usageFromJson(out);
-      if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: trigger || 'one-shot', model: cfg.default, session: 'new', num_turns: usageLog.turnsFromJson(out) }, u)); // ADR-0020 Step 1: agentic-turn count on background one-shots
+      if (u) usageLog.logCall(costStoreDir(), Object.assign({ trigger: trigger || 'one-shot', model: claude.default, session: 'new', num_turns: usageLog.turnsFromJson(out) }, u)); // ADR-0020 Step 1: agentic-turn count on background one-shots
       if (code === 0) {
         // Extract the reply from --output-format json's `result`; fall back to raw for non-JSON
         // (the test fakebin's plain text) so existing callers/tests are unaffected.
@@ -1561,7 +1767,7 @@ ipcMain.handle('pcc:searchChats', async (_e, query, chats) => {
 // discards the scratch. Honest limit: scoping is by working directory (as with any claude -p
 // worker) — there is no OS jail, so this prevents running IN PCC, not every conceivable
 // absolute-path write.
-const createFlow = { active: false, saving: false, scratchDir: null, chatId: null, started: false, child: null, pending: null };
+const createFlow = { active: false, saving: false, scratchDir: null, chatId: null, started: false, child: null, pending: null, transcript: [] };
 function scratchRoot() { return path.join(app.getPath('userData'), 'pcc-scratch'); }
 function rmScratch(dir) { try { if (dir && fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* best effort */ } }
 // Stop any in-flight interview worker and WAIT for it to actually settle. Save/Cancel call this
@@ -1593,22 +1799,30 @@ ipcMain.handle('pcc:createFlowStart', () => {
       const intakeSrc = path.join(ENGINE_DIR, 'scripts', 'new-project-intake.ps1');
       if (fs.existsSync(intakeSrc)) fs.copyFileSync(intakeSrc, path.join(dir, 'scripts', 'new-project-intake.ps1'));
     } catch (e) { /* the worker can still interview without the printed protocol */ }
-    createFlow.active = true; createFlow.scratchDir = dir; createFlow.chatId = id; createFlow.started = false;
+    createFlow.active = true; createFlow.scratchDir = dir; createFlow.chatId = id; createFlow.started = false; createFlow.transcript = [];
     return { ok: true, id };
   } catch (e) { return { ok: false, error: 'Could not start a new project workspace: ' + e.message }; }
 });
 
 // Send to the create-flow worker: runs in the scratch folder with build tools. isFirstTurn is
 // tracked here in main so the renderer can never resume a session that was never opened.
-ipcMain.handle('pcc:createFlowSend', async (_e, message, model, attachments) => {
+ipcMain.handle('pcc:createFlowSend', async (_e, message, provider, model, attachments) => {
   if (!createFlow.active || createFlow.saving || !createFlow.scratchDir) return { ok: false, text: 'No project is being created.' };
   const isFirstTurn = !createFlow.started;
-  const p = askClaude(message, model, createFlow.chatId, isFirstTurn, createFlow.chatId, attachments,
-    { cwd: createFlow.scratchDir, forceBuild: true, onSpawn: (c) => { createFlow.child = c; } });
+  const chosen = providerConfig(readModels(), provider);
+  const priorTranscript = createFlow.transcript.slice();
+  const opts = { cwd: createFlow.scratchDir, forceBuild: true, skipGitRepoCheck: true, createFlowIntake: true, createFlowTranscript: priorTranscript, onSpawn: (c) => { createFlow.child = c; } };
+  const p = chosen.id === 'codex'
+    ? askCodex(message, model || chosen.default, createFlow.chatId, attachments, opts)
+    : askClaude(message, model || chosen.default, createFlow.chatId, isFirstTurn, createFlow.chatId, attachments, opts);
   createFlow.pending = p;                               // tracked so Save/Cancel can wait it out
   const res = await p;
   if (createFlow.pending === p) { createFlow.pending = null; createFlow.child = null; }
   if (res && res.ok) createFlow.started = true;
+  createFlow.transcript = boundedCreateFlowTranscript(priorTranscript.concat([
+    { role: 'owner', text: String(message || '') },
+    { role: 'assistant', text: (res && res.text) || '' },
+  ]));
   return res;
 });
 
@@ -1621,7 +1835,7 @@ ipcMain.handle('pcc:createFlowCancel', async () => {
   createFlow.active = false;
   await stopCreateFlowWorker();
   rmScratch(createFlow.scratchDir);
-  createFlow.scratchDir = null; createFlow.chatId = null; createFlow.started = false;
+  createFlow.scratchDir = null; createFlow.chatId = null; createFlow.started = false; createFlow.transcript = [];
   return { ok: true };
 });
 
@@ -1681,7 +1895,7 @@ ipcMain.handle('pcc:createFlowSave', async (_e, name, location) => {
   const w = writeRegistry(reg);
   // 4. done — discard scratch, close the create-flow (regardless of the registry write).
   rmScratch(createFlow.scratchDir);
-  createFlow.active = false; createFlow.saving = false; createFlow.scratchDir = null; createFlow.chatId = null; createFlow.started = false;
+  createFlow.active = false; createFlow.saving = false; createFlow.scratchDir = null; createFlow.chatId = null; createFlow.started = false; createFlow.transcript = [];
   // Persist FIRST: only switch the session to the new project if it reached the
   // registry, so projectDir never diverges from the persisted active project.
   if (!w.ok) return { ok: false, error: 'Project created on disk, but could not save it to the registry (re-add it from "Open existing"): ' + w.error };
@@ -1689,14 +1903,15 @@ ipcMain.handle('pcc:createFlowSave', async (_e, name, location) => {
   return { ok: true, project: projectEntry(target) };
 });
 
-// Second opinion: hand a composed prompt to Codex (a DIFFERENT model) over stdin
-// and return its independent take. The worker (Claude) never grades itself; this
-// is the cross-check. Read-only sandbox — Codex inspects but changes nothing.
-ipcMain.handle('pcc:secondOpinion', (_e, prompt) => new Promise((resolve) => {
+// Second opinion: hand a composed prompt to the chosen independent reviewer over
+// stdin and return its take. Claude->Codex stays intact; Codex->Antigravity is
+// the new parallel lane. Review-only: the reviewer inspects/responds, never edits.
+ipcMain.handle('pcc:secondOpinion', (_e, prompt, provider) => new Promise((resolve) => {
   if (typeof prompt !== 'string' || !prompt.trim()) return resolve({ ok: false, text: 'Nothing to review yet.' });
+  const reviewer = provider === 'ag' ? 'ag' : 'codex';
   let child;
   try {
-    child = spawn('pwsh', ['-NoProfile', '-File', 'scripts/second-opinion.ps1'], { cwd: projectDir, shell: true });
+    child = spawn('pwsh', ['-NoProfile', '-File', 'scripts/second-opinion.ps1', '-Provider', reviewer], { cwd: projectDir });
   } catch (e) {
     return resolve({ ok: false, text: 'Could not run second opinion: ' + e.message });
   }
@@ -1707,7 +1922,10 @@ ipcMain.handle('pcc:secondOpinion', (_e, prompt) => new Promise((resolve) => {
   child.on('close', (code) => {
     const t = out.trim();
     if (t) resolve({ ok: true, text: t });
-    else resolve({ ok: false, text: (err.trim() || ('Codex second opinion exited with code ' + code)) });
+    else {
+      const name = reviewer === 'ag' ? 'Antigravity' : 'Codex';
+      resolve({ ok: false, text: (err.trim() || (name + ' second opinion exited with code ' + code)) });
+    }
   });
   child.stdin.write(prompt);
   child.stdin.end();

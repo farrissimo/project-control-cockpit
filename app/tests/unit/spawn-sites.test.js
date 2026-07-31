@@ -71,6 +71,11 @@ test('main.js never spawns the claude CLI by name — it must go through the saf
     'main.js spawns `claude` directly — use spawnClaude() from app/claude-spawn.js instead');
 });
 
+test('main.js never spawns the codex CLI by name — it must go through the safe launcher', () => {
+  assert.ok(!/spawn\((['"])codex\1/.test(SRC),
+    'main.js spawns `codex` directly — use spawnCodex() from app/codex-spawn.js instead');
+});
+
 test('every `claude` spawn in main.js strips paid-API creds via workerEnv (DECISION-003)', () => {
   // A spawn that omits `env: workerEnv()` would let the child `claude` grab ANTHROPIC_API_KEY and bill a
   // PAID API — forbidden. Pin that every spawn call passes workerEnv in its options object.

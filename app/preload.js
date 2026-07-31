@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld('pcc', {
   visionPromises: () => ipcRenderer.invoke('pcc:visionPromises'),
   // workerSessionId = the Claude session (chat's own id, or a re-minted id after recovery);
   // chatId = the STABLE chat.id used for build authority — kept separate on purpose.
-  send: (message, model, workerSessionId, isFirstTurn, chatId, attachments) => ipcRenderer.invoke('pcc:send', message, model, workerSessionId, isFirstTurn, chatId, attachments),
+  send: (message, provider, model, workerSessionId, isFirstTurn, chatId, attachments) => ipcRenderer.invoke('pcc:send', message, provider, model, workerSessionId, isFirstTurn, chatId, attachments),
   authorityState: (chatId) => ipcRenderer.invoke('pcc:authorityState', chatId), // read-only, per-chat; no setter is exposed
   nearestLimitData: (chatId) => ipcRenderer.invoke('pcc:nearestLimitData', chatId), // read-only caps + this chat's cost (Task 2.1)
   authorityLog: () => ipcRenderer.invoke('pcc:authorityLog'),
@@ -21,7 +21,7 @@ contextBridge.exposeInMainWorld('pcc', {
   approveJob: () => ipcRenderer.invoke('pcc:approveJob'),
   cancelJob: () => ipcRenderer.invoke('pcc:cancelJob'),
   endJob: (chatId) => ipcRenderer.invoke('pcc:endJob', chatId),
-  secondOpinion: (prompt) => ipcRenderer.invoke('pcc:secondOpinion', prompt),
+  secondOpinion: (prompt, provider) => ipcRenderer.invoke('pcc:secondOpinion', prompt, provider),
   getModels: () => ipcRenderer.invoke('pcc:getModels'),
   toolStatus: () => ipcRenderer.invoke('pcc:toolStatus'),
   newChat: () => ipcRenderer.invoke('pcc:newChat'),
@@ -52,7 +52,7 @@ contextBridge.exposeInMainWorld('pcc', {
   pickFolder: () => ipcRenderer.invoke('pcc:pickFolder'),
   // New Project create-flow (DECISION-114): a scratch workspace + Save Project, all outside PCC.
   createFlowStart: () => ipcRenderer.invoke('pcc:createFlowStart'),
-  createFlowSend: (message, model, attachments) => ipcRenderer.invoke('pcc:createFlowSend', message, model, attachments),
+  createFlowSend: (message, provider, model, attachments) => ipcRenderer.invoke('pcc:createFlowSend', message, provider, model, attachments),
   createFlowCancel: () => ipcRenderer.invoke('pcc:createFlowCancel'),
   createFlowPickLocation: () => ipcRenderer.invoke('pcc:createFlowPickLocation'),
   createFlowSave: (name, location) => ipcRenderer.invoke('pcc:createFlowSave', name, location),

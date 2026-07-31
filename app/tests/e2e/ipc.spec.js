@@ -97,11 +97,13 @@ test('getState returns project + task objects', async () => {
   expect(s).toHaveProperty('task');
 });
 
-test('getModels returns default + models list', async () => {
+test('getModels returns provider defaults + model lists', async () => {
   const m = await call('getModels');
-  expect(m).toHaveProperty('default');
-  expect(Array.isArray(m.models)).toBe(true);
-  expect(m.models.length).toBeGreaterThan(0);
+  expect(m).toHaveProperty('default_provider');
+  expect(Array.isArray(m.providers)).toBe(true);
+  expect(m.by_provider).toBeTruthy();
+  expect(Array.isArray(m.by_provider.codex.models)).toBe(true);
+  expect(m.by_provider.codex.models.length).toBeGreaterThan(0);
 });
 
 test('getRules reads CLAUDE.md', async () => {
@@ -311,6 +313,12 @@ test('secondOpinion routes a prompt to the (faked) Codex cross-check', async () 
   const r = await call('secondOpinion', 'QUESTION: is X right?\nANSWER: yes.');
   expect(r.ok).toBe(true);
   expect(r.text).toContain('FAKE-CODEX-REPLY');
+});
+
+test('secondOpinion can route a prompt to the (faked) AG cross-check', async () => {
+  const r = await call('secondOpinion', 'QUESTION: is X right?\nANSWER: yes.', 'ag');
+  expect(r.ok).toBe(true);
+  expect(r.text).toContain('FAKE-AGY-REPLY');
 });
 
 test('secondOpinion rejects an empty prompt', async () => {

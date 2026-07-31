@@ -41,6 +41,54 @@ let servedGeneration = 'current';   // 'current' | 'prev' — 'prev' means we ar
 const namedAtLen = new Map();       // renderer-local: last auto-named message count, by chatId (not persisted)
 const sessionIds = new Map();       // renderer-local: re-minted worker session id, by chatId (not persisted)
 const turnsStarted = new Set();     // renderer-local: chatIds that have had a worker turn (drives isFirstTurn)
+let workerConfig = null;
+
+const WORKER_KEY = 'pcc.worker';
+const MODEL_KEY_PREFIX = 'pcc.model::';
+function modelKey(provider) { return MODEL_KEY_PREFIX + (provider || 'claude'); }
+function workerSelectDefault() {
+  const providers = (workerConfig && Array.isArray(workerConfig.providers)) ? workerConfig.providers : [];
+  const enabledIds = providers.filter((p) => p && p.enabled !== false).map((p) => p.id);
+  const saved = localStorage.getItem(WORKER_KEY);
+  if (saved && enabledIds.includes(saved)) return saved;
+  if (workerConfig && workerConfig.test_default_provider && enabledIds.includes(workerConfig.test_default_provider)) return workerConfig.test_default_provider;
+  if (workerConfig && workerConfig.default_provider && enabledIds.includes(workerConfig.default_provider)) return workerConfig.default_provider;
+  return enabledIds[0] || 'claude';
+}
+function getSelectedWorker() {
+  const sel = document.getElementById('worker-select');
+  return (sel && sel.value) || workerSelectDefault();
+}
+function providerMeta(provider) {
+  const list = (workerConfig && Array.isArray(workerConfig.providers)) ? workerConfig.providers : [];
+  return list.find((p) => p && p.id === provider) || { id: provider, label: provider === 'codex' ? 'Codex CLI' : 'Claude Code', enabled: true };
+}
+function shortWorkerName(provider) { return provider === 'codex' ? 'Codex' : 'Claude'; }
+function reviewerMeta(reviewer) {
+  const list = (workerConfig && Array.isArray(workerConfig.reviewers)) ? workerConfig.reviewers : [];
+  return list.find((p) => p && p.id === reviewer)
+    || { id: reviewer, label: reviewer === 'ag' ? 'Antigravity CLI' : 'Codex CLI' };
+}
+function shortReviewerName(reviewer) { return reviewer === 'ag' ? 'AG' : 'Codex'; }
+function secondOpinionReviewerFor(workerProvider) {
+  const map = (workerConfig && workerConfig.second_opinion_by_worker) || { claude: 'codex', codex: 'ag' };
+  return map[workerProvider] || 'codex';
+}
+function workingText() { return shortWorkerName(getSelectedWorker()) + ' is working…'; }
+function syncWorkerCopy() {
+  const provider = getSelectedWorker();
+  const label = providerMeta(provider).label;
+  const send = document.getElementById('send');
+  const stop = document.getElementById('stop');
+  const hint = document.getElementById('steer-hint');
+  const nav = document.querySelector('.nav[data-view="chat"]');
+  const foot = document.querySelector('.side-foot');
+  if (send) send.title = 'Send this message to ' + label + ' (Enter also sends; Shift+Enter for a new line).';
+  if (stop) stop.title = 'Stop the running turn. Enabled only while ' + shortWorkerName(provider) + ' is working; nothing after this point is sent and your history is kept.';
+  if (hint) hint.innerHTML = escapeHtml(shortWorkerName(provider) + ' is working') + ' — keep typing to <b>steer</b>: your next message queues and sends the moment this turn finishes.';
+  if (nav) nav.title = 'Talk to ' + label + ' about this project.';
+  if (foot) foot.textContent = 'Talking to your ' + label;
+}
 
 function uuid() { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'c-' + Date.now() + '-' + Math.random().toString(16).slice(2); }
 function activeChat() { return chats.find((c) => c.id === activeId) || null; }
@@ -325,7 +373,7 @@ function startThinkingTimer(el) {
   el.appendChild(main); el.appendChild(sub);
   const tick = () => {
     if (!el.isConnected) return;
-    main.textContent = 'Claude is working… (' + fmtElapsed(Date.now() - t0) + ')';
+    main.textContent = workingText() + ' (' + fmtElapsed(Date.now() - t0) + ')';
     // Surface the ONLY real stopper live (ADR-0022): the cached 5-hour usage, with its own freshness.
     // No dollars (phantom on a flat plan); pure PCCTurnStatus so the honest fresh/stale/unknown logic
     // is unit- and adversarially-tested, and it can never dress a stale number as live.
@@ -346,7 +394,7 @@ function stopThinkingTimer(el) { if (el && el._pccTimer) { clearInterval(el._pcc
 function syncWorkingIndicator() {
   const showHere = !!inFlightChatId && inFlightChatId === activeId;
   const existing = log.querySelector('.bubble.assistant.thinking');
-  if (showHere && !existing) { startThinkingTimer(addBubbleUI('assistant thinking', 'Claude is working…')); }
+  if (showHere && !existing) { startThinkingTimer(addBubbleUI('assistant thinking', workingText())); }
   else if (!showHere && existing) { stopThinkingTimer(existing); existing.remove(); }
   if (stopBtn) stopBtn.disabled = !showHere; // Stop can only ever target the turn you're actually looking at
   const sh = document.getElementById('steer-hint');
@@ -391,7 +439,7 @@ function addBubbleUI(cls, text) {
 // caller; it must NOT re-read activeChat() here — the active chat can change during
 // an awaited worker turn, which would otherwise append to the wrong chat). Returns
 // { ok, el }: callers that must not proceed on an unsaved message check `ok`.
-async function appendMessage(cls, text, targetChatId, activeOnly) {
+async function appendMessage(cls, text, targetChatId, activeOnly, extra) {
   const chatId = targetChatId || (activeChat() && activeChat().id);
   // Render the bubble immediately, EXCEPT an `activeOnly` append (a worker reply/error that can resolve
   // while you're viewing a DIFFERENT chat — switching mid-turn is allowed, ADR-0026 follow-up): it must
@@ -404,6 +452,7 @@ async function appendMessage(cls, text, targetChatId, activeOnly) {
   // So on a revision CONFLICT (two appends raced the same revision) we can safely
   // re-read + retry the SAME message: it is never duplicated and never lost.
   const message = { id: uuid(), cls, text, ts: Date.now() };
+  if (extra && typeof extra.provider === 'string' && extra.provider) message.provider = extra.provider;
   let r;
   for (let attempt = 0; attempt < 6; attempt++) {
     r = await chatCmd('chatsAppend', { chatId, message });
@@ -457,7 +506,7 @@ async function sendMessage(text, displayText) {
   if (busy && sendQueue.length >= MAX_QUEUE) {
     const inp = document.getElementById('input');
     if (inp && !inp.value.trim()) inp.value = text || '';
-    addBubbleUI('assistant error', 'You already have ' + MAX_QUEUE + ' messages queued while Claude is working — wait for a reply before sending more. (A cap that protects your usage from an accidental burst.) Your text is back in the box.');
+    addBubbleUI('assistant error', 'You already have ' + MAX_QUEUE + ' messages queued while the worker is busy — wait for a reply before sending more. (A cap that protects your usage from an accidental burst.) Your text is back in the box.');
     return;
   }
   const shown = (displayText || msg).trim();
@@ -540,14 +589,15 @@ async function runSend(item) {
     // `started` means "has messages", which is not the same as "had a worker turn".
     const isFirstTurn = !turnsStarted.has(chatId);
     const workerSession = sessionIds.get(chatId) || chatId;
-    const res = await window.pcc.send(item.msg, getSelectedModel(), workerSession, isFirstTurn, chatId, item.outbound);
+    const provider = getSelectedWorker();
+    const res = await window.pcc.send(item.msg, provider, getSelectedModel(), workerSession, isFirstTurn, chatId, item.outbound);
     inFlightChatId = null; syncWorkingIndicator(); // turn resolved: drop the working indicator, Stop goes dim
-    if (res.ok) turnsStarted.add(chatId);
+    if (res.ok && provider === 'claude') turnsStarted.add(chatId);
     // R2/R3: an owner-initiated stop, an automatic budget-cap stop, the native per-message turn-cap
     // stop (ADR-0020 T2), or hitting the Claude PLAN usage limit are not PCC failures — a neutral
     // 'assistant' bubble (its own text explains what happened), never the red error style a real bug gets.
     const isProtectiveStop = res.stoppedByOwner || res.budgetExceeded || res.maxTurnsReached || res.usageLimit || res.authError;
-    await appendMessage(res.ok || isProtectiveStop ? 'assistant' : 'assistant error', res.text || '(no output)', chatId, true); // activeOnly: don't paint this reply into a chat you switched to mid-turn
+    await appendMessage(res.ok || isProtectiveStop ? 'assistant' : 'assistant error', res.text || '(no output)', chatId, true, { provider }); // activeOnly: don't paint this reply into a chat you switched to mid-turn
     // ADR-0020 T7 truncation-visibility correction: if a per-send cap trimmed this message, tell the
     // owner DIRECTLY and deterministically here — driven by res.caps (what PCC actually sent), never
     // by relying on Claude to echo the marker injected into its payload. UI-only, like the queue cap.
@@ -761,33 +811,75 @@ async function addFiles(fileList) {
 }
 
 // ---- model switcher + new chat ----
-const MODEL_KEY = 'pcc.model';
-function getSelectedModel() {
+function modelDefaultFor(provider) {
+  const byProvider = (workerConfig && workerConfig.by_provider) || {};
+  const entry = byProvider[provider] || {};
+  return entry.default || (provider === 'codex' ? 'auto' : 'claude-sonnet-5');
+}
+function getModelForProvider(provider) {
   const sel = document.getElementById('model-select');
-  return (sel && sel.value) || localStorage.getItem(MODEL_KEY) || undefined;
+  if (provider === getSelectedWorker() && sel && sel.value) return sel.value;
+  return localStorage.getItem(modelKey(provider)) || modelDefaultFor(provider);
+}
+function getSelectedModel() {
+  return getModelForProvider(getSelectedWorker());
 }
 
 async function initModels() {
-  const sel = document.getElementById('model-select');
-  if (!sel) return;
+  const workerSel = document.getElementById('worker-select');
+  const modelSel = document.getElementById('model-select');
+  if (!workerSel || !modelSel) return;
   let cfg = null;
   try { cfg = await window.pcc.getModels(); } catch (e) { /* leave empty */ }
-  const models = (cfg && cfg.models) || [];
-  const saved = localStorage.getItem(MODEL_KEY);
-  const wanted = saved || (cfg && cfg.default);
-  sel.innerHTML = '';
-  models.forEach((m) => {
+  workerConfig = cfg || {};
+  const providers = (workerConfig && Array.isArray(workerConfig.providers) && workerConfig.providers.length)
+    ? workerConfig.providers
+    : [{ id: 'claude', label: 'Claude Code', enabled: true }, { id: 'codex', label: 'Codex CLI', enabled: true }];
+  const wantedWorker = workerSelectDefault();
+  workerSel.innerHTML = '';
+  providers.forEach((p) => {
     const o = document.createElement('option');
-    o.value = m.id; o.textContent = m.label || m.id;
-    if (m.id === wanted) o.selected = true;
-    sel.appendChild(o);
+    o.value = p.id; o.textContent = p.label || p.id;
+    if (p.enabled === false) {
+      o.disabled = true;
+      o.textContent = (p.label || p.id) + ' (disabled)';
+      if (p.reason) o.title = p.reason;
+    }
+    if (p.id === wantedWorker) o.selected = true;
+    workerSel.appendChild(o);
   });
-  // If the saved model is no longer in the list, fall back to the default
-  // (never leave a stale/unavailable model selected).
-  if (saved && !models.some((m) => m.id === saved) && cfg && cfg.default) {
-    sel.value = cfg.default; localStorage.setItem(MODEL_KEY, cfg.default);
+  function renderModelsFor(provider) {
+    const byProvider = (workerConfig && workerConfig.by_provider) || {};
+    const entry = byProvider[provider] || {};
+    const models = Array.isArray(entry.models) && entry.models.length ? entry.models : [{ id: provider === 'codex' ? 'auto' : 'claude-sonnet-5', label: provider === 'codex' ? 'Codex account default' : 'Sonnet 5 (default)' }];
+    const wanted = localStorage.getItem(modelKey(provider)) || entry.default || models[0].id;
+    modelSel.innerHTML = '';
+    models.forEach((m) => {
+      const o = document.createElement('option');
+      o.value = m.id; o.textContent = m.label || m.id;
+      if (m.id === wanted) o.selected = true;
+      modelSel.appendChild(o);
+    });
+    if (!models.some((m) => m.id === wanted)) {
+      modelSel.value = entry.default || models[0].id;
+      localStorage.setItem(modelKey(provider), modelSel.value);
+    }
   }
-  sel.addEventListener('change', () => localStorage.setItem(MODEL_KEY, sel.value));
+  renderModelsFor(wantedWorker);
+  localStorage.setItem(WORKER_KEY, wantedWorker);
+  syncWorkerCopy();
+  workerSel.addEventListener('change', () => {
+    const chosen = providerMeta(workerSel.value);
+    if (chosen.enabled === false) {
+      workerSel.value = workerSelectDefault();
+      return;
+    }
+    localStorage.setItem(WORKER_KEY, workerSel.value);
+    renderModelsFor(workerSel.value);
+    syncWorkerCopy();
+    syncWorkingIndicator();
+  });
+  modelSel.addEventListener('change', () => localStorage.setItem(modelKey(getSelectedWorker()), modelSel.value));
 }
 
 // Start a new chat: create a fresh named conversation and switch to it. Clean
@@ -1043,9 +1135,10 @@ cfLog.addEventListener('click', (e) => {
 
 async function cfRunSend(item) {
   cfBusy = true; cfInput.focus();
-  const thinking = cfAddBubble('assistant thinking', 'Claude is working…');
+  const provider = getSelectedWorker();
+  const thinking = cfAddBubble('assistant thinking', shortWorkerName(provider) + ' is working…');
   try {
-    const res = await window.pcc.createFlowSend(item.msg, getSelectedModel());
+    const res = await window.pcc.createFlowSend(item.msg, provider, getModelForProvider(provider));
     thinking.remove();
     cfAddBubble(res && res.ok ? 'assistant' : 'assistant error', (res && res.text) || '(no output)');
   } catch (err) {
@@ -1068,7 +1161,7 @@ function cfSend(text, hidden) {
   // typed text back to the create-flow composer, so an accidental burst can't batch-fire the worker.
   if (cfBusy && cfQueue.length >= MAX_QUEUE) {
     if (!hidden && cfInput && !cfInput.value.trim()) cfInput.value = text || '';
-    cfAddBubble('assistant error', 'You already have ' + MAX_QUEUE + ' messages queued while Claude is working — wait for a reply before sending more. (A cap that protects your usage from an accidental burst.) Your text is back in the box.');
+    cfAddBubble('assistant error', 'You already have ' + MAX_QUEUE + ' messages queued while ' + shortWorkerName(getSelectedWorker()) + ' is working — wait for a reply before sending more. (A cap that protects your usage from an accidental burst.) Your text is back in the box.');
     return;
   }
   if (!hidden) cfAddBubble('user', msg);
@@ -1097,11 +1190,11 @@ async function cfOpen() {
   // Kick off the plain-language interview. The worker runs in the scratch folder (its own seeded
   // intake protocol) and must NOT scaffold — the owner's "Save Project" click does that.
   const kickoff = 'You are helping me create a BRAND-NEW project. You are running inside a fresh scratch '
-    + 'folder that will BECOME this project — everything you create belongs to the new project. Never read '
-    + 'from, write to, or reference the PCC cockpit folder. Run `pwsh -File scripts/new-project-intake.ps1` '
-    + 'to load the interview protocol, then interview me in plain language following it, one or two questions '
-    + 'at a time. Do NOT scaffold or try to "finish" the project — when I am ready I will click "Save Project", '
-    + 'which creates the real project folder. When you have enough from the interview, write a `blueprint.json` '
+    + 'folder reserved for this unsaved project. Never read from, write to, or reference the PCC cockpit folder. '
+    + 'Run `pwsh -File scripts/new-project-intake.ps1` only to load the interview protocol, then interview me '
+    + 'in plain language following it, one or two questions at a time. Do NOT scaffold, create scripts, run tests, '
+    + 'initialize git, fix tooling, or try to "finish" the project — when I am ready I will click "Save Project", '
+    + 'which creates the real project folder. When you have enough from the interview, write only a `blueprint.json` '
     + 'in this folder capturing the project (name, problem, target user, desired outcome, scope). '
     + 'Ask me the first question now.';
   cfSend(kickoff, true);
@@ -1109,7 +1202,7 @@ async function cfOpen() {
 }
 
 async function cfSave() {
-  if (cfBusy) { const wait = await pccConfirm('Claude is still replying. Save the project now anyway?', 'Save now'); if (!wait) return; }
+  if (cfBusy) { const wait = await pccConfirm(shortWorkerName(getSelectedWorker()) + ' is still replying. Save the project now anyway?', 'Save now'); if (!wait) return; }
   const name = await pccPrompt('Name this project:');
   if (!name || !name.trim()) return;
   const loc = await window.pcc.createFlowPickLocation();
@@ -1222,20 +1315,20 @@ function renderCorrections() {
   correctionsBar.appendChild(makeSecondOpinionButton());
 }
 
-// ---- second opinion (Claude<->Codex cross-check) ----
-// Has Codex (a DIFFERENT model) independently review Claude's latest answer. Codex
-// self-declares AGREE / PARTIALLY AGREE / DISAGREE — we never fake an agreement
-// verdict by comparing two free-text answers; the second model states its own stance.
+// ---- second opinion (worker -> independent reviewer cross-check) ----
+// Claude keeps the existing Codex cross-check; Codex uses Antigravity. The
+// reviewer self-declares AGREE / PARTIALLY AGREE / DISAGREE — we never fake an
+// agreement verdict by comparing two free-text answers ourselves.
 function makeSecondOpinionButton() {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'corr';
   b.textContent = 'Second opinion';
-  b.title = "Have Codex (a different model) independently review Claude's latest answer — a real cross-check, not self-agreement.";
+  b.title = "Have the independent reviewer check the latest answer — a real cross-check, not self-agreement.";
   b.addEventListener('click', async () => {
     // A second opinion starts a SEPARATE verifier turn; the single worker can't run two at once.
     // Refuse honestly (visible one-line reason) rather than dying silently (spec: switch-while-busy).
-    if (busy) { addBubbleUI('assistant notice', "Claude is still working — wait for the current reply before asking for a second opinion (they can't run at the same time)."); return; }
+    if (busy) { addBubbleUI('assistant notice', shortWorkerName(getSelectedWorker()) + ' is still working — wait for the current reply before asking for a second opinion (they cannot run at the same time).'); return; }
     const chatId = activeChat() && activeChat().id; // capture: persist the review to THIS chat
     const assistants = history.filter((m) => m.cls === 'assistant');
     const lastA = assistants.length ? assistants[assistants.length - 1] : null;
@@ -1244,16 +1337,21 @@ function makeSecondOpinionButton() {
     let question = '';
     for (let i = idx - 1; i >= 0; i--) { if (history[i].cls === 'user') { question = history[i].text; break; } }
     const answer = (lastA.text || '').slice(0, 6000);
-    const prompt = "You are Codex, giving an INDEPENDENT second opinion on another assistant (Claude)'s answer. Be willing to disagree; do not just agree.\n"
+    const sourceProvider = lastA.provider || getSelectedWorker();
+    const reviewer = secondOpinionReviewerFor(sourceProvider);
+    const reviewerName = shortReviewerName(reviewer);
+    const sourceName = shortWorkerName(sourceProvider);
+    const prompt = 'You are ' + reviewerMeta(reviewer).label + ', giving an INDEPENDENT second opinion on another assistant (' + sourceName + ")'s answer. Be willing to disagree; do not just agree.\n"
       + 'Begin your reply with EXACTLY one of: AGREE / PARTIALLY AGREE / DISAGREE.\n'
-      + 'Then give: your reasoning, any risk/downside or error Claude missed, and whether this warrants closer scrutiny.\n\n'
-      + '=== QUESTION ===\n' + (question || '(not captured)') + "\n\n=== CLAUDE'S ANSWER ===\n" + answer;
+      + 'Then give: your reasoning, any risk/downside or error the first answer missed, and whether this warrants closer scrutiny.\n'
+      + 'Do no editing, no implementation, no file changes, and no direct work on the codebase.\n\n'
+      + '=== QUESTION ===\n' + (question || '(not captured)') + "\n\n=== " + sourceName.toUpperCase() + "'S ANSWER ===\n" + answer;
     busy = true; sendBtn.disabled = true;
-    const thinking = addBubble('assistant thinking', 'Codex is reviewing…', false);
+    const thinking = addBubble('assistant thinking', reviewerName + ' is reviewing…', false);
     try {
-      const res = await window.pcc.secondOpinion(prompt);
+      const res = await window.pcc.secondOpinion(prompt, reviewer);
       thinking.remove();
-      await appendMessage(res.ok ? 'assistant codex' : 'assistant error', (res.ok ? 'Codex second opinion:\n\n' : '') + (res.text || '(no output)'), chatId);
+      await appendMessage(res.ok ? ('assistant ' + reviewer) : 'assistant error', (res.ok ? (reviewerName + ' second opinion:\n\n') : '') + (res.text || '(no output)'), chatId);
     } catch (e) {
       thinking.remove();
       await appendMessage('assistant error', 'Second opinion failed: ' + e.message, chatId);
@@ -1325,7 +1423,7 @@ function showWelcome() {
   wrap.appendChild(h);
   const p = document.createElement('div');
   p.style.cssText = 'font-size:14px;color:#9098a1;line-height:1.5;margin-bottom:16px;';
-  p.textContent = 'Type below and hit Send. You are talking to your Claude Code, and it already knows this project and your rules. Or click one to try it:';
+  p.textContent = 'Type below and hit Send. PCC routes your message to the selected worker, using this project and its rules. Or click one to try it:';
   wrap.appendChild(p);
   const chips = document.createElement('div');
   chips.style.cssText = 'display:flex;flex-direction:column;gap:8px;';

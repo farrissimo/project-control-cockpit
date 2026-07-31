@@ -123,6 +123,7 @@
     const s = String(text || '');
     return /not logged in/i.test(s)
       || /invalid credentials/i.test(s)
+      || /disabled Claude subscription access/i.test(s)
       || /\/login\b/i.test(s)                       // the CLI's own remedy pointer, auth-specific
       || /re-?authenticate/i.test(s)
       || /(session|token) expired/i.test(s)
