@@ -1,7 +1,7 @@
 ---
-status: Proposed
-date: 2026-07-27
-deciders: owner (product lead), Claude (worker), Codex (independent verifier)
+status: Accepted
+date: 2026-07-28
+deciders: owner (product lead), Codex (worker), Antigravity/AG (verification-first reviewer)
 ---
 
 # ADR-0027: Every feature carries an Expected-Behavior Map (traceability), enforced through the workflow
@@ -34,15 +34,21 @@ provenance and honest unknowns. We borrow the skeleton, not a SaaS tool, and kee
 
 ## Decision
 
-*(PROPOSED — the owner has approved the intent: this is now a permanent, tier-1, standard-workflow step
-with no shortcuts. This ADR records it; implementation lands in follow-on work, per the task list below.)*
+This is now a permanent, tier-1, standard-workflow step with no shortcuts.
 
 **Every new or changed PCC feature (and every feature in spawned projects) must carry an
 Expected-Behavior Map before its idea can be formalized, and is not "done" until every mapped behavior
 has a passing test — verified at completion, never deferred.**
 
-- **The map (lean RTM), one small table per feature**, each row: `behavior → trigger/control (which
-  button) → expected result → source → status → test ref`.
+- **Addition only:** this does not remove, replace, shorten, or modify the existing governed
+  workflow. Full idea scope still comes first: objective, why it matters, in/out boundaries, repo
+  truth, risks, trust boundaries, and owner approval. The Expected-Behavior Map is the required
+  testing artifact inside that scope.
+- **The simple rule:** every row says `what the owner does -> what the app should visibly do -> how
+  we prove it`.
+- **The map (lean RTM), one small table per feature**, each row: `behavior → control/interaction
+  (button, selector, field, app action) → expected visible/observable result → source → status →
+  test/evidence ref`.
   - **Source** is typed: **STATED** (explicit in a chat/doc — cite it), **INFERRED** (deduced — say so),
     or **REFERENCE** (imported from a reference anchor, e.g. "mimic the Claude/Codex desktop chat," which
     compactly imports a whole behavior set — resize, auto-grow, stop — without enumerating each).
@@ -56,6 +62,9 @@ has a passing test — verified at completion, never deferred.**
 - **Definition-of-Done gate (teeth #2):** "done" now requires **each mapped behavior to have a passing
   test** — checked at completion (the moment the work is certified), not months later. Wired into the
   completion/release path.
+- **Verification gate (teeth #3):** AG's main job is work verification. At the end of a Codex-built
+  task, AG verifies the actual evidence against the map row by row so Codex is not grading its own
+  work. Advice is secondary; verification is the load-bearing role.
 - **Living + emergent (no fake precision):** the map is a **living document**. The teeth are NOT "map
   every behavior perfectly upfront" (impossible — emergent requirements are real). The teeth are: map
   every *known* behavior + name the reference anchors at scoping; add new behaviors when discovered
@@ -89,40 +98,35 @@ has a passing test — verified at completion, never deferred.**
 
 ## Confirmation
 
-*Plan — executed on acceptance; nothing here is built yet.*
-
-- `check-adr.ps1` gains a rule: a feature-tagged ADR without an Expected-Behavior Map section FAILS
-  (red), proven with a red-biting test (mirrors `check-adr.spec.js`).
-- The Definition-of-Done / completion path requires each mapped behavior to reference a passing test;
-  proven by a fixture where a missing test blocks "done."
-- The backfill Stage 1 produces `docs/EXPECTATION_AUDIT.md` with sourced rows and at least the known
-  docs-only findings surfaced (e.g. PROJECT.md already records "Steer half — NOT working" → a B/D row).
-- Dogfood: the owner's next feature idea runs through the upgraded workflow as the first live example.
+- Owner approved the simple operating rule on 2026-07-28: `what the owner does -> what the app should
+  visibly do -> how we prove it`.
+- `scripts/check-adr.ps1` enforces that `feature: true` ADRs carry an Expected-Behavior Map, and
+  rejects an Accepted feature ADR with status `C` rows or built `A/B` rows lacking test references.
+  Red-biting coverage exists in `app/tests/scripts/check-adr.spec.js`.
+- `AGENTS.md`, `docs/DECISION_AND_CHANGE_STANDARD.md`, and `docs/specs/README.md` carry the rule
+  into the worker workflow.
+- Scaffolder parity is pinned by `app/tests/scripts/scaffold-kit.spec.js`, which proves spawned
+  projects inherit the Expected-Behavior Map teeth.
+- `docs/EXPECTATION_AUDIT.md` exists as the current retroactive control-surface register; fuller
+  backfill remains living work, not a reason to delay the forward rule.
 
 ## Engagement
 
-*Plan — where this wires in once accepted.*
-
-- **Owner:** maps the intent he cares about at scoping (aided by reference anchors so he needn't
-  enumerate everything); uses the register as the final click-through test script; sees gaps early.
-- **Claude worker:** fills the map in each feature ADR, writes the behavior tests at "done," maintains
-  the living register, runs the backfill.
-- **Codex verifier:** checks that the map ↔ tests actually cover the stated behaviors (not just that
-  tests pass) and that no row is unsourced/invented.
+- **Owner:** at idea scope, states the interaction and expected visible result he cares about; uses the
+  map as the final click-through test script.
+- **Codex worker:** fills the map before building, builds to the map, and updates it if scope changes.
+- **AG verifier:** checks that the actual proof covers every mapped row, that visible behavior matches
+  the expected result, and that no major new app interaction was omitted. AG does not edit or implement.
 - **Future chats / spawned projects:** the template, the `check-adr` teeth, the DoD gate, and the
   scaffolder seed make this the default, inherited standard.
 
-## Implementation task list (for the chat that picks this up)
+## Follow-on work
 
-1. Add the **Expected-Behavior Map** section to the ADR template, `docs/DECISION_AND_CHANGE_STANDARD.md`,
-   and `docs/specs/README.md` (lean table + the source/status legend above).
-2. Add **`check-adr.ps1` teeth**: a feature-tagged ADR must contain the section; red-biting test.
-3. Upgrade **Definition of Done** in `AGENTS.md` ("What done means here") to require each mapped
-   behavior to have a passing test, checked at completion; wire the check.
-4. **Scaffolder**: seed the template + rule so spawned projects inherit it (parity, DECISION-113).
-5. **Backfill** `docs/EXPECTATION_AUDIT.md`: Stage 1 (control-surface spine + docs-sourced behavior +
-   status, ranked by shock-risk), then Stage 2 (transcript mine — separate opt-in). PCC only.
-6. **Dogfood** on the owner's next feature idea.
+1. Keep converting current `Proposed` feature ADR maps from status `C` to tested `A` or honest
+   `B/D/E/F` before accepting those ADRs.
+2. Backfill `docs/EXPECTATION_AUDIT.md` as living work: Stage 1 control-surface spine first, Stage 2
+   transcript mining only by explicit opt-in.
+3. Dogfood this rule on the next PCC feature idea from scope through AG verification.
 
 ## Supersedes / Related
 

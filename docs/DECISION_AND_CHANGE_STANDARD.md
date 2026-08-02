@@ -31,13 +31,20 @@ What we gain — and what we GIVE UP (the honest trade-off).
 
 ## Expected-Behavior Map   [REQUIRED for feature ADRs — ADR-0027]
 *(Only for `feature: true` ADRs; omit the whole section for process/meta decisions.)*
-The lean RTM: one row per behavior the feature should exhibit. Map intent → the control that
-triggers it → what the owner expects → where that expectation comes from → its real status →
-the test that pins it. This is also the click-through script for the final sign-off test.
+This is an addition to the existing governed workflow, not a replacement for scope. The ADR still
+needs the normal Context/Problem, Decision, Consequences, Confirmation, Engagement, and any separate
+feature spec required by `docs/specs/README.md`. Full idea scope comes first; this map is the testing
+contract inside that scope.
 
-| behavior | control (which button/action) | expected result | source | status | test |
+The lean RTM: one row per behavior the feature should exhibit. Simple version:
+`what the owner does -> what the app should visibly do -> how we prove it`. Map intent → the control
+or interaction that triggers it → the visible/observable result the owner expects → where that
+expectation comes from → its real status → the test/evidence that pins it. This is also the
+click-through script for the final sign-off test.
+
+| behavior | control / interaction (button/action) | expected visible / observable result | source | status | test / evidence |
 |---|---|---|---|---|---|
-| <what it does> | <the trigger> | <what the owner expects to see> | STATED chat-id / doc:line | A | <spec file / commit> |
+| <what it does> | <what the owner does> | <what the owner should see or what observable output changes> | STATED chat-id / doc:line | A | <test file / evidence ref> |
 
 - **source** — `STATED` (explicit in a chat/doc; cite it) · `INFERRED` (deduced; say so) ·
   `REFERENCE` (imported from an anchor, e.g. "mimic the Claude/Codex desktop chat" — one line that
@@ -50,7 +57,8 @@ the test that pins it. This is also the click-through script for the final sign-
   stays unknown. Keep it a small table, not aerospace RTM.
 - **Teeth:** `check-adr.ps1` rejects a `feature: true` ADR with no map. When the ADR is **Accepted**
   (claimed done), no row may be status **C**, and every built row (A/B) must name a test — that is the
-  Definition of Done, machine-enforced.
+  Definition of Done, machine-enforced. The verifier checks the map row by row against evidence,
+  with AG serving as the verification-first reviewer when Codex is the worker.
 
 ## Confirmation        [REQUIRED — Pillar 1]
 How we proved it works AND didn't break what we have:

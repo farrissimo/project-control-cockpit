@@ -24,6 +24,14 @@ if (-not $prompt -or -not $prompt.Trim()) { Write-Output 'No prompt provided.'; 
 
 function Invoke-CodexReview {
   param($p, $dir)
+  $codexCmd = Get-Command codex -ErrorAction SilentlyContinue
+  $fakeJs = if ($codexCmd) { Join-Path (Split-Path -Parent $codexCmd.Source) 'codex.js' } else { $null }
+  if ($env:PCC_TEST_MODE -and $fakeJs -and (Test-Path -LiteralPath $fakeJs -PathType Leaf)) {
+    $o = & node $fakeJs exec --sandbox read-only $p 2>&1 | Out-String
+    if ($o -and $o.Trim()) { return $o.Trim() }
+    return "Codex returned no output (exit $LASTEXITCODE). It may be out of usage."
+  }
+
   $job = Start-Job -ScriptBlock {
     param($promptText, $workDir)
     Set-Location $workDir
@@ -41,6 +49,14 @@ function Invoke-CodexReview {
 
 function Invoke-AgReview {
   param($p, $dir)
+  $agyCmd = Get-Command agy -ErrorAction SilentlyContinue
+  $fakeJs = if ($agyCmd) { Join-Path (Split-Path -Parent $agyCmd.Source) 'agy.js' } else { $null }
+  if ($env:PCC_TEST_MODE -and $fakeJs -and (Test-Path -LiteralPath $fakeJs -PathType Leaf)) {
+    $o = & node $fakeJs --sandbox --print $p 2>&1 | Out-String
+    if ($o -and $o.Trim()) { return $o.Trim() }
+    return "Antigravity returned no output (exit $LASTEXITCODE). It may be unavailable or out of usage."
+  }
+
   $job = Start-Job -ScriptBlock {
     param($promptText, $workDir)
     Set-Location $workDir

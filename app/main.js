@@ -1910,21 +1910,38 @@ ipcMain.handle('pcc:secondOpinion', (_e, prompt, provider) => new Promise((resol
   if (typeof prompt !== 'string' || !prompt.trim()) return resolve({ ok: false, text: 'Nothing to review yet.' });
   const reviewer = provider === 'ag' ? 'ag' : 'codex';
   let child;
+  let settled = false;
+  const finish = (result) => {
+    if (settled) return;
+    settled = true;
+    if (child) activeWorkers.delete(child);
+    resolve(result);
+  };
   try {
     child = spawn('pwsh', ['-NoProfile', '-File', 'scripts/second-opinion.ps1', '-Provider', reviewer], { cwd: projectDir });
   } catch (e) {
     return resolve({ ok: false, text: 'Could not run second opinion: ' + e.message });
   }
+  activeWorkers.add(child);
   let out = '', err = '';
-  child.on('error', (e) => resolve({ ok: false, text: 'Could not run second opinion: ' + e.message }));
+  const timer = setTimeout(() => {
+    killWorker(child);
+    const name = reviewer === 'ag' ? 'Antigravity' : 'Codex';
+    finish({ ok: false, text: name + ' second opinion timed out.' });
+  }, 130000);
+  child.on('error', (e) => {
+    clearTimeout(timer);
+    finish({ ok: false, text: 'Could not run second opinion: ' + e.message });
+  });
   child.stdout.on('data', (d) => { out += d.toString(); });
   child.stderr.on('data', (d) => { err += d.toString(); });
   child.on('close', (code) => {
+    clearTimeout(timer);
     const t = out.trim();
-    if (t) resolve({ ok: true, text: t });
+    if (t) finish({ ok: true, text: t });
     else {
       const name = reviewer === 'ag' ? 'Antigravity' : 'Codex';
-      resolve({ ok: false, text: (err.trim() || (name + ' second opinion exited with code ' + code)) });
+      finish({ ok: false, text: (err.trim() || (name + ' second opinion exited with code ' + code)) });
     }
   });
   child.stdin.write(prompt);

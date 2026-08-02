@@ -17,6 +17,7 @@ start of every session, so these never need to be repeated.
 - Don't answer a factual question from memory — check the actual files first.
 
 ## Work discipline
+- Do not start implementation, run nontrivial commands, edit files, launch workers, or otherwise "do work" until the owner explicitly approves that work. Discussion, diagnosis, and requested documentation are allowed only when the owner asks for them.
 - Stay in scope. Don't change things that weren't asked for.
 - Prefer local, deterministic tools for mechanical work; spend the LLM only on real judgment.
 - Before building something new, ASSUME the problem is already solved somewhere in the world. Web-search for existing, proven solutions FIRST and reuse one; treat "nothing exists" as a surprising result that needs real evidence, not the default. Only build custom when the need is genuinely unique to this project. Don't reinvent the wheel. (When a new idea comes up in chat, do this research proactively before reacting — the owner's "Check prior art" button forces it on demand.)

@@ -147,10 +147,12 @@ test('a fresh scaffold is stamped with the current engine version', () => {
 // "setup" tier instead of a clean local-only), and high-stakes-rules.json (detector read "unknown").
 test('new project is born with an editable model list (models.json)', () => {
   const m = JSON.parse(fs.readFileSync(path.join(target, '.cockpit', 'state', 'models.json'), 'utf8'));
-  expect(m.default).toBeTruthy();
-  expect(Array.isArray(m.models)).toBe(true);
-  expect(m.models.length).toBeGreaterThan(0);
-  expect(m.models.every((x) => x.id && x.label)).toBe(true);
+  expect(m.default_provider).toBeTruthy();
+  expect(Array.isArray(m.providers)).toBe(true);
+  expect(m.by_provider).toBeTruthy();
+  expect(Array.isArray(m.by_provider.codex.models)).toBe(true);
+  expect(m.by_provider.codex.models.length).toBeGreaterThan(0);
+  expect(m.by_provider.codex.models.every((x) => x.id && x.label)).toBe(true);
 });
 
 test('new project is born on the local-only backup tier (no false "not backed up" nag)', () => {

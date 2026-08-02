@@ -14,7 +14,7 @@
 // SCHEMA (v1):
 //   { schemaVersion:1, projectId, revision:<monotonic int>, createdAt, updatedAt,
 //     activeChatId:<id|null>,
-//     chats:[ { id, name, started, messages:[{id, cls, text, ts}],
+//     chats:[ { id, name, started, messages:[{id, cls, text, ts, provider?}],
 //               createdAt, updatedAt, nameLocked?, buildChat?, buildName? } ] }
 //
 // CONCURRENCY: every mutation is read -> apply narrow op -> validate -> bump
@@ -79,6 +79,7 @@ function _validateChatShape(c) {
     if (!Number.isFinite(m.ts)) return 'message_ts';
     if (m.cls !== undefined && typeof m.cls !== 'string') return 'message_cls';
     if (m.text !== undefined && typeof m.text !== 'string') return 'message_text';
+    if (m.provider !== undefined && typeof m.provider !== 'string') return 'message_provider';
   }
   // Optional metadata — typed only when present (matches this module's writers).
   if (c.nameLocked !== undefined && typeof c.nameLocked !== 'boolean') return 'chat_nameLocked';
@@ -270,7 +271,9 @@ function appendMessage(file, expectedRevision, args, opts) {
   // Idempotent by message id: appending the same message again is a no-op, never
   // a duplicate. No write, no revision bump.
   if (chat.messages.some((x) => x.id === m.id)) return { ok: true, revision: L.store.revision, noop: true };
-  chat.messages.push({ id: m.id, cls: m.cls, text: m.text, ts: (typeof m.ts === 'number' ? m.ts : now) });
+  const next = { id: m.id, cls: m.cls, text: m.text, ts: (typeof m.ts === 'number' ? m.ts : now) };
+  if (typeof m.provider === 'string' && m.provider) next.provider = m.provider;
+  chat.messages.push(next);
   chat.started = true;
   chat.updatedAt = now;
   return _commit(file, L.store, now);

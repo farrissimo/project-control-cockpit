@@ -28,7 +28,7 @@ Legend: `[TEXT→ACTION]` pasted text can drive it · `[OWNER-CLICK]` discrete U
 | `pcc:pull` (660) | `[OWNER-CLICK][GIT]` | `git pull --ff-only`. |
 | `pcc:verify` (171) | `[OWNER-CLICK / SCHEDULED][SHELL]` | `pwsh verify-work.ps1` (Codex/agy verifier). |
 | `pcc:verifyProduct` (187) | `[OWNER-CLICK][SHELL]` | `pwsh verify-product.ps1`. |
-| `pcc:secondOpinion` (574) | `[OWNER-CLICK][SHELL][PROC]` | `pwsh second-opinion.ps1` (Codex). |
+| `pcc:secondOpinion` (574) | `[OWNER-CLICK][SHELL][PROC]` | `pwsh second-opinion.ps1` (Claude -> Codex, Codex -> Antigravity/agy). Review-only chat cross-check, not formal done-verification. |
 | `pcc:lifecycleAdvance` (332) | `[OWNER-CLICK][WRITE]` | `execFile pwsh lifecycle-advance.ps1` (validated arg, no shell; gated by legal transitions + PASS gate). |
 | `pcc:setPhaseKind` (216) | `[OWNER-CLICK][WRITE]` | Writes `lifecycle-state.json`. |
 | `pcc:saveMemory` (156) | `[OWNER-CLICK][WRITE]` | Writes `PROJECT.md`. |

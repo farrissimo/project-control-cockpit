@@ -61,11 +61,28 @@ work needs the top of that ladder. **A non-trivial change is not done until an i
 sequence is build → CI → verify → done. Do NOT self-certify a batch and skip the verifier.**
 
 **For a feature (ADR-0027):** "done" also requires **every behavior in its Expected-Behavior Map to
-have a passing test, checked now — not deferred.** When the feature ADR flips to `Accepted`,
+have a passing test, checked now — not deferred.** The simple row shape is: `what the owner does ->
+what the app should visibly do -> how we prove it`. When the feature ADR flips to `Accepted`,
 `check-adr.ps1` rejects it if any mapped behavior is status `C` (built-but-untested) or any built
 (A/B) behavior names no test. Green tests prove "the code does what its tests say"; the map is how we
-also prove "the app does what the owner expects" — so the verifier checks map↔test *coverage*, not
-just that the suite is green.
+also prove "the app does what the owner expects" — so the verifier checks map↔test *coverage* and
+visible/observable behavior, not just that the suite is green. When Codex is the worker, AG's main
+job is work verification: review-only, no edits, row-by-row against the map and evidence. This is an
+added testing artifact inside the existing governed workflow; it does not replace full idea scope,
+ADR/spec truth checks, owner approval, or verification.
+
+## Governed remote send (owner away from PCC)
+If the owner explicitly asks you to launch work in an existing PCC chat but cannot use the app directly,
+do **not** run the target work from your own chat. Use PCC's live app path so the target chat keeps its
+normal transcript, per-chat authority, sandbox, worker selection, and trust-window rules.
+
+Runbook: `docs/GOVERNED_REMOTE_SEND_RUNBOOK.md`.
+
+Short version: identify the active project/chat from PCC state, make sure the owner has explicitly
+approved the work, restart or start PCC with a temporary local Chromium debug port if needed, connect to
+the renderer, call `window.pcc.requestJob(...)` + `window.pcc.approveJob()` for that chat, then call the
+renderer's own `sendMessage(...)`. Verify the canonical chat store and spawned worker. Never claim it
+launched unless those checks moved.
 
 ## Where the architecture lives (pointers, not prose)
 - `PROJECT.md` — current brief (read first; durable state only, live facts checked directly)
@@ -73,6 +90,7 @@ just that the suite is green.
 - `docs/ENGINEERING_ASSURANCE_PLAN.md` — integrity contract (read Part 1 before integrity-critical code)
 - `docs/DECISION_AND_CHANGE_STANDARD.md` — decision + change-rollout standard
 - `docs/BACKUP_POLICY.md` — restore-point rules
+- `docs/GOVERNED_REMOTE_SEND_RUNBOOK.md` — emergency/owner-away way to send into an existing PCC chat
 
 ## Security
 Never commit real secrets. Env is git-ignored. If an approach requires a real secret, stop and report
